@@ -9,7 +9,8 @@ import random
 from dataclasses import dataclass
 from typing import Iterator
 
-from anemone.basics import BranchKey, BranchKeyGeneratorP, ContentTag
+from valanga import BranchKey, BranchKeyGeneratorP
+
 from anemone.node_factory import Base
 from anemone.nodes.algorithm_node import AlgorithmNode
 from anemone.nodes.tree_node import TreeNode

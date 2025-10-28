@@ -15,11 +15,14 @@ classifiers = [
 requires-python = ">=3.13"
 dependencies = [
     "valanga @ git+https://github.com/victorgabillon/valanga.git@main",
+    "atomheart @ git+https://github.com/victorgabillon/atomheart.git@main",
+
     "rich",
     "sortedcollections>=2.1.0",
     "graphviz",
     "chess"
 ]
+
 license = "GPL-3.0-only"
 license-files = ["LICENSE"]
 
@@ -28,6 +31,49 @@ readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
   { name = "Victor Gabillon", email = "victorgabillon@gmail.com" }
 ]
+
+
+[project.optional-dependencies]
+test = [
+    # Testing dependencies
+    "pytest>=8.4.1",
+    "coverage",
+    "pytest-cov>=6.0.0"
+]
+
+
+dev = [
+    # Development dependencies (includes test)
+    "tox>=4.30.2",
+    "types-PyYAML>=6.0.12.12",
+
+    # Linting & formatting
+    "ruff>=0.14.1",
+    "pylint>=3.3.8",
+    "black>=25.1.0",
+
+    # Type checking
+    "mypy>=1.18.2",
+    "pyright>=1.1.406",
+
+    # Building & publishing
+    "build",
+    "twine",
+
+    # Documentation
+    "sphinx",
+    "sphinx-rtd-theme",
+    "sphinx-autodoc-typehints",
+
+    # Pre-commit hooks
+    "pre-commit",
+
+    # Linting
+    "coral @ git+https://github.com/victorgabillon/coral.git@main",
+
+
+]
+
 
 [project.urls]
 Homepage = "https://github.com/victorgabillon/anemone"
@@ -41,8 +87,10 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["anemone", "anemone.*"]
+include = ["src/anemone", "src/anemone.*"]
 exclude = ["tests*", "docs", "examples", "build", "dist", "venv", "env", ".venv", ".env", "__pycache__", "*.egg-info"]
+
+
 
 
 
