@@ -1,5 +1,5 @@
 """
-MoveAndValueTreeFactory
+ValueTreeFactory
 """
 
 from typing import TYPE_CHECKING
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 class ValueTreeFactory:
     """
-    MoveAndValueTreeFactory
+    ValueTreeFactory
     """
 
     node_factory: nod_fac.AlgorithmNodeFactory

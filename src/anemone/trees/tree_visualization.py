@@ -9,9 +9,9 @@ Functions:
 - add_dot(dot: Digraph, treenode: ITreeNode) -> None: Adds nodes and edges to the graph representation of the tree.
 - display_special(node: ITreeNode, format: str, index: dict[chess.Move, str]) -> Digraph: Displays a special
 representation of the tree with additional information.
-- display(tree: MoveAndValueTree, format_str: str) -> Digraph: Displays the tree structure as a graph.
-- save_pdf_to_file(tree: MoveAndValueTree) -> None: Saves the tree structure as a PDF file.
-- save_raw_data_to_file(tree: MoveAndValueTree, count: str = '#') -> None: Saves the raw data of the tree
+- display(tree: ValueTree, format_str: str) -> Digraph: Displays the tree structure as a graph.
+- save_pdf_to_file(tree: ValueTree) -> None: Saves the tree structure as a PDF file.
+- save_raw_data_to_file(tree: ValueTree, count: str = '#') -> None: Saves the raw data of the tree
 structure to a file.
 """
 
@@ -107,7 +107,7 @@ def display(tree: ValueTree, format_str: str) -> Digraph:
     Display the move and value tree using graph visualization.
 
     Args:
-        tree (MoveAndValueTree): The move and value tree to be displayed.
+        tree (ValueTree): The move and value tree to be displayed.
         format_str (str): The format of the output graph (e.g., 'png', 'pdf', 'svg').
 
     Returns:
@@ -123,7 +123,7 @@ def save_pdf_to_file(tree: ValueTree) -> None:
     Saves the visualization of a tree as a PDF file.
 
     Args:
-        tree (MoveAndValueTree): The tree to be visualized and saved.
+        tree (ValueTree): The tree to be visualized and saved.
 
     Returns:
         None
@@ -138,10 +138,10 @@ def save_pdf_to_file(tree: ValueTree) -> None:
 
 def save_raw_data_to_file(tree: ValueTree, count: str = "#") -> None:
     """
-    Save raw data of a MoveAndValueTree to a file.
+    Save raw data of a ValueTree to a file.
 
     Args:
-        tree (MoveAndValueTree): The MoveAndValueTree object to save.
+        tree (ValueTree): The ValueTree object to save.
         count (str, optional): A string to append to the filename. Defaults to '#'.
 
     Returns:

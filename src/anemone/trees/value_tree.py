@@ -1,9 +1,10 @@
 """
-MoveAndValueTree
+ValueTree
 """
 
 from valanga import BoardEvaluation
 
+from anemone.basics import TreeDepth
 from anemone.nodes.algorithm_node import AlgorithmNode
 from anemone.nodes.itree_node import ITreeNode
 
@@ -23,7 +24,7 @@ class ValueTree:
 
     _root_node: AlgorithmNode
     descendants: RangedDescendants
-    tree_root_tree_depth: int
+    tree_root_tree_depth: TreeDepth
 
     def __init__(
         self, root_node: AlgorithmNode, descendants: RangedDescendants

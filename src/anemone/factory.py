@@ -16,9 +16,7 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-from chipiron.players.boardevaluators.neural_networks.input_converters.representation_factory_factory import (
-    create_board_representation_factory,
-)
+
 from chipiron.players.boardevaluators.table_base.factory import AnySyzygyTable
 
 import anemone.search_factory as search_factories
@@ -64,6 +62,7 @@ def create_tree_and_value_branch_selector(
     args: TreeAndValuePlayerArgs,
     syzygy: AnySyzygyTable | None,
     random_generator: random.Random,
+    state_representation_factory: RepresentationFactory[Any] | None,
     queue_progress_player: queue.Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector:
     """
@@ -90,10 +89,7 @@ def create_tree_and_value_branch_selector(
         node_factory_name=node_factory_name
     )
 
-    state_representation_factory: RepresentationFactory[Any] | None
-    state_representation_factory = create_board_representation_factory(
-        internal_tensor_representation_type=args.node_evaluator.internal_representation_type
-    )
+
 
     search_factory: search_factories.SearchFactoryP = search_factories.SearchFactory(
         node_selector_args=args.node_selector,
@@ -105,7 +101,7 @@ def create_tree_and_value_branch_selector(
     algorithm_node_factory: node_factory.AlgorithmNodeFactory
     algorithm_node_factory = node_factory.AlgorithmNodeFactory(
         tree_node_factory=tree_node_factory,
-        content_representation_factory=state_representation_factory,
+        state_representation_factory=state_representation_factory,
         exploration_index_data_create=search_factory.node_index_create,
     )
 

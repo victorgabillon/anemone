@@ -52,14 +52,14 @@ class Uniform:
 
     def choose_node_and_move_to_open(
         self,
-        tree: trees.MoveAndValueTree,
+        tree: trees.ValueTree,
         latest_tree_expansions: tree_man.TreeExpansions,
     ) -> OpeningInstructions:
         """
         Chooses a node to expand and determines the moves to open for that node.
 
         Args:
-        - tree (trees.MoveAndValueTree): The move and value tree.
+        - tree (trees.ValueTree): The move and value tree.
         - latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
 
         Returns:

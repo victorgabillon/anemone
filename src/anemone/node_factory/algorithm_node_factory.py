@@ -7,7 +7,7 @@ from typing import Any
 
 from valanga import (
     BranchKey,
-    ContentRepresentation,
+    StateRepresentation,
     RepresentationFactory,
     State,
     StateModifications,
@@ -32,7 +32,7 @@ class AlgorithmNodeFactory:
     """
 
     tree_node_factory: Base[Any]
-    content_representation_factory: RepresentationFactory | None
+    state_representation_factory: RepresentationFactory | None
     exploration_index_data_create: node_indices.ExplorationIndexDataFactory[
         Any
     ]  # Use Any to avoid protocol constraints
@@ -51,7 +51,7 @@ class AlgorithmNodeFactory:
 
         Args:
             branch_from_parent (BranchKey | None): the move that led to the node from the parent node
-            content: The content object.
+            state: The state object.
             tree_depth: The tree depth.
             count: The count.
             parent_node: The parent node object.
@@ -76,16 +76,16 @@ class AlgorithmNodeFactory:
             node_indices.NodeExplorationData[AlgorithmNode] | None
         ) = self.exploration_index_data_create(tree_node)
 
-        content_representation: ContentRepresentation | None = None
-        if self.content_representation_factory is not None:
+        state_representation: StateRepresentation | None = None
+        if self.state_representation_factory is not None:
             if parent_node is not None:
-                parent_node_representation = parent_node.content_representation
+                parent_node_representation = parent_node.state_representation
             else:
                 parent_node_representation = None
 
-            content_representation = (
-                self.content_representation_factory.create_from_transition(
-                    state=tree_node.content,
+            state_representation = (
+                self.state_representation_factory.create_from_transition(
+                    state=tree_node.state,
                     previous_state_representation=parent_node_representation,
                     modifications=modifications,
                 )
@@ -95,5 +95,5 @@ class AlgorithmNodeFactory:
             tree_node=tree_node,
             minmax_evaluation=minmax_evaluation,
             exploration_index_data=exploration_index_data,
-            content_representation=content_representation,
+            state_representation=state_representation,
         )

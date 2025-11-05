@@ -37,7 +37,7 @@ from . import recommender_rule
 from . import tree_manager as tree_man
 from .indices.node_indices.index_types import IndexComputationType
 from .tree_and_value_move_selector import TreeAndValueMoveSelector
-from .trees.factory import MoveAndValueTreeFactory
+from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
     from chipiron.players.boardevaluators.neural_networks.input_converters.factory import (
@@ -109,7 +109,7 @@ def create_tree_and_value_builders(
         exploration_index_data_create=search_factory.node_index_create,
     )
 
-    tree_factory = MoveAndValueTreeFactory(
+    tree_factory = ValueTreeFactory(
         node_factory=algorithm_node_factory, node_evaluator=node_evaluator
     )
 

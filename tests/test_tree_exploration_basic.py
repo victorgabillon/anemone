@@ -87,25 +87,25 @@ class SimpleBranchKeyGenerator:
 
 
 @dataclass
-class SimpleContent:
+class SimpleState:
     tag_: int
 
-    """Simple content class for testing."""
+    """Simple state class for testing."""
 
-    def tag(self) -> ContentTag:
-        """Returns the tag of the content.
+    def tag(self) -> StateTag:
+        """Returns the tag of the state.
 
         Returns:
-            ContentTag: The tag of the content.
+            StateTag: The tag of the state.
         """
         return self.tag_
 
     @property
     def branch_keys(self) -> BranchKeyGeneratorP:
-        """Returns the branch keys of the content.
+        """Returns the branch keys of the state.
 
         Returns:
-            BranchKeyGeneratorP: The branch keys of the content.
+            BranchKeyGeneratorP: The branch keys of the state.
         """
         return SimpleBranchKeyGenerator()
 
@@ -122,14 +122,14 @@ def test_tree_exploration_basic():
     def notify_progress(percent: int):
         print(f"Progress: {percent}%")
 
-    content = SimpleContent(tag_=1)
+    state = SimpleState(tag_=1)
 
     base_tree_node_factory = Base[TreeNode]()
 
     tree_node: TreeNode = base_tree_node_factory.create(
         count=0,
         tree_depth=0,
-        content=content,
+        state=state,
         parent_node=None,
         branch_from_parent=None,
     )
@@ -138,7 +138,7 @@ def test_tree_exploration_basic():
         tree_node=tree_node,
         minmax_evaluation=None,  # Replace with actual evaluation if needed
         exploration_index_data=None,
-        content_representation=None,
+        state_representation=None,
     )
 
     value_tree: ValueTree = ValueTree(

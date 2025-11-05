@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, ItemsView, Iterator, Self, ValuesView
 
-from chipiron.environments.chess_env.move.imove import moveKey
+from valanga import BranchKey
+
 
 import anemone.nodes as nodes
 from anemone.nodes.utils import (
@@ -23,16 +24,16 @@ class OpeningInstruction:
     """
 
     node_to_open: nodes.ITreeNode
-    move_to_play: moveKey
+    branch: BranchKey
 
     def print_info(self) -> None:
         """
         Prints information about the opening instruction.
         """
         print(
-            f"OpeningInstruction: node_to_open {self.node_to_open.id} at hm {self.node_to_open.half_move} {self.node_to_open.board.fen}| "
+            f"OpeningInstruction: node_to_open {self.node_to_open.id} at hm {self.node_to_open.tree_depth} {self.node_to_open.state}| "
             f"a path from root to node_to_open is {a_move_key_sequence_from_root(self.node_to_open)} {a_move_uci_sequence_from_root(self.node_to_open)}| "
-            f"self.move_to_play {self.move_to_play} {self.node_to_open.board.get_uci_from_move_key(self.move_to_play)}"
+            f"self.branch {self.branch} {self.node_to_open.state.branch_name_from_key(self.branch)}"
         )
 
 
@@ -166,8 +167,8 @@ class OpeningInstructions:
         return len(self.batch)
 
 
-def create_instructions_to_open_all_moves(
-    moves_to_play: list[moveKey], node_to_open: nodes.ITreeNode
+def create_instructions_to_open_all_branches(
+    branches_to_play: list[BranchKey], node_to_open: nodes.ITreeNode
 ) -> OpeningInstructions:
     """
     Creates opening instructions for all possible moves to play from a given node.
@@ -181,12 +182,12 @@ def create_instructions_to_open_all_moves(
     """
     opening_instructions_batch = OpeningInstructions()
 
-    for move_to_play in moves_to_play:
+    for branch_to_play in branches_to_play:
         # at the moment it looks redundant keys are almost the same as values but its clean
         # the keys are here for fast and redundant proof insertion
         # and the values are here for clean data processing
-        opening_instructions_batch[(node_to_open.id, move_to_play)] = (
-            OpeningInstruction(node_to_open=node_to_open, move_to_play=move_to_play)
+        opening_instructions_batch[(node_to_open.id, branch_to_play)] = (
+            OpeningInstruction(node_to_open=node_to_open, branch=branch_to_play)
         )
     #  node_to_open.non_opened_legal_moves.add(move_to_play)
     return opening_instructions_batch
@@ -218,9 +219,9 @@ class OpeningInstructor:
         self.opening_type = opening_type
         self.random_generator = random_generator
 
-    def all_moves_to_open(self, node_to_open: nodes.ITreeNode) -> list[moveKey]:
+    def all_branches_to_open(self, node_to_open: nodes.ITreeNode) -> list[BranchKey]:
         """
-        Returns a list of all possible moves to open from a given node.
+        Returns a list of all possible branches to open from a given node.
 
         Args:
             node_to_open: The node to open.
@@ -229,8 +230,8 @@ class OpeningInstructor:
             A list of chess moves.
         """
         if self.opening_type == OpeningType.ALL_CHILDREN:
-            node_to_open.all_legal_moves_generated = True
-            moves_to_play: list[moveKey] = node_to_open.legal_moves.get_all()
+            node_to_open.all_branches_generated = True
+            branches_to_play: list[BranchKey] = node_to_open.state.branch_keys.get_all()
 
             # this shuffling add randomness to the playing style
             # (it stills depends on the random seed, but if random seed varies then the behavior will be more random)
@@ -239,4 +240,4 @@ class OpeningInstructor:
 
         else:
             raise Exception("Hello-la")
-        return moves_to_play
+        return branches_to_play

@@ -27,7 +27,7 @@ from chipiron.utils.dataclass import IsDataclass
 from . import recommender_rule
 from . import tree_manager as tree_man
 from .tree_exploration import TreeExploration, create_tree_exploration
-from .trees.factory import MoveAndValueTreeFactory
+from .trees.factory import ValueTreeFactory
 
 
 @dataclass
@@ -47,7 +47,7 @@ class TreeAndValueMoveSelector:
     # pretty empty class but might be useful when dealing with multi round and time , no?
 
     tree_manager: tree_man.AlgorithmNodeTreeManager
-    tree_factory: MoveAndValueTreeFactory
+    tree_factory: ValueTreeFactory
     stopping_criterion_args: AllStoppingCriterionArgs
     node_selector_create: NodeSelectorFactory
     random_generator: random.Random

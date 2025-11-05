@@ -30,7 +30,7 @@ from valanga import (
     OverEvent,
 )
 
-from anemone.basics import HasBlackAndWhiteTurn, NodeContent
+from anemone.basics import HasBlackAndWhiteTurn, NodeState
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.utils.logger import chipiron_logger
@@ -55,8 +55,8 @@ class NodeWithValue(ITreeNode, Protocol):
     tree_node: TreeNode[Self]
 
 
-class BlackAndWhiteNodeContent(NodeContent, HasBlackAndWhiteTurn, Protocol):
-    """Protocol for game content with both turn tracking and node metadata."""
+class BlackAndWhiteNodeState(NodeState, HasBlackAndWhiteTurn, Protocol):
+    """Protocol for game state with both turn tracking and node metadata."""
 
     pass
 
@@ -81,7 +81,7 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue]:
     """
 
     # a reference to the original tree node that is evaluated
-    tree_node: TreeNode[NodeWithValueT, BlackAndWhiteNodeContent]
+    tree_node: TreeNode[NodeWithValueT, BlackAndWhiteNodeState]
 
     # absolute value wrt to white player as estimated by an evaluator
     value_white_evaluator: float | None = None
@@ -167,7 +167,7 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue]:
             float: The subjective value of `value_white` based on the player to move.
         """
         subjective_value = (
-            value_white if self.tree_node.content.is_white_to_move() else -value_white
+            value_white if self.tree_node.state.is_white_to_move() else -value_white
         )
         return subjective_value
 
@@ -182,7 +182,7 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue]:
         """
         subjective_value = (
             self.get_value_white()
-            if self.tree_node.content.is_white_to_move()
+            if self.tree_node.state.is_white_to_move()
             else -self.get_value_white()
         )
         return subjective_value
@@ -197,7 +197,7 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue]:
         Returns:
             float: The subjective value of the current node evaluation.
         """
-        if self.tree_node.content.is_white_to_move():
+        if self.tree_node.state.is_white_to_move():
             subjective_value = another_node_eval.get_value_white()
         else:
             subjective_value = -another_node_eval.get_value_white()
@@ -396,7 +396,7 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue]:
         child_value_white = child.minmax_evaluation.get_value_white()
         subjective_value_of_child = (
             -child_value_white
-            if self.tree_node.content.is_white_to_move()
+            if self.tree_node.state.is_white_to_move()
             else child_value_white
         )
         if self.is_over():
@@ -572,7 +572,7 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue]:
         assert best_child is not None
         if self.tree_node.all_legal_moves_generated:
             self.value_white_minmax = best_child.minmax_evaluation.get_value_white()
-        elif self.tree_node.content.is_white_to_move():
+        elif self.tree_node.state.is_white_to_move():
             assert self.value_white_evaluator is not None
             self.value_white_minmax = max(
                 best_child.minmax_evaluation.get_value_white(),
@@ -830,9 +830,9 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue]:
             )
             value_children.append(child.minmax_evaluation.get_value_white())
         if self.tree_node.moves_children:
-            if self.tree_node.content.is_white_to_move():
+            if self.tree_node.state.is_white_to_move():
                 assert max(value_children) == self.get_value_white()
-            if self.tree_node.content.is_black_to_move():
+            if self.tree_node.state.is_black_to_move():
                 assert min(value_children) == self.get_value_white()
             for ind, move in enumerate(self.moves_sorted_by_value):
                 child = self.tree_node.branches_children[move]
@@ -845,12 +845,12 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue]:
                     before = child
                 else:
                     before = child
-                    if self.tree_node.content.is_white_to_move():
+                    if self.tree_node.state.is_white_to_move():
                         assert (
                             before.minmax_evaluation.get_value_white()
                             >= child.minmax_evaluation.get_value_white()
                         )
-                    if self.tree_node.content.is_black_to_move():
+                    if self.tree_node.state.is_black_to_move():
                         assert (
                             before.minmax_evaluation.get_value_white()
                             <= child.minmax_evaluation.get_value_white()

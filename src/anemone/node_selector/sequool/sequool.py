@@ -321,7 +321,7 @@ class Sequool:
 
     def choose_node_and_move_to_open(
         self,
-        tree: trees.MoveAndValueTree,
+        tree: trees.ValueTree,
         latest_tree_expansions: "tree_man.TreeExpansions",
     ) -> OpeningInstructions:
         """

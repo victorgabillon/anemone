@@ -24,7 +24,7 @@ class BranchRecommendation:
 
 
 class HasBlackAndWhiteTurn(Protocol):
-    """Protocol for content that has black and white turns."""
+    """Protocol for state that has black and white turns."""
 
     @property
     def is_black_to_move(self) -> bool:

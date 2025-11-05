@@ -10,14 +10,14 @@ from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
 
-from ..node_evaluator import MasterContentEvaluator, NodeEvaluator
+from ..node_evaluator import MasterStateEvaluator, NodeEvaluator
 
 if TYPE_CHECKING:
     from valanga import FloatyBoardEvaluation
 
 
-class MasterNNContentEvaluator(MasterContentEvaluator, Protocol):
-    content_evaluator: NNContentEvaluator
+class MasterNNStateEvaluator(MasterStateEvaluator, Protocol):
+    state_evaluator: NNStateEvaluator
 
 
 class NNNodeEvaluator(NodeEvaluator):
@@ -25,7 +25,7 @@ class NNNodeEvaluator(NodeEvaluator):
 
     def __init__(
         self,
-        master_content_evaluator: MasterContentEvaluator,
+        master_state_evaluator: MasterStateEvaluator,
     ) -> None:
         """
         Initializes an instance of the NNNodeEvaluator class.
@@ -34,10 +34,10 @@ class NNNodeEvaluator(NodeEvaluator):
             nn_board_evaluator (board_nn.NNBoardEvaluator): The neural network board evaluator.
             syzygy (SyzygyTable | None): The Syzygy table or None if not available.
         """
-        self.master_content_evaluator = master_content_evaluator
-        self.net = master_content_evaluator.board_evaluator.net
+        self.master_state_evaluator = master_state_evaluator
+        self.net = master_state_evaluator.board_evaluator.net
         self.my_scripted_model = torch.jit.script(self.net)
-        self.nn_content_evaluator = master_content_evaluator.board_evaluator
+        self.nn_state_evaluator = master_state_evaluator.board_evaluator
 
     def evaluate_all_not_over(self, not_over_nodes: list[AlgorithmNode]) -> None:
         """
@@ -54,15 +54,15 @@ class NNNodeEvaluator(NodeEvaluator):
         node_not_over: AlgorithmNode
 
         for index, node_not_over in enumerate(not_over_nodes):
-            if node_not_over.content_representation is not None:
+            if node_not_over.state_representation is not None:
                 list_of_tensors[index] = (
-                    node_not_over.content_representation.get_evaluator_input(
+                    node_not_over.state_representation.get_evaluator_input(
                         color_to_play=node_not_over.player_to_move
                     )
                 )
             else:
                 list_of_tensors[index] = self.nn_board_evaluator.board_to_input_convert(
-                    node_not_over.content
+                    node_not_over.state
                 )
 
         input_layers = torch.stack(list_of_tensors, dim=0)

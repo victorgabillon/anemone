@@ -20,9 +20,10 @@ from typing import Iterator
 
 from sortedcollections import ValueSortedDict
 
-from anemone.basics import NodeTag, TreeDepth
+from anemone.basics import TreeDepth
 from anemone.nodes import ITreeNode
 
+from valanga import StateTag
 
 class Descendants:
     """
@@ -36,7 +37,7 @@ class Descendants:
         max_tree_depth (int | None): The maximum half move in the collection, or None if the collection is empty.
     """
 
-    descendants_at_tree_depth: dict[TreeDepth, dict[NodeTag, ITreeNode]]
+    descendants_at_tree_depth: dict[TreeDepth, dict[StateTag, ITreeNode]]
     number_of_descendants: int
     number_of_descendants_at_tree_depth: dict[TreeDepth, int]
     min_tree_depth: TreeDepth | None
@@ -64,7 +65,7 @@ class Descendants:
 
     def iter_on_all_nodes(
         self,
-    ) -> Iterator[tuple[TreeDepth, NodeTag, ITreeNode]]:
+    ) -> Iterator[tuple[TreeDepth, StateTag, ITreeNode]]:
         return (
             (hm, node_tag, node)
             for hm, nodes_at_hm in self.descendants_at_tree_depth.items()
@@ -81,7 +82,7 @@ class Descendants:
         return self.descendants_at_tree_depth.keys()
 
     def __setitem__(
-        self, tree_depth: TreeDepth, value: dict[NodeTag, ITreeNode]
+        self, tree_depth: TreeDepth, value: dict[StateTag, ITreeNode]
     ) -> None:
         """
         Sets the descendants at a specific half move.
@@ -95,7 +96,7 @@ class Descendants:
         """
         self.descendants_at_tree_depth[tree_depth] = value
 
-    def __getitem__(self, tree_depth: TreeDepth) -> dict[NodeTag, ITreeNode]:
+    def __getitem__(self, tree_depth: TreeDepth) -> dict[StateTag, ITreeNode]:
         """
         Retrieve the descendants at a specific half move.
 
@@ -137,7 +138,7 @@ class Descendants:
         """
         if (
             node.tree_depth in self.descendants_at_tree_depth
-            and node.fast_rep in self[node.tree_depth]
+            and node.tag in self[node.tree_depth]
         ):
             return True
         else:
@@ -154,7 +155,7 @@ class Descendants:
             None
         """
         tree_depth = node.tree_depth
-        fen = node.fast_rep
+        fen = node.tag
 
         self.number_of_descendants -= 1
         self[tree_depth].pop(fen)
@@ -183,7 +184,7 @@ class Descendants:
             None
         """
         tree_depth: TreeDepth = node.tree_depth
-        node_tag: NodeTag = node.fast_rep
+        node_tag: StateTag = node.tag
 
         if tree_depth in self.descendants_at_tree_depth:
             assert node_tag not in self.descendants_at_tree_depth[tree_depth]
@@ -223,7 +224,7 @@ class Descendants:
                 "descendants)",
             )  # ,                  end='| ')
             for descendant in self[tree_depth].values():
-                print(descendant.id, descendant.fast_rep, end=" ")
+                print(descendant.id, descendant.tag, end=" ")
             print("")
 
     def print_stats(self) -> None:
@@ -264,28 +265,6 @@ class Descendants:
                 self[tree_depth]
             )
 
-    def test_2(self, root_node: ITreeNode) -> None:
-        """
-        Test the descendants of a given root node.
-
-        Args:
-            root_node (ITreeNode): The root node to test.
-
-        Returns:
-            None
-        """
-        all_descendants = get_descendants(root_node)
-
-        # self.print_info()
-        for d in all_descendants:
-            if d.tree_depth not in self.descendants_at_tree_depth:
-                assert d.tree_depth in self.descendants_at_tree_depth
-            if d.fast_rep not in self.descendants_at_tree_depth[d.tree_depth]:
-                assert d.fast_rep in self.descendants_at_tree_depth[d.tree_depth]
-
-        for tree_depth in self.descendants_at_tree_depth:
-            for d in self[tree_depth].values():
-                assert d in all_descendants
 
 
 class RangedDescendants(Descendants):
@@ -383,7 +362,7 @@ class RangedDescendants(Descendants):
             None
         """
         tree_depth: int = node.tree_depth
-        node_tag: NodeTag = node.fast_rep
+        node_tag: StateTag = node.tag
 
         assert self.is_in_the_acceptable_range(tree_depth)
         if self.is_in_the_current_range(tree_depth):
@@ -413,7 +392,7 @@ class RangedDescendants(Descendants):
             None
         """
         tree_depth: int = node.tree_depth
-        fen = node.fast_rep
+        fen = node.tag
 
         self.number_of_descendants -= 1
         self[tree_depth].pop(fen)
@@ -640,7 +619,7 @@ class SortedDescendants(Descendants):
                 tree_depth
             ].items():
                 print(
-                    descendant.id, descendant.fast_rep, "(" + str(value) + ")", end=" "
+                    descendant.id, descendant.tag, "(" + str(value) + ")", end=" "
                 )
             print("")
 

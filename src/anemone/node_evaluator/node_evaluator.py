@@ -22,9 +22,9 @@ Functions:
 from enum import Enum
 from typing import Protocol
 
-from valanga import OverEvent
+from valanga import OverEvent, State
 
-from anemone.basics import NodeContent
+from anemone.basics import NodeState
 from anemone.nodes.algorithm_node import AlgorithmNode
 
 DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
@@ -65,13 +65,13 @@ class EvaluationQueries:
         self.not_over_nodes = []
 
 
-class MasterContentEvaluator(Protocol):
+class MasterStateEvaluator(Protocol):
     """
     The MasterBoardEvaluator class is responsible for evaluating the value of chess positions (that are IBoard).
     It uses a board evaluator and a syzygy evaluator to calculate the value of the positions.
     """
 
-    def value_white(self, content: NodeContent) -> float:
+    def value_white(self, state: State) -> float:
         """
         Calculates the value for the white player of a given node.
         If the value can be obtained from the syzygy evaluator, it is used.
@@ -80,10 +80,10 @@ class MasterContentEvaluator(Protocol):
         ...
 
     def check_obvious_over_events(
-        self, content: NodeContent
+        self, state: State
     ) -> tuple[OverEvent | None, float | None]:
         """
-        Checks if the given content is in an obvious game-over state and returns the corresponding OverEvent and evaluation.
+        Checks if the given state is in an obvious game-over state and returns the corresponding OverEvent and evaluation.
 
         Args:
             board (boards.IBoard): The board to evaluate for game-over conditions.
@@ -105,19 +105,19 @@ class NodeEvaluator:
     It uses a board evaluator and a syzygy evaluator to calculate the value of the nodes.
     """
 
-    master_content_evaluator: MasterContentEvaluator
+    master_state_evaluator: MasterStateEvaluator
 
     def __init__(
         self,
-        master_content_evaluator: MasterContentEvaluator,
+        master_state_evaluator: MasterStateEvaluator,
     ) -> None:
         """
         Initializes a NodeEvaluator object.
 
         Args:
-            content_evaluator (MasterContentEvaluator): The content evaluator used to evaluate the chess content.
+            state_evaluator (MasterStateEvaluator): The state evaluator used to evaluate the chess state.
         """
-        self.master_content_evaluator = master_content_evaluator
+        self.master_state_evaluator = master_state_evaluator
 
     def check_obvious_over_events(self, node: AlgorithmNode) -> None:
         """
@@ -126,7 +126,7 @@ class NodeEvaluator:
         over_event: OverEvent | None
         evaluation: float | None
         over_event, evaluation = (
-            self.master_content_evaluator.check_obvious_over_events(node.content)
+            self.master_state_evaluator.check_obvious_over_events(node.state)
         )
         if over_event is not None:
             node.minmax_evaluation.over_event.becomes_over(
@@ -173,8 +173,8 @@ class NodeEvaluator:
 
         node_not_over: AlgorithmNode
         for node_not_over in not_over_nodes:
-            evaluation: float = self.master_content_evaluator.value_white(
-                content=node_not_over.content
+            evaluation: float = self.master_state_evaluator.value_white(
+                state=node_not_over.state
             )
             processed_evaluation: float = self.process_evalution_not_over(
                 evaluation=evaluation, node=node_not_over

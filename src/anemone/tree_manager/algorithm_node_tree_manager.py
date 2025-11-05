@@ -5,6 +5,8 @@ Defining the AlgorithmNodeTreeManager class
 import typing
 from dataclasses import dataclass
 
+from valanga import BranchKey
+
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
 )
@@ -18,6 +20,8 @@ from anemone.node_evaluator import (
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
+
+from anemone.trees import ValueTree
 
 from .tree_expander import TreeExpansion, TreeExpansions
 from .tree_manager import TreeManager
@@ -46,7 +50,7 @@ class AlgorithmNodeTreeManager:
     index_manager: NodeExplorationIndexManager
 
     def open_node_move(
-        self, tree: trees.ValueTree, parent_node: AlgorithmNode, branch: BranchKey
+        self, tree: ValueTree, parent_node: AlgorithmNode, branch: BranchKey
     ) -> TreeExpansion:
         """
 
@@ -70,7 +74,7 @@ class AlgorithmNodeTreeManager:
 
     def open_instructions(
         self,
-        tree: trees.ValueTree,
+        tree: ValueTree,
         opening_instructions: "node_sel.OpeningInstructions",
     ) -> TreeExpansions:
         """
@@ -94,7 +98,7 @@ class AlgorithmNodeTreeManager:
             tree_expansion = self.open_node_move(
                 tree=tree,
                 parent_node=opening_instruction.node_to_open,
-                move=opening_instruction.move_to_play,
+                branch=opening_instruction.move_to_play,
             )
 
             # concatenate the tree expansions
@@ -115,12 +119,12 @@ class AlgorithmNodeTreeManager:
 
         return tree_expansions
 
-    def update_indices(self, tree: trees.MoveAndValueTree) -> None:
+    def update_indices(self, tree: trees.ValueTree) -> None:
         """
         Updates the indices of the nodes in the given tree.
 
         Args:
-            tree (trees.MoveAndValueTree): The tree whose indices need to be updated.
+            tree (trees.ValueTree): The tree whose indices need to be updated.
 
         Returns:
             None
@@ -205,12 +209,12 @@ class AlgorithmNodeTreeManager:
 
         return update_instructions_batch
 
-    def print_some_stats(self, tree: trees.MoveAndValueTree) -> None:
+    def print_some_stats(self, tree: trees.ValueTree) -> None:
         """
         Prints statistics about the given tree.
 
         Args:
-            tree (trees.MoveAndValueTree): The tree to print statistics for.
+            tree (trees.ValueTree): The tree to print statistics for.
 
         Returns:
             None
@@ -227,11 +231,11 @@ class AlgorithmNodeTreeManager:
             sum_ += len(tree.descendants[half_move])
             print("half_move", half_move, len(tree.descendants[half_move]), sum_)
 
-    def print_best_line(self, tree: trees.MoveAndValueTree) -> None:
+    def print_best_line(self, tree: trees.ValueTree) -> None:
         """
         Prints the best line of moves based on the minmax evaluation of the tree.
 
         Args:
-            tree (trees.MoveAndValueTree): The tree containing the moves and their minmax evaluations.
+            tree (trees.ValueTree): The tree containing the moves and their minmax evaluations.
         """
         tree.root_node.minmax_evaluation.print_best_line()

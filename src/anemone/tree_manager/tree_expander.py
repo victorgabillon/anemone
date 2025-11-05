@@ -5,8 +5,8 @@ This module contains classes related to tree expansion in a chess game.
 import typing
 from dataclasses import dataclass, field
 
-import chipiron.environments.chess_env.board as board_mod
-from chipiron.environments.chess_env.move.imove import moveKey
+from valanga import BranchKey, StateModifications
+
 
 import anemone.nodes as node
 
@@ -26,9 +26,9 @@ class TreeExpansion:
 
     child_node: node.ITreeNode
     parent_node: node.ITreeNode | None
-    board_modifications: board_mod.BoardModificationP | None
+    board_modifications: StateModifications | None
     creation_child_node: bool
-    move: moveKey | None
+    branch_key: BranchKey | None
 
     def __repr__(self) -> str:
         return (

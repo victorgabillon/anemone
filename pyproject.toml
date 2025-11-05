@@ -179,6 +179,7 @@ lint.ignore = [ "E501"]
 line-length = 88
 target-version = ['py313']
 
+
 [tool.pylint]
 py-version = "3.13"
 extension-pkg-whitelist = ["PyQt5", "PySide6"]
@@ -187,11 +188,19 @@ extension-pkg-whitelist = ["PyQt5", "PySide6"]
 max-line-length = 88
 
 #[tool.pylint.messages_control]
-disable = ["C0301"]
+disable = [
+    "C0301",
+    "unnecessary-ellipsis",
+    "W0511"
+    ]
+
 
 [tool.pylint.typecheck]
 # Optional: same as init-hook in .pylintrc
 init-hook = "import sys; sys.path.append('.')"
+
+[tool.pylint.design]
+min-public-methods = 1
 
 
 [tool.pyright]

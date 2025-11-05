@@ -81,14 +81,14 @@ class RecurZipfBase:
 
     def choose_node_and_move_to_open(
         self,
-        tree: trees.MoveAndValueTree,
+        tree: trees.ValueTree,
         latest_tree_expansions: "tree_man.TreeExpansions",
     ) -> OpeningInstructions:
         """
         Chooses the next node to explore and the move to open.
 
         Args:
-        - tree (trees.MoveAndValueTree): The move selector tree.
+        - tree (trees.ValueTree): The move selector tree.
         - latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
 
         Returns:

@@ -6,7 +6,7 @@ import typing
 from dataclasses import dataclass
 from typing import Protocol
 
-from ..trees import MoveAndValueTree
+from ..trees import ValueTree
 from .opening_instructions import OpeningInstructions
 
 if typing.TYPE_CHECKING:
@@ -26,13 +26,13 @@ class NodeSelector(Protocol):
     """
 
     def choose_node_and_move_to_open(
-        self, tree: MoveAndValueTree, latest_tree_expansions: "tree_man.TreeExpansions"
+        self, tree: ValueTree, latest_tree_expansions: "tree_man.TreeExpansions"
     ) -> OpeningInstructions:
         """
         Selects a node from the given tree and returns the instructions to move to an open position.
 
         Args:
-            tree (MoveAndValueTree): The tree containing the moves and their corresponding values.
+            tree (ValueTree): The tree containing the moves and their corresponding values.
             latest_tree_expansions (tree_man.TreeExpansions): The latest expansions of the tree.
 
         Returns:

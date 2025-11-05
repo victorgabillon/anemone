@@ -38,7 +38,7 @@ from chipiron.utils.logger import chipiron_logger
 from . import node_selector as node_sel
 from . import recommender_rule, trees
 from . import tree_manager as tree_man
-from .trees.factory import MoveAndValueTreeFactory
+from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
     from chipiron.environments.chess_env.move.imove import moveKey
@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 @dataclass
 class TreeExplorationResult:
     move_recommendation: MoveRecommendation
-    tree: trees.MoveAndValueTree
+    tree: trees.ValueTree
 
 
 @dataclass
@@ -70,7 +70,7 @@ class TreeExploration:
     # TODO Not sure why this class is not simply the TreeAndValuePlayer Class
     #  but might be useful when dealing with multi round and time , no?
 
-    tree: trees.MoveAndValueTree
+    tree: trees.ValueTree
     tree_manager: tree_man.AlgorithmNodeTreeManager
     node_selector: node_sel.NodeSelector
     recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs
@@ -197,7 +197,7 @@ def create_tree_exploration(
     node_selector_create: NodeSelectorFactory,
     starting_board: boards.IBoard,
     tree_manager: tree_man.AlgorithmNodeTreeManager,
-    tree_factory: MoveAndValueTreeFactory,
+    tree_factory: ValueTreeFactory,
     stopping_criterion_args: AllStoppingCriterionArgs,
     recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
     queue_progress_player: queue.Queue[IsDataclass] | None,
@@ -217,7 +217,7 @@ def create_tree_exploration(
     - TreeExploration: The created TreeExploration object.
     """
     # creates the tree
-    move_and_value_tree: trees.MoveAndValueTree = tree_factory.create(
+    move_and_value_tree: trees.ValueTree = tree_factory.create(
         starting_board=starting_board
     )
     # creates the node selector

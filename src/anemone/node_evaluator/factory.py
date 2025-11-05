@@ -23,7 +23,8 @@ if TYPE_CHECKING:
 
 
 def create_node_evaluator(
-    arg_board_evaluator: NodeEvaluatorArgs, syzygy: AnySyzygyTable | None
+    arg_board_evaluator: NodeEvaluatorArgs, 
+    master_board_evaluator: MasterBoardEvaluator
 ) -> NodeEvaluator:
     """
     Create a node evaluator based on the given board evaluator argument and syzygy table.
@@ -40,21 +41,15 @@ def create_node_evaluator(
 
     """
 
-    master_board_evaluator: MasterBoardEvaluator = (
-        create_master_board_evaluator_from_args(
-            arg_board_evaluator.master_board_evaluator,
-            syzygy,
-        )
-    )
 
     match arg_board_evaluator.master_board_evaluator.board_evaluator.type:
         case BoardEvalTypes.BASIC_EVALUATION_EVAL:
             node_evaluator = NodeEvaluator(
-                master_content_evaluator=master_board_evaluator
+                master_state_evaluator=master_board_evaluator
             )
         case BoardEvalTypes.NEURAL_NET_BOARD_EVAL:
             node_evaluator = NNNodeEvaluator(
-                master_content_evaluator=master_board_evaluator
+                master_state_evaluator=master_board_evaluator
             )
         case other:
             sys.exit(f"Node Board Eval: can not find {other} in file {__name__}")

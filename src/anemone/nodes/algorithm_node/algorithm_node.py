@@ -8,7 +8,7 @@ from typing import Any, Mapping
 from valanga import (
     BranchKey,
     BranchKeyGeneratorP,
-    ContentRepresentation,
+    StateRepresentation,
     State,
     StateTag,
 )
@@ -32,16 +32,16 @@ class AlgorithmNode:
     exploration_index_data: (
         NodeExplorationData[Any] | None  # Use Any to break circular dependency
     )  # the object storing the information to help the algorithm decide the next nodes to explore
-    content_representation: (
-        ContentRepresentation | None
-    )  # the content representation for evaluation
+    state_representation: (
+        StateRepresentation | None
+    )  # the state representation for evaluation
 
     def __init__(
         self,
         tree_node: TreeNode["AlgorithmNode"],
         minmax_evaluation: NodeMinmaxEvaluation[Any],
         exploration_index_data: NodeExplorationData[Any] | None,
-        content_representation: ContentRepresentation | None,
+        state_representation: StateRepresentation | None,
     ) -> None:
         """
         Initializes an AlgorithmNode object.
@@ -50,12 +50,12 @@ class AlgorithmNode:
             tree_node (TreeNode): The tree node that is wrapped.
             minmax_evaluation (NodeMinmaxEvaluation): The object computing the value.
             exploration_index_data (NodeExplorationData | None): The object storing the information to help the algorithm decide the next nodes to explore.
-            content_representation (ContentRepresentation | None): The board representation.
+            state_representation (StateRepresentation | None): The board representation.
         """
         self.tree_node = tree_node
         self.minmax_evaluation = minmax_evaluation
         self.exploration_index_data = exploration_index_data
-        self.content_representation = content_representation
+        self.state_representation = state_representation
 
     @property
     def id(self) -> int:
@@ -109,10 +109,10 @@ class AlgorithmNode:
     @property
     def state(self) -> State:
         """
-        Returns the content associated with this tree node.
+        Returns the state associated with this tree node.
 
         Returns:
-            ContentWithTag: The content associated with this tree node.
+            StateWithTag: The state associated with this tree node.
         """
         return self.tree_node.state
 

@@ -12,7 +12,7 @@ and checking if the game is over.
 Note: This is an interface and should not be instantiated directly.
 """
 
-from typing import Any, Mapping, Protocol
+from typing import Any, MutableMapping, Protocol
 
 from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
 
@@ -53,7 +53,7 @@ class ITreeNode[OtherNode: "ITreeNode" = Any](Protocol):
         ...
 
     @property
-    def branches_children(self) -> Mapping[BranchKey, OtherNode | None]:
+    def branches_children(self) -> MutableMapping[BranchKey, OtherNode | None]:
         """
         Get the child nodes of the node.
 

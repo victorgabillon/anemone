@@ -70,7 +70,7 @@ def make_tree_from_file(
         index_computation (IndexComputationType): The type of index computation to use.
 
     Returns:
-        MoveAndValueTree: The created move and value tree.
+        ValueTree: The created move and value tree.
     """
 
     # atm it is very ad hoc to test index so takes a lots of shortcut, will be made more general when needed
@@ -93,7 +93,7 @@ def make_tree_from_file(
     algorithm_node_factory: node_factory.AlgorithmNodeFactory
     algorithm_node_factory = node_factory.AlgorithmNodeFactory(
         tree_node_factory=tree_node_factory,
-        content_representation_factory=None,
+        state_representation_factory=None,
         exploration_index_data_create=search_factory.node_index_create,
     )
     descendants: RangedDescendants = RangedDescendants()
@@ -122,7 +122,7 @@ def make_tree_from_file(
             board = create_board_chi_from_pychess_board(board)
 
             root_node = algorithm_node_factory.create(
-                content=board,
+                state=board,
                 tree_depth=0,
                 count=yaml_node["id"],
                 parent_node=None,
@@ -201,7 +201,7 @@ def check_from_file(file_path: path, tree: ValueTree) -> None:
 
     Args:
         file_path (str): The path to the file containing the values to check.
-        tree (MoveAndValueTree): The tree containing the values to compare against.
+        tree (ValueTree): The tree containing the values to compare against.
 
     Returns:
         None

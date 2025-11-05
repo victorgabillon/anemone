@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 class NodeExplorationIndexManager[
     T_NodeExplorationData: NodeExplorationData = Any,
-    Content = Any,
+    State = Any,
 ](Protocol):
     """
     A protocol for managing the exploration indices of nodes in a tree.
@@ -60,7 +60,7 @@ class NodeExplorationIndexManager[
         parent_node: AlgorithmNode,
         parent_node_exploration_index_data: T_NodeExplorationData | None,
         child_node_exploration_index_data: T_NodeExplorationData | None,
-        parent_node_content: Content,
+        parent_node_state: State,
         tree: ValueTree,
         child_rank: int,
     ) -> None:
@@ -70,7 +70,7 @@ class NodeExplorationIndexManager[
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.MoveAndValueTree): The tree containing the nodes.
+            tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
         ...
@@ -103,7 +103,7 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         parent_node: AlgorithmNode,
         parent_node_exploration_index_data: NodeExplorationData | None,
         child_node_exploration_index_data: NodeExplorationData | None,
-        parent_node_content: None,
+        parent_node_state: None,
         tree: ValueTree,
         child_rank: int,
     ) -> None:
@@ -113,7 +113,7 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.MoveAndValueTree): The tree containing the nodes.
+            tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
         raise Exception("should not be raised")
@@ -149,7 +149,7 @@ class UpdateIndexGlobalMinChange:
         parent_node: AlgorithmNode,
         parent_node_exploration_index_data: MinMaxPathValue | None,
         child_node_exploration_index_data: MinMaxPathValue | None,
-        parent_node_content: None,
+        parent_node_state: None,
         tree: ValueTree,
         child_rank: int,
     ) -> None:
@@ -159,7 +159,7 @@ class UpdateIndexGlobalMinChange:
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.MoveAndValueTree): The tree containing the nodes.
+            tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
 
@@ -236,7 +236,7 @@ class UpdateIndexZipfFactoredProba:
         parent_node: AlgorithmNode,
         parent_node_exploration_index_data: RecurZipfQuoolExplorationData | None,
         child_node_exploration_index_data: RecurZipfQuoolExplorationData | None,
-        parent_node_content: None,
+        parent_node_state: None,
         tree: ValueTree,
         child_rank: int,
     ) -> None:
@@ -246,7 +246,7 @@ class UpdateIndexZipfFactoredProba:
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.MoveAndValueTree): The tree containing the nodes.
+            tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
 
@@ -313,7 +313,7 @@ class UpdateIndexLocalMinChange:
         parent_node: AlgorithmNode,
         parent_node_exploration_index_data: IntervalExplo | None,
         child_node_exploration_index_data: IntervalExplo | None,
-        parent_node_content: HasTurn,
+        parent_node_state: HasTurn,
         tree: ValueTree,
         child_rank: int,
     ) -> None:
@@ -323,7 +323,7 @@ class UpdateIndexLocalMinChange:
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.MoveAndValueTree): The tree containing the nodes.
+            tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
 
@@ -341,7 +341,7 @@ class UpdateIndexLocalMinChange:
                 local_index = parent_node_exploration_index_data.index
                 inter_level_interval = parent_node_exploration_index_data.interval
             else:
-                if parent_node_content.turn == Color.WHITE:
+                if parent_node_state.turn == Color.WHITE:
                     best_move: BranchKey | None = (
                         parent_node.minmax_evaluation.best_move()
                     )
@@ -377,7 +377,7 @@ class UpdateIndexLocalMinChange:
                     else:
                         ...
                         local_index = None
-                if parent_node_content.turn == Color.BLACK:
+                if parent_node_state.turn == Color.BLACK:
                     best_move_black: BranchKey | None = (
                         parent_node.minmax_evaluation.best_move()
                     )
@@ -479,7 +479,7 @@ def update_all_indices(
                     parent_node=parent_node,
                     parent_node_exploration_index_data=parent_node.exploration_index_data,
                     child_node_exploration_index_data=child_node.exploration_index_data,
-                    parent_node_content=parent_node.tree_node.content,
+                    parent_node_state=parent_node.tree_node.state,
                 )
 
 
@@ -493,7 +493,7 @@ def print_all_indices(
     Prints the exploration indices of all nodes in the given tree.
 
     Args:
-        tree (trees.MoveAndValueTree): The tree containing the nodes.
+        tree (trees.ValueTree): The tree containing the nodes.
 
     Returns:
         None
