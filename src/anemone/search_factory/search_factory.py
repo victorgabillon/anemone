@@ -24,6 +24,8 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Callable, Protocol
 
+from valanga import State
+
 import anemone.indices.node_indices as node_indices
 import anemone.node_selector as node_selectors
 import anemone.nodes as nodes
@@ -37,6 +39,7 @@ from anemone.node_selector.opening_instructions import (
 from anemone.node_selector.sequool.factory import (
     SequoolArgs,
 )
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.updates.index_updater import IndexUpdater
 
 NodeSelectorFactory = Callable[[], node_selectors.NodeSelector]
@@ -69,9 +72,10 @@ class SearchFactoryP(Protocol):
         """
         ...
 
-    def node_index_create(
-        self, tree_node: nodes.TreeNode
-    ) -> node_indices.NodeExplorationData | None:
+    def node_index_create[TState: State](
+        self,
+        tree_node: nodes.TreeNode[AlgorithmNode[TState], TState],
+    ) -> node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None:
         """
         Creates a node index for the given tree node.
 
@@ -163,9 +167,10 @@ class SearchFactory:
             index_updater = None
         return index_updater
 
-    def node_index_create(
-        self, tree_node: nodes.TreeNode
-    ) -> node_indices.NodeExplorationData | None:
+    def node_index_create[TState: State](
+        self,
+        tree_node: nodes.TreeNode[AlgorithmNode[TState], TState],
+    ) -> node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None:
         """
         Creates node indices for a given tree node.
 
@@ -175,7 +180,8 @@ class SearchFactory:
         Returns:
             An instance of the NodeExplorationData class if depth indexing is enabled, otherwise None.
         """
-        exploration_index_data: node_indices.NodeExplorationData | None = (
+
+        exploration_index_data: node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None = (
             create_exploration_index_data(
                 tree_node=tree_node,
                 index_computation=self.index_computation,

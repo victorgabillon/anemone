@@ -9,8 +9,6 @@ The available classes in this module are:
 """
 
 from .algorithm_node_factory import AlgorithmNodeFactory
-from .base import Base
-from .factory import create_node_factory
-from .node_factory import TreeNodeFactory
+from .base import  TreeNodeFactory
 
-__all__ = ["TreeNodeFactory", "Base", "create_node_factory", "AlgorithmNodeFactory"]
+__all__ = ["TreeNodeFactory", "AlgorithmNodeFactory"]

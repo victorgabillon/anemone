@@ -2,27 +2,41 @@
 Basic class for Creating Tree nodes
 """
 
-from valanga import BranchKey, State
+from typing import Any, Protocol
+
+from valanga import BranchKey, State, StateModifications
 
 from anemone.basics import TreeDepth
-from anemone.node_factory import TreeNodeFactory
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 
 
-class Base[T: ITreeNode = ITreeNode](TreeNodeFactory[T]):
+class NodeFactory[TNode: ITreeNode[Any] = ITreeNode[Any]](Protocol):
+    def create(
+        self,
+        state: State,
+        tree_depth: TreeDepth,
+        count: int,
+        parent_node: TNode | None,
+        branch_from_parent: BranchKey | None,
+        modifications: StateModifications | None,
+    ) -> TNode: ...
+
+
+class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], TState: State = State]:
     """
     Basic class for Creating Tree nodes
     """
 
     def create(
         self,
-        state: State,
+        state: TState,
         tree_depth: TreeDepth,
         count: int,
-        parent_node: ITreeNode | None,
+        parent_node: T | None,
         branch_from_parent: BranchKey | None,
-    ) -> TreeNode[T]:
+        modifications: StateModifications | None = None,
+    ) -> TreeNode[T,TState]:
         """
         Creates a new TreeNode object.
 
@@ -37,14 +51,17 @@ class Base[T: ITreeNode = ITreeNode](TreeNodeFactory[T]):
             TreeNode: The newly created TreeNode object.
         """
 
-        parent_nodes: dict[ITreeNode, BranchKey]
+        # TreeNode doesn't use modifications (it's a pure data container).
+        _ = modifications
+
+        parent_nodes: dict[T, BranchKey]
         if parent_node is None:
             parent_nodes = {}
         else:
             assert branch_from_parent is not None
             parent_nodes = {parent_node: branch_from_parent}
 
-        tree_node: TreeNode[T] = TreeNode(
+        tree_node: TreeNode[T, TState] = TreeNode[T, TState](
             state_=state,
             tree_depth_=tree_depth,
             id_=count,

@@ -12,21 +12,23 @@ import anemone.nodes as node
 
 
 @dataclass(slots=True)
-class TreeExpansion:
+class TreeExpansion[
+    TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]
+]:
     """
     Represents an expansion of a tree in a chess game.
 
     Attributes:
-        child_node (node.ITreeNode): The child node created during the expansion.
+        child_node (TNode): The child node created during the expansion.
         parent_node (node.ITreeNode | None): The parent node of the child node. None if it's the root node.
         board_modifications (board_mod.BoardModification | None): The modifications made to the chess board during the expansion.
         creation_child_node (bool): Indicates whether the child node was created during the expansion.
         move (chess.Move): the move from parent to child node.
     """
 
-    child_node: node.ITreeNode
-    parent_node: node.ITreeNode | None
-    board_modifications: StateModifications | None
+    child_node: TNode
+    parent_node: TNode | None
+    state_modifications: StateModifications | None
     creation_child_node: bool
     branch_key: BranchKey | None
 
@@ -39,7 +41,9 @@ class TreeExpansion:
 
 
 @dataclass(slots=True)
-class TreeExpansions:
+class TreeExpansions[
+    TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]
+]:
     """
     Represents a collection of tree expansions in a chess game.
 
@@ -48,19 +52,19 @@ class TreeExpansions:
         expansions_without_node_creation (List[TreeExpansion]): List of expansions where child nodes were not created.
     """
 
-    expansions_with_node_creation: list[TreeExpansion] = field(
-        default_factory=lambda: list[TreeExpansion]()
+    expansions_with_node_creation: list[TreeExpansion[TNode]] = field(
+        default_factory=lambda: list[TreeExpansion[TNode]]()
     )
-    expansions_without_node_creation: list[TreeExpansion] = field(
-        default_factory=lambda: list[TreeExpansion]()
+    expansions_without_node_creation: list[TreeExpansion[TNode]] = field(
+        default_factory=lambda: list[TreeExpansion[TNode]]()
     )
 
-    def __iter__(self) -> typing.Iterator[TreeExpansion]:
+    def __iter__(self) -> typing.Iterator[TreeExpansion[TNode]]:
         return iter(
             self.expansions_with_node_creation + self.expansions_without_node_creation
         )
 
-    def add(self, tree_expansion: TreeExpansion) -> None:
+    def add(self, tree_expansion: TreeExpansion[TNode]) -> None:
         """
         Adds a tree expansion to the collection.
 
@@ -72,7 +76,7 @@ class TreeExpansions:
         else:
             self.add_connection(tree_expansion=tree_expansion)
 
-    def add_creation(self, tree_expansion: TreeExpansion) -> None:
+    def add_creation(self, tree_expansion: TreeExpansion[TNode]) -> None:
         """
         Adds a tree expansion with a created child node to the collection.
 
@@ -81,7 +85,7 @@ class TreeExpansions:
         """
         self.expansions_with_node_creation.append(tree_expansion)
 
-    def add_connection(self, tree_expansion: TreeExpansion) -> None:
+    def add_connection(self, tree_expansion: TreeExpansion[TNode]) -> None:
         """
         Adds a tree expansion without a created child node to the collection.
 

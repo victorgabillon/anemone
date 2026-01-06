@@ -15,7 +15,9 @@ import queue
 import random
 from dataclasses import dataclass
 
-from anemone.basics import BranchRecommendation, Seed, StateWithTurn
+from valanga import TurnState
+
+from anemone.basics import BranchRecommendation, Seed
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
 )
@@ -29,7 +31,7 @@ from .trees.factory import ValueTreeFactory
 
 
 @dataclass
-class TreeAndValueBranchSelector:
+class TreeAndValueBranchSelector[TState: TurnState = TurnState]:
     """
     The TreeAndValueBranchSelector class is responsible for selecting moves based on a tree and value strategy.
 
@@ -45,16 +47,14 @@ class TreeAndValueBranchSelector:
     # pretty empty class but might be useful when dealing with multi round and time , no?
 
     tree_manager: tree_man.AlgorithmNodeTreeManager
-    tree_factory: ValueTreeFactory
+    tree_factory: ValueTreeFactory[TState]
     stopping_criterion_args: AllStoppingCriterionArgs
     node_selector_create: NodeSelectorFactory
     random_generator: random.Random
     recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     queue_progress_player: queue.Queue[IsDataclass] | None
 
-    def select_branch(
-        self, state: StateWithTurn, selection_seed: Seed
-    ) -> BranchRecommendation:
+    def select_branch(self, state: TState, selection_seed: Seed) -> BranchRecommendation:
         """
         Selects the best move based on the tree and value strategy.
 
@@ -76,7 +76,7 @@ class TreeAndValueBranchSelector:
 
     def create_tree_exploration(
         self,
-        state: StateWithTurn,
+        state: TState,
     ) -> TreeExploration:
         tree_exploration: TreeExploration = create_tree_exploration(
             tree_manager=self.tree_manager,

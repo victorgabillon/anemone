@@ -13,17 +13,21 @@ from valanga import BranchKey
 import anemone.nodes as nodes
 from anemone.nodes.utils import (
     a_move_key_sequence_from_root,
-    a_move_uci_sequence_from_root,
+    a_branch_str_sequence_from_root,
 )
 
 
+
+type OpeningInstructionKey = tuple[int, BranchKey]
+
+
 @dataclass(slots=True)
-class OpeningInstruction:
+class OpeningInstruction[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
     """
     Represents an opening instruction for a specific node in the game tree.
     """
 
-    node_to_open: nodes.ITreeNode
+    node_to_open: TNode
     branch: BranchKey
 
     def print_info(self) -> None:
@@ -32,21 +36,24 @@ class OpeningInstruction:
         """
         print(
             f"OpeningInstruction: node_to_open {self.node_to_open.id} at hm {self.node_to_open.tree_depth} {self.node_to_open.state}| "
-            f"a path from root to node_to_open is {a_move_key_sequence_from_root(self.node_to_open)} {a_move_uci_sequence_from_root(self.node_to_open)}| "
+            f"a path from root to node_to_open is {a_move_key_sequence_from_root(self.node_to_open)} {a_branch_str_sequence_from_root(self.node_to_open)}| "
             f"self.branch {self.branch} {self.node_to_open.state.branch_name_from_key(self.branch)}"
         )
 
 
-class OpeningInstructions:
+class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
     # todo do we need a dict? why not a set? verify
 
     """
     Represents a collection of opening instructions.
     """
 
-    batch: dict[Any, OpeningInstruction]
+    batch: dict[OpeningInstructionKey, OpeningInstruction[TNode]]
 
-    def __init__(self, dictionary: dict[Any, OpeningInstruction] | None = None) -> None:
+    def __init__(
+        self,
+        dictionary: dict[OpeningInstructionKey, OpeningInstruction[TNode]] | None = None,
+    ) -> None:
         """
         Initializes the OpeningInstructions object.
 
@@ -61,7 +68,7 @@ class OpeningInstructions:
             for key in dictionary:
                 self[key] = dictionary[key]
 
-    def __setitem__(self, key: Any, value: OpeningInstruction) -> None:
+    def __setitem__(self, key: OpeningInstructionKey, value: OpeningInstruction[TNode]) -> None:
         """
         Sets an opening instruction in the collection.
 
@@ -70,10 +77,9 @@ class OpeningInstructions:
             value: The opening instruction.
         """
         # key is supposed to be a tuple with (node_to_open,  move_to_play)
-        assert len(key) == 2
         self.batch[key] = value
 
-    def __getitem__(self, key: Any) -> OpeningInstruction:
+    def __getitem__(self, key: OpeningInstructionKey) -> OpeningInstruction[TNode]:
         """
         Retrieves an opening instruction from the collection.
 
@@ -86,7 +92,7 @@ class OpeningInstructions:
         # assert(0==1)
         return self.batch[key]
 
-    def __iter__(self) -> Iterator[Any]:
+    def __iter__(self) -> Iterator[OpeningInstructionKey]:
         """
         Returns an iterator over the keys of the opening instructions.
 
@@ -131,7 +137,7 @@ class OpeningInstructions:
             key, value = self.batch.popitem()
             popped[key] = value
 
-    def values(self) -> ValuesView[OpeningInstruction]:
+    def values(self) -> ValuesView[OpeningInstruction[TNode]]:
         """
         Returns a view of the values in the collection.
 
@@ -140,7 +146,7 @@ class OpeningInstructions:
         """
         return self.batch.values()
 
-    def items(self) -> ItemsView[Any, OpeningInstruction]:
+    def items(self) -> ItemsView[OpeningInstructionKey, OpeningInstruction[TNode]]:
         """
         Returns a view of the items (key-value pairs) in the collection.
 
@@ -167,9 +173,9 @@ class OpeningInstructions:
         return len(self.batch)
 
 
-def create_instructions_to_open_all_branches(
-    branches_to_play: list[BranchKey], node_to_open: nodes.ITreeNode
-) -> OpeningInstructions:
+def create_instructions_to_open_all_branches[TNode: nodes.ITreeNode[Any]](
+    branches_to_play: list[BranchKey], node_to_open: TNode
+) -> OpeningInstructions[TNode]:
     """
     Creates opening instructions for all possible moves to play from a given node.
 
@@ -180,7 +186,7 @@ def create_instructions_to_open_all_branches(
     Returns:
         An OpeningInstructions object containing the opening instructions.
     """
-    opening_instructions_batch = OpeningInstructions()
+    opening_instructions_batch: OpeningInstructions[TNode] = OpeningInstructions()
 
     for branch_to_play in branches_to_play:
         # at the moment it looks redundant keys are almost the same as values but its clean
@@ -219,7 +225,7 @@ class OpeningInstructor:
         self.opening_type = opening_type
         self.random_generator = random_generator
 
-    def all_branches_to_open(self, node_to_open: nodes.ITreeNode) -> list[BranchKey]:
+    def all_branches_to_open(self, node_to_open: nodes.ITreeNode[Any]) -> list[BranchKey]:
         """
         Returns a list of all possible branches to open from a given node.
 

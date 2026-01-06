@@ -3,7 +3,7 @@ This module contains the NoisyValueTreeNode class, which is a subclass of TreeNo
 """
 
 import chess
-from chipiron.environments.chess_env.board.board_chi import BoardChi
+from typing import Any
 
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
@@ -17,10 +17,9 @@ class NoisyValueTreeNode(TreeNode):
 
     def __init__(
         self,
-        board: BoardChi,
         half_move: int,
         id_number: int,
-        parent_node: ITreeNode,
+        parent_node: ITreeNode[Any],
         last_move: chess.Move,
     ) -> None:
         """

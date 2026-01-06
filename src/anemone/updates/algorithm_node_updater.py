@@ -23,10 +23,10 @@ from .updates_file import (
 )
 
 if typing.TYPE_CHECKING:
-    import anemone.tree_manager as tree_man
-
     from .index_block import IndexUpdateInstructionsFromOneNode
     from .value_block import ValueUpdateInstructionsFromOneNode
+
+    from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
 
 @dataclass
@@ -80,9 +80,9 @@ class AlgorithmNodeUpdater:
 
         return update_instructions
 
-    def generate_update_instructions(
-        self, tree_expansions: "tree_man.TreeExpansions"
-    ) -> UpdateInstructionsTowardsMultipleNodes:
+    def generate_update_instructions[TNode: AlgorithmNode](
+        self, tree_expansions: "TreeExpansions[TNode]"
+    ) -> "UpdateInstructionsTowardsMultipleNodes[TNode]":
         """
         Generates update instructions for a batch of tree expansions.
 
@@ -94,13 +94,11 @@ class AlgorithmNodeUpdater:
         """
         # TODO is the way of merging now overkill?
 
-        update_instructions_batch: UpdateInstructionsTowardsMultipleNodes = (
-            UpdateInstructionsTowardsMultipleNodes()
-        )
+        update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[TNode]
+        update_instructions_batch = UpdateInstructionsTowardsMultipleNodes()
 
-        tree_expansion: "tree_man.TreeExpansion"
+        tree_expansion: "TreeExpansion[TNode]"
         for tree_expansion in tree_expansions:
-            assert isinstance(tree_expansion.child_node, AlgorithmNode)
             update_instructions: UpdateInstructionsFromOneNode = (
                 self.create_update_instructions_after_node_birth(
                     new_node=tree_expansion.child_node
@@ -111,11 +109,11 @@ class AlgorithmNodeUpdater:
             assert tree_expansion.parent_node is not None
             # looks like we should not update from the root node backward!
 
-            assert tree_expansion.move is not None
+            assert tree_expansion.branch_key is not None
             update_instructions_batch.add_update_from_one_child_node(
                 update_from_child_node=update_instructions,
                 parent_node=tree_expansion.parent_node,
-                move_from_parent=tree_expansion.move,
+                branch_from_parent=tree_expansion.branch_key,
             )
 
         return update_instructions_batch

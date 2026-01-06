@@ -2,7 +2,9 @@
 This module contains the IndexUpdater class, which is responsible for updating the indices of AlgorithmNode objects in a tree structure.
 """
 
-from typing import TYPE_CHECKING
+
+
+from valanga import BranchKey
 
 from anemone.indices.node_indices.index_data import (
     MaxDepthDescendants,
@@ -17,8 +19,6 @@ from .index_block import (
 )
 from .updates_file import UpdateInstructionsTowardsOneParentNode
 
-if TYPE_CHECKING:
-    from chipiron.environments.chess_env.move.imove import moveKey
 
 
 class IndexUpdater:
@@ -72,13 +72,13 @@ class IndexUpdater:
 
         # UPDATE index
         has_index_changed: bool = False
-        move: moveKey
-        for move in updates_instructions_index.moves_with_updated_index:
+        branch: BranchKey
+        for branch in updates_instructions_index.branches_with_updated_index:
             # hardcoded at some point it should be linked to updater coming from search factory i believe
             assert isinstance(
                 node_to_update.exploration_index_data, MaxDepthDescendants
             )
-            child = node_to_update.tree_node.moves_children[move]
+            child = node_to_update.tree_node.branches_children[branch]
             assert isinstance(child, AlgorithmNode)
             assert isinstance(child.exploration_index_data, MaxDepthDescendants)
             has_index_changed_child: bool = (

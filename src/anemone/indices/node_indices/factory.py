@@ -14,7 +14,9 @@ Types:
 """
 
 from dataclasses import make_dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
+
+from valanga import State
 
 from anemone.indices.node_indices.index_data import (
     IntervalExplo,
@@ -30,16 +32,27 @@ from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 
 # Generic factory type that preserves the node type through the TreeNode parameter
-type ExplorationIndexDataFactory[T: ITreeNode] = Callable[
-    [TreeNode[T]], NodeExplorationData[T] | None
+type ExplorationIndexDataFactory[
+    T: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+] = Callable[
+    [TreeNode[T, TState]], NodeExplorationData[T, TState] | None
 ]
 
 
-def create_exploration_index_data(
-    tree_node: TreeNode,
+class _NodeExplorationDataCtor[T: ITreeNode[Any], TState: State](Protocol):
+    def __call__(self, *, tree_node: TreeNode[T, TState]) -> NodeExplorationData[T, TState]:
+        ...
+
+
+def create_exploration_index_data[
+    T: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+](
+    tree_node: TreeNode[T, TState],
     index_computation: IndexComputationType | None = None,
     depth_index: bool = False,
-) -> NodeExplorationData | None:
+) -> NodeExplorationData[T, TState] | None:
     """
     Creates exploration index data for a given tree node.
 
@@ -54,8 +67,8 @@ def create_exploration_index_data(
     Raises:
         ValueError: If the index_computation value is not recognized.
     """
-    exploration_index_data: NodeExplorationData | None
-    base_index_dataclass_name: type[NodeExplorationData] | None
+    exploration_index_data: NodeExplorationData[T, TState] | None
+    base_index_dataclass_name: _NodeExplorationDataCtor[T, TState] | None
     match index_computation:
         case None:
             base_index_dataclass_name = None
@@ -70,7 +83,7 @@ def create_exploration_index_data(
                 f"not finding good case for {index_computation} in file {__name__}"
             )
 
-    index_dataclass_name: Any
+    index_dataclass_name: _NodeExplorationDataCtor[T, TState] | None
     if depth_index:
         assert base_index_dataclass_name is not None
         # adding a field to the dataclass for keeping track of the depth

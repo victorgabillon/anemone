@@ -2,20 +2,22 @@
 Module for sorting a dictionary by ascending order
 """
 
-from typing import Any
-
-from .comparable import Comparable
+from typing import Any, Protocol
 
 
-def sort_dic[CT: Comparable](dic: dict[Any, CT]) -> dict[Any, CT]:
+class _Sortable(Protocol):
+        def __lt__(self, other: Any, /) -> bool: ...
+
+
+def sort_dic[K, V: _Sortable](dic: dict[K, V]) -> dict[K, V]:
     """
     Sorts a dictionary by ascending order of values.
 
     Args:
-            dic (dict[Any, CT]): The dictionary to be sorted.
+            dic (dict[K, V]): The dictionary to be sorted.
 
     Returns:
-            dict[Any, CT]: The sorted dictionary.
+            dict[K, V]: The sorted dictionary.
     """
     z = dic.items()
     a = sorted(z, key=lambda item: item[1])

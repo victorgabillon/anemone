@@ -14,6 +14,14 @@ Example usage:
     player = TreeAndValuePlayer(builders.tree_builder, builders.value_builder)
 """
 
-from .factory import TreeAndValuePlayerArgs, create_tree_and_value_builders
+from .factory import (
+    TreeAndValuePlayerArgs,
+    create_tree_and_value_branch_selector,
+    create_tree_and_value_branch_selector_with_tree_eval_factory,
+)
 
-__all__ = ["TreeAndValuePlayerArgs", "create_tree_and_value_builders"]
+__all__ = [
+    "TreeAndValuePlayerArgs",
+    "create_tree_and_value_branch_selector",
+    "create_tree_and_value_branch_selector_with_tree_eval_factory",
+]

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Literal
 
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 import anemone.trees as trees
 from anemone.node_selector.node_selector_types import (
     NodeSelectorType,
@@ -16,14 +17,14 @@ from anemone.node_selector.opening_instructions import (
 )
 
 from .sequool import (
-    ConsiderNodesFromHalfMoves,
-    HalfMoveSelector,
+    ConsiderNodesFromTreeDepths,
+    TreeDepthSelector,
     RandomAllSelector,
     Sequool,
     StaticNotOpenedSelector,
-    consider_nodes_from_all_lesser_half_moves_in_descendants,
-    consider_nodes_from_all_lesser_half_moves_in_sub_stree,
-    consider_nodes_only_from_half_moves_in_descendants,
+    consider_nodes_from_all_lesser_tree_depths_in_descendants,
+    consider_nodes_from_all_lesser_tree_depths_in_sub_stree,
+    consider_nodes_only_from_tree_depths_in_descendants,
 )
 
 
@@ -61,42 +62,41 @@ def create_sequool(
         A sequool node selector object.
 
     """
-    all_nodes_not_opened = trees.Descendants()
-    half_move_selector: HalfMoveSelector
+    all_nodes_not_opened = trees.Descendants[AlgorithmNode]()
+    tree_depth_selector: TreeDepthSelector
     if args.recursive_selection_on_all_nodes:
-        half_move_selector = RandomAllSelector()
+        tree_depth_selector = RandomAllSelector()
     else:
-        half_move_selector = StaticNotOpenedSelector(
+        tree_depth_selector = StaticNotOpenedSelector(
             all_nodes_not_opened=all_nodes_not_opened
         )
 
-    consider_nodes_from_half_moves: ConsiderNodesFromHalfMoves
+    consider_nodes_from_tree_depths: ConsiderNodesFromTreeDepths
     if args.recursive_selection_on_all_nodes:
-        consider_nodes_from_half_moves = (
-            consider_nodes_from_all_lesser_half_moves_in_sub_stree
+        consider_nodes_from_tree_depths = (
+            consider_nodes_from_all_lesser_tree_depths_in_sub_stree
         )
     else:
         if args.consider_all_lesser_half_move:
-            consider_nodes_from_all_lesser_half_moves = partial(
-                consider_nodes_from_all_lesser_half_moves_in_descendants,
+            consider_nodes_from_all_lesser_tree_depths = partial(
+                consider_nodes_from_all_lesser_tree_depths_in_descendants,
                 descendants=all_nodes_not_opened,
             )
-            consider_nodes_from_half_moves = consider_nodes_from_all_lesser_half_moves
+            consider_nodes_from_tree_depths = consider_nodes_from_all_lesser_tree_depths
         else:
-            consider_nodes_only_from_half_moves = partial(
-                consider_nodes_only_from_half_moves_in_descendants,
+            consider_nodes_only_from_tree_depths = partial(
+                consider_nodes_only_from_tree_depths_in_descendants,
                 descendants=all_nodes_not_opened,
             )
-            consider_nodes_from_half_moves = consider_nodes_only_from_half_moves
-
+            consider_nodes_from_tree_depths = consider_nodes_only_from_tree_depths
     sequool: Sequool = Sequool(
         opening_instructor=opening_instructor,
         all_nodes_not_opened=all_nodes_not_opened,
         recursif=args.recursive_selection_on_all_nodes,
-        half_move_selector=half_move_selector,
+        tree_depth_selector=tree_depth_selector,
         random_depth_pick=args.random_depth_pick,
         random_generator=random_generator,
-        consider_nodes_from_half_moves=consider_nodes_from_half_moves,
+        consider_nodes_from_tree_depths=consider_nodes_from_tree_depths,
     )
 
     return sequool

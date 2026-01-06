@@ -13,7 +13,8 @@ The create_value_update_instructions_block function is a helper function that cr
 from dataclasses import dataclass, field
 from typing import Self
 
-from chipiron.environments.chess_env.move.imove import moveKey
+from valanga import BranchKey
+
 
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
@@ -41,20 +42,20 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         moves_with_updated_best_move (Set[AlgorithmNode]): Set of moves with updated 'best_move' value.
     """
 
-    moves_with_updated_over: set[moveKey] = field(
-        default_factory=lambda: set[moveKey]()
+    branches_with_updated_over: set[BranchKey] = field(
+        default_factory=lambda: set[BranchKey]()
     )
-    moves_with_updated_value: set[moveKey] = field(
-        default_factory=lambda: set[moveKey]()
+    branches_with_updated_value: set[BranchKey] = field(
+        default_factory=lambda: set[BranchKey]()
     )
-    moves_with_updated_best_move: set[moveKey] = field(
-        default_factory=lambda: set[moveKey]()
+    branches_with_updated_best_branch: set[BranchKey] = field(
+        default_factory=lambda: set[BranchKey]()
     )
 
     def add_update_from_one_child_node(
         self,
         update_from_one_child_node: ValueUpdateInstructionsFromOneNode,
-        move_from_parent_to_child: moveKey,
+        branch_from_parent_to_child: BranchKey,
     ) -> None:
         """Adds an update from a child node to the parent node.
 
@@ -63,11 +64,11 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             move_from_parent_to_child (moveKey): The move key representing the move from the parent to the child.
         """
         if update_from_one_child_node.is_node_newly_over:
-            self.moves_with_updated_over.add(move_from_parent_to_child)
+            self.branches_with_updated_over.add(branch_from_parent_to_child)
         if update_from_one_child_node.new_value_for_node:
-            self.moves_with_updated_value.add(move_from_parent_to_child)
+            self.branches_with_updated_value.add(branch_from_parent_to_child)
         if update_from_one_child_node.new_best_move_for_node:
-            self.moves_with_updated_best_move.add(move_from_parent_to_child)
+            self.branches_with_updated_best_branch.add(branch_from_parent_to_child)
 
     def add_update_toward_one_parent_node(self, another_update: Self) -> None:
         """Adds an update towards one parent node.
@@ -75,15 +76,15 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         Args:
             another_update (Self): The update instructions from another child node.
         """
-        self.moves_with_updated_value = (
-            self.moves_with_updated_value | another_update.moves_with_updated_over
+        self.branches_with_updated_value = (
+            self.branches_with_updated_value | another_update.branches_with_updated_value
         )
-        self.moves_with_updated_over = (
-            self.moves_with_updated_over | another_update.moves_with_updated_over
+        self.branches_with_updated_over = (
+            self.branches_with_updated_over | another_update.branches_with_updated_over
         )
-        self.moves_with_updated_best_move = (
-            self.moves_with_updated_best_move
-            | another_update.moves_with_updated_best_move
+        self.branches_with_updated_best_branch = (
+            self.branches_with_updated_best_branch
+            | another_update.branches_with_updated_best_branch
         )
 
     def print_info(self) -> None:
@@ -94,22 +95,22 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             None
         """
         print("upInstructions printing")
-        print(len(self.moves_with_updated_value), "moves_with_updated_value", end=" ")
-        for move in self.moves_with_updated_value:
-            print(move, end=" ")
+        print(len(self.branches_with_updated_value), "branches_with_updated_value", end=" ")
+        for branch in self.branches_with_updated_value:
+            print(branch, end=" ")
         print(
             "\n",
-            len(self.moves_with_updated_best_move),
-            "moves_with_updated_best_move:",
+            len(self.branches_with_updated_best_branch),
+            "branches_with_updated_best_branch:",
             end=" ",
         )
-        for move in self.moves_with_updated_best_move:
-            print(move, end=" ")
+        for branch in self.branches_with_updated_best_branch:
+            print(branch, end=" ")
         print(
-            "\n", len(self.moves_with_updated_over), "moves_with_updated_over", end=" "
+            "\n", len(self.branches_with_updated_over), "branches_with_updated_over", end=" "
         )
-        for move in self.moves_with_updated_over:
-            print(move, end=" ")
+        for branch in self.branches_with_updated_over:
+            print(branch, end=" ")
         print()
 
     def empty(self) -> bool:
@@ -120,8 +121,8 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             bool: True if all components are empty, False otherwise.
         """
         empty_bool = (
-            not bool(self.moves_with_updated_value)
-            and not bool(self.moves_with_updated_best_move)
-            and not bool(self.moves_with_updated_over)
+            not bool(self.branches_with_updated_value)
+            and not bool(self.branches_with_updated_best_branch)
+            and not bool(self.branches_with_updated_over)
         )
         return empty_bool

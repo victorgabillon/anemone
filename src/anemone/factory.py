@@ -14,22 +14,31 @@ node evaluator, node selector, tree factory, and tree manager.
 import queue
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Type
+
+from valanga import TurnState
 
 
-from chipiron.players.boardevaluators.table_base.factory import AnySyzygyTable
+from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
+from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
+    MasterStateEvaluator,
+    NodeDirectEvaluator,
+)
+from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+    NodeTreeEvaluationFactory,
+    NodeTreeMinmaxEvaluationFactory,
+)
+from anemone.node_factory.base import TreeNodeFactory
 
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 import anemone.search_factory as search_factories
 from anemone import node_factory
-from anemone.node_evaluator.node_evaluator_args import (
-    NodeEvaluatorArgs,
-)
+
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
 )
 from anemone.utils.dataclass import IsDataclass
 
-from . import node_evaluator as node_eval
 from . import node_selector as node_selector_m
 from . import recommender_rule
 from . import tree_manager as tree_man
@@ -38,7 +47,7 @@ from .tree_and_value_branch_selector import TreeAndValueBranchSelector
 from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
-    from valanga import RepresentationFactory
+    from valanga import ContentRepresentation, RepresentationFactory
 
 TreeAndValueLiteralString: str = "TreeAndValue"
 
@@ -51,20 +60,50 @@ class TreeAndValuePlayerArgs:
 
     node_selector: node_selector_m.AllNodeSelectorArgs
     opening_type: node_selector_m.OpeningType
-    node_evaluator: NodeEvaluatorArgs
     stopping_criterion: AllStoppingCriterionArgs
     recommender_rule: recommender_rule.AllRecommendFunctionsArgs
     index_computation: IndexComputationType | None = None
     type: Literal["TreeAndValue"] = TreeAndValueLiteralString
 
 
-def create_tree_and_value_branch_selector(
+def create_tree_and_value_branch_selector[TState: TurnState](
+    state_type: Type[TState],
     args: TreeAndValuePlayerArgs,
-    syzygy: AnySyzygyTable | None,
     random_generator: random.Random,
-    state_representation_factory: RepresentationFactory[Any] | None,
+    master_state_evaluator: MasterStateEvaluator,
+    state_representation_factory: RepresentationFactory[ContentRepresentation] | None,
     queue_progress_player: queue.Queue[IsDataclass] | None,
-) -> TreeAndValueBranchSelector:
+) -> TreeAndValueBranchSelector[TState]:
+    """Convenience constructor using the default minmax tree evaluation.
+
+    This keeps the existing API stable, while allowing advanced users to inject a
+    different tree-evaluation strategy via
+    `create_tree_and_value_branch_selector_with_tree_eval_factory`.
+    """
+
+    node_tree_evaluation_factory: NodeTreeEvaluationFactory[TState]
+    node_tree_evaluation_factory = NodeTreeMinmaxEvaluationFactory[TState]()
+
+    return create_tree_and_value_branch_selector_with_tree_eval_factory(
+        state_type=state_type,
+        args=args,
+        random_generator=random_generator,
+        master_state_evaluator=master_state_evaluator,
+        state_representation_factory=state_representation_factory,
+        node_tree_evaluation_factory=node_tree_evaluation_factory,
+        queue_progress_player=queue_progress_player,
+    )
+
+
+def create_tree_and_value_branch_selector_with_tree_eval_factory[TState: TurnState](
+    state_type: Type[TState],
+    args: TreeAndValuePlayerArgs,
+    random_generator: random.Random,
+    master_state_evaluator: MasterStateEvaluator,
+    state_representation_factory: RepresentationFactory[ContentRepresentation] | None,
+    node_tree_evaluation_factory: NodeTreeEvaluationFactory[TState],
+    queue_progress_player: queue.Queue[IsDataclass] | None,
+) -> TreeAndValueBranchSelector[TState]:
     """
     Create a TreeAndValueBranchSelector object with the given arguments.
 
@@ -78,16 +117,14 @@ def create_tree_and_value_branch_selector(
 
     """
 
-    node_evaluator: node_eval.NodeEvaluator = node_eval.create_node_evaluator(
-        arg_board_evaluator=args.node_evaluator, syzygy=syzygy
+    node_evaluator: NodeDirectEvaluator[TState] = create_node_evaluator(
+        master_state_evaluator=master_state_evaluator,
     )
 
-    # node_factory_name: str = args['node_factory_name'] if 'node_factory_name' in args else 'Base'
-    node_factory_name: str = "Base_with_algorithm_tree_node"
 
-    tree_node_factory: node_factory.Base[Any] = node_factory.create_node_factory(
-        node_factory_name=node_factory_name
-    )
+    tree_node_factory: TreeNodeFactory[AlgorithmNode[TState], TState] = TreeNodeFactory[
+        AlgorithmNode[TState], TState
+    ]()
 
 
 
@@ -98,26 +135,28 @@ def create_tree_and_value_branch_selector(
         index_computation=args.index_computation,
     )
 
-    algorithm_node_factory: node_factory.AlgorithmNodeFactory
-    algorithm_node_factory = node_factory.AlgorithmNodeFactory(
+    algorithm_node_factory: node_factory.AlgorithmNodeFactory[TState]
+    algorithm_node_factory = node_factory.AlgorithmNodeFactory[TState](
         tree_node_factory=tree_node_factory,
         state_representation_factory=state_representation_factory,
+        node_tree_evaluation_factory=node_tree_evaluation_factory,
         exploration_index_data_create=search_factory.node_index_create,
     )
 
-    tree_factory = ValueTreeFactory(
-        node_factory=algorithm_node_factory, node_evaluator=node_evaluator
+    tree_factory: ValueTreeFactory[TState] = ValueTreeFactory[TState](
+        node_factory=algorithm_node_factory,
+        node_direct_evaluator=node_evaluator,
     )
 
     tree_manager: tree_man.AlgorithmNodeTreeManager
     tree_manager = tree_man.create_algorithm_node_tree_manager(
         algorithm_node_factory=algorithm_node_factory,
-        node_evaluator=node_evaluator,
+        node_direct_evaluator=node_evaluator,
         index_computation=args.index_computation,
         index_updater=search_factory.create_node_index_updater(),
     )
 
-    tree_move_selector: TreeAndValueBranchSelector = TreeAndValueBranchSelector(
+    tree_move_selector: TreeAndValueBranchSelector[TState] = TreeAndValueBranchSelector(
         tree_manager=tree_manager,
         random_generator=random_generator,
         tree_factory=tree_factory,

@@ -12,12 +12,12 @@ and checking if the game is over.
 Note: This is an interface and should not be instantiated directly.
 """
 
-from typing import Any, MutableMapping, Protocol
+from typing import MutableMapping, Protocol, Self
 
 from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
 
 
-class ITreeNode[OtherNode: "ITreeNode" = Any](Protocol):
+class ITreeNode[TState: State = State](Protocol):
     """
     The `ITreeNode` protocol represents a node in a tree structure used for selecting chess moves.
     """
@@ -33,7 +33,7 @@ class ITreeNode[OtherNode: "ITreeNode" = Any](Protocol):
         ...
 
     @property
-    def state(self) -> State:
+    def state(self) -> TState:
         """
         Get the chess board state of the node.
 
@@ -53,7 +53,7 @@ class ITreeNode[OtherNode: "ITreeNode" = Any](Protocol):
         ...
 
     @property
-    def branches_children(self) -> MutableMapping[BranchKey, OtherNode | None]:
+    def branches_children(self) -> MutableMapping[BranchKey, Self | None]:
         """
         Get the child nodes of the node.
 
@@ -63,7 +63,7 @@ class ITreeNode[OtherNode: "ITreeNode" = Any](Protocol):
         ...
 
     @property
-    def parent_nodes(self) -> dict["ITreeNode", BranchKey]:
+    def parent_nodes(self) -> dict[Self, BranchKey]:
         """
         Returns the dictionary of parent nodes of the current tree node with associated move.
 
@@ -71,7 +71,7 @@ class ITreeNode[OtherNode: "ITreeNode" = Any](Protocol):
         """
         ...
 
-    def add_parent(self, branch_key: BranchKey, new_parent_node: "ITreeNode") -> None:
+    def add_parent(self, branch_key: BranchKey, new_parent_node: Self) -> None:
         """
         Add a parent node to the node.
 

@@ -10,7 +10,8 @@ about the block.
 from dataclasses import dataclass, field
 from typing import Self
 
-from chipiron.environments.chess_env.move.imove import moveKey
+from valanga import BranchKey
+
 
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
@@ -42,14 +43,14 @@ class IndexUpdateInstructionsTowardsOneParentNode:
         moves_with_updated_index (Set[IMove]): A set of children with updated index values.
     """
 
-    moves_with_updated_index: set[moveKey] = field(
-        default_factory=lambda: set[moveKey]()
+    branches_with_updated_index: set[BranchKey] = field(
+        default_factory=lambda: set[BranchKey]()
     )
 
     def add_update_from_one_child_node(
         self,
         update_from_one_child_node: IndexUpdateInstructionsFromOneNode,
-        move_from_parent_to_child: moveKey,
+        branch_from_parent_to_child: BranchKey,
     ) -> None:
         """Adds an update from a child node to the parent node.
 
@@ -58,7 +59,7 @@ class IndexUpdateInstructionsTowardsOneParentNode:
             move_from_parent_to_child (moveKey): The move key representing the parent's move to the child.
         """
         if update_from_one_child_node.updated_index:
-            self.moves_with_updated_index.add(move_from_parent_to_child)
+            self.branches_with_updated_index.add(branch_from_parent_to_child)
 
     def add_update_toward_one_parent_node(self, another_update: Self) -> None:
         """Adds an update from another child node to the parent node.
@@ -66,8 +67,8 @@ class IndexUpdateInstructionsTowardsOneParentNode:
         Args:
             another_update (Self): The update instructions from another child node.
         """
-        self.moves_with_updated_index = (
-            self.moves_with_updated_index | another_update.moves_with_updated_index
+        self.branches_with_updated_index = (
+            self.branches_with_updated_index | another_update.branches_with_updated_index
         )
 
     def empty(self) -> bool:
@@ -77,9 +78,9 @@ class IndexUpdateInstructionsTowardsOneParentNode:
         Returns:
             bool: True if the block is empty, False otherwise.
         """
-        empty_bool = not bool(self.moves_with_updated_index)
+        empty_bool = not bool(self.branches_with_updated_index)
         return empty_bool
 
     def print_info(self) -> None:
         """Prints information about the moves with updated indices."""
-        print(self.moves_with_updated_index)
+        print(self.branches_with_updated_index)

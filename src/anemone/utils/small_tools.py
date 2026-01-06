@@ -3,11 +3,14 @@ import typing
 from dataclasses import dataclass
 from itertools import islice
 from typing import Any
+import math
+from typing import Sequence, List
+
 
 path = typing.Annotated[str | os.PathLike[str], "path"]
 
 
-def nth_key[_T](dct: dict[_T, Any], n: int) -> _T:
+def nth_key[_T, _V](dct: dict[_T, _V], n: int) -> _T:
     """
     Get the nth key from a dictionary.
 
@@ -86,3 +89,18 @@ def distance_number_to_interval(value: float, interval: Interval) -> float:
         return value - interval.max_value
     else:
         return 0
+
+
+
+def softmax(x: Sequence[float], temperature: float = 1.0) -> List[float]:
+    if not x:
+        return []
+
+    # numerical stability
+    m = max(x)
+    scaled = [(v - m) * temperature for v in x]
+
+    exp_vals = [math.exp(v) for v in scaled]
+    s = sum(exp_vals)
+
+    return [v / s for v in exp_vals]

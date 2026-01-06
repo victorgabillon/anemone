@@ -2,18 +2,22 @@
 Module that contains the classes for the exploration data of a tree node.
 """
 
-import typing
 from dataclasses import dataclass, field
+from typing import Any
+
+from valanga import State
 
 from anemone.utils.small_tools import Interval
 
-if typing.TYPE_CHECKING:
-    from anemone.nodes.itree_node import ITreeNode
-    from anemone.nodes.tree_node import TreeNode
+from anemone.nodes.itree_node import ITreeNode
+from anemone.nodes.tree_node import TreeNode
 
 
 @dataclass
-class NodeExplorationData[Node: ITreeNode = ITreeNode]:
+class NodeExplorationData[
+    Node: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+]:
     """
     Represents the exploration data for a tree node.
 
@@ -25,7 +29,7 @@ class NodeExplorationData[Node: ITreeNode = ITreeNode]:
         dot_description(): Returns a string representation of the exploration data for dot visualization.
     """
 
-    tree_node: TreeNode[Node]
+    tree_node: TreeNode[Node, TState]
     index: float | None = None
 
     def dot_description(self) -> str:
@@ -39,7 +43,11 @@ class NodeExplorationData[Node: ITreeNode = ITreeNode]:
 
 
 @dataclass
-class RecurZipfQuoolExplorationData(NodeExplorationData):
+class RecurZipfQuoolExplorationData[
+    Node: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+](NodeExplorationData[Node, TState]
+):
     """
     Represents the exploration data for a tree node with recursive zipf-quool factor.
 
@@ -65,7 +73,10 @@ class RecurZipfQuoolExplorationData(NodeExplorationData):
 
 
 @dataclass
-class MinMaxPathValue(NodeExplorationData):
+class MinMaxPathValue[
+    Node: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+](NodeExplorationData[Node, TState]):
     """
     Represents the exploration data for a tree node with minimum and maximum path values.
 
@@ -85,7 +96,10 @@ class MinMaxPathValue(NodeExplorationData):
 
 
 @dataclass
-class IntervalExplo(NodeExplorationData):
+class IntervalExplo[
+    Node: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+](NodeExplorationData[Node, TState]):
     """
     Represents the exploration data for a tree node with an interval.
 
@@ -115,7 +129,11 @@ class IntervalExplo(NodeExplorationData):
 
 
 @dataclass
-class MaxDepthDescendants(NodeExplorationData):
+class MaxDepthDescendants[
+    Node: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+](NodeExplorationData[Node, TState]
+):
     """
     Represents the exploration data for a tree node with maximum depth of descendants.
     """

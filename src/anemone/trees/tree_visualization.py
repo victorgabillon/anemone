@@ -18,17 +18,17 @@ structure to a file.
 import pickle
 
 from graphviz import Digraph
-from valanga import BranchKey
+from valanga import BranchKey, State
 
 from anemone.nodes import ITreeNode
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
 
-from .value_tree import ValueTree
+from .tree import Tree
 
 
-def add_dot(dot: Digraph, treenode: ITreeNode) -> None:
+def add_dot[TState: State](dot: Digraph, treenode: ITreeNode[TState]) -> None:
     """
     Adds a node and edges to the given Dot graph based on the provided tree node.
 
@@ -50,64 +50,54 @@ def add_dot(dot: Digraph, treenode: ITreeNode) -> None:
                 dot.edge(
                     str(treenode.id),
                     cdd,
-                    str(treenode.board.get_uci_from_move_key(move_key=move)),
+                    str(treenode.state.branch_name_from_key(key=branch)),
                 )
                 add_dot(dot, child)
 
 
-def display_special(
-    node: ITreeNode, format_str: str, index: dict[BranchKey, str]
+from graphviz import Digraph
+from valanga import BranchKey
+
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+
+
+def display_special[TState: State](
+    node: AlgorithmNode[TState],  # or AlgorithmNode if you prefer
+    format_str: str,
+    index: dict[BranchKey, str],
 ) -> Digraph:
-    """
-    Display a special visualization of a tree node and its children.
-
-    Args:
-        node (ITreeNode): The tree node to display.
-        format_str (str): The format of the output graph (e.g., 'png', 'pdf', 'svg').
-        index (Dict[chess.Move, str]): A dictionary mapping chess moves to their descriptions.
-
-    Returns:
-        Digraph: The graph representing the tree visualization.
-
-    Raises:
-        AssertionError: If the child node is None or if the parent node is not an AlgorithmNode.
-    """
     dot = Digraph(format=format_str)
-    print(";;;", type(node))
+
     nd = node.dot_description()
     dot.node(str(node.id), nd)
-    sorted_branches = [
-        (str(branch), move) for branch, move in node.branches_children.items()
-    ]
-    sorted_branches.sort()
-    for branch_key in sorted_branches:
-        move = branch_key[1]
-        if node.branches_children[branch_key] is not None:
-            child = node.branches_children[branch_key]
-            assert child is not None
-            assert isinstance(node, AlgorithmNode)
 
-            cdd = str(child.id)
-            edge_description = (
-                index[move]
-                + "|"
-                + str(node.board.get_uci_from_move_key(move_key=move))
-                + "|"
-                + node.minmax_evaluation.description_tree_visualizer_move(child)
-            )
-            dot.edge(str(node.id), cdd, edge_description)
-            dot.node(str(child.id), child.dot_description())
-            print("--move:", edge_description)
-            print("--child:", child.dot_description())
+    sorted_branches: list[BranchKey] = sorted(node.branches_children.keys(), key=str)
+
+    for branch_key in sorted_branches:
+        child = node.branches_children[branch_key]
+        if child is None:
+            continue
+
+        edge_description: str = (
+            index[branch_key]
+            + "|"
+            + str(node.state.branch_name_from_key(key=branch_key))
+            + "|"
+            + node.tree_evaluation.description_tree_visualizer_branch(child)
+        )
+        dot.edge(str(node.id), str(child.id), edge_description)
+        dot.node(str(child.id), child.dot_description())
+        print("--move:", edge_description)
+        print("--child:", child.dot_description())
+
     return dot
 
-
-def display(tree: ValueTree, format_str: str) -> Digraph:
+def display[TState: State](tree: Tree[AlgorithmNode[TState]], format_str: str) -> Digraph:
     """
     Display the move and value tree using graph visualization.
 
     Args:
-        tree (ValueTree): The move and value tree to be displayed.
+        tree (Tree): The move and value tree to be displayed.
         format_str (str): The format of the output graph (e.g., 'png', 'pdf', 'svg').
 
     Returns:
@@ -118,41 +108,38 @@ def display(tree: ValueTree, format_str: str) -> Digraph:
     return dot
 
 
-def save_pdf_to_file(tree: ValueTree) -> None:
+def save_pdf_to_file[TState: State](tree: Tree[AlgorithmNode[TState]]) -> None:
     """
     Saves the visualization of a tree as a PDF file.
 
     Args:
-        tree (ValueTree): The tree to be visualized and saved.
+        tree (Tree): The tree to be visualized and saved.
 
     Returns:
         None
     """
     dot = display(tree=tree, format_str="pdf")
-    round_ = len(tree.root_node.board.move_history_stack) + 2
-    color = "white" if tree.root_node.player_to_move else "black"
+    tag_ = tree.root_node.state.tag
     dot.render(
-        "chipiron/runs/treedisplays/TreeVisual_" + str(int(round_ / 2)) + color + ".pdf"
+        "chipiron/runs/treedisplays/TreeVisual_" + str(tag_) + ".pdf"
     )
 
 
-def save_raw_data_to_file(tree: ValueTree, count: str = "#") -> None:
+def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
     """
     Save raw data of a ValueTree to a file.
 
     Args:
-        tree (ValueTree): The ValueTree object to save.
+        tree (Tree): The Tree object to save.
         count (str, optional): A string to append to the filename. Defaults to '#'.
 
     Returns:
         None
     """
-    round_ = len(tree.root_node.board.move_history_stack) + 2
-    color = "white" if tree.root_node.player_to_move else "black"
+    tag_ = tree.root_node.state.tag
     filename = (
         "chipiron/debugTreeData_"
-        + str(int(round_ / 2))
-        + color
+        + str(tag_)
         + "-"
         + str(count)
         + ".td"

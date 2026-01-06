@@ -11,31 +11,19 @@ Classes:
 import random
 import typing
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from anemone import trees
-from anemone.node_selector.move_explorer import (
-    ZipfMoveExplorer,
-)
-from anemone.node_selector.node_selector_types import (
-    NodeSelectorType,
-)
+from anemone.node_selector.branch_explorer import SamplingPriorities, ZipfBranchExplorer
+from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import (
     OpeningInstructions,
     OpeningInstructor,
-    create_instructions_to_open_all_moves,
+    create_instructions_to_open_all_branches,
 )
-from anemone.nodes.algorithm_node.algorithm_node import (
-    AlgorithmNode,
-)
-from anemone.nodes.utils import (
-    best_node_sequence_from_node,
-)
-
-from ..move_explorer import SamplingPriorities
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 if typing.TYPE_CHECKING:
-    from chipiron.environments.chess_env.move.imove import moveKey
 
     import anemone.tree_manager as tree_man
 
@@ -50,10 +38,10 @@ class RecurZipfBaseArgs:
     """
 
     type: Literal[NodeSelectorType.RECUR_ZIPF_BASE]
-    move_explorer_priority: SamplingPriorities
+    branch_explorer_priority: SamplingPriorities
 
 
-class RecurZipfBase:
+class RecurZipfBase[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """The RecurZipfBase Node selector"""
 
     opening_instructor: OpeningInstructor
@@ -74,21 +62,21 @@ class RecurZipfBase:
 
         """
         self.opening_instructor = opening_instructor
-        self.move_explorer = ZipfMoveExplorer(
-            args.move_explorer_priority, random_generator
+        self.branch_explorer = ZipfBranchExplorer(
+            args.branch_explorer_priority, random_generator
         )
         self.random_generator = random_generator
 
-    def choose_node_and_move_to_open(
+    def choose_node_and_branch_to_open(
         self,
-        tree: trees.ValueTree,
-        latest_tree_expansions: "tree_man.TreeExpansions",
-    ) -> OpeningInstructions:
+        tree: trees.Tree[TNode],
+        latest_tree_expansions: "tree_man.TreeExpansions[TNode]",
+    ) -> OpeningInstructions[TNode]:
         """
         Chooses the next node to explore and the move to open.
 
         Args:
-        - tree (trees.ValueTree): The move selector tree.
+        - tree (trees.Tree[AlgorithmNode]): The move selector tree.
         - latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
 
         Returns:
@@ -97,47 +85,48 @@ class RecurZipfBase:
         """
         # todo maybe proportions and proportions can be valuesorted dict with smart updates
 
-        opening_instructions: OpeningInstructions
-        best_node_sequence = best_node_sequence_from_node(tree.root_node)
-        if best_node_sequence:
-            last_node_in_best_line = best_node_sequence[-1]
-            assert isinstance(last_node_in_best_line, AlgorithmNode)
-            if (
-                last_node_in_best_line.board.is_attacked(
-                    not last_node_in_best_line.tree_node.player_to_move
-                )
-                and not last_node_in_best_line.minmax_evaluation.is_over()
-            ):
-                # print('best line is underattacked')
-                if self.random_generator.random() > 0.5:
-                    # print('best line is underattacked and i do')
-                    all_moves_to_open: list[moveKey] = (
-                        self.opening_instructor.all_moves_to_open(
-                            node_to_open=last_node_in_best_line.tree_node
-                        )
-                    )
-                    opening_instructions = create_instructions_to_open_all_moves(
-                        moves_to_play=all_moves_to_open,
-                        node_to_open=last_node_in_best_line,
-                    )
-                    return opening_instructions
+        opening_instructions: OpeningInstructions[TNode]
+        # TODO make sure this block is put in chipiron now with a wrapper
+        # best_node_sequence = best_node_sequence_from_node(tree.root_node)
+        # if best_node_sequence:
+        #     last_node_in_best_line = best_node_sequence[-1]
+        #     assert isinstance(last_node_in_best_line, AlgorithmNode)
+        #     if (
+        #         last_node_in_best_line.state.is_attacked(
+        #             not last_node_in_best_line.tree_node.player_to_move
+        #         )
+        #         and not last_node_in_best_line.minmax_evaluation.is_over()
+        #     ):
+        #         # print('best line is underattacked')
+        #         if self.random_generator.random() > 0.5:
+        #             # print('best line is underattacked and i do')
+        #             all_moves_to_open: list[BranchKey] = (
+        #                 self.opening_instructor.all_branches_to_open(
+        #                     node_to_open=last_node_in_best_line.tree_node
+        #                 )
+        #             )
+        #             opening_instructions = create_instructions_to_open_all_branches(
+        #                 branches_to_play=all_moves_to_open,
+        #                 node_to_open=last_node_in_best_line,
+        #             )
+        #             return opening_instructions
 
-        wandering_node = tree.root_node
+        wandering_node: TNode = tree.root_node
 
-        while wandering_node.minmax_evaluation.moves_not_over:
+        while wandering_node.tree_evaluation.branches_not_over:
             assert not wandering_node.is_over()
-            move = self.move_explorer.sample_move_to_explore(
+            branch = self.branch_explorer.sample_branch_to_explore(
                 tree_node_to_sample_from=wandering_node
             )
-            next_node = wandering_node.moves_children[move]
-            assert isinstance(next_node, AlgorithmNode)
+            next_node = wandering_node.branches_children[branch]
+            assert next_node is not None
             wandering_node = next_node
 
-        all_moves_to_open = self.opening_instructor.all_moves_to_open(
-            node_to_open=wandering_node.tree_node
+        all_branches_to_open = self.opening_instructor.all_branches_to_open(
+            node_to_open=wandering_node
         )
-        opening_instructions = create_instructions_to_open_all_moves(
-            moves_to_play=all_moves_to_open, node_to_open=wandering_node
+        opening_instructions = create_instructions_to_open_all_branches(
+            branches_to_play=all_branches_to_open, node_to_open=wandering_node
         )
 
         return opening_instructions

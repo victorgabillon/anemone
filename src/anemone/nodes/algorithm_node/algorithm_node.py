@@ -3,57 +3,55 @@ This module defines the AlgorithmNode class, which is a generic node used by the
 It wraps tree nodes with values, minimax computation, and exploration tools.
 """
 
-from typing import Any, Mapping
+from typing import Any, MutableMapping, Self
 
 from valanga import (
     BranchKey,
     BranchKeyGeneratorP,
-    StateRepresentation,
+    ContentRepresentation,
     State,
     StateTag,
 )
 
 from anemone.indices.node_indices import NodeExplorationData
-from anemone.nodes.algorithm_node.node_minmax_evaluation import NodeMinmaxEvaluation
-from anemone.nodes.itree_node import ITreeNode
+from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import NodeTreeEvaluation
 from anemone.nodes.tree_node import TreeNode
 
 
-class AlgorithmNode:
+class AlgorithmNode[TState: State = State]:
     """
     The generic Node used by the tree and value algorithm.
     It wraps tree nodes with values, minimax computation and exploration tools
     """
 
-    tree_node: TreeNode[
-        "AlgorithmNode"
-    ]  # the reference to the tree node that is wrapped pointing to other AlgorithmNodes
-    minmax_evaluation: NodeMinmaxEvaluation[Any]  # Use Any to break circular dependency
+    tree_node: TreeNode[Self, TState]
+    # the reference to the tree node that is wrapped pointing to other AlgorithmNodes
+    tree_evaluation: NodeTreeEvaluation[TState]  # Use Any to break circular dependency
     exploration_index_data: (
-        NodeExplorationData[Any] | None  # Use Any to break circular dependency
+        NodeExplorationData[Self, TState] | None
     )  # the object storing the information to help the algorithm decide the next nodes to explore
     state_representation: (
-        StateRepresentation | None
+        ContentRepresentation | None
     )  # the state representation for evaluation
 
     def __init__(
         self,
-        tree_node: TreeNode["AlgorithmNode"],
-        minmax_evaluation: NodeMinmaxEvaluation[Any],
-        exploration_index_data: NodeExplorationData[Any] | None,
-        state_representation: StateRepresentation | None,
+        tree_node: TreeNode[Self, TState],
+        tree_evaluation: NodeTreeEvaluation[TState],
+        exploration_index_data: NodeExplorationData[Self, TState] | None,
+        state_representation: ContentRepresentation | None,
     ) -> None:
         """
         Initializes an AlgorithmNode object.
 
         Args:
             tree_node (TreeNode): The tree node that is wrapped.
-            minmax_evaluation (NodeMinmaxEvaluation): The object computing the value.
+            tree_evaluation (NodeTreeEvaluation): The object computing the value.
             exploration_index_data (NodeExplorationData | None): The object storing the information to help the algorithm decide the next nodes to explore.
             state_representation (StateRepresentation | None): The board representation.
         """
         self.tree_node = tree_node
-        self.minmax_evaluation = minmax_evaluation
+        self.tree_evaluation = tree_evaluation
         self.exploration_index_data = exploration_index_data
         self.state_representation = state_representation
 
@@ -88,7 +86,7 @@ class AlgorithmNode:
         return self.tree_node.tag
 
     @property
-    def branches_children(self) -> Mapping[BranchKey, "AlgorithmNode | None"]:
+    def branches_children(self) -> MutableMapping[BranchKey, Self | None]:
         """
         Returns the bidirectional dictionary of moves and their corresponding child nodes.
 
@@ -98,7 +96,7 @@ class AlgorithmNode:
         return self.tree_node.branches_children
 
     @property
-    def parent_nodes(self) -> dict[ITreeNode, BranchKey]:
+    def parent_nodes(self) -> dict[Self, BranchKey]:
         """
         Returns the dictionary of parent nodes of the current tree node with associated move.
 
@@ -107,7 +105,7 @@ class AlgorithmNode:
         return self.tree_node.parent_nodes
 
     @property
-    def state(self) -> State:
+    def state(self) -> TState:
         """
         Returns the state associated with this tree node.
 
@@ -123,9 +121,9 @@ class AlgorithmNode:
         Returns:
             bool: True if the game is over, False otherwise.
         """
-        return self.minmax_evaluation.is_over()
+        return self.tree_evaluation.is_over()
 
-    def add_parent(self, branch_key: BranchKey, new_parent_node: ITreeNode) -> None:
+    def add_parent(self, branch_key: BranchKey, new_parent_node: Self) -> None:
         """
         Adds a parent node.
 
@@ -190,7 +188,7 @@ class AlgorithmNode:
             else ""
         )
 
-        return f"{self.tree_node.dot_description()}\n{self.minmax_evaluation.dot_description()}\n{exploration_description}"
+        return f"{self.tree_node.dot_description()}\n{self.tree_evaluation.dot_description()}\n{exploration_description}"
 
     def __str__(self) -> str:
         return f"{self.__class__} id :{self.tree_node.id}"

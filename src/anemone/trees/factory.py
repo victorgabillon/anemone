@@ -2,36 +2,30 @@
 ValueTreeFactory
 """
 
-from typing import TYPE_CHECKING
-
 from valanga import State
 
 import anemone.node_factory as nod_fac
-from anemone.node_evaluator import (
+from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     EvaluationQueries,
-    NodeEvaluator,
+    NodeDirectEvaluator,
 )
-from anemone.nodes.algorithm_node.algorithm_node import (
-    AlgorithmNode,
-)
-
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.trees.tree import Tree
 from .descendants import RangedDescendants
-from .value_tree import ValueTree
-
-if TYPE_CHECKING:
-    from anemone.nodes.itree_node import ITreeNode
 
 
-class ValueTreeFactory:
+class ValueTreeFactory[TState: State = State]:
     """
     ValueTreeFactory
     """
 
-    node_factory: nod_fac.AlgorithmNodeFactory
-    node_evaluator: NodeEvaluator
+    node_factory: nod_fac.AlgorithmNodeFactory[TState]
+    node_direct_evaluator: NodeDirectEvaluator[TState]
 
     def __init__(
-        self, node_factory: nod_fac.AlgorithmNodeFactory, node_evaluator: NodeEvaluator
+        self,
+        node_factory: nod_fac.AlgorithmNodeFactory[TState],
+        node_direct_evaluator: NodeDirectEvaluator[TState],
     ) -> None:
         """
         creates the tree factory
@@ -40,9 +34,9 @@ class ValueTreeFactory:
             node_evaluator:
         """
         self.node_factory = node_factory
-        self.node_evaluator = node_evaluator
+        self.node_direct_evaluator = node_direct_evaluator
 
-    def create(self, starting_state: State) -> ValueTree:
+    def create(self, starting_state: TState) -> Tree[AlgorithmNode[TState]]:
         """
         creates the tree
 
@@ -53,7 +47,7 @@ class ValueTreeFactory:
 
         """
 
-        root_node: ITreeNode = self.node_factory.create(
+        root_node: AlgorithmNode[TState] = self.node_factory.create(
             state=starting_state,
             tree_depth=0,  # by default
             count=0,
@@ -62,21 +56,22 @@ class ValueTreeFactory:
             branch_from_parent=None,
         )
 
-        evaluation_queries: EvaluationQueries = EvaluationQueries()
+        evaluation_queries: EvaluationQueries[TState] = EvaluationQueries()
 
-        assert isinstance(root_node, AlgorithmNode)
-        self.node_evaluator.add_evaluation_query(
+        self.node_direct_evaluator.add_evaluation_query(
             node=root_node, evaluation_queries=evaluation_queries
         )
 
-        self.node_evaluator.evaluate_all_queried_nodes(
+        self.node_direct_evaluator.evaluate_all_queried_nodes(
             evaluation_queries=evaluation_queries
         )
         # is this needed? used outside?
 
-        descendants: RangedDescendants = RangedDescendants()
+        descendants: RangedDescendants[AlgorithmNode[TState]] = RangedDescendants[AlgorithmNode[TState]]()
         descendants.add_descendant(root_node)
 
-        value_tree: ValueTree = ValueTree(root_node=root_node, descendants=descendants)
+        value_tree: Tree[AlgorithmNode[TState]] = Tree[AlgorithmNode[TState]](
+            root_node=root_node, descendants=descendants
+        )
 
         return value_tree

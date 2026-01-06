@@ -9,12 +9,13 @@ Classes:
 from dataclasses import dataclass, field
 from typing import Self
 
-from chipiron.environments.chess_env.move.imove import moveKey
-from chipiron.utils.dict_of_numbered_dict_with_pointer_on_max import (
+from valanga import BranchKey
+
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.utils.dict_of_numbered_dict_with_pointer_on_max import (
     DictOfNumberedDictWithPointerOnMax,
 )
 
-from anemone.nodes import ITreeNode
 
 from .index_block import (
     IndexUpdateInstructionsFromOneNode,
@@ -60,12 +61,12 @@ class UpdateInstructionsTowardsOneParentNode:
     def add_update_from_a_child_node(
         self,
         update_from_a_child_node: UpdateInstructionsFromOneNode,
-        move_from_parent_to_child: moveKey,
+        branch_from_parent_to_child: BranchKey,
     ) -> None:
         assert self.value_updates_toward_one_parent_node is not None
         assert update_from_a_child_node.value_block is not None
         self.value_updates_toward_one_parent_node.add_update_from_one_child_node(
-            move_from_parent_to_child=move_from_parent_to_child,
+            branch_from_parent_to_child=branch_from_parent_to_child,
             update_from_one_child_node=update_from_a_child_node.value_block,
         )
 
@@ -74,7 +75,7 @@ class UpdateInstructionsTowardsOneParentNode:
         else:
             if update_from_a_child_node.index_block is not None:
                 self.index_updates_toward_one_parent_node.add_update_from_one_child_node(
-                    move_from_parent_to_child=move_from_parent_to_child,
+                    branch_from_parent_to_child=branch_from_parent_to_child,
                     update_from_one_child_node=update_from_a_child_node.index_block,
                 )
 
@@ -120,23 +121,25 @@ class UpdateInstructionsTowardsOneParentNode:
 
 
 @dataclass
-class UpdateInstructionsTowardsMultipleNodes:
+class UpdateInstructionsTowardsMultipleNodes[
+    TNode: AlgorithmNode = AlgorithmNode
+]:
     """Represents update instructions towards multiple parent nodes."""
 
     # mapping from nodes to the update instructions that are intended to them for consideration (performing the updates)
     one_node_instructions: DictOfNumberedDictWithPointerOnMax[
-        ITreeNode, UpdateInstructionsTowardsOneParentNode
+        TNode, UpdateInstructionsTowardsOneParentNode
     ] = field(
         default_factory=lambda: DictOfNumberedDictWithPointerOnMax[
-            ITreeNode, UpdateInstructionsTowardsOneParentNode
+            TNode, UpdateInstructionsTowardsOneParentNode
         ]()
     )
 
     def add_update_from_one_child_node(
         self,
         update_from_child_node: UpdateInstructionsFromOneNode,
-        parent_node: ITreeNode,
-        move_from_parent: moveKey,
+        parent_node: TNode,
+        branch_from_parent: BranchKey,
     ) -> None:
         if parent_node not in self.one_node_instructions:
             # build the UpdateInstructionsTowardsOneParentNode
@@ -146,18 +149,18 @@ class UpdateInstructionsTowardsMultipleNodes:
             )
             value_updates_toward_one_parent_node = (
                 ValueUpdateInstructionsTowardsOneParentNode(
-                    moves_with_updated_value=(
-                        {move_from_parent}
+                    branches_with_updated_value=(
+                        {branch_from_parent}
                         if update_from_child_node.value_block.new_value_for_node
                         else set()
                     ),
-                    moves_with_updated_over=(
-                        {move_from_parent}
+                    branches_with_updated_over=(
+                        {branch_from_parent}
                         if update_from_child_node.value_block.is_node_newly_over
                         else set()
                     ),
-                    moves_with_updated_best_move=(
-                        {move_from_parent}
+                    branches_with_updated_best_branch=(
+                        {branch_from_parent}
                         if update_from_child_node.value_block.new_best_move_for_node
                         else set()
                     ),
@@ -169,8 +172,8 @@ class UpdateInstructionsTowardsMultipleNodes:
             if update_from_child_node.index_block is not None:
                 index_updates_toward_one_parent_node = (
                     IndexUpdateInstructionsTowardsOneParentNode(
-                        moves_with_updated_index=(
-                            {move_from_parent}
+                        branches_with_updated_index=(
+                            {branch_from_parent}
                             if update_from_child_node.index_block.updated_index
                             else set()
                         ),
@@ -188,13 +191,13 @@ class UpdateInstructionsTowardsMultipleNodes:
             # update the UpdateInstructionsTowardsOneParentNode
             self.one_node_instructions[parent_node].add_update_from_a_child_node(
                 update_from_a_child_node=update_from_child_node,
-                move_from_parent_to_child=move_from_parent,
+                branch_from_parent_to_child=branch_from_parent,
             )
 
     def add_updates_towards_one_parent_node(
         self,
         update_from_child_node: UpdateInstructionsTowardsOneParentNode,
-        parent_node: ITreeNode,
+        parent_node: TNode,
     ) -> None:
         if parent_node in self.one_node_instructions:
             self.one_node_instructions[parent_node].add_updates_towards_one_parent_node(
@@ -203,7 +206,7 @@ class UpdateInstructionsTowardsMultipleNodes:
         else:
             self.one_node_instructions[parent_node] = update_from_child_node
 
-    def pop_item(self) -> tuple[ITreeNode, UpdateInstructionsTowardsOneParentNode]:
+    def pop_item(self) -> tuple[TNode, UpdateInstructionsTowardsOneParentNode]:
         return self.one_node_instructions.popitem()
 
     def __bool__(self) -> bool:

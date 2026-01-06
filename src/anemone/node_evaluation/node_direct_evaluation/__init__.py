@@ -13,12 +13,10 @@ Available objects:
 """
 
 from .factory import create_node_evaluator
-from .node_evaluator import EvaluationQueries, NodeEvaluator
-from .node_evaluator_args import NodeEvaluatorArgs
+from .node_direct_evaluator import EvaluationQueries, NodeDirectEvaluator
 
 __all__ = [
-    "NodeEvaluator",
+    "NodeDirectEvaluator",
     "create_node_evaluator",
     "EvaluationQueries",
-    "NodeEvaluatorArgs",
 ]

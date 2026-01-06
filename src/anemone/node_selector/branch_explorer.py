@@ -1,12 +1,12 @@
 """
-This module contains the MoveExplorer class and its subclasses.
-MoveExplorer is responsible for exploring moves in a game tree.
+This module contains the branchExplorer class and its subclasses.
+branchExplorer is responsible for exploring branches in a game tree.
 """
 
 import random
 from enum import Enum
-
-from chipiron.environments.chess_env.move.imove import moveKey
+from typing import Any
+from valanga import BranchKey
 
 from anemone.node_selector.notations_and_statics import (
     zipf_picks_random,
@@ -16,12 +16,12 @@ from anemone.nodes.algorithm_node import AlgorithmNode
 
 class SamplingPriorities(str, Enum):
     """
-    Enumeration class representing the sampling priorities for move exploration.
+    Enumeration class representing the sampling priorities for branch exploration.
 
     Attributes:
-        NO_PRIORITY (str): No priority for move sampling.
-        PRIORITY_BEST (str): Priority for the best move.
-        PRIORITY_TWO_BEST (str): Priority for the two best moves.
+        NO_PRIORITY (str): No priority for branch sampling.
+        PRIORITY_BEST (str): Priority for the best branch.
+        PRIORITY_TWO_BEST (str): Priority for the two best branches.
     """
 
     NO_PRIORITY = "no_priority"
@@ -29,9 +29,9 @@ class SamplingPriorities(str, Enum):
     PRIORITY_TWO_BEST = "priority_two_best"
 
 
-class MoveExplorer:
+class BranchExplorer:
     """
-    MoveExplorer is responsible for exploring moves in a game tree.
+    BranchExplorer is responsible for exploring branches in a game tree.
     It provides a method to sample a child node to explore.
     """
 
@@ -39,7 +39,7 @@ class MoveExplorer:
 
     def __init__(self, priority_sampling: SamplingPriorities):
         """
-        Initializes a MoveExplorer instance.
+        Initializes a branchExplorer instance.
 
         Args:
             priority_sampling (SamplingPriorities): The priority sampling strategy to use.
@@ -47,16 +47,16 @@ class MoveExplorer:
         self.priority_sampling = priority_sampling
 
 
-class ZipfMoveExplorer(MoveExplorer):
+class ZipfBranchExplorer(BranchExplorer):
     """
-    ZipfMoveExplorer is a subclass of MoveExplorer that uses the Zipf distribution for sampling.
+    ZipfBranchExplorer is a subclass of BranchExplorer that uses the Zipf distribution for sampling.
     """
 
     def __init__(
         self, priority_sampling: SamplingPriorities, random_generator: random.Random
     ) -> None:
         """
-        Initializes a ZipfMoveExplorer instance.
+        Initializes a ZipfbranchExplorer instance.
 
         Args:
             priority_sampling (SamplingPriorities): The priority sampling strategy to use.
@@ -65,9 +65,9 @@ class ZipfMoveExplorer(MoveExplorer):
         super().__init__(priority_sampling)
         self.random_generator = random_generator
 
-    def sample_move_to_explore(
-        self, tree_node_to_sample_from: AlgorithmNode
-    ) -> moveKey:
+    def sample_branch_to_explore(
+        self, tree_node_to_sample_from: AlgorithmNode[Any]
+    ) -> BranchKey:
         """
         Samples a child node to explore from the given tree node.
 
@@ -77,12 +77,12 @@ class ZipfMoveExplorer(MoveExplorer):
         Returns:
             AlgorithmNode: The sampled child node to explore.
         """
-        sorted_not_over_moves: list[moveKey] = (
-            tree_node_to_sample_from.minmax_evaluation.sort_moves_not_over()
+        sorted_not_over_branches: list[BranchKey] = (
+            tree_node_to_sample_from.tree_evaluation.sort_branches_not_over()
         )
 
-        move = zipf_picks_random(
-            ordered_list_elements=sorted_not_over_moves,
+        branch = zipf_picks_random(
+            ordered_list_elements=sorted_not_over_branches,
             random_generator=self.random_generator,
         )
-        return move
+        return branch

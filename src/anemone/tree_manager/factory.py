@@ -6,7 +6,9 @@ performing updates on the nodes, and handling evaluation queries.
 
 """
 
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 import anemone.updates as upda
+from typing import Any
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
     create_exploration_index_manager,
@@ -14,9 +16,9 @@ from anemone.indices.index_manager import (
 from anemone.indices.node_indices.index_types import (
     IndexComputationType,
 )
-from anemone.node_evaluator import (
+from anemone.node_evaluation.node_direct_evaluation import (
     EvaluationQueries,
-    NodeEvaluator,
+    NodeDirectEvaluator,
 )
 from anemone.node_factory import (
     AlgorithmNodeFactory,
@@ -25,11 +27,12 @@ from anemone.updates.index_updater import IndexUpdater
 
 from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from .tree_manager import TreeManager
+from anemone.state_transition import ValangaStateTransition
 
 
 def create_algorithm_node_tree_manager(
-    node_evaluator: NodeEvaluator | None,
-    algorithm_node_factory: AlgorithmNodeFactory,
+    node_direct_evaluator: NodeDirectEvaluator[Any] | None,
+    algorithm_node_factory: AlgorithmNodeFactory[Any],
     index_computation: IndexComputationType | None,
     index_updater: IndexUpdater | None,
 ) -> AlgorithmNodeTreeManager:
@@ -46,7 +49,10 @@ def create_algorithm_node_tree_manager(
         An AlgorithmNodeTreeManager object.
 
     """
-    tree_manager: TreeManager = TreeManager(node_factory=algorithm_node_factory)
+    tree_manager: TreeManager[AlgorithmNode] = TreeManager[AlgorithmNode](
+        node_factory=algorithm_node_factory,
+        transition=ValangaStateTransition(),
+    )
 
     algorithm_node_updater: upda.AlgorithmNodeUpdater = (
         upda.create_algorithm_node_updater(index_updater=index_updater)
@@ -59,9 +65,10 @@ def create_algorithm_node_tree_manager(
     )
 
     algorithm_node_tree_manager: AlgorithmNodeTreeManager = AlgorithmNodeTreeManager(
-        node_evaluator=node_evaluator,
+        node_evaluator=node_direct_evaluator,
         tree_manager=tree_manager,
         algorithm_node_updater=algorithm_node_updater,
+        algorithm_tree_node_factory=algorithm_node_factory, 
         evaluation_queries=evaluation_queries,
         index_manager=exploration_index_manager,
     )

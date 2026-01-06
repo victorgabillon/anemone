@@ -2,14 +2,16 @@
 This module contains the definition of the NodeSelector class and related types.
 """
 
-import typing
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
-from ..trees import ValueTree
+import anemone.trees as trees
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from .opening_instructions import OpeningInstructions
 
-if typing.TYPE_CHECKING:
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
     import anemone.tree_manager as tree_man
 
 
@@ -20,20 +22,22 @@ class NodeSelectorState:
     ...
 
 
-class NodeSelector(Protocol):
+class NodeSelector[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
     """
     Protocol for Node Selectors.
     """
 
-    def choose_node_and_move_to_open(
-        self, tree: ValueTree, latest_tree_expansions: "tree_man.TreeExpansions"
-    ) -> OpeningInstructions:
+    def choose_node_and_branch_to_open(
+        self,
+        tree: trees.Tree[TNode],
+        latest_tree_expansions: "tree_man.TreeExpansions[TNode]",
+    ) -> OpeningInstructions[TNode]:
         """
         Selects a node from the given tree and returns the instructions to move to an open position.
 
         Args:
-            tree (ValueTree): The tree containing the moves and their corresponding values.
-            latest_tree_expansions (tree_man.TreeExpansions): The latest expansions of the tree.
+            tree: The tree containing the nodes.
+            latest_tree_expansions: The latest expansions of the tree.
 
         Returns:
             OpeningInstructions: The instructions to move to an open position.

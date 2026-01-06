@@ -37,7 +37,7 @@ class MinMaxEvaluationUpdater:
         base_update_instructions: ValueUpdateInstructionsFromOneNode = (
             ValueUpdateInstructionsFromOneNode(
                 node_sending_update=new_node,
-                is_node_newly_over=new_node.minmax_evaluation.over_event.is_over(),
+                is_node_newly_over=new_node.tree_evaluation.over_event.is_over(),
                 new_value_for_node=True,
                 new_best_move_for_node=False,
             )
@@ -70,17 +70,17 @@ class MinMaxEvaluationUpdater:
         has_value_changed: bool
         has_best_node_seq_changed_1: bool
         has_value_changed, has_best_node_seq_changed_1 = (
-            node_to_update.minmax_evaluation.minmax_value_update_from_children(
-                moves_with_updated_value=updates_instructions_block.moves_with_updated_value
+            node_to_update.tree_evaluation.minmax_value_update_from_children(
+                branches_with_updated_value=updates_instructions_block.branches_with_updated_value
             )
         )
 
         # UPDATE BEST MOVE
         has_best_node_seq_changed_2: bool
-        if updates_instructions_block.moves_with_updated_best_move:
+        if updates_instructions_block.branches_with_updated_best_branch:
             has_best_node_seq_changed_2 = (
-                node_to_update.minmax_evaluation.update_best_move_sequence(
-                    updates_instructions_block.moves_with_updated_best_move
+                node_to_update.tree_evaluation.update_best_branch_sequence(
+                    updates_instructions_block.branches_with_updated_best_branch
                 )
             )
         else:
@@ -90,8 +90,8 @@ class MinMaxEvaluationUpdater:
         )
 
         # UPDATE OVER
-        is_newly_over = node_to_update.minmax_evaluation.update_over(
-            updates_instructions_block.moves_with_updated_over
+        is_newly_over = node_to_update.tree_evaluation.update_over(
+            updates_instructions_block.branches_with_updated_over
         )
 
         assert is_newly_over is not None

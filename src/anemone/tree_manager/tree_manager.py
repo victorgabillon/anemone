@@ -9,41 +9,49 @@ from valanga import BranchKey, State, StateTag, StateModifications
 from anemone.basics import TreeDepth
 import anemone.nodes as node
 import anemone.trees as trees
-from anemone.node_factory.node_factory import (
-    TreeNodeFactory,
+from anemone.node_factory.base import (
+    NodeFactory,
 )
 from anemone.node_selector.opening_instructions import (
+    OpeningInstruction,
     OpeningInstructions,
 )
 from anemone.tree_manager.tree_expander import (
     TreeExpansion,
     TreeExpansions,
 )
+from anemone.state_transition import StateTransition
 
 # todo should we use a discount? and discounted per round reward?
 # todo maybe convenient to seperate this object into openner updater and dsiplayer
 # todo have the reward with a discount
 # DISCOUNT = 1/.99999
-if typing.TYPE_CHECKING:
-    import anemone.node_selector as node_sel
 
 
-class TreeManager:
+class TreeManager[
+    FamilyType: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any],
+]:
     """
-    This class manages a tree by opening new nodes and updating the values and indexes on the nodes.
+    This class manages a tree by opening new nodes.This is the core one only responsible for creating core TreeNodes
     """
 
-    node_factory: TreeNodeFactory[node.ITreeNode]
+    node_factory: NodeFactory[FamilyType]
+    transition: StateTransition[State]
 
-    def __init__(self, node_factory: TreeNodeFactory[node.ITreeNode]) -> None:
-        self.node_factory = node_factory
-
-    def open_node_move(
+    def __init__(
         self,
-        tree: trees.ValueTree,
-        parent_node: node.ITreeNode,
+        node_factory: NodeFactory[FamilyType],
+        transition: StateTransition[State],
+    ) -> None:
+        self.node_factory = node_factory
+        self.transition = transition
+
+    def open_tree_expansion_from_branch(
+        self,
+        tree: trees.Tree[FamilyType],
+        parent_node: FamilyType,
         branch: BranchKey,
-    ) -> TreeExpansion:
+    ) -> TreeExpansion[FamilyType]:
         """
         Opening a Node that contains a board following a move.
 
@@ -60,19 +68,17 @@ class TreeManager:
         # To limit computation we limit copying it all the time. The resulting policy will only be aware of immediate
         # risk of draw by repetition
         copy_stack: bool = tree.node_depth(parent_node) < 2
-        state: State = parent_node.state.copy(
-            stack=copy_stack,
-            deep_copy_legal_moves=False,  # trick to win time (the original legal moves is assume to not be changed as
-            # moves are not supposed to be played anymore on that board and therefore this allows copy by reference
+        parent_state: State = parent_node.state
+        state: State = self.transition.copy_for_expansion(
+            parent_state,
+            copy_stack=copy_stack,
         )
 
-        # The move is played. The board is now a new board
-        modifications: StateModifications | None = state.step(
-            branch_key=branch
-        )
+        # The move is played. The state is now advanced.
+        state, modifications = self.transition.step(state, branch_key=branch)
 
 
-        return self.open_node(
+        return self.open_tree_expansion_from_state(
             tree=tree,
             parent_node=parent_node,
             state=state,
@@ -80,14 +86,14 @@ class TreeManager:
             branch=branch,
         )
 
-    def open_node(
+    def open_tree_expansion_from_state(
         self,
-        tree: trees.ValueTree,
-        parent_node: node.ITreeNode,
+        tree: trees.Tree[FamilyType],
+        parent_node: FamilyType,
         state: State,
-        modifications: StateModifications| None,
+        modifications: StateModifications | None,
         branch: BranchKey,
-    ) -> TreeExpansion:
+    ) -> TreeExpansion[FamilyType]:
         """
         Opening a Node that contains a board given the modifications.
         Checks if the new node needs to be created or if the new_board already existed in the tree
@@ -108,35 +114,41 @@ class TreeManager:
         tree_depth: int = parent_node.tree_depth + 1
         state_tag: StateTag = state.tag
 
-        child_node: node.ITreeNode
         need_creation_child_node: bool = (
             tree.descendants.is_new_generation(tree_depth)
             or state_tag not in tree.descendants.descendants_at_tree_depth[tree_depth]
         )
         if need_creation_child_node:
+            child_node: FamilyType
             child_node = self.node_factory.create(
                 state=state,
                 tree_depth=tree_depth,
                 count=tree.nodes_count,
                 branch_from_parent=branch,
                 parent_node=parent_node,
+                modifications=modifications,
             )
-            tree.nodes_count += 1
-            tree.descendants.add_descendant(
-                child_node
-            )  # add it to the list of descendants
+
+            tree_expansion: TreeExpansion[FamilyType] = TreeExpansion(
+                child_node=child_node,
+                parent_node=parent_node,
+                state_modifications=modifications,
+                creation_child_node=need_creation_child_node,
+                branch_key=branch,
+            )
 
         else:  # the node already exists
-            child_node = tree.descendants[tree_depth][state_tag]
-            child_node.add_parent(branch_key=branch, new_parent_node=parent_node)
+            child_node_existing: FamilyType
+            child_node_existing = tree.descendants[tree_depth][state_tag]
+            child_node_existing.add_parent(branch_key=branch, new_parent_node=parent_node)
 
-        tree_expansion: TreeExpansion = TreeExpansion(
-            child_node=child_node,
-            parent_node=parent_node,
-            board_modifications=modifications,
-            creation_child_node=need_creation_child_node,
-            branch_key=branch,
-        )
+            tree_expansion: TreeExpansion[FamilyType] = TreeExpansion(
+                child_node=child_node_existing,
+                parent_node=parent_node,
+                state_modifications=modifications,
+                creation_child_node=need_creation_child_node,
+                branch_key=branch,
+            )
 
         # add it to the list of opened move and out of the non-opened moves
         parent_node.branches_children[branch] = tree_expansion.child_node
@@ -146,8 +158,10 @@ class TreeManager:
         return tree_expansion
 
     def open_instructions(
-        self, tree: trees.ValueTree, opening_instructions: OpeningInstructions
-    ) -> TreeExpansions:
+        self,
+        tree: trees.Tree[FamilyType],
+        opening_instructions: OpeningInstructions[FamilyType],
+    ) -> TreeExpansions[FamilyType]:
         """
         Opening multiple nodes based on the opening instructions.
 
@@ -160,16 +174,22 @@ class TreeManager:
         """
 
         # place to store the tree expansion logs generated by the openings
-        tree_expansions: TreeExpansions = TreeExpansions()
+        tree_expansions: TreeExpansions[FamilyType] = TreeExpansions()
 
-        opening_instruction: node_sel.OpeningInstruction
+        opening_instruction: OpeningInstruction[FamilyType]
         for opening_instruction in opening_instructions.values():
             # open
-            tree_expansion: TreeExpansion = self.open_node_move(
+            tree_expansion: TreeExpansion[FamilyType] = self.open_tree_expansion_from_branch(
                 tree=tree,
                 parent_node=opening_instruction.node_to_open,
                 branch=opening_instruction.branch,
             )
+
+            if tree_expansion.creation_child_node:
+                tree.nodes_count += 1
+                tree.descendants.add_descendant(
+                    tree_expansion.child_node
+                )  # add it to the list of descendants
 
             # concatenate the tree expansions
             tree_expansions.add(tree_expansion=tree_expansion)
@@ -178,7 +198,7 @@ class TreeManager:
 
     def print_some_stats(
         self,
-        tree: trees.ValueTree,
+        tree: trees.Tree[FamilyType],
     ) -> None:
         """
         Print some statistics about the tree.
@@ -201,7 +221,7 @@ class TreeManager:
 
     def test_count(
         self,
-        tree: trees.ValueTree,
+        tree: trees.Tree[FamilyType],
     ) -> None:
         """
         Test the count of nodes in the tree.
@@ -213,7 +233,7 @@ class TreeManager:
 
     def print_best_line(
         self,
-        tree: trees.ValueTree,
+        tree: trees.Tree[FamilyType],
     ) -> None:
         """
         Print the best line in the tree.

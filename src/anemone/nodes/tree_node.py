@@ -3,6 +3,7 @@ This module defines the TreeNode class, which represents a node in a tree struct
 """
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
 
@@ -13,7 +14,7 @@ from .itree_node import ITreeNode
 
 @dataclass(slots=True)
 class TreeNode[
-    ChildrenType: ITreeNode = ITreeNode,
+    FamilyType: ITreeNode[Any] = ITreeNode[Any],
     TState: State = State,
 ]:
     r"""
@@ -60,7 +61,7 @@ class TreeNode[
     state_: TState
 
     # the set of parent nodes to this node. Note that a node can have multiple parents!
-    parent_nodes_: dict[ITreeNode[ChildrenType], BranchKey]
+    parent_nodes_: dict[FamilyType, BranchKey]
 
     # all_branches_generated is a boolean saying whether all branches have been generated.
     # If true the branches are either opened in which case the corresponding opened node is stored in
@@ -71,8 +72,8 @@ class TreeNode[
     )
 
     # dictionary mapping moves to children nodes. Node is set to None if not created
-    branches_children_: dict[BranchKey, ChildrenType | None] = field(
-        default_factory=lambda: dict[BranchKey, ChildrenType | None]()
+    branches_children_: dict[BranchKey, FamilyType | None] = field(
+        default_factory=lambda: dict[BranchKey, FamilyType | None]()
     )
 
     @property
@@ -95,7 +96,7 @@ class TreeNode[
         return self.id_
 
     @property
-    def state(self) -> State:
+    def state(self) -> TState:
         """
         Returns the state associated with this tree node.
 
@@ -115,7 +116,7 @@ class TreeNode[
         return self.tree_depth_
 
     @property
-    def branches_children(self) -> dict[BranchKey, ChildrenType | None]:
+    def branches_children(self) -> dict[BranchKey, FamilyType | None]:
         """
         Returns a bidirectional dictionary containing the children nodes of the current tree node,
         along with the corresponding chess moves that lead to each child node.
@@ -128,7 +129,7 @@ class TreeNode[
         return self.branches_children_
 
     @property
-    def parent_nodes(self) -> dict[ITreeNode[ChildrenType], BranchKey]:
+    def parent_nodes(self) -> dict[FamilyType, BranchKey]:
         """
         Returns the dictionary of parent nodes of the current tree node with associated move.
 
@@ -156,7 +157,7 @@ class TreeNode[
         return self.state_.branch_keys
 
     def add_parent(
-        self, branch_key: BranchKey, new_parent_node: ITreeNode[ChildrenType]
+        self, branch_key: BranchKey, new_parent_node: FamilyType
     ) -> None:
         """
         Adds a new parent node to the current node.
@@ -186,11 +187,11 @@ class TreeNode[
         """
         return self.state.is_game_over()
 
-    def print_moves_children(self) -> None:
+    def print_branches_children(self) -> None:
         """
-        Prints the moves-children link of the node.
+        Prints the branches-children link of the node.
 
-        This method prints the moves-children link of the node, showing the move and the ID of the child node.
+        This method prints the branches-children link of the node, showing the branch and the ID of the child node.
         If a child node is None, it will be displayed as 'None'.
 
         Returns:
