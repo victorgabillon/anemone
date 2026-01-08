@@ -2,9 +2,9 @@
 Tree
 """
 
-from anemone.basics import TreeDepth
 from typing import Any
 
+from anemone.basics import TreeDepth
 from anemone.nodes.itree_node import ITreeNode
 
 from .descendants import RangedDescendants
@@ -25,9 +25,7 @@ class Tree[TNode: ITreeNode[Any]]:
     descendants: RangedDescendants[TNode]
     tree_root_tree_depth: TreeDepth
 
-    def __init__(
-        self, root_node: TNode, descendants: RangedDescendants[TNode]
-    ) -> None:
+    def __init__(self, root_node: TNode, descendants: RangedDescendants[TNode]) -> None:
         """
         Initialize the Tree with a root node and descendants.
 

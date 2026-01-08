@@ -9,14 +9,11 @@ from typing import Any, ItemsView, Iterator, Self, ValuesView
 
 from valanga import BranchKey
 
-
 import anemone.nodes as nodes
 from anemone.nodes.utils import (
-    a_move_key_sequence_from_root,
     a_branch_str_sequence_from_root,
+    a_move_key_sequence_from_root,
 )
-
-
 
 type OpeningInstructionKey = tuple[int, BranchKey]
 
@@ -52,7 +49,8 @@ class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
 
     def __init__(
         self,
-        dictionary: dict[OpeningInstructionKey, OpeningInstruction[TNode]] | None = None,
+        dictionary: dict[OpeningInstructionKey, OpeningInstruction[TNode]]
+        | None = None,
     ) -> None:
         """
         Initializes the OpeningInstructions object.
@@ -68,7 +66,9 @@ class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
             for key in dictionary:
                 self[key] = dictionary[key]
 
-    def __setitem__(self, key: OpeningInstructionKey, value: OpeningInstruction[TNode]) -> None:
+    def __setitem__(
+        self, key: OpeningInstructionKey, value: OpeningInstruction[TNode]
+    ) -> None:
         """
         Sets an opening instruction in the collection.
 
@@ -225,7 +225,9 @@ class OpeningInstructor:
         self.opening_type = opening_type
         self.random_generator = random_generator
 
-    def all_branches_to_open(self, node_to_open: nodes.ITreeNode[Any]) -> list[BranchKey]:
+    def all_branches_to_open(
+        self, node_to_open: nodes.ITreeNode[Any]
+    ) -> list[BranchKey]:
         """
         Returns a list of all possible branches to open from a given node.
 

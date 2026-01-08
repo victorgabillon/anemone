@@ -1,13 +1,11 @@
-
 from typing import TYPE_CHECKING, Protocol, Self
-from valanga import (
 
+from valanga import (
     BoardEvaluation,
     BranchKey,
     OverEvent,
     State,
 )
-
 
 type BranchSortValue = tuple[float, int, int]
 
@@ -16,9 +14,7 @@ if TYPE_CHECKING:
     from anemone.nodes.itree_node import ITreeNode
 
 
-
-class NodeTreeEvaluation[TState:State=State](Protocol):
-    
+class NodeTreeEvaluation[TState: State = State](Protocol):
     """
     Interface for Node Tree Evaluation
     This is the evaluation of a node that is based both on a direct evaluation of the state within and of the NodeTreeEvaluation
@@ -27,30 +23,24 @@ class NodeTreeEvaluation[TState:State=State](Protocol):
 
     """
 
-
     # absolute value wrt to white player as estimated by a state evaluator
     value_white_direct_evaluation: float | None = None
 
-
     # creating a base Over event that is set to None
-    over_event: OverEvent 
+    over_event: OverEvent
 
     # the list of branches that have not yet be found to be over
     # using atm a list instead of set as atm python set are not insertion ordered which adds randomness
     # and makes debug harder
-    branches_not_over: list[BranchKey] 
-
+    branches_not_over: list[BranchKey]
 
     branches_sorted_by_value_: dict[BranchKey, BranchSortValue]
 
-
-    best_branch_sequence: list[BranchKey] 
-
+    best_branch_sequence: list[BranchKey]
 
     # absolute value wrt to white player as computed from the value_white_* of the descendants
     # of this node (self) by a minmax procedure.
     value_white_minmax: float | None = None
-
 
     def set_evaluation(self, evaluation: float) -> None:
         """sets the evaluation from the board evaluator
@@ -71,7 +61,6 @@ class NodeTreeEvaluation[TState:State=State](Protocol):
             bool: True if the game is over, False otherwise.
         """
         ...
-    
 
     def dot_description(self) -> str:
         """
@@ -87,47 +76,32 @@ class NodeTreeEvaluation[TState:State=State](Protocol):
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
-    ) -> bool:
-            ...
+    ) -> bool: ...
 
     def minmax_value_update_from_children(
         self, branches_with_updated_value: set[BranchKey]
-    ) -> tuple[bool, bool]:
-         ...
+    ) -> tuple[bool, bool]: ...
 
-    def update_over(self, branches_with_updated_over: set[BranchKey]) -> bool:
-        ...
+    def update_over(self, branches_with_updated_over: set[BranchKey]) -> bool: ...
 
-    def evaluate(self) -> BoardEvaluation:
-         ...
+    def evaluate(self) -> BoardEvaluation: ...
 
-    def description_tree_visualizer_branch(self, child: "ITreeNode[TState]") -> str:
-        ...
+    def description_tree_visualizer_branch(self, child: "ITreeNode[TState]") -> str: ...
 
+    def print_best_line(self) -> None: ...
 
-    def print_best_line(self) -> None:
-        ...
+    def get_value_white(self) -> float: ...
 
-    def get_value_white(self) -> float:
-            ...
+    def best_branch(self) -> BranchKey | None: ...
 
-    def best_branch(self) -> BranchKey | None:
-            ...
+    def second_best_branch(self) -> BranchKey: ...
 
-    def second_best_branch(self) -> BranchKey:
-                ...
+    def print_branches_sorted_by_value(self) -> None: ...
 
-    def print_branches_sorted_by_value(self) -> None:
-        ...
-
-    def print_branches_sorted_by_value_and_exploration(self) -> None:
-            ...
+    def print_branches_sorted_by_value_and_exploration(self) -> None: ...
     def get_all_of_the_best_branches(
         self, how_equal: str | None = None
-    ) -> list[BranchKey]:
-            ...
-    def subjective_value_of(self, another_node_eval: Self) -> float:
-            ...
+    ) -> list[BranchKey]: ...
+    def subjective_value_of(self, another_node_eval: Self) -> float: ...
 
-    def sort_branches_not_over(self) -> list[BranchKey]:
-            ...
+    def sort_branches_not_over(self) -> list[BranchKey]: ...

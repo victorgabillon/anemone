@@ -14,11 +14,12 @@ node evaluator, node selector, tree factory, and tree manager.
 import queue
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, Type
+from typing import Literal, Type
 
-from valanga import TurnState
+from valanga import ContentRepresentation, RepresentationFactory, TurnState
 
-
+import anemone.search_factory as search_factories
+from anemone import node_factory
 from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     MasterStateEvaluator,
@@ -29,11 +30,7 @@ from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory i
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.node_factory.base import TreeNodeFactory
-
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-import anemone.search_factory as search_factories
-from anemone import node_factory
-
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
 )
@@ -45,9 +42,6 @@ from . import tree_manager as tree_man
 from .indices.node_indices.index_types import IndexComputationType
 from .tree_and_value_branch_selector import TreeAndValueBranchSelector
 from .trees.factory import ValueTreeFactory
-
-if TYPE_CHECKING:
-    from valanga import ContentRepresentation, RepresentationFactory
 
 TreeAndValueLiteralString: str = "TreeAndValue"
 
@@ -121,12 +115,9 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[TState: TurnSta
         master_state_evaluator=master_state_evaluator,
     )
 
-
     tree_node_factory: TreeNodeFactory[AlgorithmNode[TState], TState] = TreeNodeFactory[
         AlgorithmNode[TState], TState
     ]()
-
-
 
     search_factory: search_factories.SearchFactoryP = search_factories.SearchFactory(
         node_selector_args=args.node_selector,

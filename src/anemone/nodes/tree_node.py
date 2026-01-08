@@ -156,9 +156,7 @@ class TreeNode[
         """
         return self.state_.branch_keys
 
-    def add_parent(
-        self, branch_key: BranchKey, new_parent_node: FamilyType
-    ) -> None:
+    def add_parent(self, branch_key: BranchKey, new_parent_node: FamilyType) -> None:
         """
         Adds a new parent node to the current node.
 

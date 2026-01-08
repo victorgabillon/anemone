@@ -18,7 +18,7 @@ Functions:
 import queue
 import random
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from valanga import BoardEvaluation, BranchKey, PlayerProgressMessage, State, TurnState
 
@@ -29,8 +29,6 @@ from anemone.progress_monitor.progress_monitor import (
     ProgressMonitor,
     create_stopping_criterion,
 )
-
-from anemone.recommender_rule.recommender_rule import BranchPolicy
 from anemone.search_factory import NodeSelectorFactory
 from anemone.utils.dataclass import IsDataclass
 from anemone.utils.logger import anemone_logger
@@ -40,11 +38,15 @@ from . import recommender_rule, trees
 from . import tree_manager as tree_man
 from .trees.factory import ValueTreeFactory
 
+if TYPE_CHECKING:
+    from anemone.recommender_rule.recommender_rule import BranchPolicy
+
 
 @dataclass
 class TreeExplorationResult[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     branch_recommendation: BranchRecommendation
     tree: trees.Tree[TNode]
+
 
 def compute_child_evals[TState: State](
     root: AlgorithmNode[TState],
@@ -179,16 +181,17 @@ class TreeExploration[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         #          f' {child.minmax_evaluation.over_event.get_over_tag()}')
         # chipiron_logger.info(f'evaluation for white: {self.tree.root_node.minmax_evaluation.get_value_white()}')
 
+        policy: BranchPolicy = self.recommend_move_after_exploration.policy(
+            self.tree.root_node
+        )
 
-        policy : BranchPolicy = self.recommend_move_after_exploration.policy(self.tree.root_node)
-
-        best_branch: BranchKey = self.recommend_move_after_exploration.sample(policy, random_generator)
-
+        best_branch: BranchKey = self.recommend_move_after_exploration.sample(
+            policy, random_generator
+        )
 
         self.tree_manager.print_best_line(
             tree=self.tree
         )  # todo maybe almost best chosen line no?
-
 
         move_recommendation = BranchRecommendation(
             branch_key=best_branch,
@@ -228,11 +231,15 @@ def create_tree_exploration[TState: TurnState](
     - TreeExploration: The created TreeExploration object.
     """
     # creates the tree
-    tree: trees.Tree[AlgorithmNode[TState]] = tree_factory.create(starting_state=starting_state)
+    tree: trees.Tree[AlgorithmNode[TState]] = tree_factory.create(
+        starting_state=starting_state
+    )
     # creates the node selector
     node_selector: node_sel.NodeSelector[AlgorithmNode[TState]] = node_selector_create()
-    stopping_criterion: ProgressMonitor[AlgorithmNode[TState]] = create_stopping_criterion(
-        args=stopping_criterion_args, node_selector=node_selector
+    stopping_criterion: ProgressMonitor[AlgorithmNode[TState]] = (
+        create_stopping_criterion(
+            args=stopping_criterion_args, node_selector=node_selector
+        )
     )
 
     def notify_percent_function(progress_percent: int) -> None:

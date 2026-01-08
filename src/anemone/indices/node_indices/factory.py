@@ -35,14 +35,13 @@ from anemone.nodes.tree_node import TreeNode
 type ExplorationIndexDataFactory[
     T: ITreeNode[Any] = ITreeNode[Any],
     TState: State = State,
-] = Callable[
-    [TreeNode[T, TState]], NodeExplorationData[T, TState] | None
-]
+] = Callable[[TreeNode[T, TState]], NodeExplorationData[T, TState] | None]
 
 
 class _NodeExplorationDataCtor[T: ITreeNode[Any], TState: State](Protocol):
-    def __call__(self, *, tree_node: TreeNode[T, TState]) -> NodeExplorationData[T, TState]:
-        ...
+    def __call__(
+        self, *, tree_node: TreeNode[T, TState]
+    ) -> NodeExplorationData[T, TState]: ...
 
 
 def create_exploration_index_data[

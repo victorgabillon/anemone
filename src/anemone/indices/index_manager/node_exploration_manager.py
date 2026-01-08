@@ -1,11 +1,10 @@
 """Module that contains the logic to compute the exploration index of a node in a tree."""
 
 import math
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga import BranchKey, Color, State
 
-from anemone.basics import TreeDepth
 from anemone.indices.node_indices.index_data import (
     IntervalExplo,
     MinMaxPathValue,
@@ -15,13 +14,21 @@ from anemone.indices.node_indices.index_data import (
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-from anemone.trees.descendants import RangedDescendants
 from anemone.trees.tree import Tree
-from anemone.utils.small_tools import Interval, distance_number_to_interval, intersect_intervals
+from anemone.utils.small_tools import (
+    Interval,
+    distance_number_to_interval,
+    intersect_intervals,
+)
+
+if TYPE_CHECKING:
+    from anemone.basics import TreeDepth
+    from anemone.trees.descendants import RangedDescendants
 
 
 class _StateWithTurn(State, Protocol):
     turn: Color
+
 
 class NodeExplorationIndexManager(Protocol):
     """
@@ -32,6 +39,8 @@ class NodeExplorationIndexManager(Protocol):
     Args:
         Protocol (type): The base protocol type.
     """
+
+    needs_parent_state: bool
 
     def update_root_node_index[TNode: AlgorithmNode[Any]](
         self,
@@ -76,6 +85,8 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
     It inherits from the NodeExplorationIndexManager class.
     """
 
+    needs_parent_state = False
+
     def update_root_node_index[TNode: AlgorithmNode[Any]](
         self,
         root_node: TNode,
@@ -115,6 +126,8 @@ class UpdateIndexGlobalMinChange:
     """
     A class that updates the exploration index of nodes in a tree using the global minimum change strategy.
     """
+
+    needs_parent_state = False
 
     def update_root_node_index[TNode: AlgorithmNode[Any]](
         self,
@@ -207,6 +220,8 @@ class UpdateIndexZipfFactoredProba:
     A class that updates the exploration index of nodes in a tree using the Zipf factored probability strategy.
     """
 
+    needs_parent_state = False
+
     def update_root_node_index[TNode: AlgorithmNode[Any]](
         self,
         root_node: TNode,
@@ -289,6 +304,8 @@ class UpdateIndexLocalMinChange:
     A class that updates the exploration index of nodes in a tree using the local minimum change strategy.
     """
 
+    needs_parent_state = True
+
     def update_root_node_index[TNode: AlgorithmNode[Any]](
         self,
         root_node: TNode,
@@ -353,7 +370,9 @@ class UpdateIndexLocalMinChange:
                         parent_node.tree_evaluation.second_best_branch()
                     )
                     assert second_best_branch is not None
-                    second_best_child = parent_node.branches_children[second_best_branch]
+                    second_best_child = parent_node.branches_children[
+                        second_best_branch
+                    ]
                     child_white_value = child_node.tree_evaluation.get_value_white()
                     local_interval = Interval()
                     if child_node == best_child:
@@ -472,6 +491,13 @@ def update_all_indices[TNode: AlgorithmNode[Any]](
                 child_node = parent_node.branches_children[branch]
                 if child_node is None:
                     continue
+
+                parent_state = (
+                    parent_node.tree_node.state
+                    if index_manager.needs_parent_state
+                    else None
+                )
+
                 index_manager.update_node_indices(
                     child_node=child_node,
                     tree=tree,
@@ -479,7 +505,7 @@ def update_all_indices[TNode: AlgorithmNode[Any]](
                     parent_node=parent_node,
                     parent_node_exploration_index_data=parent_node.exploration_index_data,
                     child_node_exploration_index_data=child_node.exploration_index_data,
-                    parent_node_state=parent_node.tree_node.state,
+                    parent_node_state=parent_state,
                 )
 
 

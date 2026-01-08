@@ -181,12 +181,12 @@ class SearchFactory:
             An instance of the NodeExplorationData class if depth indexing is enabled, otherwise None.
         """
 
-        exploration_index_data: node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None = (
-            create_exploration_index_data(
-                tree_node=tree_node,
-                index_computation=self.index_computation,
-                depth_index=self.depth_index,
-            )
+        exploration_index_data: (
+            node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None
+        ) = create_exploration_index_data(
+            tree_node=tree_node,
+            index_computation=self.index_computation,
+            depth_index=self.depth_index,
         )
 
         return exploration_index_data

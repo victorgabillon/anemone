@@ -2,8 +2,9 @@
 This module contains the NoisyValueTreeNode class, which is a subclass of TreeNode.
 """
 
-import chess
 from typing import Any
+
+import chess
 
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode

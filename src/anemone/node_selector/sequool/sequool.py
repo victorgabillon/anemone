@@ -22,7 +22,6 @@ import typing
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
-
 from anemone import trees
 from anemone.basics import TreeDepth
 from anemone.indices.node_indices.index_data import (

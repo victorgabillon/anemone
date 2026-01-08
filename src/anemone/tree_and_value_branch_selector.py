@@ -54,7 +54,9 @@ class TreeAndValueBranchSelector[TState: TurnState = TurnState]:
     recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     queue_progress_player: queue.Queue[IsDataclass] | None
 
-    def select_branch(self, state: TState, selection_seed: Seed) -> BranchRecommendation:
+    def select_branch(
+        self, state: TState, selection_seed: Seed
+    ) -> BranchRecommendation:
         """
         Selects the best move based on the tree and value strategy.
 

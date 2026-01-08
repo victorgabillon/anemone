@@ -3,13 +3,12 @@ This module contains the definition of the NodeSelector class and related types.
 """
 
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 import anemone.trees as trees
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-from .opening_instructions import OpeningInstructions
 
-from typing import TYPE_CHECKING
+from .opening_instructions import OpeningInstructions
 
 if TYPE_CHECKING:
     import anemone.tree_manager as tree_man

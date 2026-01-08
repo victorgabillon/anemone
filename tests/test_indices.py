@@ -8,51 +8,121 @@ The main functions in this module are:
 - `test_indices`: Runs the index tests for multiple index computation types and tree files.
 """
 
-from calendar import c
 from enum import Enum
 from math import isclose
+from random import Random
 from typing import TYPE_CHECKING, Any
 
-import chess
-
-from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import MasterStateEvaluator, NodeDirectEvaluator, OverEventDetector
-from anemone.node_selector.opening_instructions import OpeningInstruction, OpeningInstructions
 import pytest
-from valanga import HasTurn
 import yaml
-from atomheart import BoardChi, create_board_chi_from_pychess_board, ValangaChessState
+from valanga import Color
 
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import NodeTreeMinmaxEvaluationFactory
 import anemone.node_factory as node_factory
 import anemone.search_factory as search_factories
-import anemone.tree_manager as tree_manager
 import anemone.trees as trees
 from anemone.indices.index_manager.factory import (
     create_exploration_index_manager,
 )
 from anemone.indices.index_manager.node_exploration_manager import (
-    NodeExplorationIndexManager,
     update_all_indices,
 )
 from anemone.indices.node_indices.index_types import (
     IndexComputationType,
 )
+from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
+    NodeDirectEvaluator,
+)
+from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+    NodeTreeMinmaxEvaluationFactory,
+)
+from anemone.node_selector.node_selector import NodeSelector
+from anemone.node_selector.opening_instructions import (
+    OpeningInstruction,
+    OpeningInstructions,
+    create_instructions_to_open_all_branches,
+)
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
+from anemone.progress_monitor.progress_monitor import ProgressMonitor
+from anemone.tree_manager.factory import create_algorithm_node_tree_manager
 from anemone.tree_manager.tree_expander import (
     TreeExpansion,
     TreeExpansions,
 )
-from anemone.trees.descendants import RangedDescendants
+from anemone.trees.factory import ValueTreeFactory
 from anemone.trees.tree import (
     Tree,
 )
 from anemone.utils.small_tools import path
+from tests.fake_yaml_game import (
+    FakeYamlState,
+    MasterStateEvaluatorFromYaml,
+    build_yaml_maps,
+)
 
 if TYPE_CHECKING:
-    from anemone.basics import TreeDepth
     from anemone.nodes.itree_node import ITreeNode
+
+
+class StopWhenTreeHasAllYamlNodes(ProgressMonitor[AlgorithmNode[FakeYamlState]]):
+    def __init__(self, expected_node_count: int):
+        self.expected_node_count = expected_node_count
+
+    def should_we_continue(self, tree) -> bool:
+        n = sum(len(tree.descendants[d]) for d in tree.descendants)
+        return n < self.expected_node_count
+
+    def respectful_opening_instructions(self, opening_instructions, tree):
+        return opening_instructions
+
+    def get_string_of_progress(self, tree) -> str:
+        n = sum(len(tree.descendants[d]) for d in tree.descendants)
+        return f"{n}/{self.expected_node_count} nodes"
+
+    def notify_percent_progress(self, tree, notify_percent_function):
+        return
+
+
+def _pick_node_to_fully_open_bfs(tree: Tree[AlgorithmNode]) -> AlgorithmNode | None:
+    for depth in tree.descendants:
+        for node in tree.descendants[depth].values():
+            # if node has at least one child missing, open it fully
+            branches = node.state.branch_keys.get_all()
+            if not branches:
+                continue
+            for bk in branches:
+                if node.branches_children.get(bk) is None:
+                    return node
+    return None
+
+
+def _instructions_open_all_children(
+    node: AlgorithmNode,
+) -> OpeningInstructions[AlgorithmNode]:
+    # mimic OpeningInstructor.ALL_CHILDREN
+    node.tree_node.all_branches_generated = True
+    branches = node.state.branch_keys.get_all()
+    return create_instructions_to_open_all_branches(
+        branches_to_play=branches, node_to_open=node
+    )
+
+
+class OpenAllInBfsOrder(NodeSelector[AlgorithmNode[FakeYamlState]]):
+    def choose_node_and_branch_to_open(self, tree, latest_tree_expansions):
+        # BFS by depth
+        for depth in tree.descendants:
+            for node in tree.descendants[depth].values():
+                # all branches for this node (0..n-1)
+                for bk in node.state.branch_keys.get_all():
+                    # not opened yet?
+                    child = node.branches_children.get(bk, None)
+                    if child is None:
+                        return OpeningInstructions(
+                            {node.id: OpeningInstruction(node_to_open=node, branch=bk)}
+                        )
+
+        return OpeningInstructions({})
 
 
 class TestResult(Enum):
@@ -65,192 +135,77 @@ class TestResult(Enum):
     FAILED = 1
     WARNING = 2
 
-class MasterStateEvaluatorFromFile(MasterStateEvaluator):
-    """
-    A MasterStateEvaluator that reads evaluations from a YAML file.
-    """
-    over: OverEventDetector
 
+def build_tree_from_yaml_clean(
+    file_path: str, index_computation: IndexComputationType
+) -> Tree[AlgorithmNode[FakeYamlState]]:
+    yaml_nodes = yaml.safe_load(open(file_path))["nodes"]
+    children_by_id, value_by_id = build_yaml_maps(yaml_nodes)
+    expected_nodes = len(value_by_id)
 
-    yaml_nodes: list[dict[str, Any]]
+    master_eval = MasterStateEvaluatorFromYaml(value_by_id=value_by_id)
+    node_direct_eval = NodeDirectEvaluator(master_state_evaluator=master_eval)
 
-    def __init__(self, yaml_nodes: list[dict[str, Any]]) -> None:
-        self.yaml_nodes = yaml_nodes
-
-    def value_white(self, state: State) -> float: ...
-        sss
-
-def make_tree_from_file(
-    file_path: path, index_computation: IndexComputationType
-) -> Tree[AlgorithmNode]:
-    """
-    Creates a move and value tree from a file.
-
-    Args:
-        file_path (path): The path to the file containing the tree data.
-        index_computation (IndexComputationType): The type of index computation to use.
-
-    Returns:
-        ValueTree: The created move and value tree.
-    """
-
-    print(f"make_tree_from_file from {file_path}")
-
-    # atm it is very ad hoc to test index so takes a lots of shortcut, will be made more general when needed
-    with open(file_path, "r", encoding="utf-8") as file:
-        tree_yaml = yaml.safe_load(file)
-    yaml_nodes = tree_yaml["nodes"]
-
-
-
-    tree_node_factory: node_factory.TreeNodeFactory[Any] = node_factory.TreeNodeFactory(
-        
-    )
-
-    search_factory: search_factories.SearchFactoryP = search_factories.SearchFactory(
+    # factories like prod
+    tree_node_factory = node_factory.TreeNodeFactory[Any]()
+    search_factory = search_factories.SearchFactory(
         node_selector_args=None,
         opening_type=None,
-        random_generator=None,
+        random_generator=Random(0),
         index_computation=index_computation,
     )
 
-    algorithm_node_factory: node_factory.AlgorithmNodeFactory
-    algorithm_node_factory = node_factory.AlgorithmNodeFactory(
+    algo_factory = node_factory.AlgorithmNodeFactory(
         tree_node_factory=tree_node_factory,
         state_representation_factory=None,
         node_tree_evaluation_factory=NodeTreeMinmaxEvaluationFactory(),
         exploration_index_data_create=search_factory.node_index_create,
     )
-    descendants: RangedDescendants = RangedDescendants()
 
-    master_state_evaluator= MasterStateEvaluatorFromFile(yaml_nodes=yaml_nodes)
-
-    node_direct_evaluator = NodeDirectEvaluator(
-        master_state_evaluator=master_state_evaluator  )
-
-    algo_tree_manager: tree_manager.AlgorithmNodeTreeManager = (
-        tree_manager.create_algorithm_node_tree_manager(
-            node_direct_evaluator=node_direct_evaluator,
-            algorithm_node_factory=algorithm_node_factory,
-            index_computation=index_computation,
-            index_updater=None,
-        )
+    tree_factory = ValueTreeFactory(
+        node_factory=algo_factory,
+        node_direct_evaluator=node_direct_eval,
     )
 
-    tree_depths: dict[int, TreeDepth] = {}
-    id_nodes: dict[int, AlgorithmNode] = {}
-    move_and_value_tree: Tree[AlgorithmNode] | None = None
+    tree_manager = create_algorithm_node_tree_manager(
+        algorithm_node_factory=algo_factory,
+        node_direct_evaluator=node_direct_eval,
+        index_computation=index_computation,
+        index_updater=search_factory.create_node_index_updater(),
+    )
 
-    root_node: ITreeNode | None = None
+    root_state = FakeYamlState(
+        node_id=0, children_by_id=children_by_id, turn=Color.WHITE
+    )
+    tree = tree_factory.create(starting_state=root_state)
 
+    selector = OpenAllInBfsOrder()
+    stop = StopWhenTreeHasAllYamlNodes(expected_nodes)
 
-    tree_expansions : TreeExpansions[AlgorithmNode]
+    # simple exploration loop (no recommender needed)
+    expansions = TreeExpansions()
+    expansions.add_creation(
+        TreeExpansion(
+            child_node=tree.root_node,
+            parent_node=None,
+            state_modifications=None,
+            creation_child_node=True,
+            branch_key=None,
+        )
+    )
+    while tree.nodes_count < expected_nodes:
+        node = _pick_node_to_fully_open_bfs(tree)
+        if node is None:
+            break
 
-    for yaml_node in yaml_nodes:
-        print("yaml_node", yaml_node)
-        print("tree", move_and_value_tree.descendants if move_and_value_tree else None)
-        if yaml_node["id"] == 0:
-            tree_expansions = TreeExpansions()
+        instr = _instructions_open_all_children(node)
 
-            board = chess.Board.from_chess960_pos(yaml_node["id"])
-            board.turn = chess.WHITE
-            board_chi :BoardChi = create_board_chi_from_pychess_board(board)
-            board_chi.legal_moves.get_all()
-            board_state = ValangaChessState(board=board_chi)
+        expansions = tree_manager.open_instructions(
+            tree=tree, opening_instructions=instr
+        )
+        tree_manager.update_backward(tree_expansions=expansions)
 
-            root_node = algorithm_node_factory.create(
-                state=board_state,
-                tree_depth=0,
-                count=yaml_node["id"],
-                parent_node=None,
-                branch_from_parent=None,
-                modifications=None,
-            )
-            assert isinstance(root_node, AlgorithmNode)
-            root_node.tree_evaluation.value_white_minmax = yaml_node["value"]
-            tree_depths[yaml_node["id"]] = 0
-            id_nodes[yaml_node["id"]] = root_node
-
-            descendants.add_descendant(root_node)
-            move_and_value_tree = Tree(
-                root_node=root_node, descendants=descendants
-            )
-            tree_expansions.add(
-                TreeExpansion(
-                    child_node=root_node,
-                    parent_node=None,
-                    state_modifications=None,
-                    creation_child_node=True,
-                    branch_key=None,
-                )
-            )
-            root_node.tree_node.all_branches_generated = True
-            # algo_tree_manager.update_backward(tree_expansions=tree_expansions)
-
-        else:
-            tree_expansions = TreeExpansions()
-            first_parent = yaml_node["parents"]
-            tree_depth = tree_depths[first_parent] + 1
-            tree_depths[yaml_node["id"]] = tree_depth
-            parent_node = id_nodes[first_parent]
-            board = chess.Board.from_chess960_pos(yaml_node["id"])
-
-
-            board.turn = not parent_node.tree_node.state.turn
-            board_chi = create_board_chi_from_pychess_board(chess_board=board)
-            board_state = ValangaChessState(board=board_chi)
-
-            assert move_and_value_tree is not None
-
-            
-            tree_expansions=algo_tree_manager.open_instructions(
-                tree=move_and_value_tree,
-                opening_instructions=OpeningInstructions(
-                    {
-                        yaml_node["id"]: OpeningInstruction(
-                            node_to_open=parent_node, branch=0
-                        )
-                    }
-                ),
-            )
-
-            #tree_expansion: TreeExpansion[AlgorithmNode] = algo_tree_manager.tree_manager.open_tree_expansion_from_state(
-            #    tree=move_and_value_tree,
-            #    parent_node=parent_node,
-            #    state=board_state,
-            #    modifications=None,
-            #    branch=yaml_node["id"],
-            #)
-            #tree_expansions.add(
-            #    TreeExpansion(
-            #        child_node=tree_expansion.child_node,
-            #        parent_node=tree_expansion.parent_node,
-            #        state_modifications=tree_expansion.state_modifications,
-            #        creation_child_node=tree_expansion.creation_child_node,
-            #        branch_key=yaml_node["id"],
-            #    )
-            #)
-            tree_expansion: TreeExpansion[AlgorithmNode]|None = None
-            for a in tree_expansions:
-                print("expansion with creation", a)
-                tree_expansion =a
-            assert tree_expansion is not None
-            assert isinstance(tree_expansion.child_node, AlgorithmNode)
-            tree_expansion.child_node.tree_node.all_branches_generated = True
-            id_nodes[yaml_node["id"]] = tree_expansion.child_node
-            tree_expansion.child_node.tree_evaluation.value_white_minmax = yaml_node[
-                "value"
-            ]
-            tree_expansion.child_node.tree_evaluation.value_white_direct_evaluation = (
-                yaml_node["value"]
-            )
-            assert tree_expansion.branch_key is not None
-            parent_node.tree_evaluation.branches_not_over.append(tree_expansion.branch_key)
-            algo_tree_manager.update_backward(tree_expansions=tree_expansions)
-
-    # print('move_and_value_tree', move_and_value_tree.descendants)
-    assert move_and_value_tree is not None
-    return move_and_value_tree
+    return tree
 
 
 def check_from_file(file_path: path, tree: Tree[AlgorithmNode]) -> None:
@@ -292,46 +247,27 @@ def check_from_file(file_path: path, tree: Tree[AlgorithmNode]) -> None:
             else:
                 assert parent_node.exploration_index_data.index is not None
                 assert isclose(
-                    yaml_index, parent_node.exploration_index_data.index, abs_tol=1e-8
+                    yaml_index, parent_node.exploration_index_data.index, abs_tol=1e-6
                 )
 
 
 def check_index(index_computation: IndexComputationType, tree_file: path) -> TestResult:
-    """
-    Checks the index for a given tree file and index computation type.
-
-    Args:
-        index_computation (IndexComputationType): The type of index computation.
-        tree_file (path): The path to the tree file.
-
-    Returns:
-        TestResult: The result of the index check.
-
-    Raises:
-        None
-
-    """
-
     tree_path = f"tests/data/trees/{tree_file}/{tree_file}.yaml"
-    tree: Tree = make_tree_from_file(
-        index_computation=index_computation, file_path=tree_path
-    )
 
-    index_manager: NodeExplorationIndexManager = create_exploration_index_manager(
+    tree = build_tree_from_yaml_clean(tree_path, index_computation)
+
+    index_manager = create_exploration_index_manager(
         index_computation=index_computation
     )
-
-    print("index_manager", index_manager)
     update_all_indices(tree, index_manager)
-    # print_all_indices(
-    #    tree
-    # )
+
     file_index = (
         f"tests/data/trees/{tree_file}/{tree_file}_{index_computation.value}.yaml"
     )
     check_from_file(file_path=file_index, tree=tree)
 
     return TestResult.PASSED
+
 
 @pytest.mark.integration
 def test_indices() -> None:

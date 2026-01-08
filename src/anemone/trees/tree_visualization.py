@@ -92,7 +92,10 @@ def display_special[TState: State](
 
     return dot
 
-def display[TState: State](tree: Tree[AlgorithmNode[TState]], format_str: str) -> Digraph:
+
+def display[TState: State](
+    tree: Tree[AlgorithmNode[TState]], format_str: str
+) -> Digraph:
     """
     Display the move and value tree using graph visualization.
 
@@ -120,9 +123,7 @@ def save_pdf_to_file[TState: State](tree: Tree[AlgorithmNode[TState]]) -> None:
     """
     dot = display(tree=tree, format_str="pdf")
     tag_ = tree.root_node.state.tag
-    dot.render(
-        "chipiron/runs/treedisplays/TreeVisual_" + str(tag_) + ".pdf"
-    )
+    dot.render("chipiron/runs/treedisplays/TreeVisual_" + str(tag_) + ".pdf")
 
 
 def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
@@ -137,13 +138,7 @@ def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
         None
     """
     tag_ = tree.root_node.state.tag
-    filename = (
-        "chipiron/debugTreeData_"
-        + str(tag_)
-        + "-"
-        + str(count)
-        + ".td"
-    )
+    filename = "chipiron/debugTreeData_" + str(tag_) + "-" + str(count) + ".td"
 
     import sys
 

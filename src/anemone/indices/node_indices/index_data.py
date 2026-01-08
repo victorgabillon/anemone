@@ -7,10 +7,9 @@ from typing import Any
 
 from valanga import State
 
-from anemone.utils.small_tools import Interval
-
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
+from anemone.utils.small_tools import Interval
 
 
 @dataclass
@@ -46,8 +45,7 @@ class NodeExplorationData[
 class RecurZipfQuoolExplorationData[
     Node: ITreeNode[Any] = ITreeNode[Any],
     TState: State = State,
-](NodeExplorationData[Node, TState]
-):
+](NodeExplorationData[Node, TState]):
     """
     Represents the exploration data for a tree node with recursive zipf-quool factor.
 
@@ -132,8 +130,7 @@ class IntervalExplo[
 class MaxDepthDescendants[
     Node: ITreeNode[Any] = ITreeNode[Any],
     TState: State = State,
-](NodeExplorationData[Node, TState]
-):
+](NodeExplorationData[Node, TState]):
     """
     Represents the exploration data for a tree node with maximum depth of descendants.
     """

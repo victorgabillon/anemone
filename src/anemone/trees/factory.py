@@ -11,6 +11,7 @@ from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import
 )
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.trees.tree import Tree
+
 from .descendants import RangedDescendants
 
 
@@ -67,7 +68,9 @@ class ValueTreeFactory[TState: State = State]:
         )
         # is this needed? used outside?
 
-        descendants: RangedDescendants[AlgorithmNode[TState]] = RangedDescendants[AlgorithmNode[TState]]()
+        descendants: RangedDescendants[AlgorithmNode[TState]] = RangedDescendants[
+            AlgorithmNode[TState]
+        ]()
         descendants.add_descendant(root_node)
 
         value_tree: Tree[AlgorithmNode[TState]] = Tree[AlgorithmNode[TState]](

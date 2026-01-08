@@ -9,10 +9,7 @@ Classes:
 
 """
 
-
-from typing import Any
-
-from valanga import BranchKey
+from typing import TYPE_CHECKING, Any
 
 from anemone import tree_manager as tree_man
 from anemone import trees
@@ -22,6 +19,11 @@ from anemone.node_selector.opening_instructions import (
     create_instructions_to_open_all_branches,
 )
 from anemone.nodes.algorithm_node import AlgorithmNode
+
+if TYPE_CHECKING:
+    from valanga import BranchKey
+
+
 class Uniform[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """The Uniform Node selector"""
 
@@ -76,9 +78,7 @@ class Uniform[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         # filter the game-over ones and the ones with values
         nodes_to_consider_not_over: list[TNode] = [
-            node
-            for node in nodes_to_consider
-            if not node.is_over()
+            node for node in nodes_to_consider if not node.is_over()
         ]
 
         # sort them by order of importance for the player

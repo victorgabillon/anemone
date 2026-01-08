@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterator, Sequence, Self
+from typing import Any, Iterator, Self, Sequence
 
 from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
+
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     MasterStateEvaluator,
     OverEventDetector,
@@ -13,11 +14,6 @@ from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import
 def build_yaml_maps(
     yaml_nodes: list[dict[str, Any]],
 ) -> tuple[dict[int, list[int]], dict[int, float]]:
-    """
-    Build:
-      - children_by_id: parent_id -> ordered list of child ids (YAML order)
-      - value_by_id: node_id -> float(value)
-    """
     children_by_id: dict[int, list[int]] = {}
     value_by_id: dict[int, float] = {}
 
@@ -28,8 +24,11 @@ def build_yaml_maps(
 
     for n in yaml_nodes:
         parent = n.get("parents", None)
-        if parent is None:
+
+        # accept multiple "no parent" conventions
+        if parent is None or parent == "None" or parent == "null":
             continue
+
         parent_id = int(parent)
         node_id = int(n["id"])
         children_by_id.setdefault(parent_id, []).append(node_id)
@@ -81,6 +80,7 @@ class FakeYamlState(State):
 
     IMPORTANT: step() mutates self, to be compatible with ValangaStateTransition.
     """
+
     node_id: int
     children_by_id: dict[int, list[int]]
     turn: Color = Color.WHITE
@@ -126,15 +126,19 @@ class FakeYamlState(State):
     def _child_id_from_branch(self, branch_key: BranchKey) -> int:
         children = self.children_by_id.get(self.node_id, [])
         if not children:
-            raise ValueError(f"Node {self.node_id} has no children; cannot step({branch_key}).")
+            raise ValueError(
+                f"Node {self.node_id} has no children; cannot step({branch_key})."
+            )
 
         if not isinstance(branch_key, int):
-            raise TypeError(f"branch_key must be int ordinal, got {type(branch_key)}: {branch_key!r}")
+            raise TypeError(
+                f"branch_key must be int ordinal, got {type(branch_key)}: {branch_key!r}"
+            )
 
         if branch_key < 0 or branch_key >= len(children):
             raise ValueError(
                 f"Invalid branch {branch_key} for node {self.node_id}. "
-                f"Expected 0..{len(children)-1} (children ids={children})."
+                f"Expected 0..{len(children) - 1} (children ids={children})."
             )
 
         return children[branch_key]
@@ -142,7 +146,10 @@ class FakeYamlState(State):
 
 class NeverOverDetector(OverEventDetector):
     """Always says 'not over'."""
-    def check_obvious_over_events(self, state: State) -> tuple[OverEvent | None, float | None]:
+
+    def check_obvious_over_events(
+        self, state: State
+    ) -> tuple[OverEvent | None, float | None]:
         return None, None
 
 
@@ -150,6 +157,7 @@ class MasterStateEvaluatorFromYaml(MasterStateEvaluator):
     """
     Returns the YAML value for the node id stored in state.tag.
     """
+
     over: OverEventDetector
 
     def __init__(self, value_by_id: dict[int, float]) -> None:

@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Literal, Protocol, runtime_checkable
 
-from anemone import node_selector as node_sel
 import anemone.trees as trees
+from anemone import node_selector as node_sel
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 
@@ -187,7 +187,9 @@ class TreeMoveLimitArgs:
     tree_move_limit: int
 
 
-class TreeMoveLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](ProgressMonitor[TNode]):
+class TreeMoveLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
+    ProgressMonitor[TNode]
+):
     """
     The stopping criterion based on a tree move limit
     """
@@ -259,7 +261,9 @@ class DepthLimitArgs:
     depth_limit: int
 
 
-class DepthLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](ProgressMonitor[TNode]):
+class DepthLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
+    ProgressMonitor[TNode]
+):
     """
     The stopping criterion based on a depth limit
     """

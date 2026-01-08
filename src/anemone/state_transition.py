@@ -7,16 +7,14 @@ from valanga import BranchKey, State, StateModifications
 
 
 class StateTransition[TState](Protocol):
-    def copy_for_expansion(self, state: TState, *, copy_stack: bool) -> TState:
-        ...
+    def copy_for_expansion(self, state: TState, *, copy_stack: bool) -> TState: ...
 
     def step(
         self,
         state: TState,
         *,
         branch_key: BranchKey,
-    ) -> tuple[TState, StateModifications | None]:
-        ...
+    ) -> tuple[TState, StateModifications | None]: ...
 
 
 @dataclass(frozen=True)

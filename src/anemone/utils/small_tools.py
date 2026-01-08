@@ -1,11 +1,9 @@
+import math
 import os
 import typing
 from dataclasses import dataclass
 from itertools import islice
-from typing import Any
-import math
-from typing import Sequence, List
-
+from typing import List, Sequence
 
 path = typing.Annotated[str | os.PathLike[str], "path"]
 
@@ -89,7 +87,6 @@ def distance_number_to_interval(value: float, interval: Interval) -> float:
         return value - interval.max_value
     else:
         return 0
-
 
 
 def softmax(x: Sequence[float], temperature: float = 1.0) -> List[float]:

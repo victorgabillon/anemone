@@ -6,6 +6,7 @@ branchExplorer is responsible for exploring branches in a game tree.
 import random
 from enum import Enum
 from typing import Any
+
 from valanga import BranchKey
 
 from anemone.node_selector.notations_and_statics import (

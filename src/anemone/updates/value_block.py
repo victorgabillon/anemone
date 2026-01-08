@@ -15,7 +15,6 @@ from typing import Self
 
 from valanga import BranchKey
 
-
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
@@ -77,7 +76,8 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             another_update (Self): The update instructions from another child node.
         """
         self.branches_with_updated_value = (
-            self.branches_with_updated_value | another_update.branches_with_updated_value
+            self.branches_with_updated_value
+            | another_update.branches_with_updated_value
         )
         self.branches_with_updated_over = (
             self.branches_with_updated_over | another_update.branches_with_updated_over
@@ -95,7 +95,11 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             None
         """
         print("upInstructions printing")
-        print(len(self.branches_with_updated_value), "branches_with_updated_value", end=" ")
+        print(
+            len(self.branches_with_updated_value),
+            "branches_with_updated_value",
+            end=" ",
+        )
         for branch in self.branches_with_updated_value:
             print(branch, end=" ")
         print(
@@ -107,7 +111,10 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         for branch in self.branches_with_updated_best_branch:
             print(branch, end=" ")
         print(
-            "\n", len(self.branches_with_updated_over), "branches_with_updated_over", end=" "
+            "\n",
+            len(self.branches_with_updated_over),
+            "branches_with_updated_over",
+            end=" ",
         )
         for branch in self.branches_with_updated_over:
             print(branch, end=" ")

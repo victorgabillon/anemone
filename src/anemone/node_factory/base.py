@@ -36,7 +36,7 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], TState: State = State]
         parent_node: T | None,
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None = None,
-    ) -> TreeNode[T,TState]:
+    ) -> TreeNode[T, TState]:
         """
         Creates a new TreeNode object.
 

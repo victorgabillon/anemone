@@ -4,9 +4,8 @@ This module contains the TreeManager class, which is responsible for managing a 
 
 import typing
 
-from valanga import BranchKey, State, StateTag, StateModifications
+from valanga import BranchKey, State, StateModifications, StateTag
 
-from anemone.basics import TreeDepth
 import anemone.nodes as node
 import anemone.trees as trees
 from anemone.node_factory.base import (
@@ -16,11 +15,14 @@ from anemone.node_selector.opening_instructions import (
     OpeningInstruction,
     OpeningInstructions,
 )
+from anemone.state_transition import StateTransition
 from anemone.tree_manager.tree_expander import (
     TreeExpansion,
     TreeExpansions,
 )
-from anemone.state_transition import StateTransition
+
+if typing.TYPE_CHECKING:
+    from anemone.basics import TreeDepth
 
 # todo should we use a discount? and discounted per round reward?
 # todo maybe convenient to seperate this object into openner updater and dsiplayer
@@ -76,7 +78,6 @@ class TreeManager[
 
         # The move is played. The state is now advanced.
         state, modifications = self.transition.step(state, branch_key=branch)
-
 
         return self.open_tree_expansion_from_state(
             tree=tree,
@@ -140,7 +141,9 @@ class TreeManager[
         else:  # the node already exists
             child_node_existing: FamilyType
             child_node_existing = tree.descendants[tree_depth][state_tag]
-            child_node_existing.add_parent(branch_key=branch, new_parent_node=parent_node)
+            child_node_existing.add_parent(
+                branch_key=branch, new_parent_node=parent_node
+            )
 
             tree_expansion: TreeExpansion[FamilyType] = TreeExpansion(
                 child_node=child_node_existing,
@@ -179,10 +182,12 @@ class TreeManager[
         opening_instruction: OpeningInstruction[FamilyType]
         for opening_instruction in opening_instructions.values():
             # open
-            tree_expansion: TreeExpansion[FamilyType] = self.open_tree_expansion_from_branch(
-                tree=tree,
-                parent_node=opening_instruction.node_to_open,
-                branch=opening_instruction.branch,
+            tree_expansion: TreeExpansion[FamilyType] = (
+                self.open_tree_expansion_from_branch(
+                    tree=tree,
+                    parent_node=opening_instruction.node_to_open,
+                    branch=opening_instruction.branch,
+                )
             )
 
             if tree_expansion.creation_child_node:

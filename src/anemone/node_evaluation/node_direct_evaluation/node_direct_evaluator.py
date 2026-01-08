@@ -20,13 +20,12 @@ Functions:
 """
 
 from enum import Enum
-
 from typing import Protocol, Sequence
+
 from valanga import OverEvent, State
+from valanga.evaluations import EvalItem
 
 from anemone.nodes.algorithm_node import AlgorithmNode
-
-from valanga.evaluations import EvalItem
 
 DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
 
@@ -41,8 +40,10 @@ class NodeEvaluatorTypes(str, Enum):
 
 class NodeBatchValueEvaluator(Protocol):
     """Return value_white for each node, can use node.state_representation for speed."""
-    def value_white_batch_from_nodes(self, nodes: Sequence[AlgorithmNode]) -> list[float]:
-        ...
+
+    def value_white_batch_from_nodes(
+        self, nodes: Sequence[AlgorithmNode]
+    ) -> list[float]: ...
 
 
 class EvaluationQueries[TState: State = State]:
@@ -72,11 +73,10 @@ class EvaluationQueries[TState: State = State]:
         self.not_over_nodes = []
 
 
-
 class OverEventDetector(Protocol):
-    def check_obvious_over_events(self, state: State) -> tuple[OverEvent | None, float | None]:
-        ...
-
+    def check_obvious_over_events(
+        self, state: State
+    ) -> tuple[OverEvent | None, float | None]: ...
 
 
 class MasterStateEvaluator(Protocol):
@@ -159,14 +159,14 @@ class NodeDirectEvaluator[TState: State = State]:
         else:
             evaluation_queries.not_over_nodes.append(node)
 
-
     def evaluate_all_not_over(
         self, not_over_nodes: list[AlgorithmNode[TState]]
     ) -> None:
         values = self.master_state_evaluator.value_white_batch_items(not_over_nodes)
         for node, v in zip(not_over_nodes, values):
-            node.tree_evaluation.set_evaluation(self.process_evalution_not_over(v, node))
-
+            node.tree_evaluation.set_evaluation(
+                self.process_evalution_not_over(v, node)
+            )
 
     def process_evalution_not_over(
         self, evaluation: float, node: AlgorithmNode[TState]

@@ -3,7 +3,7 @@ This module defines the AlgorithmNode class, which is a generic node used by the
 It wraps tree nodes with values, minimax computation, and exploration tools.
 """
 
-from typing import Any, MutableMapping, Self
+from typing import MutableMapping, Self
 
 from valanga import (
     BranchKey,
@@ -14,7 +14,9 @@ from valanga import (
 )
 
 from anemone.indices.node_indices import NodeExplorationData
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import NodeTreeEvaluation
+from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+    NodeTreeEvaluation,
+)
 from anemone.nodes.tree_node import TreeNode
 
 
@@ -30,9 +32,13 @@ class AlgorithmNode[TState: State = State]:
     exploration_index_data: (
         NodeExplorationData[Self, TState] | None
     )  # the object storing the information to help the algorithm decide the next nodes to explore
-    state_representation: (
+    _state_representation: (
         ContentRepresentation | None
     )  # the state representation for evaluation
+
+    @property
+    def state_representation(self) -> ContentRepresentation | None:
+        return self._state_representation
 
     def __init__(
         self,
@@ -53,7 +59,7 @@ class AlgorithmNode[TState: State = State]:
         self.tree_node = tree_node
         self.tree_evaluation = tree_evaluation
         self.exploration_index_data = exploration_index_data
-        self.state_representation = state_representation
+        self._state_representation = state_representation
 
     @property
     def id(self) -> int:

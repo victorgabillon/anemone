@@ -24,7 +24,6 @@ from anemone.node_selector.opening_instructions import (
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 if typing.TYPE_CHECKING:
-
     import anemone.tree_manager as tree_man
 
 

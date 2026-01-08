@@ -19,7 +19,7 @@ import math
 import typing
 from dataclasses import dataclass, field
 from random import choice
-from typing import Any, Protocol, Self
+from typing import Protocol, Self
 
 from valanga import (
     BoardEvaluation,
@@ -28,7 +28,6 @@ from valanga import (
     FloatyStateEvaluation,
     ForcedOutcome,
     OverEvent,
-    State,
     TurnState,
 )
 
@@ -37,7 +36,6 @@ from anemone.nodes.tree_node import TreeNode
 from anemone.utils.logger import anemone_logger
 from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.utils.small_tools import nth_key
-
 
 type BranchSortValue = tuple[float, int, int]
 
@@ -60,8 +58,10 @@ class NodeWithValue(ITreeNode[TurnState], Protocol):
 
 
 @dataclass(slots=True)
-class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue,
-                           StateT: TurnState = TurnState]:
+class NodeMinmaxEvaluation[
+    NodeWithValueT: NodeWithValue = NodeWithValue,
+    StateT: TurnState = TurnState,
+]:
     r"""
     Represents a node in a tree structure used for the Minimax algorithm evaluation.
 
@@ -113,7 +113,9 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue,
     # the list of branches that have not yet be found to be over
     # using atm a list instead of set as atm python set are not insertion ordered which adds randomness
     # and makes debug harder
-    branches_not_over: list[BranchKey] = field(default_factory=lambda: list[BranchKey]())
+    branches_not_over: list[BranchKey] = field(
+        default_factory=lambda: list[BranchKey]()
+    )
 
     # creating a base Over event that is set to None
     over_event: OverEvent = field(default_factory=OverEvent)
@@ -315,7 +317,9 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue,
             None
         """
         print(
-            "here are the ", len(self.branches_sorted_by_value), " branch sorted by value: "
+            "here are the ",
+            len(self.branches_sorted_by_value),
+            " branch sorted by value: ",
         )
         branch_key: BranchKey
         for branch_key, subjective_sort_value in self.branches_sorted_by_value.items():
@@ -358,7 +362,9 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue,
         Returns:
             None
         """
-        print("here are the ", len(self.branches_not_over), " branch not over: ", end=" ")
+        print(
+            "here are the ", len(self.branches_not_over), " branch not over: ", end=" "
+        )
         for branch in self.branches_not_over:
             print(branch, end=" ")
         print(" ")
@@ -549,7 +555,9 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue,
         # todo: looks like the determinism of the sort induces some determinisin the play like always
         #  playing the same actions when a lot of them have equal value: introduce some randomness?
         return [
-            branch for branch in self.branches_sorted_by_value if branch in self.branches_not_over
+            branch
+            for branch in self.branches_sorted_by_value
+            if branch in self.branches_not_over
         ]  # todo is this a fast way to do it?
 
     def update_value_minmax(self) -> None:
@@ -694,11 +702,16 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue,
             if best_value_children_after is None:
                 best_child_before_update_not_the_best_anymore = True
             else:
-                best_child_before_update_not_the_best_anymore = not self.are_equal_values(
-                    updated_value_of_best_child_before_update, best_value_children_after
+                best_child_before_update_not_the_best_anymore = (
+                    not self.are_equal_values(
+                        updated_value_of_best_child_before_update,
+                        best_value_children_after,
+                    )
                 )
 
-        best_branch_seq_before_update: list[BranchKey] = self.best_branch_sequence.copy()
+        best_branch_seq_before_update: list[BranchKey] = (
+            self.best_branch_sequence.copy()
+        )
         if self.tree_node.all_branches_generated:
             if best_child_before_update_not_the_best_anymore:
                 self.one_of_best_children_becomes_best_next_node()
@@ -781,7 +794,6 @@ class NodeMinmaxEvaluation[NodeWithValueT: NodeWithValue = NodeWithValue,
         - str: A string representation of the branch for the tree visualizer.
         """
         return ""
-
 
     def print_best_line(self) -> None:
         """

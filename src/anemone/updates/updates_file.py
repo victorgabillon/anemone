@@ -16,7 +16,6 @@ from anemone.utils.dict_of_numbered_dict_with_pointer_on_max import (
     DictOfNumberedDictWithPointerOnMax,
 )
 
-
 from .index_block import (
     IndexUpdateInstructionsFromOneNode,
     IndexUpdateInstructionsTowardsOneParentNode,
@@ -121,9 +120,7 @@ class UpdateInstructionsTowardsOneParentNode:
 
 
 @dataclass
-class UpdateInstructionsTowardsMultipleNodes[
-    TNode: AlgorithmNode = AlgorithmNode
-]:
+class UpdateInstructionsTowardsMultipleNodes[TNode: AlgorithmNode = AlgorithmNode]:
     """Represents update instructions towards multiple parent nodes."""
 
     # mapping from nodes to the update instructions that are intended to them for consideration (performing the updates)

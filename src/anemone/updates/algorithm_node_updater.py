@@ -23,10 +23,10 @@ from .updates_file import (
 )
 
 if typing.TYPE_CHECKING:
+    from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
+
     from .index_block import IndexUpdateInstructionsFromOneNode
     from .value_block import ValueUpdateInstructionsFromOneNode
-
-    from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
 
 @dataclass

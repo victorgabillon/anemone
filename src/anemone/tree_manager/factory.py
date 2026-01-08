@@ -6,9 +6,9 @@ performing updates on the nodes, and handling evaluation queries.
 
 """
 
-from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-import anemone.updates as upda
 from typing import Any
+
+import anemone.updates as upda
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
     create_exploration_index_manager,
@@ -23,11 +23,12 @@ from anemone.node_evaluation.node_direct_evaluation import (
 from anemone.node_factory import (
     AlgorithmNodeFactory,
 )
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.state_transition import ValangaStateTransition
 from anemone.updates.index_updater import IndexUpdater
 
 from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from .tree_manager import TreeManager
-from anemone.state_transition import ValangaStateTransition
 
 
 def create_algorithm_node_tree_manager(
@@ -68,7 +69,7 @@ def create_algorithm_node_tree_manager(
         node_evaluator=node_direct_evaluator,
         tree_manager=tree_manager,
         algorithm_node_updater=algorithm_node_updater,
-        algorithm_tree_node_factory=algorithm_node_factory, 
+        algorithm_tree_node_factory=algorithm_node_factory,
         evaluation_queries=evaluation_queries,
         index_manager=exploration_index_manager,
     )

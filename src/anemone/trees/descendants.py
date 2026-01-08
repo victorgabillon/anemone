@@ -19,11 +19,10 @@ import typing
 from typing import Any, Iterator
 
 from sortedcollections import ValueSortedDict
+from valanga import StateTag
 
 from anemone.basics import TreeDepth
 from anemone.nodes import ITreeNode
-
-from valanga import StateTag
 
 
 class Descendants[TNode: ITreeNode[Any]]:
@@ -82,9 +81,7 @@ class Descendants[TNode: ITreeNode[Any]]:
         """
         return self.descendants_at_tree_depth.keys()
 
-    def __setitem__(
-        self, tree_depth: TreeDepth, value: dict[StateTag, TNode]
-    ) -> None:
+    def __setitem__(self, tree_depth: TreeDepth, value: dict[StateTag, TNode]) -> None:
         """
         Sets the descendants at a specific half move.
 
@@ -265,7 +262,6 @@ class Descendants[TNode: ITreeNode[Any]]:
             assert self.number_of_descendants_at_tree_depth[tree_depth] == len(
                 self[tree_depth]
             )
-
 
 
 class RangedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
@@ -619,9 +615,7 @@ class SortedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
             for descendant, value in self.sorted_descendants_at_tree_depth[
                 tree_depth
             ].items():
-                print(
-                    descendant.id, descendant.tag, "(" + str(value) + ")", end=" "
-                )
+                print(descendant.id, descendant.tag, "(" + str(value) + ")", end=" ")
             print("")
 
     def remove_descendant(self, node: TNode) -> None:

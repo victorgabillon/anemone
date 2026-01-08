@@ -15,7 +15,6 @@ class StateWithTurn(State, HasTurn, Protocol):
     ...
 
 
-
 @dataclass(frozen=True, slots=True)
 class BranchRecommendation:
     branch_key: BranchKey
@@ -28,5 +27,4 @@ class HasBlackAndWhiteTurn(Protocol):
     """Protocol for state that has black and white turns."""
 
     @property
-    def turn(self) -> Color:
-        ...
+    def turn(self) -> Color: ...

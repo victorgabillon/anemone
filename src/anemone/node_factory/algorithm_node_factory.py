@@ -3,6 +3,8 @@ AlgorithmNodeFactory
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 from valanga import (
     BranchKey,
     ContentRepresentation,
@@ -13,14 +15,19 @@ from valanga import (
 
 import anemone.indices.node_indices as node_indices
 from anemone.basics import TreeDepth
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import NodeTreeEvaluation
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import NodeTreeEvaluationFactory
+from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+    NodeTreeEvaluationFactory,
+)
 from anemone.node_factory.base import TreeNodeFactory
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-
 from anemone.nodes.tree_node import TreeNode
+
+if TYPE_CHECKING:
+    from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
+        NodeTreeEvaluation,
+    )
 
 
 @dataclass
@@ -29,12 +36,12 @@ class AlgorithmNodeFactory[TState: State = State]:
     The classe creating Algorithm Nodes
     """
 
-    tree_node_factory: TreeNodeFactory[AlgorithmNode[TState],TState]
+    tree_node_factory: TreeNodeFactory[AlgorithmNode[TState], TState]
     state_representation_factory: RepresentationFactory | None
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[TState]
-    exploration_index_data_create: node_indices.ExplorationIndexDataFactory[AlgorithmNode[TState],TState]  
-
-
+    exploration_index_data_create: node_indices.ExplorationIndexDataFactory[
+        AlgorithmNode[TState], TState
+    ]
 
     def create_from_tree_node(
         self,
@@ -42,10 +49,10 @@ class AlgorithmNodeFactory[TState: State = State]:
         parent_node: AlgorithmNode[TState] | None,
         modifications: StateModifications | None,
     ) -> AlgorithmNode[TState]:
-        
-
-        tree_evaluation: NodeTreeEvaluation[TState] = self.node_tree_evaluation_factory.create(
-            tree_node=tree_node,
+        tree_evaluation: NodeTreeEvaluation[TState] = (
+            self.node_tree_evaluation_factory.create(
+                tree_node=tree_node,
+            )
         )
 
         exploration_index_data: (
@@ -98,12 +105,14 @@ class AlgorithmNodeFactory[TState: State = State]:
             An AlgorithmNode object.
 
         """
-        tree_node: TreeNode[AlgorithmNode[TState], TState] = self.tree_node_factory.create(
-            state=state,
-            tree_depth=tree_depth,
-            count=count,
-            branch_from_parent=branch_from_parent,
-            parent_node=parent_node,
+        tree_node: TreeNode[AlgorithmNode[TState], TState] = (
+            self.tree_node_factory.create(
+                state=state,
+                tree_depth=tree_depth,
+                count=count,
+                branch_from_parent=branch_from_parent,
+                parent_node=parent_node,
+            )
         )
 
         return self.create_from_tree_node(

@@ -5,7 +5,9 @@ from valanga import State, TurnState
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import NodeTreeEvaluation
+from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
+    NodeTreeEvaluation,
+)
 from anemone.nodes.tree_node import TreeNode
 
 
@@ -36,5 +38,4 @@ class NodeTreeEvaluationFactory[TState2: State = State](Protocol):
     def create(
         self,
         tree_node: TreeNode[Any, TState2],
-    ) -> NodeTreeEvaluation[TState2]:
-        ...
+    ) -> NodeTreeEvaluation[TState2]: ...

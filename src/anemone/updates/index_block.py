@@ -12,7 +12,6 @@ from typing import Self
 
 from valanga import BranchKey
 
-
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
@@ -68,7 +67,8 @@ class IndexUpdateInstructionsTowardsOneParentNode:
             another_update (Self): The update instructions from another child node.
         """
         self.branches_with_updated_index = (
-            self.branches_with_updated_index | another_update.branches_with_updated_index
+            self.branches_with_updated_index
+            | another_update.branches_with_updated_index
         )
 
     def empty(self) -> bool:

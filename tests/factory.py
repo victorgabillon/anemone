@@ -16,20 +16,21 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-import anemone.search_factory as search_factories
+from anemone.node_evaluator.node_evaluator_args import (
+    NodeEvaluatorArgs,
+)
 from chipiron.players.boardevaluators.neural_networks.input_converters.representation_factory_factory import (
     create_board_representation_factory,
 )
 from chipiron.players.boardevaluators.table_base.factory import AnySyzygyTable
 from chipiron.players.move_selector.move_selector_types import MoveSelectorTypes
+from chipiron.utils.dataclass import IsDataclass
+
+import anemone.search_factory as search_factories
 from anemone import node_factory
-from anemone.node_evaluator.node_evaluator_args import (
-    NodeEvaluatorArgs,
-)
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
 )
-from chipiron.utils.dataclass import IsDataclass
 
 from . import node_evaluator as node_eval
 from . import node_selector as node_selector_m

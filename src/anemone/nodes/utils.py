@@ -8,15 +8,16 @@ Functions:
 - is_winning(node_minmax_evaluation: NodeMinmaxEvaluation, color: chess.Color) -> bool: Checks if the color to play in the node is winning.
 """
 
+
 import chess
-from typing import Any
 from valanga import BranchKey, State
 
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import NodeTreeEvaluation
+from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
+    NodeTreeEvaluation,
+)
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-
 
 from .itree_node import ITreeNode
 from .tree_node import TreeNode
@@ -32,13 +33,12 @@ def are_all_moves_and_children_opened(tree_node: TreeNode) -> bool:
     Returns:
         bool: True if all moves and children are opened, False otherwise.
     """
-    return (
-        tree_node.all_branches_generated
-        and tree_node.non_opened_branches == set()
-    )
+    return tree_node.all_branches_generated and tree_node.non_opened_branches == set()
 
 
-def a_move_key_sequence_from_root[TState: State](tree_node: ITreeNode[TState]) -> list[str]:
+def a_move_key_sequence_from_root[TState: State](
+    tree_node: ITreeNode[TState],
+) -> list[str]:
     """
     Returns a list of move sequences from the root node to a given tree node.
 
@@ -59,7 +59,9 @@ def a_move_key_sequence_from_root[TState: State](tree_node: ITreeNode[TState]) -
     return [str(i) for i in move_sequence_from_root]
 
 
-def a_branch_str_sequence_from_root[TState: State](tree_node: ITreeNode[TState]) -> list[str]:
+def a_branch_str_sequence_from_root[TState: State](
+    tree_node: ITreeNode[TState],
+) -> list[str]:
     """
     Returns a list of move sequences from the root node to a given tree node.
 
@@ -100,7 +102,9 @@ def best_node_sequence_from_node[TState: State](
     return move_sequence
 
 
-def print_a_move_sequence_from_root[TState: State](tree_node: ITreeNode[TState]) -> None:
+def print_a_move_sequence_from_root[TState: State](
+    tree_node: ITreeNode[TState],
+) -> None:
     """
     Prints the move sequence from the root node to a given tree node.
 
@@ -116,9 +120,7 @@ def print_a_move_sequence_from_root[TState: State](tree_node: ITreeNode[TState])
     print(f"a_move_sequence_from_root{move_sequence_from_root}")
 
 
-def is_winning(
-    node_tree_evaluation: NodeTreeEvaluation, color: chess.Color
-) -> bool:
+def is_winning(node_tree_evaluation: NodeTreeEvaluation, color: chess.Color) -> bool:
     """
     Checks if the color to play in the node is winning.
 

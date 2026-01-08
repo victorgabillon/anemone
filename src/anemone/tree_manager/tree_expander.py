@@ -7,14 +7,11 @@ from dataclasses import dataclass, field
 
 from valanga import BranchKey, StateModifications
 
-
 import anemone.nodes as node
 
 
 @dataclass(slots=True)
-class TreeExpansion[
-    TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]
-]:
+class TreeExpansion[TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]]:
     """
     Represents an expansion of a tree in a chess game.
 
@@ -41,9 +38,7 @@ class TreeExpansion[
 
 
 @dataclass(slots=True)
-class TreeExpansions[
-    TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]
-]:
+class TreeExpansions[TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]]:
     """
     Represents a collection of tree expansions in a chess game.
 

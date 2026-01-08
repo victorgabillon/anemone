@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Literal
 
-from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 import anemone.trees as trees
 from anemone.node_selector.node_selector_types import (
     NodeSelectorType,
@@ -15,13 +14,14 @@ from anemone.node_selector.node_selector_types import (
 from anemone.node_selector.opening_instructions import (
     OpeningInstructor,
 )
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 from .sequool import (
     ConsiderNodesFromTreeDepths,
-    TreeDepthSelector,
     RandomAllSelector,
     Sequool,
     StaticNotOpenedSelector,
+    TreeDepthSelector,
     consider_nodes_from_all_lesser_tree_depths_in_descendants,
     consider_nodes_from_all_lesser_tree_depths_in_sub_stree,
     consider_nodes_only_from_tree_depths_in_descendants,

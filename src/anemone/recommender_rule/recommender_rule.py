@@ -16,20 +16,20 @@ Example usage:
 import random
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, Protocol
+from typing import Literal, Mapping, Protocol
 
-
-from typing import Mapping, Protocol, Literal
-from anemone.utils.small_tools import softmax
 from valanga import BranchKey, State
 
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
+from anemone.utils.small_tools import softmax
+
 
 @dataclass(frozen=True, slots=True)
 class BranchPolicy:
     probs: Mapping[BranchKey, float]  # should sum to ~1.0
+
 
 def sample_from_policy(policy: BranchPolicy, rng: random.Random) -> BranchKey:
     branches = list(policy.probs.keys())
@@ -39,7 +39,10 @@ def sample_from_policy(policy: BranchPolicy, rng: random.Random) -> BranchKey:
 
 class RecommenderRule(Protocol):
     type: str
-    def policy[TState: State](self, root_node: AlgorithmNode[TState]) -> BranchPolicy: ...
+
+    def policy[TState: State](
+        self, root_node: AlgorithmNode[TState]
+    ) -> BranchPolicy: ...
     def sample(self, policy: BranchPolicy, rng: random.Random) -> BranchKey: ...
 
 
@@ -56,7 +59,6 @@ class RecommenderRuleTypes(str, Enum):
 # of partial to be able to easily construct from yaml files using dacite
 
 
-
 @dataclass(slots=True)
 class AlmostEqualLogistic:
     type: Literal["almost_equal_logistic"]
@@ -69,7 +71,9 @@ class AlmostEqualLogistic:
 
         # Fallback: if empty, uniform over all existing children
         if not best:
-            best = [bk for bk, ch in root_node.branches_children.items() if ch is not None]
+            best = [
+                bk for bk, ch in root_node.branches_children.items() if ch is not None
+            ]
 
         # If still empty, something is wrong (no legal moves / not expanded)
         if not best:
@@ -80,6 +84,8 @@ class AlmostEqualLogistic:
 
     def sample(self, policy: BranchPolicy, rng: random.Random) -> BranchKey:
         return sample_from_policy(policy, rng)
+
+
 @dataclass(slots=True)
 class SoftmaxRule:
     type: Literal["softmax"]
@@ -105,5 +111,6 @@ class SoftmaxRule:
 
     def sample(self, policy: BranchPolicy, rng: random.Random) -> BranchKey:
         return sample_from_policy(policy, rng)
+
 
 AllRecommendFunctionsArgs = AlmostEqualLogistic | SoftmaxRule

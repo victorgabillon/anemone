@@ -3,8 +3,7 @@ This module contains the IndexUpdater class, which is responsible for updating t
 """
 
 
-
-from valanga import BranchKey
+from typing import TYPE_CHECKING
 
 from anemone.indices.node_indices.index_data import (
     MaxDepthDescendants,
@@ -19,6 +18,8 @@ from .index_block import (
 )
 from .updates_file import UpdateInstructionsTowardsOneParentNode
 
+if TYPE_CHECKING:
+    from valanga import BranchKey
 
 
 class IndexUpdater:

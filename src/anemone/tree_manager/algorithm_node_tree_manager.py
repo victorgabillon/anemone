@@ -8,7 +8,7 @@ from typing import Any
 
 from valanga import BranchKey
 
-from anemone.basics import TreeDepth
+import anemone.trees as trees
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
 )
@@ -23,8 +23,6 @@ from anemone.node_factory.algorithm_node_factory import AlgorithmNodeFactory
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-
-import anemone.trees as trees
 from anemone.updates.algorithm_node_updater import AlgorithmNodeUpdater
 from anemone.updates.updates_file import (
     UpdateInstructionsFromOneNode,
@@ -41,6 +39,7 @@ from .tree_manager import TreeManager
 # DISCOUNT = 1/.99999
 if typing.TYPE_CHECKING:
     import anemone.node_selector as node_sel
+    from anemone.basics import TreeDepth
 
 
 @dataclass
@@ -85,7 +84,6 @@ class AlgorithmNodeTreeManager[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             branch
         )  # default action checks for over event are performed later
 
-            
         return tree_expansion
 
     def open_instructions(
@@ -124,7 +122,6 @@ class AlgorithmNodeTreeManager[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 tree.descendants.add_descendant(
                     tree_expansion.child_node
                 )  # add it to the list of descendants
-
 
             # concatenate the tree expansions
             tree_expansions.add(tree_expansion=tree_expansion)
@@ -177,7 +174,9 @@ class AlgorithmNodeTreeManager[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             node_to_update: TNode
             update_instructions: UpdateInstructionsTowardsOneParentNode
             node_to_update, update_instructions = update_instructions_batch.pop_item()
-            extra_update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[TNode]
+            extra_update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[
+                TNode
+            ]
             extra_update_instructions_batch = self.update_node(
                 node_to_update=node_to_update, update_instructions=update_instructions
             )
