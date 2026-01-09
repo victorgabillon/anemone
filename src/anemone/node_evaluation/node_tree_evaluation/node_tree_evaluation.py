@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from anemone.nodes.itree_node import ITreeNode
 
 
-class NodeTreeEvaluation[TState: State = State](Protocol):
+class NodeTreeEvaluation[StateT: State = State](Protocol):
     """
     Interface for Node Tree Evaluation
     This is the evaluation of a node that is based both on a direct evaluation of the state within and of the NodeTreeEvaluation
@@ -86,7 +86,7 @@ class NodeTreeEvaluation[TState: State = State](Protocol):
 
     def evaluate(self) -> BoardEvaluation: ...
 
-    def description_tree_visualizer_branch(self, child: "ITreeNode[TState]") -> str: ...
+    def description_tree_visualizer_branch(self, child: "ITreeNode[StateT]") -> str: ...
 
     def print_best_line(self) -> None: ...
 

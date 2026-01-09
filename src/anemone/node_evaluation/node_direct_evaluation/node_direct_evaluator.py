@@ -46,7 +46,7 @@ class NodeBatchValueEvaluator(Protocol):
     ) -> list[float]: ...
 
 
-class EvaluationQueries[TState: State = State]:
+class EvaluationQueries[StateT: State = State]:
     """
     A class that represents evaluation queries for algorithm nodes.
 
@@ -55,8 +55,8 @@ class EvaluationQueries[TState: State = State]:
         not_over_nodes (list[AlgorithmNode]): A list of algorithm nodes that are not considered "over".
     """
 
-    over_nodes: list[AlgorithmNode[TState]]
-    not_over_nodes: list[AlgorithmNode[TState]]
+    over_nodes: list[AlgorithmNode[StateT]]
+    not_over_nodes: list[AlgorithmNode[StateT]]
 
     def __init__(self) -> None:
         """
@@ -92,7 +92,7 @@ class MasterStateEvaluator(Protocol):
         return [self.value_white(it.state) for it in items]
 
 
-class NodeDirectEvaluator[TState: State = State]:
+class NodeDirectEvaluator[StateT: State = State]:
     """
     The NodeEvaluator class is responsible for evaluating the value of nodes in a tree structure.
     It uses a board evaluator and a syzygy evaluator to calculate the value of the nodes.
@@ -112,7 +112,7 @@ class NodeDirectEvaluator[TState: State = State]:
         """
         self.master_state_evaluator = master_state_evaluator
 
-    def check_obvious_over_events(self, node: AlgorithmNode[TState]) -> None:
+    def check_obvious_over_events(self, node: AlgorithmNode[StateT]) -> None:
         """
         Updates the node.over object if the game is obviously over.
         """
@@ -133,7 +133,7 @@ class NodeDirectEvaluator[TState: State = State]:
             node.tree_evaluation.set_evaluation(evaluation=evaluation)
 
     def evaluate_all_queried_nodes(
-        self, evaluation_queries: EvaluationQueries[TState]
+        self, evaluation_queries: EvaluationQueries[StateT]
     ) -> None:
         """
         Evaluates all the queried nodes.
@@ -149,7 +149,7 @@ class NodeDirectEvaluator[TState: State = State]:
         evaluation_queries.clear_queries()
 
     def add_evaluation_query(
-        self, node: AlgorithmNode[TState], evaluation_queries: EvaluationQueries[TState]
+        self, node: AlgorithmNode[StateT], evaluation_queries: EvaluationQueries[StateT]
     ) -> None:
         """
         Adds an evaluation query for a node.
@@ -162,7 +162,7 @@ class NodeDirectEvaluator[TState: State = State]:
             evaluation_queries.not_over_nodes.append(node)
 
     def evaluate_all_not_over(
-        self, not_over_nodes: list[AlgorithmNode[TState]]
+        self, not_over_nodes: list[AlgorithmNode[StateT]]
     ) -> None:
         values = self.master_state_evaluator.value_white_batch_items(not_over_nodes)
         for node, v in zip(not_over_nodes, values, strict=True):
@@ -171,7 +171,7 @@ class NodeDirectEvaluator[TState: State = State]:
             )
 
     def process_evalution_not_over(
-        self, evaluation: float, node: AlgorithmNode[TState]
+        self, evaluation: float, node: AlgorithmNode[StateT]
     ) -> float:
         """
         Processes the evaluation for a node that is not over.

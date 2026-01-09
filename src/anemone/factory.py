@@ -60,14 +60,14 @@ class TreeAndValuePlayerArgs:
     type: Literal["TreeAndValue"] = TreeAndValueLiteralString
 
 
-def create_tree_and_value_branch_selector[TState: TurnState](
-    state_type: Type[TState],
+def create_tree_and_value_branch_selector[StateT: TurnState](
+    state_type: Type[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: random.Random,
     master_state_evaluator: MasterStateEvaluator,
     state_representation_factory: RepresentationFactory[ContentRepresentation] | None,
     queue_progress_player: queue.Queue[IsDataclass] | None,
-) -> TreeAndValueBranchSelector[TState]:
+) -> TreeAndValueBranchSelector[StateT]:
     """Convenience constructor using the default minmax tree evaluation.
 
     This keeps the existing API stable, while allowing advanced users to inject a
@@ -75,8 +75,8 @@ def create_tree_and_value_branch_selector[TState: TurnState](
     `create_tree_and_value_branch_selector_with_tree_eval_factory`.
     """
 
-    node_tree_evaluation_factory: NodeTreeEvaluationFactory[TState]
-    node_tree_evaluation_factory = NodeTreeMinmaxEvaluationFactory[TState]()
+    node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT]
+    node_tree_evaluation_factory = NodeTreeMinmaxEvaluationFactory[StateT]()
 
     return create_tree_and_value_branch_selector_with_tree_eval_factory(
         state_type=state_type,
@@ -89,15 +89,15 @@ def create_tree_and_value_branch_selector[TState: TurnState](
     )
 
 
-def create_tree_and_value_branch_selector_with_tree_eval_factory[TState: TurnState](
-    state_type: Type[TState],
+def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnState](
+    state_type: Type[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: random.Random,
     master_state_evaluator: MasterStateEvaluator,
     state_representation_factory: RepresentationFactory[ContentRepresentation] | None,
-    node_tree_evaluation_factory: NodeTreeEvaluationFactory[TState],
+    node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
     queue_progress_player: queue.Queue[IsDataclass] | None,
-) -> TreeAndValueBranchSelector[TState]:
+) -> TreeAndValueBranchSelector[StateT]:
     """
     Create a TreeAndValueBranchSelector object with the given arguments.
 
@@ -111,12 +111,12 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[TState: TurnSta
 
     """
 
-    node_evaluator: NodeDirectEvaluator[TState] = create_node_evaluator(
+    node_evaluator: NodeDirectEvaluator[StateT] = create_node_evaluator(
         master_state_evaluator=master_state_evaluator,
     )
 
-    tree_node_factory: TreeNodeFactory[AlgorithmNode[TState], TState] = TreeNodeFactory[
-        AlgorithmNode[TState], TState
+    tree_node_factory: TreeNodeFactory[AlgorithmNode[StateT], StateT] = TreeNodeFactory[
+        AlgorithmNode[StateT], StateT
     ]()
 
     search_factory: search_factories.SearchFactoryP = search_factories.SearchFactory(
@@ -126,15 +126,15 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[TState: TurnSta
         index_computation=args.index_computation,
     )
 
-    algorithm_node_factory: node_factory.AlgorithmNodeFactory[TState]
-    algorithm_node_factory = node_factory.AlgorithmNodeFactory[TState](
+    algorithm_node_factory: node_factory.AlgorithmNodeFactory[StateT]
+    algorithm_node_factory = node_factory.AlgorithmNodeFactory[StateT](
         tree_node_factory=tree_node_factory,
         state_representation_factory=state_representation_factory,
         node_tree_evaluation_factory=node_tree_evaluation_factory,
         exploration_index_data_create=search_factory.node_index_create,
     )
 
-    tree_factory: ValueTreeFactory[TState] = ValueTreeFactory[TState](
+    tree_factory: ValueTreeFactory[StateT] = ValueTreeFactory[StateT](
         node_factory=algorithm_node_factory,
         node_direct_evaluator=node_evaluator,
     )
@@ -147,7 +147,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[TState: TurnSta
         index_updater=search_factory.create_node_index_updater(),
     )
 
-    tree_move_selector: TreeAndValueBranchSelector[TState] = TreeAndValueBranchSelector(
+    tree_move_selector: TreeAndValueBranchSelector[StateT] = TreeAndValueBranchSelector(
         tree_manager=tree_manager,
         random_generator=random_generator,
         tree_factory=tree_factory,

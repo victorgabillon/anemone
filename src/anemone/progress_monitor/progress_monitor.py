@@ -80,12 +80,12 @@ class StoppingCriterionArgs:
     type: StoppingCriterionTypes
 
 
-class ProgressMonitorP[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
+class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
     """
     The general stopping criterion Protocol
     """
 
-    def should_we_continue(self, tree: trees.Tree[TNode]) -> bool:
+    def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
         """
         Asking should we continue
 
@@ -96,9 +96,9 @@ class ProgressMonitorP[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
 
     def respectful_opening_instructions(
         self,
-        opening_instructions: node_sel.OpeningInstructions[TNode],
-        tree: trees.Tree[TNode],
-    ) -> node_sel.OpeningInstructions[TNode]:
+        opening_instructions: node_sel.OpeningInstructions[NodeT],
+        tree: trees.Tree[NodeT],
+    ) -> node_sel.OpeningInstructions[NodeT]:
         """
         Ensures the opening request do not exceed the stopping criterion
 
@@ -106,7 +106,7 @@ class ProgressMonitorP[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
         """
         ...
 
-    def get_string_of_progress(self, tree: trees.Tree[TNode]) -> str:
+    def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
         """
         Returns a string representation of the progress made by the stopping criterion.
 
@@ -120,17 +120,17 @@ class ProgressMonitorP[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
 
     def get_percent_of_progress(
         self,
-        tree: trees.Tree[TNode],
+        tree: trees.Tree[NodeT],
         notify_function: Callable[[int], None] | None,
     ) -> str: ...
 
 
-class ProgressMonitor[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """
     The general stopping criterion base class
     """
 
-    def should_we_continue(self, tree: trees.Tree[TNode]) -> bool:
+    def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
         """
         Asking should we continue
 
@@ -143,9 +143,9 @@ class ProgressMonitor[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def respectful_opening_instructions(
         self,
-        opening_instructions: node_sel.OpeningInstructions[TNode],
-        tree: trees.Tree[TNode],
-    ) -> node_sel.OpeningInstructions[TNode]:
+        opening_instructions: node_sel.OpeningInstructions[NodeT],
+        tree: trees.Tree[NodeT],
+    ) -> node_sel.OpeningInstructions[NodeT]:
         """
         Ensures the opening request do not exceed the stopping criterion
 
@@ -153,7 +153,7 @@ class ProgressMonitor[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """
         return opening_instructions
 
-    def get_string_of_progress(self, tree: trees.Tree[TNode]) -> str:
+    def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
         """
         Returns a string representation of the progress made by the stopping criterion.
 
@@ -166,11 +166,11 @@ class ProgressMonitor[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return ""
 
     @abc.abstractmethod
-    def get_percent_of_progress(self, tree: trees.Tree[TNode]) -> int: ...
+    def get_percent_of_progress(self, tree: trees.Tree[NodeT]) -> int: ...
 
     def notify_percent_progress(
         self,
-        tree: trees.Tree[TNode],
+        tree: trees.Tree[NodeT],
         notify_percent_function: Callable[[int], None] | None,
     ) -> None:
         percent_progress: int = self.get_percent_of_progress(tree=tree)
@@ -187,8 +187,8 @@ class TreeMoveLimitArgs:
     tree_move_limit: int
 
 
-class TreeMoveLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
-    ProgressMonitor[TNode]
+class TreeMoveLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
+    ProgressMonitor[NodeT]
 ):
     """
     The stopping criterion based on a tree move limit
@@ -199,7 +199,7 @@ class TreeMoveLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
     def __init__(self, tree_move_limit: int) -> None:
         self.tree_move_limit = tree_move_limit
 
-    def should_we_continue(self, tree: trees.Tree[TNode]) -> bool:
+    def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
         continue_base: bool = super().should_we_continue(tree=tree)
 
         should_we: bool
@@ -211,15 +211,15 @@ class TreeMoveLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
 
     def respectful_opening_instructions(
         self,
-        opening_instructions: node_sel.OpeningInstructions[TNode],
-        tree: trees.Tree[TNode],
-    ) -> node_sel.OpeningInstructions[TNode]:
+        opening_instructions: node_sel.OpeningInstructions[NodeT],
+        tree: trees.Tree[NodeT],
+    ) -> node_sel.OpeningInstructions[NodeT]:
         """
         Ensures the opening request do not exceed the stopping criterion
 
 
         """
-        opening_instructions_subset: node_sel.OpeningInstructions[TNode] = (
+        opening_instructions_subset: node_sel.OpeningInstructions[NodeT] = (
             node_sel.OpeningInstructions()
         )
         opening_instructions.pop_items(
@@ -228,7 +228,7 @@ class TreeMoveLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
         )
         return opening_instructions_subset
 
-    def get_string_of_progress(self, tree: trees.Tree[TNode]) -> str:
+    def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
         """
         compute the string that display the progress in the terminal
 
@@ -242,7 +242,7 @@ class TreeMoveLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
 
     def get_percent_of_progress(
         self,
-        tree: trees.Tree[TNode],
+        tree: trees.Tree[NodeT],
     ) -> int:
         percent: int = int(tree.move_count / self.tree_move_limit * 100)
         return percent
@@ -261,8 +261,8 @@ class DepthLimitArgs:
     depth_limit: int
 
 
-class DepthLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
-    ProgressMonitor[TNode]
+class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
+    ProgressMonitor[NodeT]
 ):
     """
     The stopping criterion based on a depth limit
@@ -285,7 +285,7 @@ class DepthLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
         self.depth_limit = depth_limit
         self.node_selector = node_selector
 
-    def should_we_continue(self, tree: trees.Tree[TNode]) -> bool:
+    def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
         """
         Determines whether the search should continue expanding nodes in the tree.
 
@@ -300,7 +300,7 @@ class DepthLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
             return continue_base
         return self.node_selector.get_current_depth_to_expand() < self.depth_limit
 
-    def get_string_of_progress(self, tree: trees.Tree[TNode]) -> str:
+    def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
         """
         compute the string that display the progress in the terminal
 
@@ -318,7 +318,7 @@ class DepthLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
 
     def get_percent_of_progress(
         self,
-        tree: trees.Tree[TNode],
+        tree: trees.Tree[NodeT],
     ) -> int:
         # todo this percent is not precise
         percent: int = int(
@@ -330,10 +330,10 @@ class DepthLimit[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](
 AllStoppingCriterionArgs = TreeMoveLimitArgs | DepthLimitArgs
 
 
-def create_stopping_criterion[TNode: AlgorithmNode[Any]](
+def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
     args: AllStoppingCriterionArgs,
-    node_selector: node_sel.NodeSelector[TNode],
-) -> ProgressMonitor[TNode]:
+    node_selector: node_sel.NodeSelector[NodeT],
+) -> ProgressMonitor[NodeT]:
     """
     creating the stopping criterion
 
@@ -345,7 +345,7 @@ def create_stopping_criterion[TNode: AlgorithmNode[Any]](
         A stopping criterion
 
     """
-    stopping_criterion: ProgressMonitor[TNode]
+    stopping_criterion: ProgressMonitor[NodeT]
 
     match args.type:
         case StoppingCriterionTypes.DEPTH_LIMIT:

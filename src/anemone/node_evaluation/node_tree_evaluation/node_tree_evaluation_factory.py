@@ -11,15 +11,15 @@ from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
 from anemone.nodes.tree_node import TreeNode
 
 
-class NodeTreeMinmaxEvaluationFactory[TState: TurnState]:
+class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
     """
     The class creating Node Evaluations including children
     """
 
     def create(
         self,
-        tree_node: TreeNode[Any, TState],
-    ) -> NodeMinmaxEvaluation[Any, TState]:
+        tree_node: TreeNode[Any, StateT],
+    ) -> NodeMinmaxEvaluation[Any, StateT]:
         """
         Creates a new NodeEvaluationIncludingChildren object.
 
@@ -32,10 +32,10 @@ class NodeTreeMinmaxEvaluationFactory[TState: TurnState]:
         return NodeMinmaxEvaluation(tree_node=tree_node)
 
 
-class NodeTreeEvaluationFactory[TState2: State = State](Protocol):
+class NodeTreeEvaluationFactory[StateT2: State = State](Protocol):
     """The class creating Node Evaluations including children."""
 
     def create(
         self,
-        tree_node: TreeNode[Any, TState2],
-    ) -> NodeTreeEvaluation[TState2]: ...
+        tree_node: TreeNode[Any, StateT2],
+    ) -> NodeTreeEvaluation[StateT2]: ...

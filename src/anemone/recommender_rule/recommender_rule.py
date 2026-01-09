@@ -40,8 +40,8 @@ def sample_from_policy(policy: BranchPolicy, rng: random.Random) -> BranchKey:
 class RecommenderRule(Protocol):
     type: str
 
-    def policy[TState: State](
-        self, root_node: AlgorithmNode[TState]
+    def policy[StateT: State](
+        self, root_node: AlgorithmNode[StateT]
     ) -> BranchPolicy: ...
     def sample(self, policy: BranchPolicy, rng: random.Random) -> BranchKey: ...
 
@@ -64,7 +64,7 @@ class AlmostEqualLogistic:
     type: Literal["almost_equal_logistic"]
     temperature: float  # kept for config compatibility; rule uses minmax method
 
-    def policy[TState: State](self, root_node: AlgorithmNode[TState]) -> BranchPolicy:
+    def policy[StateT: State](self, root_node: AlgorithmNode[StateT]) -> BranchPolicy:
         best: list[BranchKey] = root_node.tree_evaluation.get_all_of_the_best_branches(
             how_equal="almost_equal_logistic"
         )
@@ -91,7 +91,7 @@ class SoftmaxRule:
     type: Literal["softmax"]
     temperature: float
 
-    def policy[TState: State](self, root_node: AlgorithmNode[TState]) -> BranchPolicy:
+    def policy[StateT: State](self, root_node: AlgorithmNode[StateT]) -> BranchPolicy:
         branches: list[BranchKey] = []
         scores: list[float] = []
 

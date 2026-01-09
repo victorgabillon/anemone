@@ -43,13 +43,13 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class TreeExplorationResult[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     branch_recommendation: BranchRecommendation
-    tree: trees.Tree[TNode]
+    tree: trees.Tree[NodeT]
 
 
-def compute_child_evals[TState: State](
-    root: AlgorithmNode[TState],
+def compute_child_evals[StateT: State](
+    root: AlgorithmNode[StateT],
 ) -> dict[BranchKey, BoardEvaluation]:
     evals: dict[BranchKey, BoardEvaluation] = {}
     for bk, child in root.branches_children.items():
@@ -62,7 +62,7 @@ def compute_child_evals[TState: State](
 
 
 @dataclass
-class TreeExploration[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """
     Tree Exploration is an object to manage one best move search.
 
@@ -81,11 +81,11 @@ class TreeExploration[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     # TODO Not sure why this class is not simply the TreeAndValuePlayer Class
     #  but might be useful when dealing with multi round and time , no?
 
-    tree: trees.Tree[TNode]
-    tree_manager: tree_man.AlgorithmNodeTreeManager[TNode]
-    node_selector: node_sel.NodeSelector[TNode]
+    tree: trees.Tree[NodeT]
+    tree_manager: tree_man.AlgorithmNodeTreeManager[NodeT]
+    node_selector: node_sel.NodeSelector[NodeT]
     recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs
-    stopping_criterion: ProgressMonitor[TNode]
+    stopping_criterion: ProgressMonitor[NodeT]
     notify_percent_function: Callable[[int], None] | None
 
     def print_info_during_move_computation(
@@ -117,7 +117,7 @@ class TreeExploration[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self.tree.root_node.tree_evaluation.print_branches_sorted_by_value_and_exploration()
             self.tree_manager.print_best_line(tree=self.tree)
 
-    def explore(self, random_generator: random.Random) -> TreeExplorationResult[TNode]:
+    def explore(self, random_generator: random.Random) -> TreeExplorationResult[NodeT]:
         """
         Explores the tree to find the best move.
 
@@ -128,9 +128,9 @@ class TreeExploration[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         - MoveRecommendation: The recommended move and its evaluation.
         """
         # by default the first tree expansion is the creation of the tree node
-        tree_expansions: tree_man.TreeExpansions[TNode] = tree_man.TreeExpansions()
+        tree_expansions: tree_man.TreeExpansions[NodeT] = tree_man.TreeExpansions()
 
-        tree_expansion: tree_man.TreeExpansion[TNode] = tree_man.TreeExpansion(
+        tree_expansion: tree_man.TreeExpansion[NodeT] = tree_man.TreeExpansion(
             child_node=self.tree.root_node,
             parent_node=None,
             state_modifications=None,
@@ -147,13 +147,13 @@ class TreeExploration[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self.print_info_during_move_computation(random_generator=random_generator)
 
             # choose the moves and nodes to open
-            opening_instructions: node_sel.OpeningInstructions[TNode]
+            opening_instructions: node_sel.OpeningInstructions[NodeT]
             opening_instructions = self.node_selector.choose_node_and_branch_to_open(
                 tree=self.tree, latest_tree_expansions=tree_expansions
             )
 
             # make sure we do not break the stopping criterion
-            opening_instructions_subset: node_sel.OpeningInstructions[TNode]
+            opening_instructions_subset: node_sel.OpeningInstructions[NodeT]
             opening_instructions_subset = (
                 self.stopping_criterion.respectful_opening_instructions(
                     opening_instructions=opening_instructions, tree=self.tree
@@ -200,22 +200,22 @@ class TreeExploration[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             child_evals=compute_child_evals(self.tree.root_node),
         )
 
-        tree_exploration_result: TreeExplorationResult[TNode] = TreeExplorationResult(
+        tree_exploration_result: TreeExplorationResult[NodeT] = TreeExplorationResult(
             branch_recommendation=move_recommendation, tree=self.tree
         )
 
         return tree_exploration_result
 
 
-def create_tree_exploration[TState: TurnState](
+def create_tree_exploration[StateT: TurnState](
     node_selector_create: NodeSelectorFactory,
-    starting_state: TState,
-    tree_manager: tree_man.AlgorithmNodeTreeManager[AlgorithmNode[TState]],
-    tree_factory: ValueTreeFactory[TState],
+    starting_state: StateT,
+    tree_manager: tree_man.AlgorithmNodeTreeManager[AlgorithmNode[StateT]],
+    tree_factory: ValueTreeFactory[StateT],
     stopping_criterion_args: AllStoppingCriterionArgs,
     recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
     queue_progress_player: queue.Queue[IsDataclass] | None,
-) -> TreeExploration[AlgorithmNode[TState]]:
+) -> TreeExploration[AlgorithmNode[StateT]]:
     """
     Creates a TreeExploration object with the specified dependencies.
 
@@ -231,12 +231,12 @@ def create_tree_exploration[TState: TurnState](
     - TreeExploration: The created TreeExploration object.
     """
     # creates the tree
-    tree: trees.Tree[AlgorithmNode[TState]] = tree_factory.create(
+    tree: trees.Tree[AlgorithmNode[StateT]] = tree_factory.create(
         starting_state=starting_state
     )
     # creates the node selector
-    node_selector: node_sel.NodeSelector[AlgorithmNode[TState]] = node_selector_create()
-    stopping_criterion: ProgressMonitor[AlgorithmNode[TState]] = (
+    node_selector: node_sel.NodeSelector[AlgorithmNode[StateT]] = node_selector_create()
+    stopping_criterion: ProgressMonitor[AlgorithmNode[StateT]] = (
         create_stopping_criterion(
             args=stopping_criterion_args, node_selector=node_selector
         )
@@ -250,7 +250,7 @@ def create_tree_exploration[TState: TurnState](
                 )
             )
 
-    tree_exploration: TreeExploration[AlgorithmNode[TState]] = TreeExploration(
+    tree_exploration: TreeExploration[AlgorithmNode[StateT]] = TreeExploration(
         tree=tree,
         tree_manager=tree_manager,
         stopping_criterion=stopping_criterion,

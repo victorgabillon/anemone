@@ -198,7 +198,7 @@ max-line-length = 88
 disable = [
     "C0301",
     "unnecessary-ellipsis",
-    "W0511"
+    "W0511","R0913","R0917"
     ]
 
 

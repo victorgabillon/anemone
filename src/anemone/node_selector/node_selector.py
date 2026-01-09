@@ -21,16 +21,16 @@ class NodeSelectorState:
     ...
 
 
-class NodeSelector[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
+class NodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
     """
     Protocol for Node Selectors.
     """
 
     def choose_node_and_branch_to_open(
         self,
-        tree: trees.Tree[TNode],
-        latest_tree_expansions: "tree_man.TreeExpansions[TNode]",
-    ) -> OpeningInstructions[TNode]:
+        tree: trees.Tree[NodeT],
+        latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
+    ) -> OpeningInstructions[NodeT]:
         """
         Selects a node from the given tree and returns the instructions to move to an open position.
 

@@ -40,7 +40,7 @@ class RecurZipfBaseArgs:
     branch_explorer_priority: SamplingPriorities
 
 
-class RecurZipfBase[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """The RecurZipfBase Node selector"""
 
     opening_instructor: OpeningInstructor
@@ -68,9 +68,9 @@ class RecurZipfBase[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def choose_node_and_branch_to_open(
         self,
-        tree: trees.Tree[TNode],
-        latest_tree_expansions: "tree_man.TreeExpansions[TNode]",
-    ) -> OpeningInstructions[TNode]:
+        tree: trees.Tree[NodeT],
+        latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
+    ) -> OpeningInstructions[NodeT]:
         """
         Chooses the next node to explore and the move to open.
 
@@ -84,7 +84,7 @@ class RecurZipfBase[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """
         # todo maybe proportions and proportions can be valuesorted dict with smart updates
 
-        opening_instructions: OpeningInstructions[TNode]
+        opening_instructions: OpeningInstructions[NodeT]
         # TODO make sure this block is put in chipiron now with a wrapper
         # best_node_sequence = best_node_sequence_from_node(tree.root_node)
         # if best_node_sequence:
@@ -110,7 +110,7 @@ class RecurZipfBase[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         #             )
         #             return opening_instructions
 
-        wandering_node: TNode = tree.root_node
+        wandering_node: NodeT = tree.root_node
 
         while wandering_node.tree_evaluation.branches_not_over:
             assert not wandering_node.is_over()

@@ -80,9 +80,9 @@ class AlgorithmNodeUpdater:
 
         return update_instructions
 
-    def generate_update_instructions[TNode: AlgorithmNode](
-        self, tree_expansions: "TreeExpansions[TNode]"
-    ) -> "UpdateInstructionsTowardsMultipleNodes[TNode]":
+    def generate_update_instructions[NodeT: AlgorithmNode](
+        self, tree_expansions: "TreeExpansions[NodeT]"
+    ) -> "UpdateInstructionsTowardsMultipleNodes[NodeT]":
         """
         Generates update instructions for a batch of tree expansions.
 
@@ -94,10 +94,10 @@ class AlgorithmNodeUpdater:
         """
         # TODO is the way of merging now overkill?
 
-        update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[TNode]
+        update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[NodeT]
         update_instructions_batch = UpdateInstructionsTowardsMultipleNodes()
 
-        tree_expansion: "TreeExpansion[TNode]"
+        tree_expansion: "TreeExpansion[NodeT]"
         for tree_expansion in tree_expansions:
             update_instructions: UpdateInstructionsFromOneNode = (
                 self.create_update_instructions_after_node_birth(

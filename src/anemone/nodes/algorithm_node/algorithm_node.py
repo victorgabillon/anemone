@@ -20,17 +20,17 @@ from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
 from anemone.nodes.tree_node import TreeNode
 
 
-class AlgorithmNode[TState: State = State]:
+class AlgorithmNode[StateT: State = State]:
     """
     The generic Node used by the tree and value algorithm.
     It wraps tree nodes with values, minimax computation and exploration tools
     """
 
-    tree_node: TreeNode[Self, TState]
+    tree_node: TreeNode[Self, StateT]
     # the reference to the tree node that is wrapped pointing to other AlgorithmNodes
-    tree_evaluation: NodeTreeEvaluation[TState]  # Use Any to break circular dependency
+    tree_evaluation: NodeTreeEvaluation[StateT]  # Use Any to break circular dependency
     exploration_index_data: (
-        NodeExplorationData[Self, TState] | None
+        NodeExplorationData[Self, StateT] | None
     )  # the object storing the information to help the algorithm decide the next nodes to explore
     _state_representation: (
         ContentRepresentation | None
@@ -42,9 +42,9 @@ class AlgorithmNode[TState: State = State]:
 
     def __init__(
         self,
-        tree_node: TreeNode[Self, TState],
-        tree_evaluation: NodeTreeEvaluation[TState],
-        exploration_index_data: NodeExplorationData[Self, TState] | None,
+        tree_node: TreeNode[Self, StateT],
+        tree_evaluation: NodeTreeEvaluation[StateT],
+        exploration_index_data: NodeExplorationData[Self, StateT] | None,
         state_representation: ContentRepresentation | None,
     ) -> None:
         """
@@ -111,7 +111,7 @@ class AlgorithmNode[TState: State = State]:
         return self.tree_node.parent_nodes
 
     @property
-    def state(self) -> TState:
+    def state(self) -> StateT:
         """
         Returns the state associated with this tree node.
 

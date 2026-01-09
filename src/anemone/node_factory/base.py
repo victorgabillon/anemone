@@ -11,32 +11,32 @@ from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 
 
-class NodeFactory[TNode: ITreeNode[Any] = ITreeNode[Any]](Protocol):
+class NodeFactory[NodeT: ITreeNode[Any] = ITreeNode[Any]](Protocol):
     def create(
         self,
         state: State,
         tree_depth: TreeDepth,
         count: int,
-        parent_node: TNode | None,
+        parent_node: NodeT | None,
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None,
-    ) -> TNode: ...
+    ) -> NodeT: ...
 
 
-class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], TState: State = State]:
+class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]:
     """
     Basic class for Creating Tree nodes
     """
 
     def create(
         self,
-        state: TState,
+        state: StateT,
         tree_depth: TreeDepth,
         count: int,
         parent_node: T | None,
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None = None,
-    ) -> TreeNode[T, TState]:
+    ) -> TreeNode[T, StateT]:
         """
         Creates a new TreeNode object.
 
@@ -61,7 +61,7 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], TState: State = State]
             assert branch_from_parent is not None
             parent_nodes = {parent_node: branch_from_parent}
 
-        tree_node: TreeNode[T, TState] = TreeNode[T, TState](
+        tree_node: TreeNode[T, StateT] = TreeNode[T, StateT](
             state_=state,
             tree_depth_=tree_depth,
             id_=count,

@@ -31,32 +31,32 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class AlgorithmNodeFactory[TState: State = State]:
+class AlgorithmNodeFactory[StateT: State = State]:
     """
     The classe creating Algorithm Nodes
     """
 
-    tree_node_factory: TreeNodeFactory[AlgorithmNode[TState], TState]
+    tree_node_factory: TreeNodeFactory[AlgorithmNode[StateT], StateT]
     state_representation_factory: RepresentationFactory | None
-    node_tree_evaluation_factory: NodeTreeEvaluationFactory[TState]
+    node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT]
     exploration_index_data_create: node_indices.ExplorationIndexDataFactory[
-        AlgorithmNode[TState], TState
+        AlgorithmNode[StateT], StateT
     ]
 
     def create_from_tree_node(
         self,
-        tree_node: TreeNode[AlgorithmNode[TState], TState],
-        parent_node: AlgorithmNode[TState] | None,
+        tree_node: TreeNode[AlgorithmNode[StateT], StateT],
+        parent_node: AlgorithmNode[StateT] | None,
         modifications: StateModifications | None,
-    ) -> AlgorithmNode[TState]:
-        tree_evaluation: NodeTreeEvaluation[TState] = (
+    ) -> AlgorithmNode[StateT]:
+        tree_evaluation: NodeTreeEvaluation[StateT] = (
             self.node_tree_evaluation_factory.create(
                 tree_node=tree_node,
             )
         )
 
         exploration_index_data: (
-            node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None
+            node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None
         ) = self.exploration_index_data_create(tree_node)
 
         state_representation: ContentRepresentation | None = None
@@ -83,13 +83,13 @@ class AlgorithmNodeFactory[TState: State = State]:
 
     def create(
         self,
-        state: TState,
+        state: StateT,
         tree_depth: TreeDepth,
         count: int,
-        parent_node: AlgorithmNode[TState] | None,
+        parent_node: AlgorithmNode[StateT] | None,
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None,
-    ) -> AlgorithmNode[TState]:
+    ) -> AlgorithmNode[StateT]:
         """
         Creates an AlgorithmNode object.
 
@@ -105,7 +105,7 @@ class AlgorithmNodeFactory[TState: State = State]:
             An AlgorithmNode object.
 
         """
-        tree_node: TreeNode[AlgorithmNode[TState], TState] = (
+        tree_node: TreeNode[AlgorithmNode[StateT], StateT] = (
             self.tree_node_factory.create(
                 state=state,
                 tree_depth=tree_depth,

@@ -42,10 +42,10 @@ class NodeExplorationIndexManager(Protocol):
 
     needs_parent_state: bool
 
-    def update_root_node_index[TNode: AlgorithmNode[Any]](
+    def update_root_node_index[NodeT: AlgorithmNode[Any]](
         self,
-        root_node: TNode,
-        root_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        root_node: NodeT,
+        root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
         """
         Updates the exploration index of the root node in the tree.
@@ -55,14 +55,14 @@ class NodeExplorationIndexManager(Protocol):
         """
         ...
 
-    def update_node_indices[TNode: AlgorithmNode[Any]](
+    def update_node_indices[NodeT: AlgorithmNode[Any]](
         self,
-        child_node: TNode,
-        parent_node: TNode,
-        parent_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
-        child_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        child_node: NodeT,
+        parent_node: NodeT,
+        parent_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
+        child_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
         parent_node_state: _StateWithTurn | None,
-        tree: Tree[TNode],
+        tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
         """
@@ -87,10 +87,10 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
 
     needs_parent_state = False
 
-    def update_root_node_index[TNode: AlgorithmNode[Any]](
+    def update_root_node_index[NodeT: AlgorithmNode[Any]](
         self,
-        root_node: TNode,
-        root_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        root_node: NodeT,
+        root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
         """
         Updates the exploration index of the root node in the tree.
@@ -100,14 +100,14 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         """
         ...
 
-    def update_node_indices[TNode: AlgorithmNode[Any]](
+    def update_node_indices[NodeT: AlgorithmNode[Any]](
         self,
-        child_node: TNode,
-        parent_node: TNode,
-        parent_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
-        child_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        child_node: NodeT,
+        parent_node: NodeT,
+        parent_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
+        child_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
         parent_node_state: _StateWithTurn | None,
-        tree: Tree[TNode],
+        tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
         """
@@ -129,10 +129,10 @@ class UpdateIndexGlobalMinChange:
 
     needs_parent_state = False
 
-    def update_root_node_index[TNode: AlgorithmNode[Any]](
+    def update_root_node_index[NodeT: AlgorithmNode[Any]](
         self,
-        root_node: TNode,
-        root_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        root_node: NodeT,
+        root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
         """
         Updates the exploration index of the root node in the tree using the global minimum change strategy.
@@ -148,14 +148,14 @@ class UpdateIndexGlobalMinChange:
         root_node_exploration_index_data.max_path_value = root_value
         root_node_exploration_index_data.index = 0
 
-    def update_node_indices[TNode: AlgorithmNode[Any]](
+    def update_node_indices[NodeT: AlgorithmNode[Any]](
         self,
-        child_node: TNode,
-        parent_node: TNode,
-        parent_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
-        child_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        child_node: NodeT,
+        parent_node: NodeT,
+        parent_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
+        child_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
         parent_node_state: _StateWithTurn | None,
-        tree: Tree[TNode],
+        tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
         """
@@ -222,10 +222,10 @@ class UpdateIndexZipfFactoredProba:
 
     needs_parent_state = False
 
-    def update_root_node_index[TNode: AlgorithmNode[Any]](
+    def update_root_node_index[NodeT: AlgorithmNode[Any]](
         self,
-        root_node: TNode,
-        root_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        root_node: NodeT,
+        root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
         """
         Updates the exploration index of the root node in the tree using the Zipf factored probability strategy.
@@ -240,14 +240,14 @@ class UpdateIndexZipfFactoredProba:
         root_node_exploration_index_data.zipf_factored_proba = 1
         root_node_exploration_index_data.index = 0
 
-    def update_node_indices[TNode: AlgorithmNode[Any]](
+    def update_node_indices[NodeT: AlgorithmNode[Any]](
         self,
-        child_node: TNode,
-        parent_node: TNode,
-        parent_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
-        child_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        child_node: NodeT,
+        parent_node: NodeT,
+        parent_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
+        child_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
         parent_node_state: _StateWithTurn | None,
-        tree: Tree[TNode],
+        tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
         """
@@ -306,10 +306,10 @@ class UpdateIndexLocalMinChange:
 
     needs_parent_state = True
 
-    def update_root_node_index[TNode: AlgorithmNode[Any]](
+    def update_root_node_index[NodeT: AlgorithmNode[Any]](
         self,
-        root_node: TNode,
-        root_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        root_node: NodeT,
+        root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
         """
         Updates the exploration index of the root node in the tree using the local minimum change strategy.
@@ -324,14 +324,14 @@ class UpdateIndexLocalMinChange:
             min_value=-math.inf, max_value=math.inf
         )
 
-    def update_node_indices[TNode: AlgorithmNode[Any]](
+    def update_node_indices[NodeT: AlgorithmNode[Any]](
         self,
-        child_node: TNode,
-        parent_node: TNode,
-        parent_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
-        child_node_exploration_index_data: NodeExplorationData[TNode, Any] | None,
+        child_node: NodeT,
+        parent_node: NodeT,
+        parent_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
+        child_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
         parent_node_state: _StateWithTurn | None,
-        tree: Tree[TNode],
+        tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
         """
@@ -450,8 +450,8 @@ class UpdateIndexLocalMinChange:
 
 
 # TODO their might be ways to optimize the computation such as not recomptuing for the whole tree
-def update_all_indices[TNode: AlgorithmNode[Any]](
-    tree: Tree[TNode], index_manager: NodeExplorationIndexManager
+def update_all_indices[NodeT: AlgorithmNode[Any]](
+    tree: Tree[NodeT], index_manager: NodeExplorationIndexManager
 ) -> None:
     """
     The idea is to compute an index $ind(n)$ for a node $n$ that measures the minimum amount of change
@@ -470,7 +470,7 @@ def update_all_indices[TNode: AlgorithmNode[Any]](
     if isinstance(index_manager, NullNodeExplorationIndexManager):
         return
 
-    tree_nodes: RangedDescendants[TNode] = tree.descendants
+    tree_nodes: RangedDescendants[NodeT] = tree.descendants
 
     index_manager.update_root_node_index(
         root_node=tree.root_node,
@@ -480,7 +480,7 @@ def update_all_indices[TNode: AlgorithmNode[Any]](
     tree_depth: TreeDepth
     for tree_depth in tree_nodes:
         # todo how are we sure that the hm comes in order?
-        parent_node: TNode
+        parent_node: NodeT
         for parent_node in tree_nodes[tree_depth].values():
             # for child_node in parent_node.moves_children.values():
             move_rank: int
@@ -512,8 +512,8 @@ def update_all_indices[TNode: AlgorithmNode[Any]](
 # TODO their might be ways to optimize the computation such as not recomptuing for the whole tree
 
 
-def print_all_indices[TNode: AlgorithmNode[Any]](
-    tree: Tree[TNode],
+def print_all_indices[NodeT: AlgorithmNode[Any]](
+    tree: Tree[NodeT],
 ) -> None:
     """
     Prints the exploration indices of all nodes in the given tree.
@@ -524,7 +524,7 @@ def print_all_indices[TNode: AlgorithmNode[Any]](
     Returns:
         None
     """
-    tree_nodes: RangedDescendants[TNode] = tree.descendants
+    tree_nodes: RangedDescendants[NodeT] = tree.descendants
 
     half_move: int
     for half_move in tree_nodes:

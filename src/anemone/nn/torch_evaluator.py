@@ -1,3 +1,6 @@
+"""
+Torch-based MasterStateEvaluator for efficient batch evaluations.
+"""
 # pyright: reportMissingImports=false
 
 from dataclasses import dataclass

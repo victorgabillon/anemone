@@ -35,42 +35,42 @@ from anemone.nodes.tree_node import TreeNode
 @dataclass
 class DepthExtendedIntervalExplo[
     T: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
-](IntervalExplo[T, TState], MaxDepthDescendants[T, TState]):
+    StateT: State = State,
+](IntervalExplo[T, StateT], MaxDepthDescendants[T, StateT]):
     pass
 
 
 @dataclass
 class DepthExtendedMinMaxPathValue[
     T: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
-](MinMaxPathValue[T, TState], MaxDepthDescendants[T, TState]):
+    StateT: State = State,
+](MinMaxPathValue[T, StateT], MaxDepthDescendants[T, StateT]):
     pass
 
 
 @dataclass
 class DepthExtendedRecurZipfQuoolExplorationData[
     T: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
-](RecurZipfQuoolExplorationData[T, TState], MaxDepthDescendants[T, TState]):
+    StateT: State = State,
+](RecurZipfQuoolExplorationData[T, StateT], MaxDepthDescendants[T, StateT]):
     pass
 
 
 # Generic factory type that preserves the node type through the TreeNode parameter
 type ExplorationIndexDataFactory[
     T: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
-] = Callable[[TreeNode[T, TState]], NodeExplorationData[T, TState] | None]
+    StateT: State = State,
+] = Callable[[TreeNode[T, StateT]], NodeExplorationData[T, StateT] | None]
 
 
 def create_exploration_index_data[
     T: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
+    StateT: State = State,
 ](
-    tree_node: TreeNode[T, TState],
+    tree_node: TreeNode[T, StateT],
     index_computation: IndexComputationType | None = None,
     depth_index: bool = False,
-) -> NodeExplorationData[T, TState] | None:
+) -> NodeExplorationData[T, StateT] | None:
     """
     Creates exploration index data for a given tree node.
 
@@ -108,7 +108,7 @@ def create_exploration_index_data[
                 f"not finding good case for {index_computation} in file {__name__}"
             )
 
-    exploration_index_data: NodeExplorationData[T, TState] | None
+    exploration_index_data: NodeExplorationData[T, StateT] | None
     exploration_index_data = (
         index_dataclass_name(tree_node=tree_node) if index_dataclass_name else None
     )

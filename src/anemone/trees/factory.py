@@ -15,18 +15,18 @@ from anemone.trees.tree import Tree
 from .descendants import RangedDescendants
 
 
-class ValueTreeFactory[TState: State = State]:
+class ValueTreeFactory[StateT: State = State]:
     """
     ValueTreeFactory
     """
 
-    node_factory: nod_fac.AlgorithmNodeFactory[TState]
-    node_direct_evaluator: NodeDirectEvaluator[TState]
+    node_factory: nod_fac.AlgorithmNodeFactory[StateT]
+    node_direct_evaluator: NodeDirectEvaluator[StateT]
 
     def __init__(
         self,
-        node_factory: nod_fac.AlgorithmNodeFactory[TState],
-        node_direct_evaluator: NodeDirectEvaluator[TState],
+        node_factory: nod_fac.AlgorithmNodeFactory[StateT],
+        node_direct_evaluator: NodeDirectEvaluator[StateT],
     ) -> None:
         """
         creates the tree factory
@@ -37,7 +37,7 @@ class ValueTreeFactory[TState: State = State]:
         self.node_factory = node_factory
         self.node_direct_evaluator = node_direct_evaluator
 
-    def create(self, starting_state: TState) -> Tree[AlgorithmNode[TState]]:
+    def create(self, starting_state: StateT) -> Tree[AlgorithmNode[StateT]]:
         """
         creates the tree
 
@@ -48,7 +48,7 @@ class ValueTreeFactory[TState: State = State]:
 
         """
 
-        root_node: AlgorithmNode[TState] = self.node_factory.create(
+        root_node: AlgorithmNode[StateT] = self.node_factory.create(
             state=starting_state,
             tree_depth=0,  # by default
             count=0,
@@ -57,7 +57,7 @@ class ValueTreeFactory[TState: State = State]:
             branch_from_parent=None,
         )
 
-        evaluation_queries: EvaluationQueries[TState] = EvaluationQueries()
+        evaluation_queries: EvaluationQueries[StateT] = EvaluationQueries()
 
         self.node_direct_evaluator.add_evaluation_query(
             node=root_node, evaluation_queries=evaluation_queries
@@ -68,12 +68,12 @@ class ValueTreeFactory[TState: State = State]:
         )
         # is this needed? used outside?
 
-        descendants: RangedDescendants[AlgorithmNode[TState]] = RangedDescendants[
-            AlgorithmNode[TState]
+        descendants: RangedDescendants[AlgorithmNode[StateT]] = RangedDescendants[
+            AlgorithmNode[StateT]
         ]()
         descendants.add_descendant(root_node)
 
-        value_tree: Tree[AlgorithmNode[TState]] = Tree[AlgorithmNode[TState]](
+        value_tree: Tree[AlgorithmNode[StateT]] = Tree[AlgorithmNode[StateT]](
             root_node=root_node, descendants=descendants
         )
 

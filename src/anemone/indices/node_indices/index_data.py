@@ -15,7 +15,7 @@ from anemone.utils.small_tools import Interval
 @dataclass
 class NodeExplorationData[
     Node: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
+    StateT: State = State,
 ]:
     """
     Represents the exploration data for a tree node.
@@ -28,7 +28,7 @@ class NodeExplorationData[
         dot_description(): Returns a string representation of the exploration data for dot visualization.
     """
 
-    tree_node: TreeNode[Node, TState]
+    tree_node: TreeNode[Node, StateT]
     index: float | None = None
 
     def dot_description(self) -> str:
@@ -44,8 +44,8 @@ class NodeExplorationData[
 @dataclass
 class RecurZipfQuoolExplorationData[
     Node: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
-](NodeExplorationData[Node, TState]):
+    StateT: State = State,
+](NodeExplorationData[Node, StateT]):
     """
     Represents the exploration data for a tree node with recursive zipf-quool factor.
 
@@ -73,8 +73,8 @@ class RecurZipfQuoolExplorationData[
 @dataclass
 class MinMaxPathValue[
     Node: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
-](NodeExplorationData[Node, TState]):
+    StateT: State = State,
+](NodeExplorationData[Node, StateT]):
     """
     Represents the exploration data for a tree node with minimum and maximum path values.
 
@@ -96,8 +96,8 @@ class MinMaxPathValue[
 @dataclass
 class IntervalExplo[
     Node: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
-](NodeExplorationData[Node, TState]):
+    StateT: State = State,
+](NodeExplorationData[Node, StateT]):
     """
     Represents the exploration data for a tree node with an interval.
 
@@ -129,8 +129,8 @@ class IntervalExplo[
 @dataclass
 class MaxDepthDescendants[
     Node: ITreeNode[Any] = ITreeNode[Any],
-    TState: State = State,
-](NodeExplorationData[Node, TState]):
+    StateT: State = State,
+](NodeExplorationData[Node, StateT]):
     """
     Represents the exploration data for a tree node with maximum depth of descendants.
     """

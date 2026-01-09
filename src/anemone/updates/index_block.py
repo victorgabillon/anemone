@@ -31,6 +31,10 @@ class IndexUpdateInstructionsFromOneNode:
     updated_index: bool
 
 
+def _new_branches_with_updated_index() -> set[BranchKey]:
+    return set()
+
+
 @dataclass(slots=True)
 class IndexUpdateInstructionsTowardsOneParentNode:
     """
@@ -43,7 +47,7 @@ class IndexUpdateInstructionsTowardsOneParentNode:
     """
 
     branches_with_updated_index: set[BranchKey] = field(
-        default_factory=lambda: set[BranchKey]()
+        default_factory=_new_branches_with_updated_index
     )
 
     def add_update_from_one_child_node(

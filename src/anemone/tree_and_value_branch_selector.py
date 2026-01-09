@@ -31,7 +31,7 @@ from .trees.factory import ValueTreeFactory
 
 
 @dataclass
-class TreeAndValueBranchSelector[TState: TurnState = TurnState]:
+class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     """
     The TreeAndValueBranchSelector class is responsible for selecting moves based on a tree and value strategy.
 
@@ -47,7 +47,7 @@ class TreeAndValueBranchSelector[TState: TurnState = TurnState]:
     # pretty empty class but might be useful when dealing with multi round and time , no?
 
     tree_manager: tree_man.AlgorithmNodeTreeManager
-    tree_factory: ValueTreeFactory[TState]
+    tree_factory: ValueTreeFactory[StateT]
     stopping_criterion_args: AllStoppingCriterionArgs
     node_selector_create: NodeSelectorFactory
     random_generator: random.Random
@@ -55,7 +55,7 @@ class TreeAndValueBranchSelector[TState: TurnState = TurnState]:
     queue_progress_player: queue.Queue[IsDataclass] | None
 
     def select_branch(
-        self, state: TState, selection_seed: Seed
+        self, state: StateT, selection_seed: Seed
     ) -> BranchRecommendation:
         """
         Selects the best move based on the tree and value strategy.
@@ -78,7 +78,7 @@ class TreeAndValueBranchSelector[TState: TurnState = TurnState]:
 
     def create_tree_exploration(
         self,
-        state: TState,
+        state: StateT,
     ) -> TreeExploration:
         tree_exploration: TreeExploration = create_tree_exploration(
             tree_manager=self.tree_manager,

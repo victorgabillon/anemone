@@ -17,7 +17,7 @@ from typing import MutableMapping, Protocol, Self
 from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
 
 
-class ITreeNode[TState: State = State](Protocol):
+class ITreeNode[StateT: State = State](Protocol):
     """
     The `ITreeNode` protocol represents a node in a tree structure used for selecting chess moves.
     """
@@ -33,7 +33,7 @@ class ITreeNode[TState: State = State](Protocol):
         ...
 
     @property
-    def state(self) -> TState:
+    def state(self) -> StateT:
         """
         Get the chess board state of the node.
 

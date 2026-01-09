@@ -19,12 +19,12 @@ type OpeningInstructionKey = tuple[int, BranchKey]
 
 
 @dataclass(slots=True)
-class OpeningInstruction[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
+class OpeningInstruction[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
     """
     Represents an opening instruction for a specific node in the game tree.
     """
 
-    node_to_open: TNode
+    node_to_open: NodeT
     branch: BranchKey
 
     def print_info(self) -> None:
@@ -38,18 +38,18 @@ class OpeningInstruction[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         )
 
 
-class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
+class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
     # todo do we need a dict? why not a set? verify
 
     """
     Represents a collection of opening instructions.
     """
 
-    batch: dict[OpeningInstructionKey, OpeningInstruction[TNode]]
+    batch: dict[OpeningInstructionKey, OpeningInstruction[NodeT]]
 
     def __init__(
         self,
-        dictionary: dict[OpeningInstructionKey, OpeningInstruction[TNode]]
+        dictionary: dict[OpeningInstructionKey, OpeningInstruction[NodeT]]
         | None = None,
     ) -> None:
         """
@@ -67,7 +67,7 @@ class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
                 self[key] = dictionary[key]
 
     def __setitem__(
-        self, key: OpeningInstructionKey, value: OpeningInstruction[TNode]
+        self, key: OpeningInstructionKey, value: OpeningInstruction[NodeT]
     ) -> None:
         """
         Sets an opening instruction in the collection.
@@ -79,7 +79,7 @@ class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         # key is supposed to be a tuple with (node_to_open,  move_to_play)
         self.batch[key] = value
 
-    def __getitem__(self, key: OpeningInstructionKey) -> OpeningInstruction[TNode]:
+    def __getitem__(self, key: OpeningInstructionKey) -> OpeningInstruction[NodeT]:
         """
         Retrieves an opening instruction from the collection.
 
@@ -137,7 +137,7 @@ class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
             key, value = self.batch.popitem()
             popped[key] = value
 
-    def values(self) -> ValuesView[OpeningInstruction[TNode]]:
+    def values(self) -> ValuesView[OpeningInstruction[NodeT]]:
         """
         Returns a view of the values in the collection.
 
@@ -146,7 +146,7 @@ class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         """
         return self.batch.values()
 
-    def items(self) -> ItemsView[OpeningInstructionKey, OpeningInstruction[TNode]]:
+    def items(self) -> ItemsView[OpeningInstructionKey, OpeningInstruction[NodeT]]:
         """
         Returns a view of the items (key-value pairs) in the collection.
 
@@ -173,9 +173,9 @@ class OpeningInstructions[TNode: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         return len(self.batch)
 
 
-def create_instructions_to_open_all_branches[TNode: nodes.ITreeNode[Any]](
-    branches_to_play: list[BranchKey], node_to_open: TNode
-) -> OpeningInstructions[TNode]:
+def create_instructions_to_open_all_branches[NodeT: nodes.ITreeNode[Any]](
+    branches_to_play: list[BranchKey], node_to_open: NodeT
+) -> OpeningInstructions[NodeT]:
     """
     Creates opening instructions for all possible moves to play from a given node.
 
@@ -186,7 +186,7 @@ def create_instructions_to_open_all_branches[TNode: nodes.ITreeNode[Any]](
     Returns:
         An OpeningInstructions object containing the opening instructions.
     """
-    opening_instructions_batch: OpeningInstructions[TNode] = OpeningInstructions()
+    opening_instructions_batch: OpeningInstructions[NodeT] = OpeningInstructions()
 
     for branch_to_play in branches_to_play:
         # at the moment it looks redundant keys are almost the same as values but its clean

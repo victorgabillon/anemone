@@ -72,10 +72,10 @@ class SearchFactoryP(Protocol):
         """
         ...
 
-    def node_index_create[TState: State](
+    def node_index_create[StateT: State](
         self,
-        tree_node: nodes.TreeNode[AlgorithmNode[TState], TState],
-    ) -> node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None:
+        tree_node: nodes.TreeNode[AlgorithmNode[StateT], StateT],
+    ) -> node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None:
         """
         Creates a node index for the given tree node.
 
@@ -167,10 +167,10 @@ class SearchFactory:
             index_updater = None
         return index_updater
 
-    def node_index_create[TState: State](
+    def node_index_create[StateT: State](
         self,
-        tree_node: nodes.TreeNode[AlgorithmNode[TState], TState],
-    ) -> node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None:
+        tree_node: nodes.TreeNode[AlgorithmNode[StateT], StateT],
+    ) -> node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None:
         """
         Creates node indices for a given tree node.
 
@@ -182,7 +182,7 @@ class SearchFactory:
         """
 
         exploration_index_data: (
-            node_indices.NodeExplorationData[AlgorithmNode[TState], TState] | None
+            node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None
         ) = create_exploration_index_data(
             tree_node=tree_node,
             index_computation=self.index_computation,

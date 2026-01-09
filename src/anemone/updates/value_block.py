@@ -30,25 +30,22 @@ class ValueUpdateInstructionsFromOneNode:
     new_best_move_for_node: bool
 
 
+def _new_branchkey_set() -> set[BranchKey]:
+    return set()
+
+
 @dataclass(slots=True)
 class ValueUpdateInstructionsTowardsOneParentNode:
-    """
-    Represents a block of value-update instructions intended to a specific node in the algorithm tree.
-
-    Attributes:
-        moves_with_updated_over (Set[AlgorithmNode]): Set of moves with updated 'over' value.
-        moves_with_updated_value (Set[AlgorithmNode]): Set of moves with updated 'value' value.
-        moves_with_updated_best_move (Set[AlgorithmNode]): Set of moves with updated 'best_move' value.
-    """
+    """Represents a block of value-update instructions intended to a specific node in the algorithm tree."""
 
     branches_with_updated_over: set[BranchKey] = field(
-        default_factory=lambda: set[BranchKey]()
+        default_factory=_new_branchkey_set
     )
     branches_with_updated_value: set[BranchKey] = field(
-        default_factory=lambda: set[BranchKey]()
+        default_factory=_new_branchkey_set
     )
     branches_with_updated_best_branch: set[BranchKey] = field(
-        default_factory=lambda: set[BranchKey]()
+        default_factory=_new_branchkey_set
     )
 
     def add_update_from_one_child_node(

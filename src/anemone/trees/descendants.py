@@ -27,19 +27,19 @@ from anemone.basics import TreeDepth
 from anemone.nodes import ITreeNode
 
 
-class Descendants[TNode: ITreeNode[Any]]:
+class Descendants[NodeT: ITreeNode[Any]]:
     """
     Represents a collection of descendants for a specific half move in a tree.
 
     Attributes:
-        descendants_at_tree_depth (dict[TreeDepth, dict[str, TNode]]): A dictionary that maps a half move to a dictionary of descendants.
+        descendants_at_tree_depth (dict[TreeDepth, dict[str, NodeT]]): A dictionary that maps a half move to a dictionary of descendants.
         number_of_descendants (int): The total number of descendants in the collection.
         number_of_descendants_at_tree_depth (dict[TreeDepth, int]): A dictionary that maps a half move to the number of descendants at that half move.
         min_tree_depth (int | None): The minimum half move in the collection, or None if the collection is empty.
         max_tree_depth (int | None): The maximum half move in the collection, or None if the collection is empty.
     """
 
-    descendants_at_tree_depth: dict[TreeDepth, dict[StateTag, TNode]]
+    descendants_at_tree_depth: dict[TreeDepth, dict[StateTag, NodeT]]
     number_of_descendants: int
     number_of_descendants_at_tree_depth: dict[TreeDepth, int]
     min_tree_depth: TreeDepth | None
@@ -67,7 +67,7 @@ class Descendants[TNode: ITreeNode[Any]]:
 
     def iter_on_all_nodes(
         self,
-    ) -> Iterator[tuple[TreeDepth, StateTag, TNode]]:
+    ) -> Iterator[tuple[TreeDepth, StateTag, NodeT]]:
         return (
             (hm, node_tag, node)
             for hm, nodes_at_hm in self.descendants_at_tree_depth.items()
@@ -83,20 +83,20 @@ class Descendants[TNode: ITreeNode[Any]]:
         """
         return self.descendants_at_tree_depth.keys()
 
-    def __setitem__(self, tree_depth: TreeDepth, value: dict[StateTag, TNode]) -> None:
+    def __setitem__(self, tree_depth: TreeDepth, value: dict[StateTag, NodeT]) -> None:
         """
         Sets the descendants at a specific half move.
 
         Args:
             tree_depth (TreeDepth): The half move at which to set the descendants.
-            value (dict[str, TNode]): The descendants to set.
+            value (dict[str, NodeT]): The descendants to set.
 
         Returns:
             None
         """
         self.descendants_at_tree_depth[tree_depth] = value
 
-    def __getitem__(self, tree_depth: TreeDepth) -> dict[StateTag, TNode]:
+    def __getitem__(self, tree_depth: TreeDepth) -> dict[StateTag, NodeT]:
         """
         Retrieve the descendants at a specific half move.
 
@@ -104,7 +104,7 @@ class Descendants[TNode: ITreeNode[Any]]:
             tree_depth (TreeDepth): The half move to retrieve the descendants for.
 
         Returns:
-            dict[str, TNode]: A dictionary of descendants at the specified half move.
+            dict[str, NodeT]: A dictionary of descendants at the specified half move.
         """
         return self.descendants_at_tree_depth[tree_depth]
 
@@ -126,12 +126,12 @@ class Descendants[TNode: ITreeNode[Any]]:
         """
         return self.number_of_descendants
 
-    def contains_node(self, node: TNode) -> bool:
+    def contains_node(self, node: NodeT) -> bool:
         """
         Checks if the descendants contain a specific node.
 
         Args:
-            node (TNode): The node to check for.
+            node (NodeT): The node to check for.
 
         Returns:
             bool: True if the descendants contain the node, False otherwise.
@@ -144,12 +144,12 @@ class Descendants[TNode: ITreeNode[Any]]:
         else:
             return False
 
-    def remove_descendant(self, node: TNode) -> None:
+    def remove_descendant(self, node: NodeT) -> None:
         """
         Removes a descendant node from the tree.
 
         Args:
-            node (TNode): The node to be removed.
+            node (NodeT): The node to be removed.
 
         Returns:
             None
@@ -173,12 +173,12 @@ class Descendants[TNode: ITreeNode[Any]]:
         """
         return self.number_of_descendants == 0
 
-    def add_descendant(self, node: TNode) -> None:
+    def add_descendant(self, node: NodeT) -> None:
         """
         Adds a descendant node to the tree.
 
         Args:
-            node (TNode): The descendant node to be added.
+            node (NodeT): The descendant node to be added.
 
         Returns:
             None
@@ -266,7 +266,7 @@ class Descendants[TNode: ITreeNode[Any]]:
             )
 
 
-class RangedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
+class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
     """
     Represents a collection of descendants with a range of half moves.
 
@@ -350,12 +350,12 @@ class RangedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
         else:
             return True
 
-    def add_descendant(self, node: TNode) -> None:
+    def add_descendant(self, node: NodeT) -> None:
         """
         Adds a descendant node to the tree.
 
         Args:
-            node (TNode): The descendant node to be added.
+            node (NodeT): The descendant node to be added.
 
         Returns:
             None
@@ -380,12 +380,12 @@ class RangedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
                 self.max_tree_depth = tree_depth
         self.number_of_descendants += 1
 
-    def remove_descendant(self, node: TNode) -> None:
+    def remove_descendant(self, node: NodeT) -> None:
         """
         Removes a descendant node from the tree.
 
         Args:
-            node (TNode): The node to be removed.
+            node (NodeT): The node to be removed.
 
         Returns:
             None
@@ -540,7 +540,7 @@ class RangedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
         )
 
 
-class SortedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
+class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
     # todo is there a difference between sorted descendant nd sorted value descendant? below?
 
     """
@@ -548,28 +548,28 @@ class SortedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
     Inherits from the Descendants class.
     """
 
-    sorted_descendants_at_tree_depth: dict[int, dict[TNode, float]]
+    sorted_descendants_at_tree_depth: dict[int, dict[NodeT, float]]
 
     def __init__(self) -> None:
         super().__init__()
         self.sorted_descendants_at_tree_depth = {}
 
-    def update_value(self, node: TNode, value: float) -> None:
+    def update_value(self, node: NodeT, value: float) -> None:
         """
         Updates the value of a descendant node.
 
         Args:
-            node (TNode): The descendant node.
+            node (NodeT): The descendant node.
             value (float): The new value for the descendant node.
         """
         self.sorted_descendants_at_tree_depth[node.tree_depth][node] = value
 
-    def add_descendant_with_val(self, node: TNode, value: float) -> None:
+    def add_descendant_with_val(self, node: NodeT, value: float) -> None:
         """
         Adds a descendant node with its corresponding value.
 
         Args:
-            node (TNode): The descendant node to add.
+            node (NodeT): The descendant node to add.
             value (float): The value of the descendant node.
         """
         super().add_descendant(node)
@@ -620,12 +620,12 @@ class SortedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
                 print(descendant.id, descendant.tag, "(" + str(value) + ")", end=" ")
             print("")
 
-    def remove_descendant(self, node: TNode) -> None:
+    def remove_descendant(self, node: NodeT) -> None:
         """
         Removes a descendant node from the data structure.
 
         Args:
-            node (TNode): The descendant node to remove.
+            node (NodeT): The descendant node to remove.
         """
         super().remove_descendant(node)
         tree_depth = node.tree_depth
@@ -634,12 +634,12 @@ class SortedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
             self.sorted_descendants_at_tree_depth.pop(tree_depth)
         assert not self.contains_node(node)
 
-    def contains_node(self, node: TNode) -> bool:
+    def contains_node(self, node: NodeT) -> bool:
         """
         Checks if a descendant node is present in the data structure.
 
         Args:
-            node (TNode): The descendant node to check.
+            node (NodeT): The descendant node to check.
 
         Returns:
             bool: True if the descendant node is present, False otherwise.
@@ -656,7 +656,7 @@ class SortedDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
         return rep
 
 
-class SortedValueDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
+class SortedValueDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
     """
     Represents a class for managing sorted descendants with associated values.
     Inherits from the `Descendants` class.
@@ -671,12 +671,12 @@ class SortedValueDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
         super().__init__()
         self.sorted_descendants_at_tree_depth = {}
 
-    def update_value(self, node: TNode, value: float) -> None:
+    def update_value(self, node: NodeT, value: float) -> None:
         """
         Updates the value associated with a given node.
 
         Args:
-            node (TNode): The node to update the value for.
+            node (NodeT): The node to update the value for.
             value (float): The new value to associate with the node.
 
         Returns:
@@ -684,12 +684,12 @@ class SortedValueDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
         """
         self.sorted_descendants_at_tree_depth[node.tree_depth][node] = value
 
-    def add_descendant_val(self, node: TNode, value: float) -> None:
+    def add_descendant_val(self, node: NodeT, value: float) -> None:
         """
         Adds a descendant node with an associated value.
 
         Args:
-            node (TNode): The descendant node to add.
+            node (NodeT): The descendant node to add.
             value (float): The value associated with the descendant node.
 
         Returns:
@@ -749,12 +749,12 @@ class SortedValueDescendants[TNode: ITreeNode[Any]](Descendants[TNode]):
                 print(str(descendant.id) + "(" + str(value) + ")", end=" ")
             print("")
 
-    def remove_descendant(self, node: TNode) -> None:
+    def remove_descendant(self, node: NodeT) -> None:
         """
         Removes a descendant node.
 
         Args:
-            node (TNode): The descendant node to remove.
+            node (NodeT): The descendant node to remove.
 
         Returns:
             None

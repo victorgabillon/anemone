@@ -6,15 +6,15 @@ from typing import Protocol
 from valanga import BranchKey, State, StateModifications
 
 
-class StateTransition[TState](Protocol):
-    def copy_for_expansion(self, state: TState, *, copy_stack: bool) -> TState: ...
+class StateTransition[StateT](Protocol):
+    def copy_for_expansion(self, state: StateT, *, copy_stack: bool) -> StateT: ...
 
     def step(
         self,
-        state: TState,
+        state: StateT,
         *,
         branch_key: BranchKey,
-    ) -> tuple[TState, StateModifications | None]: ...
+    ) -> tuple[StateT, StateModifications | None]: ...
 
 
 @dataclass(frozen=True)

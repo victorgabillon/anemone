@@ -62,6 +62,13 @@ class UpdateInstructionsTowardsOneParentNode:
         update_from_a_child_node: UpdateInstructionsFromOneNode,
         branch_from_parent_to_child: BranchKey,
     ) -> None:
+        """
+        Adds update instructions from a child node.
+
+        Args:
+        - update_from_a_child_node: The update instructions from the child node.
+        - branch_from_parent_to_child: The branch key from the parent to the child.
+        """
         assert self.value_updates_toward_one_parent_node is not None
         assert update_from_a_child_node.value_block is not None
         self.value_updates_toward_one_parent_node.add_update_from_one_child_node(
@@ -79,6 +86,11 @@ class UpdateInstructionsTowardsOneParentNode:
                 )
 
     def add_updates_towards_one_parent_node(self, another_update: Self) -> None:
+        """
+        Adds update instructions from another UpdateInstructionsTowardsOneParentNode.
+        Args:
+        - another_update: The other update instructions to add.
+        """
         assert self.value_updates_toward_one_parent_node is not None
         assert another_update.value_updates_toward_one_parent_node is not None
         self.value_updates_toward_one_parent_node.add_update_toward_one_parent_node(
@@ -120,24 +132,32 @@ class UpdateInstructionsTowardsOneParentNode:
 
 
 @dataclass
-class UpdateInstructionsTowardsMultipleNodes[TNode: AlgorithmNode = AlgorithmNode]:
+class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNode]:
     """Represents update instructions towards multiple parent nodes."""
 
-    # mapping from nodes to the update instructions that are intended to them for consideration (performing the updates)
+    @staticmethod
+    def _new_one_node_instructions() -> DictOfNumberedDictWithPointerOnMax[
+        NodeT, UpdateInstructionsTowardsOneParentNode
+    ]:
+        return DictOfNumberedDictWithPointerOnMax()
+
     one_node_instructions: DictOfNumberedDictWithPointerOnMax[
-        TNode, UpdateInstructionsTowardsOneParentNode
-    ] = field(
-        default_factory=lambda: DictOfNumberedDictWithPointerOnMax[
-            TNode, UpdateInstructionsTowardsOneParentNode
-        ]()
-    )
+        NodeT, UpdateInstructionsTowardsOneParentNode
+    ] = field(default_factory=_new_one_node_instructions)
 
     def add_update_from_one_child_node(
         self,
         update_from_child_node: UpdateInstructionsFromOneNode,
-        parent_node: TNode,
+        parent_node: NodeT,
         branch_from_parent: BranchKey,
     ) -> None:
+        """
+        Adds update instructions from a child node to a parent node.
+        Args:
+            update_from_child_node: The update instructions from the child node.
+            parent_node: The parent node to which the updates are directed.
+            branch_from_parent: The branch key from the parent to the child.
+        """
         if parent_node not in self.one_node_instructions:
             # build the UpdateInstructionsTowardsOneParentNode
             assert update_from_child_node.value_block is not None
@@ -194,8 +214,14 @@ class UpdateInstructionsTowardsMultipleNodes[TNode: AlgorithmNode = AlgorithmNod
     def add_updates_towards_one_parent_node(
         self,
         update_from_child_node: UpdateInstructionsTowardsOneParentNode,
-        parent_node: TNode,
+        parent_node: NodeT,
     ) -> None:
+        """
+        Adds update instructions from another UpdateInstructionsTowardsOneParentNode to a parent node.
+        Args:
+            update_from_child_node: The update instructions from another UpdateInstructionsTowardsOneParentNode.
+            parent_node: The parent node to which the updates are directed.
+        """
         if parent_node in self.one_node_instructions:
             self.one_node_instructions[parent_node].add_updates_towards_one_parent_node(
                 another_update=update_from_child_node
@@ -203,7 +229,12 @@ class UpdateInstructionsTowardsMultipleNodes[TNode: AlgorithmNode = AlgorithmNod
         else:
             self.one_node_instructions[parent_node] = update_from_child_node
 
-    def pop_item(self) -> tuple[TNode, UpdateInstructionsTowardsOneParentNode]:
+    def pop_item(self) -> tuple[NodeT, UpdateInstructionsTowardsOneParentNode]:
+        """
+        Pops an item from the update instructions.
+        Returns:
+            A tuple containing the parent node and its corresponding update instructions.
+        """
         return self.one_node_instructions.popitem()
 
     def __bool__(self) -> bool:

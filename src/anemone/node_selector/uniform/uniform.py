@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from valanga import BranchKey
 
 
-class Uniform[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """The Uniform Node selector"""
 
     opening_instructor: OpeningInstructor
@@ -52,9 +52,9 @@ class Uniform[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def choose_node_and_branch_to_open(
         self,
-        tree: trees.Tree[TNode],
-        latest_tree_expansions: tree_man.TreeExpansions[TNode],
-    ) -> OpeningInstructions[TNode]:
+        tree: trees.Tree[NodeT],
+        latest_tree_expansions: tree_man.TreeExpansions[NodeT],
+    ) -> OpeningInstructions[NodeT]:
         """
         Chooses a node to expand and determines the moves to open for that node.
 
@@ -66,7 +66,7 @@ class Uniform[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         - OpeningInstructions: The opening instructions for the chosen node.
 
         """
-        opening_instructions_batch: OpeningInstructions[TNode] = OpeningInstructions()
+        opening_instructions_batch: OpeningInstructions[NodeT] = OpeningInstructions()
 
         # generate the nodes to expand
         current_half_move_to_expand = (
@@ -77,7 +77,7 @@ class Uniform[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         nodes_to_consider = list(tree.descendants[current_half_move_to_expand].values())
 
         # filter the game-over ones and the ones with values
-        nodes_to_consider_not_over: list[TNode] = [
+        nodes_to_consider_not_over: list[NodeT] = [
             node for node in nodes_to_consider if not node.is_over()
         ]
 
@@ -93,7 +93,7 @@ class Uniform[TNode: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             all_branches_to_open: list[BranchKey] = (
                 self.opening_instructor.all_branches_to_open(node_to_open=node)
             )
-            opening_instructions: OpeningInstructions[TNode] = (
+            opening_instructions: OpeningInstructions[NodeT] = (
                 create_instructions_to_open_all_branches(
                     branches_to_play=all_branches_to_open, node_to_open=node
                 )

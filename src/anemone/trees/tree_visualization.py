@@ -30,7 +30,7 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 from .tree import Tree
 
 
-def add_dot[TState: State](dot: Digraph, treenode: ITreeNode[TState]) -> None:
+def add_dot[StateT: State](dot: Digraph, treenode: ITreeNode[StateT]) -> None:
     """
     Adds a node and edges to the given Dot graph based on the provided tree node.
 
@@ -57,8 +57,8 @@ def add_dot[TState: State](dot: Digraph, treenode: ITreeNode[TState]) -> None:
                 add_dot(dot, child)
 
 
-def display_special[TState: State](
-    node: AlgorithmNode[TState],  # or AlgorithmNode if you prefer
+def display_special[StateT: State](
+    node: AlgorithmNode[StateT],  # or AlgorithmNode if you prefer
     format_str: str,
     index: dict[BranchKey, str],
 ) -> Digraph:
@@ -89,8 +89,8 @@ def display_special[TState: State](
     return dot
 
 
-def display[TState: State](
-    tree: Tree[AlgorithmNode[TState]], format_str: str
+def display[StateT: State](
+    tree: Tree[AlgorithmNode[StateT]], format_str: str
 ) -> Digraph:
     """
     Display the move and value tree using graph visualization.
@@ -107,7 +107,7 @@ def display[TState: State](
     return dot
 
 
-def save_pdf_to_file[TState: State](tree: Tree[AlgorithmNode[TState]]) -> None:
+def save_pdf_to_file[StateT: State](tree: Tree[AlgorithmNode[StateT]]) -> None:
     """
     Saves the visualization of a tree as a PDF file.
 

@@ -10,7 +10,7 @@ from anemone.nodes.itree_node import ITreeNode
 from .descendants import RangedDescendants
 
 
-class Tree[TNode: ITreeNode[Any]]:
+class Tree[NodeT: ITreeNode[Any]]:
     """
     This class defines the Tree that is built out of all the combinations of moves given a starting board position.
     The root node contains the starting board.
@@ -21,11 +21,11 @@ class Tree[TNode: ITreeNode[Any]]:
     It is a pointer to the root node with some counters and keeping track of descendants.
     """
 
-    _root_node: TNode
-    descendants: RangedDescendants[TNode]
+    _root_node: NodeT
+    descendants: RangedDescendants[NodeT]
     tree_root_tree_depth: TreeDepth
 
-    def __init__(self, root_node: TNode, descendants: RangedDescendants[TNode]) -> None:
+    def __init__(self, root_node: NodeT, descendants: RangedDescendants[NodeT]) -> None:
         """
         Initialize the Tree with a root node and descendants.
 
@@ -48,16 +48,16 @@ class Tree[TNode: ITreeNode[Any]]:
         self.descendants = descendants
 
     @property
-    def root_node(self) -> TNode:
+    def root_node(self) -> NodeT:
         """
         Returns the root node of the tree.
 
         Returns:
-            TNode: The root node of the tree.
+            NodeT: The root node of the tree.
         """
         return self._root_node
 
-    def node_depth(self, node: TNode) -> int:
+    def node_depth(self, node: NodeT) -> int:
         """
         Calculates the depth of a given node in the tree.
 

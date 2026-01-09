@@ -34,8 +34,8 @@ def are_all_moves_and_children_opened(tree_node: TreeNode) -> bool:
     return tree_node.all_branches_generated and tree_node.non_opened_branches == set()
 
 
-def a_move_key_sequence_from_root[TState: State](
-    tree_node: ITreeNode[TState],
+def a_move_key_sequence_from_root[StateT: State](
+    tree_node: ITreeNode[StateT],
 ) -> list[str]:
     """
     Returns a list of move sequences from the root node to a given tree node.
@@ -47,9 +47,9 @@ def a_move_key_sequence_from_root[TState: State](
         list[str]: A list of move sequences from the root node to the given tree node.
     """
     move_sequence_from_root: list[BranchKey] = []
-    child: ITreeNode[TState] = tree_node
+    child: ITreeNode[StateT] = tree_node
     while child.parent_nodes:
-        parent: ITreeNode[TState] = next(iter(child.parent_nodes))
+        parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
         move: BranchKey = child.parent_nodes[parent]
         move_sequence_from_root.append(move)
         child = parent
@@ -57,8 +57,8 @@ def a_move_key_sequence_from_root[TState: State](
     return [str(i) for i in move_sequence_from_root]
 
 
-def a_branch_str_sequence_from_root[TState: State](
-    tree_node: ITreeNode[TState],
+def a_branch_str_sequence_from_root[StateT: State](
+    tree_node: ITreeNode[StateT],
 ) -> list[str]:
     """
     Returns a list of move sequences from the root node to a given tree node.
@@ -70,9 +70,9 @@ def a_branch_str_sequence_from_root[TState: State](
         list[str]: A list of move sequences from the root node to the given tree node.
     """
     move_sequence_from_root: list[str] = []
-    child: ITreeNode[TState] = tree_node
+    child: ITreeNode[StateT] = tree_node
     while child.parent_nodes:
-        parent: ITreeNode[TState] = next(iter(child.parent_nodes))
+        parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
         branch_key: BranchKey = child.parent_nodes[parent]
         branch_str: str = parent.state.branch_name_from_key(branch_key)
         move_sequence_from_root.append(branch_str)
@@ -81,15 +81,15 @@ def a_branch_str_sequence_from_root[TState: State](
     return [str(i) for i in move_sequence_from_root]
 
 
-def best_node_sequence_from_node[TState: State](
-    tree_node: AlgorithmNode[TState],
-) -> list[AlgorithmNode[TState]]:
+def best_node_sequence_from_node[StateT: State](
+    tree_node: AlgorithmNode[StateT],
+) -> list[AlgorithmNode[StateT]]:
     """ """
 
     best_move_seq: list[BranchKey] = tree_node.tree_evaluation.best_branch_sequence
     index = 0
-    move_sequence: list[AlgorithmNode[TState]] = [tree_node]
-    child: AlgorithmNode[TState] = tree_node
+    move_sequence: list[AlgorithmNode[StateT]] = [tree_node]
+    child: AlgorithmNode[StateT] = tree_node
     while child.branches_children:
         move: BranchKey = best_move_seq[index]
         child_ = child.branches_children[move]
@@ -100,8 +100,8 @@ def best_node_sequence_from_node[TState: State](
     return move_sequence
 
 
-def print_a_move_sequence_from_root[TState: State](
-    tree_node: ITreeNode[TState],
+def print_a_move_sequence_from_root[StateT: State](
+    tree_node: ITreeNode[StateT],
 ) -> None:
     """
     Prints the move sequence from the root node to a given tree node.

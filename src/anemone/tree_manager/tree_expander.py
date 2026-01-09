@@ -1,5 +1,5 @@
 """
-This module contains classes related to tree expansion in a chess game.
+Tree expansion representations for managing game trees.
 """
 
 import typing
@@ -7,24 +7,27 @@ from dataclasses import dataclass, field
 
 from valanga import BranchKey, StateModifications
 
+from anemone import trees
 import anemone.nodes as node
+
+NodeT = typing.TypeVar("NodeT", bound=node.ITreeNode[typing.Any])
 
 
 @dataclass(slots=True)
-class TreeExpansion[TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]]:
+class TreeExpansion[NodeT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]]:
     """
     Represents an expansion of a tree in a chess game.
 
     Attributes:
-        child_node (TNode): The child node created during the expansion.
+        child_node (NodeT): The child node created during the expansion.
         parent_node (node.ITreeNode | None): The parent node of the child node. None if it's the root node.
         board_modifications (board_mod.BoardModification | None): The modifications made to the chess board during the expansion.
         creation_child_node (bool): Indicates whether the child node was created during the expansion.
         move (chess.Move): the move from parent to child node.
     """
 
-    child_node: TNode
-    parent_node: TNode | None
+    child_node: NodeT
+    parent_node: NodeT | None
     state_modifications: StateModifications | None
     creation_child_node: bool
     branch_key: BranchKey | None
@@ -37,8 +40,26 @@ class TreeExpansion[TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.An
         )
 
 
+def record_tree_expansion(
+    *,
+    tree: trees.Tree[NodeT],
+    tree_expansions: "TreeExpansions[NodeT]",
+    tree_expansion: TreeExpansion[NodeT],
+) -> None:
+    """Apply one TreeExpansion's bookkeeping to a tree + its log."""
+
+    if tree_expansion.creation_child_node:
+        tree.nodes_count += 1
+        tree.descendants.add_descendant(tree_expansion.child_node)
+
+    tree_expansions.add(tree_expansion=tree_expansion)
+
+def _new_expansions_list() -> list[TreeExpansion[typing.Any]]:
+    return []
+
+
 @dataclass(slots=True)
-class TreeExpansions[TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]]:
+class TreeExpansions[NodeT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]]:
     """
     Represents a collection of tree expansions in a chess game.
 
@@ -47,19 +68,17 @@ class TreeExpansions[TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.A
         expansions_without_node_creation (List[TreeExpansion]): List of expansions where child nodes were not created.
     """
 
-    expansions_with_node_creation: list[TreeExpansion[TNode]] = field(
-        default_factory=lambda: list[TreeExpansion[TNode]]()
-    )
-    expansions_without_node_creation: list[TreeExpansion[TNode]] = field(
-        default_factory=lambda: list[TreeExpansion[TNode]]()
-    )
+    expansions_with_node_creation: list[TreeExpansion[NodeT]] = field(default_factory=_new_expansions_list)
+    expansions_without_node_creation: list[TreeExpansion[NodeT]] = field(default_factory=_new_expansions_list)
 
-    def __iter__(self) -> typing.Iterator[TreeExpansion[TNode]]:
+
+
+    def __iter__(self) -> typing.Iterator[TreeExpansion[NodeT]]:
         return iter(
             self.expansions_with_node_creation + self.expansions_without_node_creation
         )
 
-    def add(self, tree_expansion: TreeExpansion[TNode]) -> None:
+    def add(self, tree_expansion: TreeExpansion[NodeT]) -> None:
         """
         Adds a tree expansion to the collection.
 
@@ -71,7 +90,7 @@ class TreeExpansions[TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.A
         else:
             self.add_connection(tree_expansion=tree_expansion)
 
-    def add_creation(self, tree_expansion: TreeExpansion[TNode]) -> None:
+    def add_creation(self, tree_expansion: TreeExpansion[NodeT]) -> None:
         """
         Adds a tree expansion with a created child node to the collection.
 
@@ -80,7 +99,7 @@ class TreeExpansions[TNode: node.ITreeNode[typing.Any] = node.ITreeNode[typing.A
         """
         self.expansions_with_node_creation.append(tree_expansion)
 
-    def add_connection(self, tree_expansion: TreeExpansion[TNode]) -> None:
+    def add_connection(self, tree_expansion: TreeExpansion[NodeT]) -> None:
         """
         Adds a tree expansion without a created child node to the collection.
 
