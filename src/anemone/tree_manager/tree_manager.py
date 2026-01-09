@@ -119,6 +119,9 @@ class TreeManager[
             tree.descendants.is_new_generation(tree_depth)
             or state_tag not in tree.descendants.descendants_at_tree_depth[tree_depth]
         )
+
+        tree_expansion: TreeExpansion[FamilyType]
+
         if need_creation_child_node:
             child_node: FamilyType
             child_node = self.node_factory.create(
@@ -130,7 +133,7 @@ class TreeManager[
                 modifications=modifications,
             )
 
-            tree_expansion: TreeExpansion[FamilyType] = TreeExpansion(
+            tree_expansion = TreeExpansion(
                 child_node=child_node,
                 parent_node=parent_node,
                 state_modifications=modifications,
@@ -145,7 +148,7 @@ class TreeManager[
                 branch_key=branch, new_parent_node=parent_node
             )
 
-            tree_expansion: TreeExpansion[FamilyType] = TreeExpansion(
+            tree_expansion = TreeExpansion(
                 child_node=child_node_existing,
                 parent_node=parent_node,
                 state_modifications=modifications,

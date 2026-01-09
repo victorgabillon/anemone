@@ -14,7 +14,7 @@ from valanga import (
 )
 
 from anemone.indices.node_indices import NodeExplorationData
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
     NodeTreeEvaluation,
 )
 from anemone.nodes.tree_node import TreeNode

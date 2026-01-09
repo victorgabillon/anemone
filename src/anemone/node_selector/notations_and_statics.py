@@ -42,7 +42,7 @@ def zipf_picks(
     best_weight: float | None = None
     best_rank: int = shift_rank
 
-    weights = []
+    weights: list[float] = []
     for rank, value in ranks_values.items():
         shifted_rank = rank - shift_rank + 1
         log_term: float = (math.log(math.e * shifted_rank)) ** 2

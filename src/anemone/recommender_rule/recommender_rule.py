@@ -106,7 +106,7 @@ class SoftmaxRule:
             return BranchPolicy(probs={})
 
         probs_list = softmax(scores, self.temperature)  # list[float] or Sequence[float]
-        probs = {bk: float(p) for bk, p in zip(branches, probs_list)}
+        probs = {bk: float(p) for bk, p in zip(branches, probs_list, strict=True)}
         return BranchPolicy(probs=probs)
 
     def sample(self, policy: BranchPolicy, rng: random.Random) -> BranchKey:

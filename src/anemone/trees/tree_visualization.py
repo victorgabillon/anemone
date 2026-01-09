@@ -15,6 +15,8 @@ representation of the tree with additional information.
 structure to a file.
 """
 
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+
 import pickle
 
 from graphviz import Digraph
@@ -53,12 +55,6 @@ def add_dot[TState: State](dot: Digraph, treenode: ITreeNode[TState]) -> None:
                     str(treenode.state.branch_name_from_key(key=branch)),
                 )
                 add_dot(dot, child)
-
-
-from graphviz import Digraph
-from valanga import BranchKey
-
-from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 
 def display_special[TState: State](

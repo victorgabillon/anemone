@@ -179,9 +179,6 @@ def build_tree_from_yaml_clean(
     )
     tree = tree_factory.create(starting_state=root_state)
 
-    selector = OpenAllInBfsOrder()
-    stop = StopWhenTreeHasAllYamlNodes(expected_nodes)
-
     # simple exploration loop (no recommender needed)
     expansions = TreeExpansions()
     expansions.add_creation(

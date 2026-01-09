@@ -14,7 +14,7 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "valanga",
+    "valanga @ file:///home/juno/valanga",
 "atomheart @ file:///home/juno/atomheart",
 
     "rich",
@@ -53,7 +53,7 @@ dev = [
 
     # Type checking
     "mypy>=1.18.2",
-    "pyright>=1.1.406",
+    "pyright[nodejs]>=1.1.408",
 
     # Building & publishing
     "build",
@@ -72,7 +72,7 @@ dev = [
 
 
 nn =[
-        "coral @ git+https://github.com/victorgabillon/coral.git@main",
+        "coral @ file:///home/juno/coral",
         "torch"
 ]
 
@@ -113,6 +113,7 @@ ignore_missing_imports = true
 show_error_codes = true
 warn_unreachable = true
 no_implicit_reexport = true
+python_version = "3.13"
 
 # Disallow dynamic typing
 #disallow_any_unimported = true
@@ -210,15 +211,33 @@ min-public-methods = 1
 
 
 
+
+
+
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
-reportMissingImports = true
-reportUnusedImport = true
 reportMissingTypeStubs = false
-reportUnknownMemberType = false
-reportPrivateImportUsage = false
 
+
+# Tell pyright which venv to use for import resolution
+venvPath = "."
+venv = ".venv"
+
+# Avoid scanning huge generated folders
 exclude = [
+  ".venv",
+  "**/.venv",
+  ".tox",
+  "**/.tox",
+  "build",
+  "dist",
+  "**/__pycache__",
+  ".mypy_cache",
+  ".ruff_cache",
+  ".pytest_cache",
   "src/anemone/**/torch_*.py",
 ]
+
+extraPaths = ["src"]
+

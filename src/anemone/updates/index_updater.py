@@ -2,7 +2,6 @@
 This module contains the IndexUpdater class, which is responsible for updating the indices of AlgorithmNode objects in a tree structure.
 """
 
-
 from typing import TYPE_CHECKING
 
 from anemone.indices.node_indices.index_data import (

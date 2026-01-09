@@ -13,6 +13,7 @@ from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import
 
 if TYPE_CHECKING:
     from coral.neural_networks.nn_content_evaluator import NNContentEvaluator
+    from torch import Tensor
 
 
 @dataclass(slots=True)
@@ -46,11 +47,13 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
         # Slow path: evaluate a single state by wrapping it as an EvalItem.
         return self.value_white_batch_items([_SingleEvalItem(state)])[0]
 
-    def value_white_batch_items(self, items: Sequence[EvalItem]) -> list[float]:
+    def value_white_batch_items[TItemState: State](
+        self, items: Sequence[EvalItem[TItemState]]
+    ) -> list[float]:
         torch = self._torch
 
-        xs: list[torch.Tensor] = []
-        states: list[State] = []
+        xs: list["Tensor"] = []
+        states: list[TItemState] = []
 
         for it in items:
             st = it.state
@@ -85,12 +88,15 @@ class _SingleEvalItem:
     """Small adapter so we can call batch method from value_white."""
 
     def __init__(self, state: State) -> None:
+        """Initialize the EvalItem with the given state."""
         self._state = state
 
     @property
     def state(self) -> State:
+        """The state to evaluate."""
         return self._state
 
     @property
-    def state_representation(self):
+    def state_representation(self) -> None:
+        """No precomputed representation."""
         return None

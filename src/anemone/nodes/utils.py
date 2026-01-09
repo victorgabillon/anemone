@@ -8,9 +8,7 @@ Functions:
 - is_winning(node_minmax_evaluation: NodeMinmaxEvaluation, color: chess.Color) -> bool: Checks if the color to play in the node is winning.
 """
 
-
-import chess
-from valanga import BranchKey, State
+from valanga import BranchKey, Color, State
 
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
     NodeTreeEvaluation,
@@ -120,7 +118,7 @@ def print_a_move_sequence_from_root[TState: State](
     print(f"a_move_sequence_from_root{move_sequence_from_root}")
 
 
-def is_winning(node_tree_evaluation: NodeTreeEvaluation, color: chess.Color) -> bool:
+def is_winning(node_tree_evaluation: NodeTreeEvaluation, color: Color) -> bool:
     """
     Checks if the color to play in the node is winning.
 
@@ -133,10 +131,10 @@ def is_winning(node_tree_evaluation: NodeTreeEvaluation, color: chess.Color) -> 
     """
     assert node_tree_evaluation.value_white_minmax is not None
     winning_if_color_white: bool = (
-        node_tree_evaluation.value_white_minmax > 0.98 and color
+        node_tree_evaluation.value_white_minmax > 0.98 and color is Color.WHITE
     )
     winning_if_color_black: bool = (
-        node_tree_evaluation.value_white_minmax < -0.98 and not color
+        node_tree_evaluation.value_white_minmax < -0.98 and color is Color.BLACK
     )
 
     return winning_if_color_white or winning_if_color_black

@@ -43,7 +43,7 @@ from .indices.node_indices.index_types import IndexComputationType
 from .tree_and_value_branch_selector import TreeAndValueBranchSelector
 from .trees.factory import ValueTreeFactory
 
-TreeAndValueLiteralString: str = "TreeAndValue"
+TreeAndValueLiteralString: Literal["TreeAndValue"] = "TreeAndValue"
 
 
 @dataclass

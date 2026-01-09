@@ -19,7 +19,7 @@ import math
 import typing
 from dataclasses import dataclass, field
 from random import choice
-from typing import Protocol, Self
+from typing import Any, Protocol, Self
 
 from valanga import (
     BoardEvaluation,
@@ -806,7 +806,7 @@ class NodeMinmaxEvaluation[
             None
         """
         info_string: str = f"Best line from node {str(self.tree_node.id)}: "
-        minmax = self
+        minmax: Any = self
         for branch in self.best_branch_sequence:
             child = minmax.tree_node.branches_children[branch]
             assert child is not None

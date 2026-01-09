@@ -85,7 +85,9 @@ class MasterStateEvaluator(Protocol):
     def value_white(self, state: State) -> float: ...
 
     # the one method NodeEvaluator uses
-    def value_white_batch_items(self, items: Sequence[EvalItem]) -> list[float]:
+    def value_white_batch_items[TItemState: State](
+        self, items: Sequence[EvalItem[TItemState]]
+    ) -> list[float]:
         # default fallback: single loop, state-only
         return [self.value_white(it.state) for it in items]
 
@@ -163,7 +165,7 @@ class NodeDirectEvaluator[TState: State = State]:
         self, not_over_nodes: list[AlgorithmNode[TState]]
     ) -> None:
         values = self.master_state_evaluator.value_white_batch_items(not_over_nodes)
-        for node, v in zip(not_over_nodes, values):
+        for node, v in zip(not_over_nodes, values, strict=True):
             node.tree_evaluation.set_evaluation(
                 self.process_evalution_not_over(v, node)
             )

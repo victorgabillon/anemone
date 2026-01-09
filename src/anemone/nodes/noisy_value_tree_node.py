@@ -4,8 +4,6 @@ This module contains the NoisyValueTreeNode class, which is a subclass of TreeNo
 
 from typing import Any
 
-import chess
-
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 
@@ -21,7 +19,7 @@ class NoisyValueTreeNode(TreeNode):
         half_move: int,
         id_number: int,
         parent_node: ITreeNode[Any],
-        last_move: chess.Move,
+        last_move: Any,
     ) -> None:
         """
         Initializes a NoisyValueTreeNode object.

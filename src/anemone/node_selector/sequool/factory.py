@@ -49,7 +49,7 @@ def create_sequool(
     opening_instructor: OpeningInstructor,
     args: SequoolArgs,
     random_generator: random.Random,
-) -> Sequool:
+) -> Sequool[AlgorithmNode]:
     """
     Create a sequool node selector object.
 
@@ -71,7 +71,7 @@ def create_sequool(
             all_nodes_not_opened=all_nodes_not_opened
         )
 
-    consider_nodes_from_tree_depths: ConsiderNodesFromTreeDepths
+    consider_nodes_from_tree_depths: ConsiderNodesFromTreeDepths[AlgorithmNode]
     if args.recursive_selection_on_all_nodes:
         consider_nodes_from_tree_depths = (
             consider_nodes_from_all_lesser_tree_depths_in_sub_stree
@@ -89,7 +89,7 @@ def create_sequool(
                 descendants=all_nodes_not_opened,
             )
             consider_nodes_from_tree_depths = consider_nodes_only_from_tree_depths
-    sequool: Sequool = Sequool(
+    sequool: Sequool[AlgorithmNode] = Sequool(
         opening_instructor=opening_instructor,
         all_nodes_not_opened=all_nodes_not_opened,
         recursif=args.recursive_selection_on_all_nodes,

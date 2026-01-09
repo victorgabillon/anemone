@@ -13,8 +13,8 @@ Types:
 - ExplorationIndexDataFactory: A callable type for creating exploration index data.
 """
 
-from dataclasses import make_dataclass
-from typing import Any, Callable, Protocol
+from dataclasses import dataclass
+from typing import Any, Callable
 
 from valanga import State
 
@@ -31,17 +31,36 @@ from anemone.indices.node_indices.index_types import (
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 
+
+@dataclass
+class DepthExtendedIntervalExplo[
+    T: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+](IntervalExplo[T, TState], MaxDepthDescendants[T, TState]):
+    pass
+
+
+@dataclass
+class DepthExtendedMinMaxPathValue[
+    T: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+](MinMaxPathValue[T, TState], MaxDepthDescendants[T, TState]):
+    pass
+
+
+@dataclass
+class DepthExtendedRecurZipfQuoolExplorationData[
+    T: ITreeNode[Any] = ITreeNode[Any],
+    TState: State = State,
+](RecurZipfQuoolExplorationData[T, TState], MaxDepthDescendants[T, TState]):
+    pass
+
+
 # Generic factory type that preserves the node type through the TreeNode parameter
 type ExplorationIndexDataFactory[
     T: ITreeNode[Any] = ITreeNode[Any],
     TState: State = State,
 ] = Callable[[TreeNode[T, TState]], NodeExplorationData[T, TState] | None]
-
-
-class _NodeExplorationDataCtor[T: ITreeNode[Any], TState: State](Protocol):
-    def __call__(
-        self, *, tree_node: TreeNode[T, TState]
-    ) -> NodeExplorationData[T, TState]: ...
 
 
 def create_exploration_index_data[
@@ -66,37 +85,31 @@ def create_exploration_index_data[
     Raises:
         ValueError: If the index_computation value is not recognized.
     """
-    exploration_index_data: NodeExplorationData[T, TState] | None
-    base_index_dataclass_name: _NodeExplorationDataCtor[T, TState] | None
+    index_dataclass_name: type[Any] | None
     match index_computation:
         case None:
-            base_index_dataclass_name = None
+            index_dataclass_name = None
         case IndexComputationType.MIN_LOCAL_CHANGE:
-            base_index_dataclass_name = IntervalExplo
+            index_dataclass_name = (
+                DepthExtendedIntervalExplo if depth_index else IntervalExplo
+            )
         case IndexComputationType.MIN_GLOBAL_CHANGE:
-            base_index_dataclass_name = MinMaxPathValue
+            index_dataclass_name = (
+                DepthExtendedMinMaxPathValue if depth_index else MinMaxPathValue
+            )
         case IndexComputationType.RECUR_ZIPF:
-            base_index_dataclass_name = RecurZipfQuoolExplorationData
+            index_dataclass_name = (
+                DepthExtendedRecurZipfQuoolExplorationData
+                if depth_index
+                else RecurZipfQuoolExplorationData
+            )
         case _:
             raise ValueError(
                 f"not finding good case for {index_computation} in file {__name__}"
             )
 
-    index_dataclass_name: _NodeExplorationDataCtor[T, TState] | None
-    if depth_index:
-        assert base_index_dataclass_name is not None
-        # adding a field to the dataclass for keeping track of the depth
-        index_dataclass_name = make_dataclass(
-            "DepthExtendedDataclass",
-            fields=[],
-            bases=(base_index_dataclass_name, MaxDepthDescendants),
-        )
-    else:
-        index_dataclass_name = base_index_dataclass_name
-
-    if index_dataclass_name is not None:
-        exploration_index_data = index_dataclass_name(tree_node=tree_node)
-    else:
-        exploration_index_data = None
-
+    exploration_index_data: NodeExplorationData[T, TState] | None
+    exploration_index_data = (
+        index_dataclass_name(tree_node=tree_node) if index_dataclass_name else None
+    )
     return exploration_index_data

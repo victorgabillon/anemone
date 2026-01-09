@@ -15,6 +15,8 @@ RangedDescendants:
 Note: The Descendants and RangedDescendants classes are used in the chipiron project for move selection in a game.
 """
 
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+
 import typing
 from typing import Any, Iterator
 
