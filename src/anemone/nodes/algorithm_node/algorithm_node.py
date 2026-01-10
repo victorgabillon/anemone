@@ -38,6 +38,9 @@ class AlgorithmNode[StateT: State = State]:
 
     @property
     def state_representation(self) -> ContentRepresentation | None:
+        """
+        Returns the state representation.
+        """
         return self._state_representation
 
     def __init__(

@@ -26,9 +26,9 @@ from typing import Callable, Protocol
 
 from valanga import State
 
-import anemone.indices.node_indices as node_indices
 import anemone.node_selector as node_selectors
-import anemone.nodes as nodes
+from anemone import nodes
+from anemone.indices import node_indices
 from anemone.indices.node_indices.factory import (
     create_exploration_index_data,
 )

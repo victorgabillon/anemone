@@ -67,13 +67,22 @@ class TreeNode[
     # If true the branches are either opened in which case the corresponding opened node is stored in
     # the dictionary self.branches_children, otherwise it is stored in self.non_opened_branches
     all_branches_generated: bool = False
+
+    @staticmethod
+    def _empty_non_opened_branches() -> set[BranchKey]:
+        return set()
+
+    @staticmethod
+    def _empty_branches_children() -> dict[BranchKey, FamilyT | None]:
+        return {}
+
     non_opened_branches: set[BranchKey] = field(
-        default_factory=lambda: set[BranchKey]()
+        default_factory=_empty_non_opened_branches
     )
 
     # dictionary mapping moves to children nodes. Node is set to None if not created
     branches_children_: dict[BranchKey, FamilyT | None] = field(
-        default_factory=lambda: dict[BranchKey, FamilyT | None]()
+        default_factory=_empty_branches_children
     )
 
     @property

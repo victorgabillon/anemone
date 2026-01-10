@@ -21,9 +21,10 @@ def get_descendants[NodeT: ITreeNode[Any]](from_tree_node: NodeT) -> dict[NodeT,
         dict[ITreeNode, None]: A dictionary containing all descendants of the starting tree node.
     """
     des: dict[NodeT, None] = {from_tree_node: None}  # include itself
-    generation: set[NodeT] = set(
-        [node for node in from_tree_node.branches_children.values() if node is not None]
-    )
+    generation: set[NodeT] = {
+        node for node in from_tree_node.branches_children.values() if node is not None
+    }
+
     while generation:
         next_depth_generation: set[NodeT] = set()
         for node in generation:
@@ -55,9 +56,9 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
         des = {from_tree_node: None}  # include itself maybe
     else:
         des = {}
-    generation: set[NodeT] = set(
-        [node for node in from_tree_node.branches_children.values() if node is not None]
-    )
+    generation: set[NodeT] = {
+        node for node in from_tree_node.branches_children.values() if node is not None
+    }
     depth: int = 1
     assert max_depth is not None
     while generation and depth <= max_depth:
@@ -89,9 +90,9 @@ def get_descendants_candidate_not_over[NodeT: AlgorithmNode[Any]](
     if not from_tree_node.branches_children:
         return [from_tree_node]
     des: dict[NodeT, None] = {}
-    generation: set[NodeT] = set(
-        [node for node in from_tree_node.branches_children.values() if node is not None]
-    )
+    generation: set[NodeT] = {
+        node for node in from_tree_node.branches_children.values() if node is not None
+    }
 
     depth: int = 1
     assert max_depth is not None

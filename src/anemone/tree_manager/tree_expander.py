@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 
 from valanga import BranchKey, StateModifications
 
-from anemone import trees
 import anemone.nodes as node
+from anemone import trees
 
 NodeT = typing.TypeVar("NodeT", bound=node.ITreeNode[typing.Any])
 
@@ -54,6 +54,7 @@ def record_tree_expansion(
 
     tree_expansions.add(tree_expansion=tree_expansion)
 
+
 def _new_expansions_list() -> list[TreeExpansion[typing.Any]]:
     return []
 
@@ -68,10 +69,12 @@ class TreeExpansions[NodeT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.A
         expansions_without_node_creation (List[TreeExpansion]): List of expansions where child nodes were not created.
     """
 
-    expansions_with_node_creation: list[TreeExpansion[NodeT]] = field(default_factory=_new_expansions_list)
-    expansions_without_node_creation: list[TreeExpansion[NodeT]] = field(default_factory=_new_expansions_list)
-
-
+    expansions_with_node_creation: list[TreeExpansion[NodeT]] = field(
+        default_factory=_new_expansions_list
+    )
+    expansions_without_node_creation: list[TreeExpansion[NodeT]] = field(
+        default_factory=_new_expansions_list
+    )
 
     def __iter__(self) -> typing.Iterator[TreeExpansion[NodeT]]:
         return iter(

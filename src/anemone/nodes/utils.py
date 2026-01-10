@@ -84,7 +84,13 @@ def a_branch_str_sequence_from_root[StateT: State](
 def best_node_sequence_from_node[StateT: State](
     tree_node: AlgorithmNode[StateT],
 ) -> list[AlgorithmNode[StateT]]:
-    """ """
+    """
+    Returns the best node sequence from the given tree node following the best moves.
+    Args:
+        tree_node (AlgorithmNode): The tree node to start from.
+    Returns:
+        list[AlgorithmNode]: A list of tree nodes representing the best node sequence.
+    """
 
     best_move_seq: list[BranchKey] = tree_node.tree_evaluation.best_branch_sequence
     index = 0
