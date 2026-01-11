@@ -13,7 +13,7 @@ Example usage:
     move = rule(tree, random_generator)
 """
 
-import random
+from random import Random
 from dataclasses import dataclass
 from enum import Enum
 from typing import Literal, Mapping, Protocol
@@ -31,7 +31,8 @@ class BranchPolicy:
     probs: Mapping[BranchKey, float]  # should sum to ~1.0
 
 
-def sample_from_policy(policy: BranchPolicy, rng: random.Random) -> BranchKey:
+def sample_from_policy(policy: BranchPolicy, rng: Random) -> BranchKey:
+    """Sample a branch key from a probability policy using a RNG."""
     branches = list(policy.probs.keys())
     weights = list(policy.probs.values())
     return rng.choices(branches, weights=weights, k=1)[0]
@@ -42,8 +43,12 @@ class RecommenderRule(Protocol):
 
     def policy[StateT: State](
         self, root_node: AlgorithmNode[StateT]
-    ) -> BranchPolicy: ...
-    def sample(self, policy: BranchPolicy, rng: random.Random) -> BranchKey: ...
+    ) -> BranchPolicy:
+        """Return the policy distribution for the root node."""
+        ...
+    def sample(self, policy: BranchPolicy, rng: Random) -> BranchKey:
+        """Sample a branch key using the provided RNG."""
+        ...
 
 
 class RecommenderRuleTypes(str, Enum):
@@ -65,6 +70,7 @@ class AlmostEqualLogistic:
     temperature: float  # kept for config compatibility; rule uses minmax method
 
     def policy[StateT: State](self, root_node: AlgorithmNode[StateT]) -> BranchPolicy:
+        """Compute a policy based on near-equal best branches."""
         best: list[BranchKey] = root_node.tree_evaluation.get_all_of_the_best_branches(
             how_equal="almost_equal_logistic"
         )
@@ -82,7 +88,8 @@ class AlmostEqualLogistic:
         p = 1.0 / len(best)
         return BranchPolicy(probs={bk: p for bk in best})
 
-    def sample(self, policy: BranchPolicy, rng: random.Random) -> BranchKey:
+    def sample(self, policy: BranchPolicy, rng: Random) -> BranchKey:
+        """Sample a branch from the policy using the provided RNG."""
         return sample_from_policy(policy, rng)
 
 
@@ -92,6 +99,7 @@ class SoftmaxRule:
     temperature: float
 
     def policy[StateT: State](self, root_node: AlgorithmNode[StateT]) -> BranchPolicy:
+        """Compute a softmax policy over child evaluations."""
         branches: list[BranchKey] = []
         scores: list[float] = []
 
@@ -109,7 +117,8 @@ class SoftmaxRule:
         probs = {bk: float(p) for bk, p in zip(branches, probs_list, strict=True)}
         return BranchPolicy(probs=probs)
 
-    def sample(self, policy: BranchPolicy, rng: random.Random) -> BranchKey:
+    def sample(self, policy: BranchPolicy, rng: Random) -> BranchKey:
+        """Sample a branch from the policy using the provided RNG."""
         return sample_from_policy(policy, rng)
 
 

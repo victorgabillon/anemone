@@ -12,12 +12,12 @@ The module includes the following classes:
 It also includes helper classes and functions for creating and managing stopping criteria.
 """
 
-import abc
+from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Literal, Protocol, runtime_checkable
 
-import anemone.trees as trees
+from anemone import trees
 from anemone import node_selector as node_sel
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
@@ -122,7 +122,9 @@ class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
         self,
         tree: trees.Tree[NodeT],
         notify_function: Callable[[int], None] | None,
-    ) -> str: ...
+    ) -> str:
+        """Return a human-readable percent progress string."""
+        ...
 
 
 class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
@@ -165,14 +167,17 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """
         return ""
 
-    @abc.abstractmethod
-    def get_percent_of_progress(self, tree: trees.Tree[NodeT]) -> int: ...
+    @abstractmethod
+    def get_percent_of_progress(self, tree: trees.Tree[NodeT]) -> int:
+        """Return a numeric progress percentage for this monitor."""
+        ...
 
     def notify_percent_progress(
         self,
         tree: trees.Tree[NodeT],
         notify_percent_function: Callable[[int], None] | None,
     ) -> None:
+        """Notify a callback with the current progress percentage."""
         percent_progress: int = self.get_percent_of_progress(tree=tree)
 
         if notify_percent_function is not None:
@@ -197,9 +202,11 @@ class TreeMoveLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
     tree_move_limit: int
 
     def __init__(self, tree_move_limit: int) -> None:
+        """Initialize the monitor with a move-count limit."""
         self.tree_move_limit = tree_move_limit
 
     def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
+        """Return True while within the move-count budget."""
         continue_base: bool = super().should_we_continue(tree=tree)
 
         should_we: bool
@@ -244,6 +251,7 @@ class TreeMoveLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         self,
         tree: trees.Tree[NodeT],
     ) -> int:
+        """Return progress percentage based on move count."""
         percent: int = int(tree.move_count / self.tree_move_limit * 100)
         return percent
 
@@ -320,6 +328,7 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         self,
         tree: trees.Tree[NodeT],
     ) -> int:
+        """Return progress percentage based on current depth."""
         # todo this percent is not precise
         percent: int = int(
             self.node_selector.get_current_depth_to_expand() / self.depth_limit * 100

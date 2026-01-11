@@ -2,15 +2,15 @@
 Tree expansion representations for managing game trees.
 """
 
-import typing
+from typing import Any, Iterator, TypeVar
 from dataclasses import dataclass, field
 
 from valanga import BranchKey, StateModifications
 
-import anemone.nodes as node
+from anemone import nodes as node
 from anemone import trees
 
-NodeT = typing.TypeVar("NodeT", bound=node.ITreeNode[typing.Any])
+NodeT = TypeVar("NodeT", bound=node.ITreeNode[Any])
 
 
 @dataclass(slots=True)
@@ -33,6 +33,7 @@ class TreeExpansion[NodeT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.An
     branch_key: BranchKey | None
 
     def __repr__(self) -> str:
+        """Return a debug representation of the tree expansion."""
         return (
             f"child_node{self.child_node.id} | "
             f"parent_node{self.parent_node.id if self.parent_node is not None else None} | "
@@ -55,7 +56,8 @@ def record_tree_expansion(
     tree_expansions.add(tree_expansion=tree_expansion)
 
 
-def _new_expansions_list() -> list[TreeExpansion[typing.Any]]:
+def _new_expansions_list() -> list[TreeExpansion[Any]]:
+    """Return a new list for tree expansions."""
     return []
 
 
@@ -76,7 +78,8 @@ class TreeExpansions[NodeT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.A
         default_factory=_new_expansions_list
     )
 
-    def __iter__(self) -> typing.Iterator[TreeExpansion[NodeT]]:
+    def __iter__(self) -> Iterator[TreeExpansion[NodeT]]:
+        """Iterate over all recorded expansions."""
         return iter(
             self.expansions_with_node_creation + self.expansions_without_node_creation
         )
@@ -112,6 +115,7 @@ class TreeExpansions[NodeT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.A
         self.expansions_without_node_creation.append(tree_expansion)
 
     def __str__(self) -> str:
+        """Return a string summary of recorded expansions."""
         return (
             f"expansions_with_node_creation {self.expansions_with_node_creation} \n"
             f"expansions_without_node_creation{self.expansions_without_node_creation}"

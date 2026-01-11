@@ -17,8 +17,7 @@ Note: The Descendants and RangedDescendants classes are used in the chipiron pro
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
-import typing
-from typing import Any, Iterator
+from typing import Any, Iterator, KeysView, Self
 
 from sortedcollections import ValueSortedDict
 from valanga import StateTag
@@ -68,18 +67,19 @@ class Descendants[NodeT: ITreeNode[Any]]:
     def iter_on_all_nodes(
         self,
     ) -> Iterator[tuple[TreeDepth, StateTag, NodeT]]:
+        """Iterate over all stored nodes with their depth and tag."""
         return (
             (hm, node_tag, node)
             for hm, nodes_at_hm in self.descendants_at_tree_depth.items()
             for node_tag, node in nodes_at_hm.items()
         )
 
-    def keys(self) -> typing.KeysView[TreeDepth]:
+    def keys(self) -> KeysView[TreeDepth]:
         """
         Returns a view of the keys in the descendants_at_tree_depth dictionary.
 
         Returns:
-            typing.KeysView[TreeDepth]: A view of the keys in the descendants_at_tree_depth dictionary.
+            KeysView[TreeDepth]: A view of the keys in the descendants_at_tree_depth dictionary.
         """
         return self.descendants_at_tree_depth.keys()
 
@@ -108,7 +108,7 @@ class Descendants[NodeT: ITreeNode[Any]]:
         """
         return self.descendants_at_tree_depth[tree_depth]
 
-    def __iter__(self) -> typing.Iterator[TreeDepth]:
+    def __iter__(self) -> Iterator[TreeDepth]:
         """
         Returns an iterator over the descendants at each half move.
 
@@ -446,13 +446,13 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
     #    return really_new_descendants
 
-    def merge(self, descendant_1: typing.Self, descendant_2: typing.Self) -> None:
+    def merge(self, descendant_1: Self, descendant_2: Self) -> None:
         """
         Merges the descendants of two nodes into the current node.
 
         Args:
-            descendant_1 (typing.Self): The first descendant node.
-            descendant_2 (typing.Self): The second descendant node.
+            descendant_1 (Self): The first descendant node.
+            descendant_2 (Self): The second descendant node.
 
         Returns:
             None
@@ -551,6 +551,7 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
     sorted_descendants_at_tree_depth: dict[int, dict[NodeT, float]]
 
     def __init__(self) -> None:
+        """Initialize sorted descendants storage."""
         super().__init__()
         self.sorted_descendants_at_tree_depth = {}
 

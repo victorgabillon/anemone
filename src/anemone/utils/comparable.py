@@ -24,7 +24,9 @@ class Comparable(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def __lt__(self, other: Any) -> bool: ...
+    def __lt__(self, other: Any) -> bool:
+        """Return True if this object is less than the other."""
+        ...
 
 
 CT = TypeVar("CT", bound=Comparable)

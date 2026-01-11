@@ -2,11 +2,11 @@
 This module contains the TreeManager class, which is responsible for managing a tree by opening new nodes and updating the values and indexes on the nodes.
 """
 
-import typing
+from typing import Any, TYPE_CHECKING
 
 from valanga import BranchKey, State, StateModifications, StateTag
 
-import anemone.nodes as node
+from anemone import nodes as node
 from anemone import trees
 from anemone.node_factory.base import (
     NodeFactory,
@@ -22,7 +22,7 @@ from anemone.tree_manager.tree_expander import (
     record_tree_expansion,
 )
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from anemone.basics import TreeDepth
 
 # todo should we use a discount? and discounted per round reward?
@@ -32,7 +32,7 @@ if typing.TYPE_CHECKING:
 
 
 class TreeManager[
-    FamilyT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any],
+    FamilyT: node.ITreeNode[Any] = node.ITreeNode[Any],
 ]:
     """
     This class manages a tree by opening new nodes.This is the core one only responsible for creating core TreeNodes
@@ -46,6 +46,7 @@ class TreeManager[
         node_factory: NodeFactory[FamilyT],
         transition: StateTransition[State],
     ) -> None:
+        """Initialize the tree manager with a node factory and transition."""
         self.node_factory = node_factory
         self.transition = transition
 

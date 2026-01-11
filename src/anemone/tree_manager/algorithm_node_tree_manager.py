@@ -2,9 +2,8 @@
 Defining the AlgorithmNodeTreeManager class
 """
 
-import typing
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from valanga import BranchKey
 
@@ -37,8 +36,8 @@ from .tree_manager import TreeManager
 # todo maybe convenient to seperate this object into openner updater and dsiplayer
 # todo have the reward with a discount
 # DISCOUNT = 1/.99999
-if typing.TYPE_CHECKING:
-    import anemone.node_selector as node_sel
+if TYPE_CHECKING:
+    from anemone import node_selector as node_sel
 
 
 @dataclass

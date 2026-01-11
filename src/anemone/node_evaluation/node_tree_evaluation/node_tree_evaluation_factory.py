@@ -38,4 +38,6 @@ class NodeTreeEvaluationFactory[StateT2: State = State](Protocol):
     def create(
         self,
         tree_node: TreeNode[Any, StateT2],
-    ) -> NodeTreeEvaluation[StateT2]: ...
+    ) -> NodeTreeEvaluation[StateT2]:
+        """Create a NodeTreeEvaluation instance for the given node."""
+        ...

@@ -15,11 +15,10 @@ Note: This code snippet is a partial implementation and may require additional c
 
 # todo maybe further split values from over?
 
-import math
-import typing
+from math import log
 from dataclasses import dataclass, field
 from random import choice
-from typing import Any, Protocol, Self
+from typing import Any, Protocol, Self, runtime_checkable
 
 from valanga import (
     BoardEvaluation,
@@ -40,7 +39,7 @@ from anemone.utils.small_tools import nth_key
 type BranchSortValue = tuple[float, int, int]
 
 
-@typing.runtime_checkable
+@runtime_checkable
 # Class created to avoid circular import and defines what is seen and needed by the NodeMinmaxEvaluation class
 class NodeWithValue(ITreeNode[TurnState], Protocol):
     """
@@ -825,7 +824,7 @@ class NodeMinmaxEvaluation[
             float: The result of applying the logit function to the input value.
         """
         y = min(max(x, 0.000000000000000000000001), 0.9999999999999999)
-        return math.log(y / (1 - y)) * max(
+        return log(y / (1 - y)) * max(
             1, abs(x)
         )  # the * min(1,x) is a hack to prioritize game over
 
@@ -876,6 +875,7 @@ class NodeMinmaxEvaluation[
         return best_branches
 
     def evaluate(self) -> BoardEvaluation:
+        """Build a BoardEvaluation from current minmax state."""
         if self.over_event.is_over():
             return ForcedOutcome(
                 outcome=self.over_event,

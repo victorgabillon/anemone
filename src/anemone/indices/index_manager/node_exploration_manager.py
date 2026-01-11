@@ -1,6 +1,6 @@
 """Module that contains the logic to compute the exploration index of a node in a tree."""
 
-import math
+from math import inf
 from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga import BranchKey, Color, State
@@ -321,7 +321,7 @@ class UpdateIndexLocalMinChange:
 
         root_node_exploration_index_data.index = 0
         root_node_exploration_index_data.interval = Interval(
-            min_value=-math.inf, max_value=math.inf
+            min_value=-inf, max_value=inf
         )
 
     def update_node_indices[NodeT: AlgorithmNode[Any]](
@@ -377,12 +377,12 @@ class UpdateIndexLocalMinChange:
                     local_interval = Interval()
                     if child_node == best_child:
                         assert isinstance(second_best_child, AlgorithmNode)
-                        local_interval.max_value = math.inf
+                        local_interval.max_value = inf
                         local_interval.min_value = (
                             second_best_child.tree_evaluation.get_value_white()
                         )
                     else:
-                        local_interval.max_value = math.inf
+                        local_interval.max_value = inf
                         local_interval.min_value = (
                             best_child.tree_evaluation.get_value_white()
                         )
@@ -418,12 +418,12 @@ class UpdateIndexLocalMinChange:
                         local_interval.max_value = (
                             second_best_child.tree_evaluation.get_value_white()
                         )
-                        local_interval.min_value = -math.inf
+                        local_interval.min_value = -inf
                     else:
                         local_interval.max_value = (
                             best_child.tree_evaluation.get_value_white()
                         )
-                        local_interval.min_value = -math.inf
+                        local_interval.min_value = -inf
 
                     inter_level_interval = intersect_intervals(
                         local_interval, parent_node_exploration_index_data.interval

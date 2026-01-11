@@ -31,6 +31,7 @@ class ValueUpdateInstructionsFromOneNode:
 
 
 def _new_branchkey_set() -> set[BranchKey]:
+    """Return a new empty set of branch keys."""
     return set()
 
 

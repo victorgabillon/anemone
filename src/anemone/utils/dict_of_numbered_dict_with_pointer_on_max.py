@@ -36,6 +36,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
     """
 
     def __init__(self) -> None:
+        """Initialize the depth-indexed mapping."""
         self.tree_depths: dict[int, dict[T_Key, T_Value]] = {}
         self.max_tree_depth: int | None = None
 

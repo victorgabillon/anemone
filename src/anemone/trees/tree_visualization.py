@@ -17,7 +17,7 @@ structure to a file.
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
-import pickle
+from pickle import dump
 
 from graphviz import Digraph
 from valanga import BranchKey, State
@@ -62,6 +62,7 @@ def display_special[StateT: State](
     format_str: str,
     index: dict[BranchKey, str],
 ) -> Digraph:
+    """Display a tree with custom edge labels for the given node."""
     dot = Digraph(format=format_str)
 
     nd = node.dot_description()
@@ -140,4 +141,4 @@ def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
 
     sys.setrecursionlimit(100000)
     with open(filename, "wb") as f:
-        pickle.dump([tree.descendants, tree.root_node], f)
+        dump([tree.descendants, tree.root_node], f)

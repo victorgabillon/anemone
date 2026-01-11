@@ -11,8 +11,8 @@ The TreeAndValueMoveSelector class provides the following methods:
 - print_info: Prints information about the move selector type.
 """
 
-import queue
-import random
+from queue import Queue
+from random import Random
 from dataclasses import dataclass
 
 from valanga import TurnState
@@ -50,9 +50,9 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     tree_factory: ValueTreeFactory[StateT]
     stopping_criterion_args: AllStoppingCriterionArgs
     node_selector_create: NodeSelectorFactory
-    random_generator: random.Random
+    random_generator: Random
     recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs
-    queue_progress_player: queue.Queue[IsDataclass] | None
+    queue_progress_player: Queue[IsDataclass] | None
 
     def select_branch(
         self, state: StateT, selection_seed: Seed
@@ -80,6 +80,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         self,
         state: StateT,
     ) -> TreeExploration:
+        """Create a TreeExploration instance for the given state."""
         tree_exploration: TreeExploration = create_tree_exploration(
             tree_manager=self.tree_manager,
             node_selector_create=self.node_selector_create,

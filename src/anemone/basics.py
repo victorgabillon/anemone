@@ -27,4 +27,6 @@ class HasBlackAndWhiteTurn(Protocol):
     """Protocol for state that has black and white turns."""
 
     @property
-    def turn(self) -> Color: ...
+    def turn(self) -> Color:
+        """Return the current player's turn color."""
+        ...

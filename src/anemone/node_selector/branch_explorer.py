@@ -3,7 +3,7 @@ This module contains the branchExplorer class and its subclasses.
 branchExplorer is responsible for exploring branches in a game tree.
 """
 
-import random
+from random import Random
 from enum import Enum
 from typing import Any
 
@@ -54,14 +54,14 @@ class ZipfBranchExplorer(BranchExplorer):
     """
 
     def __init__(
-        self, priority_sampling: SamplingPriorities, random_generator: random.Random
+        self, priority_sampling: SamplingPriorities, random_generator: Random
     ) -> None:
         """
         Initializes a ZipfbranchExplorer instance.
 
         Args:
             priority_sampling (SamplingPriorities): The priority sampling strategy to use.
-            random_generator (random.Random): The random number generator to use.
+            random_generator (Random): The random number generator to use.
         """
         super().__init__(priority_sampling)
         self.random_generator = random_generator

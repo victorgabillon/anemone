@@ -139,6 +139,7 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
     def _new_one_node_instructions() -> DictOfNumberedDictWithPointerOnMax[
         NodeT, UpdateInstructionsTowardsOneParentNode
     ]:
+        """Return a fresh mapping for per-node update instructions."""
         return DictOfNumberedDictWithPointerOnMax()
 
     one_node_instructions: DictOfNumberedDictWithPointerOnMax[

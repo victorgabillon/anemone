@@ -70,10 +70,12 @@ class TreeNode[
 
     @staticmethod
     def _empty_non_opened_branches() -> set[BranchKey]:
+        """Return a new empty set for non-opened branches."""
         return set()
 
     @staticmethod
     def _empty_branches_children() -> dict[BranchKey, FamilyT | None]:
+        """Return a new empty mapping for branch children."""
         return {}
 
     non_opened_branches: set[BranchKey] = field(
