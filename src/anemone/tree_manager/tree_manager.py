@@ -248,6 +248,6 @@ class TreeManager[
             tree: The tree object.
         """
 
-    raise NotImplementedError(
-        "print_best_line should not be called; override or modify this behavior"
-    )
+        raise NotImplementedError(
+            "print_best_line should not be called; override or modify this behavior"
+        )
