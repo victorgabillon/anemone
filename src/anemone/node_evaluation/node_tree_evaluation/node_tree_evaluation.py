@@ -121,11 +121,13 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
     def print_branches_sorted_by_value_and_exploration(self) -> None:
         """Print branches sorted by value and exploration metrics."""
         ...
+
     def get_all_of_the_best_branches(
         self, how_equal: str | None = None
     ) -> list[BranchKey]:
         """Return all best branches according to an equality rule."""
         ...
+
     def subjective_value_of(self, another_node_eval: Self) -> float:
         """Return this node's value relative to another evaluation."""
         ...

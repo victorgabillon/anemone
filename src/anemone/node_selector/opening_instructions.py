@@ -2,14 +2,14 @@
 This module contains classes and functions related to opening instructions in a chess game.
 """
 
-from random import Random
 from dataclasses import dataclass
 from enum import Enum
+from random import Random
 from typing import Any, ItemsView, Iterator, Self, ValuesView
 
 from valanga import BranchKey
 
-from anemone import nodes as nodes
+from anemone import nodes
 from anemone.nodes.utils import (
     a_branch_str_sequence_from_root,
     a_move_key_sequence_from_root,
@@ -212,9 +212,7 @@ class OpeningInstructor:
     Represents an opening instructor that provides opening instructions based on a specific opening type.
     """
 
-    def __init__(
-        self, opening_type: OpeningType, random_generator: Random
-    ) -> None:
+    def __init__(self, opening_type: OpeningType, random_generator: Random) -> None:
         """
         Initializes the OpeningInstructor object.
 
@@ -247,5 +245,5 @@ class OpeningInstructor:
             # self.random_generator.shuffle(moves_to_play)
 
         else:
-            raise Exception("Hello-la")
+            raise NotImplementedError("Hello-la")
         return branches_to_play

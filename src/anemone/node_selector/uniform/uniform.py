@@ -66,6 +66,8 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         - OpeningInstructions: The opening instructions for the chosen node.
 
         """
+        _ = latest_tree_expansions  # not used here
+
         opening_instructions_batch: OpeningInstructions[NodeT] = OpeningInstructions()
 
         # generate the nodes to expand

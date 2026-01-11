@@ -76,6 +76,8 @@ class EvaluationQueries[StateT: State = State]:
 
 
 class OverEventDetector(Protocol):
+    """Protocol for detecting over events in a game state."""
+
     def check_obvious_over_events(
         self, state: State
     ) -> tuple[OverEvent | None, float | None]:
@@ -84,6 +86,8 @@ class OverEventDetector(Protocol):
 
 
 class MasterStateEvaluator(Protocol):
+    """Protocol for evaluating the value of a state."""
+
     over: OverEventDetector
 
     def value_white(self, state: State) -> float:
@@ -91,8 +95,8 @@ class MasterStateEvaluator(Protocol):
         ...
 
     # the one method NodeEvaluator uses
-    def value_white_batch_items[TItemState: State](
-        self, items: Sequence[EvalItem[TItemState]]
+    def value_white_batch_items[ItemStateT: State](
+        self, items: Sequence[EvalItem[ItemStateT]]
     ) -> list[float]:
         """Evaluate a batch of items, defaulting to single-state calls."""
         # default fallback: single loop, state-only

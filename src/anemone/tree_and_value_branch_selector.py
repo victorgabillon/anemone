@@ -11,9 +11,9 @@ The TreeAndValueMoveSelector class provides the following methods:
 - print_info: Prints information about the move selector type.
 """
 
+from dataclasses import dataclass
 from queue import Queue
 from random import Random
-from dataclasses import dataclass
 
 from valanga import TurnState
 

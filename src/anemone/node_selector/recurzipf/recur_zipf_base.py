@@ -8,9 +8,9 @@ Classes:
 
 """
 
-from random import Random
 from dataclasses import dataclass
-from typing import Any, Literal, TYPE_CHECKING
+from random import Random
+from typing import TYPE_CHECKING, Any, Literal
 
 from anemone import trees
 from anemone.node_selector.branch_explorer import SamplingPriorities, ZipfBranchExplorer
@@ -83,6 +83,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """
         # todo maybe proportions and proportions can be valuesorted dict with smart updates
 
+        _ = latest_tree_expansions  # not used here
         opening_instructions: OpeningInstructions[NodeT]
         # TODO make sure this block is put in chipiron now with a wrapper
         # best_node_sequence = best_node_sequence_from_node(tree.root_node)

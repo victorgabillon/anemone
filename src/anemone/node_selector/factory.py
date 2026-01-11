@@ -2,8 +2,8 @@
 Factory to build node selectors
 """
 
-from random import Random
 from dataclasses import dataclass
+from random import Random
 from typing import Literal, TypeAlias
 
 from .node_selector import NodeSelector

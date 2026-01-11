@@ -3,8 +3,8 @@ This module contains the branchExplorer class and its subclasses.
 branchExplorer is responsible for exploring branches in a game tree.
 """
 
-from random import Random
 from enum import Enum
+from random import Random
 from typing import Any
 
 from valanga import BranchKey

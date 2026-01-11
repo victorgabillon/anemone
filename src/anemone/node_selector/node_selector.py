@@ -41,4 +41,4 @@ class NodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
         Returns:
             OpeningInstructions: The instructions to move to an open position.
         """
-        ...
+        raise NotImplementedError()

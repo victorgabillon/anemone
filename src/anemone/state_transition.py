@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Defines state transition protocols and implementations for Anemone."""
 
 from dataclasses import dataclass
 from typing import Protocol
@@ -7,6 +7,8 @@ from valanga import BranchKey, State, StateModifications
 
 
 class StateTransition[StateT](Protocol):
+    """Protocol for state transitions in Anemone."""
+
     def copy_for_expansion(self, state: StateT, *, copy_stack: bool) -> StateT:
         """Return a copy of state suitable for expansion."""
         ...
@@ -23,6 +25,8 @@ class StateTransition[StateT](Protocol):
 
 @dataclass(frozen=True)
 class ValangaStateTransition(StateTransition[State]):
+    """State transition implementation using Valanga's State."""
+
     deep_copy_legal_moves: bool = False
 
     def copy_for_expansion(self, state: State, *, copy_stack: bool) -> State:

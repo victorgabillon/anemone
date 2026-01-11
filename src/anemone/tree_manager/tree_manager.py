@@ -2,7 +2,7 @@
 This module contains the TreeManager class, which is responsible for managing a tree by opening new nodes and updating the values and indexes on the nodes.
 """
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from valanga import BranchKey, State, StateModifications, StateTag
 

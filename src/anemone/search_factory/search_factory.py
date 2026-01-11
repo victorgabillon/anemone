@@ -19,9 +19,9 @@ Functions:
 - node_index_create: A function that creates node indices for a given tree node.
 """
 
-from random import Random
 from dataclasses import dataclass
 from functools import partial
+from random import Random
 from typing import Callable, Protocol
 
 from valanga import State

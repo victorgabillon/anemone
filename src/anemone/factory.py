@@ -11,15 +11,15 @@ node evaluator, node selector, tree factory, and tree manager.
 
 """
 
+from dataclasses import dataclass
 from queue import Queue
 from random import Random
-from dataclasses import dataclass
 from typing import Literal, Type
 
 from valanga import ContentRepresentation, RepresentationFactory, TurnState
 
-from anemone import search_factory as search_factories
 from anemone import node_factory
+from anemone import search_factory as search_factories
 from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     MasterStateEvaluator,
@@ -43,7 +43,7 @@ from .indices.node_indices.index_types import IndexComputationType
 from .tree_and_value_branch_selector import TreeAndValueBranchSelector
 from .trees.factory import ValueTreeFactory
 
-TreeAndValueLiteralString: Literal["TreeAndValue"] = "TreeAndValue"
+TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 
 
 @dataclass
@@ -57,7 +57,7 @@ class TreeAndValuePlayerArgs:
     stopping_criterion: AllStoppingCriterionArgs
     recommender_rule: recommender_rule.AllRecommendFunctionsArgs
     index_computation: IndexComputationType | None = None
-    type: Literal["TreeAndValue"] = TreeAndValueLiteralString
+    type: Literal["TreeAndValue"] = TREE_AND_VALUE_LITERAL_STRING
 
 
 def create_tree_and_value_branch_selector[StateT: TurnState](
@@ -110,6 +110,8 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
         TreeAndValueBranchSelector: The created TreeAndValueBranchSelector object.
 
     """
+
+    _ = state_type  # not used here
 
     node_evaluator: NodeDirectEvaluator[StateT] = create_node_evaluator(
         master_state_evaluator=master_state_evaluator,

@@ -123,8 +123,7 @@ class IntervalExplo[
         """
         if self.interval is None:
             return "None"
-        else:
-            return f"min_interval_value: {self.interval.min_value}, max_interval_value: {self.interval.max_value}"
+        return f"min_interval_value: {self.interval.min_value}, max_interval_value: {self.interval.max_value}"
 
 
 @dataclass

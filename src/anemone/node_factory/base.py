@@ -12,6 +12,10 @@ from anemone.nodes.tree_node import TreeNode
 
 
 class NodeFactory[NodeT: ITreeNode[Any] = ITreeNode[Any]](Protocol):
+    """
+    Node Factory
+    """
+
     def create(
         self,
         state: State,

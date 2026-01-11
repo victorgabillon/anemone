@@ -7,8 +7,8 @@ The AlgorithmNodeUpdater class provides methods for creating update instructions
   based on the given update instructions.
 """
 
-from typing import TYPE_CHECKING
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,

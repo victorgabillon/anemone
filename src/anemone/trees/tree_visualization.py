@@ -17,6 +17,7 @@ structure to a file.
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
+import sys
 from pickle import dump
 
 from graphviz import Digraph
@@ -136,8 +137,6 @@ def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
     """
     tag_ = tree.root_node.state.tag
     filename = "chipiron/debugTreeData_" + str(tag_) + "-" + str(count) + ".td"
-
-    import sys
 
     sys.setrecursionlimit(100000)
     with open(filename, "wb") as f:

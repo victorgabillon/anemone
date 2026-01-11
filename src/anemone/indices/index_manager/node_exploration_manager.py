@@ -119,7 +119,7 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
             tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
-        raise Exception("should not be raised")
+        raise NotImplementedError("should not be raised")
 
 
 class UpdateIndexGlobalMinChange:
@@ -167,6 +167,10 @@ class UpdateIndexGlobalMinChange:
             tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
+
+        _ = child_rank
+        _ = parent_node
+        _ = tree
 
         assert parent_node_state is None
         assert isinstance(parent_node_exploration_index_data, MinMaxPathValue)
@@ -234,6 +238,7 @@ class UpdateIndexZipfFactoredProba:
             root_node (AlgorithmNode): The root node of the tree.
         """
 
+        _ = root_node
         assert isinstance(
             root_node_exploration_index_data, RecurZipfQuoolExplorationData
         )
@@ -259,6 +264,7 @@ class UpdateIndexZipfFactoredProba:
             tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
+        _ = parent_node
 
         assert parent_node_state is None
         assert isinstance(
@@ -317,6 +323,7 @@ class UpdateIndexLocalMinChange:
         Args:
             root_node (AlgorithmNode): The root node of the tree.
         """
+        _ = root_node
         assert isinstance(root_node_exploration_index_data, IntervalExplo)
 
         root_node_exploration_index_data.index = 0
@@ -343,6 +350,9 @@ class UpdateIndexLocalMinChange:
             tree (trees.ValueTree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
+
+        _ = tree
+        _ = child_rank
 
         assert parent_node_state is not None
         assert isinstance(parent_node_exploration_index_data, IntervalExplo)

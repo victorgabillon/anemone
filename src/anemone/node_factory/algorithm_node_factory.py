@@ -13,8 +13,8 @@ from valanga import (
     StateModifications,
 )
 
-from anemone.indices import node_indices
 from anemone.basics import TreeDepth
+from anemone.indices import node_indices
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
     NodeTreeEvaluationFactory,
 )

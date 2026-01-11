@@ -2,9 +2,9 @@
 factory for sequool node selector
 """
 
-from random import Random
 from dataclasses import dataclass
 from functools import partial
+from random import Random
 from typing import Literal
 
 from anemone import trees

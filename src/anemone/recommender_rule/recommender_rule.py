@@ -13,9 +13,9 @@ Example usage:
     move = rule(tree, random_generator)
 """
 
-from random import Random
 from dataclasses import dataclass
 from enum import Enum
+from random import Random
 from typing import Literal, Mapping, Protocol
 
 from valanga import BranchKey, State
@@ -28,6 +28,10 @@ from anemone.utils.small_tools import softmax
 
 @dataclass(frozen=True, slots=True)
 class BranchPolicy:
+    """
+    Represents a probability distribution over branches.
+    """
+
     probs: Mapping[BranchKey, float]  # should sum to ~1.0
 
 
@@ -39,13 +43,16 @@ def sample_from_policy(policy: BranchPolicy, rng: Random) -> BranchKey:
 
 
 class RecommenderRule(Protocol):
+    """
+    Protocol for recommender rules.
+    """
+
     type: str
 
-    def policy[StateT: State](
-        self, root_node: AlgorithmNode[StateT]
-    ) -> BranchPolicy:
+    def policy[StateT: State](self, root_node: AlgorithmNode[StateT]) -> BranchPolicy:
         """Return the policy distribution for the root node."""
         ...
+
     def sample(self, policy: BranchPolicy, rng: Random) -> BranchKey:
         """Sample a branch key using the provided RNG."""
         ...
@@ -56,8 +63,8 @@ class RecommenderRuleTypes(str, Enum):
     Enum class that defines the available recommender rule types.
     """
 
-    AlmostEqualLogistic = "almost_equal_logistic"
-    Softmax = "softmax"
+    ALMOST_EQUAL_LOGISTIC = "almost_equal_logistic"
+    SOFTMAX = "softmax"
 
 
 # theses are functions but i still use dataclasses instead
@@ -66,6 +73,10 @@ class RecommenderRuleTypes(str, Enum):
 
 @dataclass(slots=True)
 class AlmostEqualLogistic:
+    """
+    Almost Equal Logistic recommender rule that selects moves with nearly equal evaluations.
+    """
+
     type: Literal["almost_equal_logistic"]
     temperature: float  # kept for config compatibility; rule uses minmax method
 
@@ -95,6 +106,10 @@ class AlmostEqualLogistic:
 
 @dataclass(slots=True)
 class SoftmaxRule:
+    """
+    Softmax recommender rule that computes a softmax distribution over child evaluations.
+    """
+
     type: Literal["softmax"]
     temperature: float
 

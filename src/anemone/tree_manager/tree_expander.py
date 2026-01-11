@@ -2,8 +2,8 @@
 Tree expansion representations for managing game trees.
 """
 
-from typing import Any, Iterator, TypeVar
 from dataclasses import dataclass, field
+from typing import Any, Iterator, TypeVar
 
 from valanga import BranchKey, StateModifications
 
@@ -14,7 +14,7 @@ NodeT = TypeVar("NodeT", bound=node.ITreeNode[Any])
 
 
 @dataclass(slots=True)
-class TreeExpansion[NodeT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]]:
+class TreeExpansion[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
     """
     Represents an expansion of a tree in a chess game.
 
@@ -62,7 +62,7 @@ def _new_expansions_list() -> list[TreeExpansion[Any]]:
 
 
 @dataclass(slots=True)
-class TreeExpansions[NodeT: node.ITreeNode[typing.Any] = node.ITreeNode[typing.Any]]:
+class TreeExpansions[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
     """
     Represents a collection of tree expansions in a chess game.
 

@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Literal, Protocol, runtime_checkable
 
-from anemone import trees
 from anemone import node_selector as node_sel
+from anemone import trees
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 
@@ -121,7 +121,6 @@ class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
     def get_percent_of_progress(
         self,
         tree: trees.Tree[NodeT],
-        notify_function: Callable[[int], None] | None,
     ) -> str:
         """Return a human-readable percent progress string."""
         ...
@@ -153,9 +152,10 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
 
         """
+        _ = tree
         return opening_instructions
 
-    def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
+    def get_string_of_progress(self, _tree: trees.Tree[NodeT]) -> str:
         """
         Returns a string representation of the progress made by the stopping criterion.
 

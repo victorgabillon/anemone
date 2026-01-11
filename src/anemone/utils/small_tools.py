@@ -1,7 +1,7 @@
-from math import exp
-from os import PathLike
 from dataclasses import dataclass
 from itertools import islice
+from math import exp
+from os import PathLike
 from typing import Annotated, List, Sequence
 
 path = Annotated[str | PathLike[str], "path"]

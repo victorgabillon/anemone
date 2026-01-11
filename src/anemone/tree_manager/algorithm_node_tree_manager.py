@@ -3,7 +3,7 @@ Defining the AlgorithmNodeTreeManager class
 """
 
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from valanga import BranchKey
 

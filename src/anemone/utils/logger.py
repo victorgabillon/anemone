@@ -1,7 +1,7 @@
 # logger_module.py
 
-from logging import DEBUG, ERROR, WARNING, Logger, getLogger
 from contextlib import contextmanager
+from logging import DEBUG, ERROR, WARNING, Logger, getLogger
 from typing import Generator
 
 from rich.logging import RichHandler
@@ -78,11 +78,11 @@ def suppress_all_logging(level: int = ERROR) -> Generator[None, None, None]:
     original_levels: dict[str, int] = {}
 
     for name in logger_dict:
-        logger = logging.getLogger(name)
+        logger = getLogger(name)
         original_levels[name] = logger.level
         logger.setLevel(level)
 
-    root_logger = logging.getLogger()
+    root_logger = getLogger()
     original_root_level = root_logger.level
     root_logger.setLevel(level)
 
@@ -90,5 +90,5 @@ def suppress_all_logging(level: int = ERROR) -> Generator[None, None, None]:
         yield
     finally:
         for name, original_level in original_levels.items():
-            logging.getLogger(name).setLevel(original_level)
+            getLogger(name).setLevel(original_level)
         root_logger.setLevel(original_root_level)

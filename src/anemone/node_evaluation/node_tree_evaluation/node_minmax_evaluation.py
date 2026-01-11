@@ -15,8 +15,8 @@ Note: This code snippet is a partial implementation and may require additional c
 
 # todo maybe further split values from over?
 
-from math import log
 from dataclasses import dataclass, field
+from math import log
 from random import choice
 from typing import Any, Protocol, Self, runtime_checkable
 

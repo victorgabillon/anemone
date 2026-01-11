@@ -1,3 +1,5 @@
+"""Basic types and protocols for Anemone."""
+
 from dataclasses import dataclass
 from typing import Annotated, Mapping, Protocol
 
@@ -17,6 +19,8 @@ class StateWithTurn(State, HasTurn, Protocol):
 
 @dataclass(frozen=True, slots=True)
 class BranchRecommendation:
+    """A recommendation for a specific branch in a tree node."""
+
     branch_key: BranchKey
     evaluation: BoardEvaluation | None = None
     policy: BranchPolicy | None = None

@@ -15,9 +15,9 @@ Functions:
 - create_tree_exploration: Creates a TreeExploration object with the specified dependencies.
 """
 
+from dataclasses import dataclass
 from queue import Queue
 from random import Random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
 from valanga import BoardEvaluation, BranchKey, PlayerProgressMessage, State, TurnState
@@ -44,6 +44,10 @@ if TYPE_CHECKING:
 
 @dataclass
 class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+    """
+    Tree Exploration Result holds the result of a tree exploration.
+    """
+
     branch_recommendation: BranchRecommendation
     tree: trees.Tree[NodeT]
 
@@ -89,9 +93,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     stopping_criterion: ProgressMonitor[NodeT]
     notify_percent_function: Callable[[int], None] | None
 
-    def print_info_during_move_computation(
-        self, random_generator: Random
-    ) -> None:
+    def print_info_during_move_computation(self, random_generator: Random) -> None:
         """
         Prints information during the move computation.
 
@@ -109,11 +111,19 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         else:
             current_best_move = "?"
         if random_generator.random() < 0.11:
-            anemone_logger.info(f"state: {self.tree.root_node.state}")
+            anemone_logger.info(
+                "state: %s",
+                self.tree.root_node.state,
+            )
+
             str_progress = self.stopping_criterion.get_string_of_progress(self.tree)
             anemone_logger.info(
-                f"{str_progress} | current best move:  {current_best_move} | current white value: {self.tree.root_node.tree_evaluation.value_white_minmax})"
+                "%s | current best move: %s | current white value: %s",
+                str_progress,
+                current_best_move,
+                self.tree.root_node.tree_evaluation.value_white_minmax,
             )
+
             # ,end='\r')
             self.tree.root_node.tree_evaluation.print_branches_sorted_by_value_and_exploration()
             self.tree_manager.print_best_line(tree=self.tree)

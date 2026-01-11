@@ -37,7 +37,9 @@ class DepthExtendedIntervalExplo[
     T: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ](IntervalExplo[T, StateT], MaxDepthDescendants[T, StateT]):
-    pass
+    """Depth extended interval exploration data."""
+
+    ...
 
 
 @dataclass
@@ -45,7 +47,9 @@ class DepthExtendedMinMaxPathValue[
     T: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ](MinMaxPathValue[T, StateT], MaxDepthDescendants[T, StateT]):
-    pass
+    """Depth extended min-max path value exploration data."""
+
+    ...
 
 
 @dataclass
@@ -53,7 +57,9 @@ class DepthExtendedRecurZipfQuoolExplorationData[
     T: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ](RecurZipfQuoolExplorationData[T, StateT], MaxDepthDescendants[T, StateT]):
-    pass
+    """Depth extended recur zipf quool exploration data."""
+
+    ...
 
 
 # Generic factory type that preserves the node type through the TreeNode parameter
@@ -64,13 +70,13 @@ type ExplorationIndexDataFactory[
 
 
 def create_exploration_index_data[
-    T: ITreeNode[Any] = ITreeNode[Any],
-    StateT: State = State,
+    NodeT: ITreeNode[Any] = ITreeNode[Any],
+    NodeStateT: State = State,
 ](
-    tree_node: TreeNode[T, StateT],
+    tree_node: TreeNode[NodeT, NodeStateT],
     index_computation: IndexComputationType | None = None,
     depth_index: bool = False,
-) -> NodeExplorationData[T, StateT] | None:
+) -> NodeExplorationData[NodeT, NodeStateT] | None:
     """
     Creates exploration index data for a given tree node.
 
@@ -108,7 +114,7 @@ def create_exploration_index_data[
                 f"not finding good case for {index_computation} in file {__name__}"
             )
 
-    exploration_index_data: NodeExplorationData[T, StateT] | None
+    exploration_index_data: NodeExplorationData[NodeT, NodeStateT] | None
     exploration_index_data = (
         index_dataclass_name(tree_node=tree_node) if index_dataclass_name else None
     )

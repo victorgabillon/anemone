@@ -136,13 +136,10 @@ class Descendants[NodeT: ITreeNode[Any]]:
         Returns:
             bool: True if the descendants contain the node, False otherwise.
         """
-        if (
+        return (
             node.tree_depth in self.descendants_at_tree_depth
             and node.tag in self[node.tree_depth]
-        ):
-            return True
-        else:
-            return False
+        )
 
     def remove_descendant(self, node: NodeT) -> None:
         """
@@ -316,8 +313,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         if self.min_tree_depth is not None:
             assert self.max_tree_depth is not None
             return tree_depth == self.max_tree_depth + 1
-        else:
-            return True
+        return True
 
     def is_in_the_current_range(self, tree_depth: int) -> bool:
         """
@@ -332,8 +328,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
         if self.min_tree_depth is not None and self.max_tree_depth is not None:
             return self.max_tree_depth >= tree_depth >= self.min_tree_depth
-        else:
-            return False
+        return False
 
     def is_in_the_acceptable_range(self, tree_depth: int) -> bool:
         """
@@ -347,8 +342,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         """
         if self.min_tree_depth is not None and self.max_tree_depth is not None:
             return self.max_tree_depth + 1 >= tree_depth >= self.min_tree_depth
-        else:
-            return True
+        return True
 
     def add_descendant(self, node: NodeT) -> None:
         """
@@ -515,7 +509,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             assert self.max_tree_depth is not None
             assert self.min_tree_depth is not None
             for i in range(self.min_tree_depth, self.max_tree_depth + 1):
-                assert i in self.descendants_at_tree_depth.keys()
+                assert i in self.descendants_at_tree_depth
         for tree_depth in self:
             assert self.is_in_the_current_range(tree_depth)
 
@@ -596,8 +590,11 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             self.sorted_descendants_at_tree_depth.keys()
             == self.descendants_at_tree_depth.keys()
         )
-        for tree_depth in self.sorted_descendants_at_tree_depth:
-            assert len(self.sorted_descendants_at_tree_depth[tree_depth]) == len(
+        for (
+            tree_depth,
+            sorted_descendants,
+        ) in self.sorted_descendants_at_tree_depth.items():
+            assert len(sorted_descendants) == len(
                 self.descendants_at_tree_depth[tree_depth]
             )
 
@@ -646,13 +643,10 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             bool: True if the descendant node is present, False otherwise.
         """
         reply_base = super().contains_node(node)
-        if (
+        rep = (
             node.tree_depth in self.descendants_at_tree_depth
             and node in self.sorted_descendants_at_tree_depth[node.tree_depth]
-        ):
-            rep = True
-        else:
-            rep = False
+        )
         assert reply_base == rep
         return rep
 
@@ -722,8 +716,11 @@ class SortedValueDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             self.sorted_descendants_at_tree_depth.keys()
             == self.descendants_at_tree_depth.keys()
         )
-        for tree_depth in self.sorted_descendants_at_tree_depth:
-            assert len(self.sorted_descendants_at_tree_depth[tree_depth]) == len(
+        for (
+            tree_depth,
+            sorted_descendants,
+        ) in self.sorted_descendants_at_tree_depth.items():
+            assert len(sorted_descendants) == len(
                 self.descendants_at_tree_depth[tree_depth]
             )
 

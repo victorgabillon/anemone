@@ -54,16 +54,15 @@ def zipf_picks(
             best_rank = rank
 
     if random_pick:
-        raise Exception("nodt coded yet")  # not codeed properly yet
-        # choices = random_generator.choices(list(ranks.keys()), weights=weights, k=1)
+        choices_ = random_generator.choices(
+            list(ranks_values.keys()), weights=weights, k=1
+        )
+        raise NotImplementedError("not coded yet", choices_)  # not codeed properly yet
 
-    else:
-        return best_rank
+    return best_rank
 
 
-def zipf_picks_random[T](
-    ordered_list_elements: list[T], random_generator: Random
-) -> T:
+def zipf_picks_random[T](ordered_list_elements: list[T], random_generator: Random) -> T:
     """
     Selects a random element from an ordered list based on Zipf distribution.
 
@@ -81,8 +80,7 @@ def zipf_picks_random[T](
     length_list = len(ordered_list_elements)
     assert length_list > 0
     weights = [
-        1 / (index + 1) / (log(e * (index + 1))) ** 0
-        for index in range(length_list)
+        1 / (index + 1) / (log(e * (index + 1))) ** 0 for index in range(length_list)
     ]
     picked_element = random_generator.choices(
         ordered_list_elements, weights=weights, k=1

@@ -52,14 +52,14 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
         # Slow path: evaluate a single state by wrapping it as an EvalItem.
         return self.value_white_batch_items([_SingleEvalItem(state)])[0]
 
-    def value_white_batch_items[TItemState: State](
-        self, items: Sequence[EvalItem[TItemState]]
+    def value_white_batch_items[ItemStateT: State](
+        self, items: Sequence[EvalItem[ItemStateT]]
     ) -> list[float]:
         """Evaluate a batch of items with torch and return white values."""
         torch = self._torch
 
         xs: list["Tensor"] = []
-        states: list[TItemState] = []
+        states: list[ItemStateT] = []
 
         for it in items:
             st = it.state
