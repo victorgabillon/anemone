@@ -20,7 +20,9 @@ class NodeFactory[NodeT: ITreeNode[Any] = ITreeNode[Any]](Protocol):
         parent_node: NodeT | None,
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None,
-    ) -> NodeT: ...
+    ) -> NodeT:
+        """Create a node from state and tree metadata."""
+        ...
 
 
 class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]:

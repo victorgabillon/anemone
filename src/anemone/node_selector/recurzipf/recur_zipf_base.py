@@ -8,10 +8,9 @@ Classes:
 
 """
 
-import random
-import typing
+from random import Random
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, TYPE_CHECKING
 
 from anemone import trees
 from anemone.node_selector.branch_explorer import SamplingPriorities, ZipfBranchExplorer
@@ -23,8 +22,8 @@ from anemone.node_selector.opening_instructions import (
 )
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
-if typing.TYPE_CHECKING:
-    import anemone.tree_manager as tree_man
+if TYPE_CHECKING:
+    from anemone import tree_manager as tree_man
 
 
 @dataclass
@@ -48,7 +47,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def __init__(
         self,
         args: RecurZipfBaseArgs,
-        random_generator: random.Random,
+        random_generator: Random,
         opening_instructor: OpeningInstructor,
     ) -> None:
         """

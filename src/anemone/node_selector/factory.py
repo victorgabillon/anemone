@@ -2,7 +2,7 @@
 Factory to build node selectors
 """
 
-import random
+from random import Random
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
@@ -30,7 +30,7 @@ AllNodeSelectorArgs: TypeAlias = RecurZipfBaseArgs | SequoolArgs | UniformArgs
 def create(
     args: AllNodeSelectorArgs,
     opening_instructor: OpeningInstructor,
-    random_generator: random.Random,
+    random_generator: Random,
 ) -> NodeSelector:
     """
     Creation of a node selector

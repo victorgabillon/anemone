@@ -200,4 +200,5 @@ class AlgorithmNode[StateT: State = State]:
         return f"{self.tree_node.dot_description()}\n{self.tree_evaluation.dot_description()}\n{exploration_description}"
 
     def __str__(self) -> str:
+        """Return a concise string representation of the node."""
         return f"{self.__class__} id :{self.tree_node.id}"

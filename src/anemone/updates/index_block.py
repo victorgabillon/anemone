@@ -32,6 +32,7 @@ class IndexUpdateInstructionsFromOneNode:
 
 
 def _new_branches_with_updated_index() -> set[BranchKey]:
+    """Return a new set for branches with updated indices."""
     return set()
 
 

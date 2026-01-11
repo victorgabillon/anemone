@@ -27,6 +27,7 @@ class IndexUpdater:
     """
 
     def __init__(self) -> None:
+        """Initialize the index updater."""
         pass
 
     def create_update_instructions_after_node_birth(

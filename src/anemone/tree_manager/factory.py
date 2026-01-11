@@ -8,7 +8,7 @@ performing updates on the nodes, and handling evaluation queries.
 
 from typing import Any
 
-import anemone.updates as upda
+from anemone import updates as upda
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
     create_exploration_index_manager,

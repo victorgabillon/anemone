@@ -90,6 +90,7 @@ class MinMaxPathValue[
     max_path_value: float | None = None
 
     def dot_description(self) -> str:
+        """Return a string representation of min/max path values."""
         return f"min_path_value: {self.min_path_value}, max_path_value: {self.max_path_value}"
 
 

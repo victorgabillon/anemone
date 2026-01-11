@@ -17,10 +17,9 @@ Functions:
 - get_best_node_from_candidates: Get the best node from a list of candidate nodes based on their exploration index data.
 """
 
-import random
-import typing
+from random import Random
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Protocol, TYPE_CHECKING
 
 from anemone import trees
 from anemone.basics import TreeDepth
@@ -42,8 +41,8 @@ from anemone.nodes.tree_traversal import (
 )
 from anemone.trees.descendants import Descendants
 
-if typing.TYPE_CHECKING:
-    import anemone.tree_manager as tree_man
+if TYPE_CHECKING:
+    from anemone import tree_manager as tree_man
 
 
 class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
@@ -65,7 +64,7 @@ class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol
         """
 
     def select_tree_depth(
-        self, from_node: NodeT, random_generator: random.Random
+        self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
         """
         Select the next half-move to consider based on the given node and random generator.
@@ -119,7 +118,7 @@ class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 self.count_visits[tree_depth] = 1
 
     def select_tree_depth(
-        self, from_node: NodeT, random_generator: random.Random
+        self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
         """
         Select the next half-move to consider based on the given node and random generator.
@@ -246,7 +245,7 @@ class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """
 
     def select_tree_depth(
-        self, from_node: NodeT, random_generator: random.Random
+        self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
         """
         Select the next half-move to consider based on the given node and random generator.
@@ -317,7 +316,7 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     recursif: bool
     random_depth_pick: bool
     tree_depth_selector: TreeDepthSelector[NodeT]
-    random_generator: random.Random
+    random_generator: Random
     consider_nodes_from_tree_depths: ConsiderNodesFromTreeDepths[NodeT]
 
     def choose_node_and_branch_to_open(

@@ -19,14 +19,14 @@ Functions:
 - node_index_create: A function that creates node indices for a given tree node.
 """
 
-import random
+from random import Random
 from dataclasses import dataclass
 from functools import partial
 from typing import Callable, Protocol
 
 from valanga import State
 
-import anemone.node_selector as node_selectors
+from anemone import node_selector as node_selectors
 from anemone import nodes
 from anemone.indices import node_indices
 from anemone.indices.node_indices.factory import (
@@ -100,7 +100,7 @@ class SearchFactory:
 
     node_selector_args: node_selectors.AllNodeSelectorArgs | None
     opening_type: OpeningType | None
-    random_generator: random.Random | None
+    random_generator: Random | None
     index_computation: node_indices.IndexComputationType | None
     depth_index: bool = False
 

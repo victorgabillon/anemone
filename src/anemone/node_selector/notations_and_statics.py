@@ -6,13 +6,13 @@ The functions in this module provide methods for selecting elements based on the
 
 """
 
-import math
-import random
+from math import e, log
+from random import Random
 
 
 def zipf_picks(
     ranks_values: dict[int, int | float],
-    random_generator: random.Random,
+    random_generator: Random,
     shift: bool = False,
     random_pick: bool = False,
 ) -> int:
@@ -45,7 +45,7 @@ def zipf_picks(
     weights: list[float] = []
     for rank, value in ranks_values.items():
         shifted_rank = rank - shift_rank + 1
-        log_term: float = (math.log(math.e * shifted_rank)) ** 2
+        log_term: float = (log(e * shifted_rank)) ** 2
         weight: float = value * shifted_rank * log_term + 0.0001
         weights.append(weight)
 
@@ -62,7 +62,7 @@ def zipf_picks(
 
 
 def zipf_picks_random[T](
-    ordered_list_elements: list[T], random_generator: random.Random
+    ordered_list_elements: list[T], random_generator: Random
 ) -> T:
     """
     Selects a random element from an ordered list based on Zipf distribution.
@@ -81,7 +81,7 @@ def zipf_picks_random[T](
     length_list = len(ordered_list_elements)
     assert length_list > 0
     weights = [
-        1 / (index + 1) / (math.log(math.e * (index + 1))) ** 0
+        1 / (index + 1) / (log(e * (index + 1))) ** 0
         for index in range(length_list)
     ]
     picked_element = random_generator.choices(

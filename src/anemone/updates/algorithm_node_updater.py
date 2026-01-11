@@ -7,7 +7,7 @@ The AlgorithmNodeUpdater class provides methods for creating update instructions
   based on the given update instructions.
 """
 
-import typing
+from typing import TYPE_CHECKING
 from dataclasses import dataclass
 
 from anemone.nodes.algorithm_node.algorithm_node import (
@@ -22,7 +22,7 @@ from .updates_file import (
     UpdateInstructionsTowardsOneParentNode,
 )
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
     from .index_block import IndexUpdateInstructionsFromOneNode

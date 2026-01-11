@@ -1,17 +1,17 @@
 # logger_module.py
 
-import logging
+from logging import DEBUG, ERROR, WARNING, Logger, getLogger
 from contextlib import contextmanager
 from typing import Generator
 
 from rich.logging import RichHandler
 
-anemone_logger = logging.getLogger("anemone_app")
-anemone_logger.setLevel(logging.DEBUG)
+anemone_logger = getLogger("anemone_app")
+anemone_logger.setLevel(DEBUG)
 
 if not anemone_logger.handlers:
     console_handler = RichHandler()
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(DEBUG)
     anemone_logger.addHandler(console_handler)
     anemone_logger.propagate = False
 
@@ -34,7 +34,7 @@ def set_chipiron_logger_level(level: int) -> None:
 
 @contextmanager
 def suppress_logging(
-    logger: logging.Logger, level: int = logging.WARNING
+    logger: Logger, level: int = WARNING
 ) -> Generator[None, None, None]:
     """
     Context manager to temporarily suppress logging for a specific logger to a given level.
@@ -60,7 +60,7 @@ def suppress_logging(
 
 # Suppress all logging from all loggers (global)
 @contextmanager
-def suppress_all_logging(level: int = logging.ERROR) -> Generator[None, None, None]:
+def suppress_all_logging(level: int = ERROR) -> Generator[None, None, None]:
     """
     Context manager to temporarily suppress logging from all loggers to a specified level.
 
@@ -74,7 +74,7 @@ def suppress_all_logging(level: int = logging.ERROR) -> Generator[None, None, No
     Yields:
         None
     """
-    logger_dict = logging.getLogger().manager.loggerDict
+    logger_dict = getLogger().manager.loggerDict
     original_levels: dict[str, int] = {}
 
     for name in logger_dict:

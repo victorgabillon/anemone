@@ -32,6 +32,7 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
     script: bool = True
 
     def __post_init__(self) -> None:
+        """Initialize the torch model and validate dependencies."""
         try:
             import torch
         except ModuleNotFoundError as e:
@@ -47,12 +48,14 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
         self._model.eval()
 
     def value_white(self, state: State) -> float:
+        """Evaluate a single state by delegating to the batch path."""
         # Slow path: evaluate a single state by wrapping it as an EvalItem.
         return self.value_white_batch_items([_SingleEvalItem(state)])[0]
 
     def value_white_batch_items[TItemState: State](
         self, items: Sequence[EvalItem[TItemState]]
     ) -> list[float]:
+        """Evaluate a batch of items with torch and return white values."""
         torch = self._torch
 
         xs: list["Tensor"] = []

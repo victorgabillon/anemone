@@ -6,7 +6,9 @@ from typing import Any, Protocol
 
 
 class _Sortable(Protocol):
-    def __lt__(self, other: Any, /) -> bool: ...
+    def __lt__(self, other: Any, /) -> bool:
+        """Return True if this object is less than the other."""
+        ...
 
 
 def sort_dic[K, V: _Sortable](dic: dict[K, V]) -> dict[K, V]:

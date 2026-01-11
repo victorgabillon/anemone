@@ -11,14 +11,14 @@ node evaluator, node selector, tree factory, and tree manager.
 
 """
 
-import queue
-import random
+from queue import Queue
+from random import Random
 from dataclasses import dataclass
 from typing import Literal, Type
 
 from valanga import ContentRepresentation, RepresentationFactory, TurnState
 
-import anemone.search_factory as search_factories
+from anemone import search_factory as search_factories
 from anemone import node_factory
 from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
@@ -63,10 +63,10 @@ class TreeAndValuePlayerArgs:
 def create_tree_and_value_branch_selector[StateT: TurnState](
     state_type: Type[StateT],
     args: TreeAndValuePlayerArgs,
-    random_generator: random.Random,
+    random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
     state_representation_factory: RepresentationFactory[ContentRepresentation] | None,
-    queue_progress_player: queue.Queue[IsDataclass] | None,
+    queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector[StateT]:
     """Convenience constructor using the default minmax tree evaluation.
 
@@ -92,11 +92,11 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
 def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnState](
     state_type: Type[StateT],
     args: TreeAndValuePlayerArgs,
-    random_generator: random.Random,
+    random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
     state_representation_factory: RepresentationFactory[ContentRepresentation] | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
-    queue_progress_player: queue.Queue[IsDataclass] | None,
+    queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector[StateT]:
     """
     Create a TreeAndValueBranchSelector object with the given arguments.

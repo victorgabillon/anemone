@@ -2,12 +2,12 @@
 factory for sequool node selector
 """
 
-import random
+from random import Random
 from dataclasses import dataclass
 from functools import partial
 from typing import Literal
 
-import anemone.trees as trees
+from anemone import trees
 from anemone.node_selector.node_selector_types import (
     NodeSelectorType,
 )
@@ -48,7 +48,7 @@ class SequoolArgs:
 def create_sequool(
     opening_instructor: OpeningInstructor,
     args: SequoolArgs,
-    random_generator: random.Random,
+    random_generator: Random,
 ) -> Sequool[AlgorithmNode]:
     """
     Create a sequool node selector object.

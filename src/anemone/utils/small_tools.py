@@ -1,11 +1,10 @@
-import math
-import os
-import typing
+from math import exp
+from os import PathLike
 from dataclasses import dataclass
 from itertools import islice
-from typing import List, Sequence
+from typing import Annotated, List, Sequence
 
-path = typing.Annotated[str | os.PathLike[str], "path"]
+path = Annotated[str | PathLike[str], "path"]
 
 
 def nth_key[_T, _V](dct: dict[_T, _V], n: int) -> _T:
@@ -90,6 +89,7 @@ def distance_number_to_interval(value: float, interval: Interval) -> float:
 
 
 def softmax(x: Sequence[float], temperature: float = 1.0) -> List[float]:
+    """Compute a softmax distribution over input values."""
     if not x:
         return []
 
@@ -97,7 +97,7 @@ def softmax(x: Sequence[float], temperature: float = 1.0) -> List[float]:
     m = max(x)
     scaled = [(v - m) * temperature for v in x]
 
-    exp_vals = [math.exp(v) for v in scaled]
+    exp_vals = [exp(v) for v in scaled]
     s = sum(exp_vals)
 
     return [v / s for v in exp_vals]

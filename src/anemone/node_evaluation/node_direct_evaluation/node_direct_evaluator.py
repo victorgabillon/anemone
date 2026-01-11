@@ -43,7 +43,9 @@ class NodeBatchValueEvaluator(Protocol):
 
     def value_white_batch_from_nodes(
         self, nodes: Sequence[AlgorithmNode]
-    ) -> list[float]: ...
+    ) -> list[float]:
+        """Return value_white evaluations for a batch of nodes."""
+        ...
 
 
 class EvaluationQueries[StateT: State = State]:
@@ -76,18 +78,23 @@ class EvaluationQueries[StateT: State = State]:
 class OverEventDetector(Protocol):
     def check_obvious_over_events(
         self, state: State
-    ) -> tuple[OverEvent | None, float | None]: ...
+    ) -> tuple[OverEvent | None, float | None]:
+        """Return an over event and evaluation if the state is terminal."""
+        ...
 
 
 class MasterStateEvaluator(Protocol):
     over: OverEventDetector
 
-    def value_white(self, state: State) -> float: ...
+    def value_white(self, state: State) -> float:
+        """Evaluate a single state from white's perspective."""
+        ...
 
     # the one method NodeEvaluator uses
     def value_white_batch_items[TItemState: State](
         self, items: Sequence[EvalItem[TItemState]]
     ) -> list[float]:
+        """Evaluate a batch of items, defaulting to single-state calls."""
         # default fallback: single loop, state-only
         return [self.value_white(it.state) for it in items]
 
@@ -164,6 +171,7 @@ class NodeDirectEvaluator[StateT: State = State]:
     def evaluate_all_not_over(
         self, not_over_nodes: list[AlgorithmNode[StateT]]
     ) -> None:
+        """Evaluate all non-terminal nodes and store their evaluations."""
         values = self.master_state_evaluator.value_white_batch_items(not_over_nodes)
         for node, v in zip(not_over_nodes, values, strict=True):
             node.tree_evaluation.set_evaluation(

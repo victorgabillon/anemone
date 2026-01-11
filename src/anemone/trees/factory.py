@@ -4,7 +4,7 @@ ValueTreeFactory
 
 from valanga import State
 
-import anemone.node_factory as nod_fac
+from anemone import node_factory as nod_fac
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     EvaluationQueries,
     NodeDirectEvaluator,

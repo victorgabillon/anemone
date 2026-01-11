@@ -13,7 +13,7 @@ from valanga import (
     StateModifications,
 )
 
-import anemone.indices.node_indices as node_indices
+from anemone.indices import node_indices
 from anemone.basics import TreeDepth
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
     NodeTreeEvaluationFactory,
@@ -49,6 +49,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
         parent_node: AlgorithmNode[StateT] | None,
         modifications: StateModifications | None,
     ) -> AlgorithmNode[StateT]:
+        """Build an AlgorithmNode from an existing TreeNode."""
         tree_evaluation: NodeTreeEvaluation[StateT] = (
             self.node_tree_evaluation_factory.create(
                 tree_node=tree_node,

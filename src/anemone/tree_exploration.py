@@ -15,8 +15,8 @@ Functions:
 - create_tree_exploration: Creates a TreeExploration object with the specified dependencies.
 """
 
-import queue
-import random
+from queue import Queue
+from random import Random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -51,6 +51,7 @@ class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 def compute_child_evals[StateT: State](
     root: AlgorithmNode[StateT],
 ) -> dict[BranchKey, BoardEvaluation]:
+    """Compute evaluations for each existing child branch."""
     evals: dict[BranchKey, BoardEvaluation] = {}
     for bk, child in root.branches_children.items():
         if child is None:
@@ -89,7 +90,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     notify_percent_function: Callable[[int], None] | None
 
     def print_info_during_move_computation(
-        self, random_generator: random.Random
+        self, random_generator: Random
     ) -> None:
         """
         Prints information during the move computation.
@@ -117,7 +118,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self.tree.root_node.tree_evaluation.print_branches_sorted_by_value_and_exploration()
             self.tree_manager.print_best_line(tree=self.tree)
 
-    def explore(self, random_generator: random.Random) -> TreeExplorationResult[NodeT]:
+    def explore(self, random_generator: Random) -> TreeExplorationResult[NodeT]:
         """
         Explores the tree to find the best move.
 
@@ -214,7 +215,7 @@ def create_tree_exploration[StateT: TurnState](
     tree_factory: ValueTreeFactory[StateT],
     stopping_criterion_args: AllStoppingCriterionArgs,
     recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
-    queue_progress_player: queue.Queue[IsDataclass] | None,
+    queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """
     Creates a TreeExploration object with the specified dependencies.
@@ -243,6 +244,7 @@ def create_tree_exploration[StateT: TurnState](
     )
 
     def notify_percent_function(progress_percent: int) -> None:
+        """Send progress updates to the queue if configured."""
         if queue_progress_player is not None:
             queue_progress_player.put(
                 PlayerProgressMessage(
