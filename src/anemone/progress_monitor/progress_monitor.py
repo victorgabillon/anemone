@@ -65,7 +65,7 @@ class StoppingCriterionTypes(str, Enum):
     """
 
     DEPTH_LIMIT = "depth_limit"
-    TREE_MOVE_LIMIT = "tree_move_limit"
+    TREE_BRANCH_LIMIT = "tree_branch_limit"
 
 
 @dataclass
@@ -185,14 +185,14 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
 
 @dataclass
-class TreeMoveLimitArgs:
+class TreeBranchLimitArgs:
     """Arguments for the tree move limit stopping criterion."""
 
-    type: Literal[StoppingCriterionTypes.TREE_MOVE_LIMIT]
-    tree_move_limit: int
+    type: Literal[StoppingCriterionTypes.TREE_BRANCH_LIMIT]
+    tree_branch_limit: int
 
 
-class TreeMoveLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
+class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
     ProgressMonitor[NodeT]
 ):
     """
@@ -213,7 +213,7 @@ class TreeMoveLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         if not continue_base:
             should_we = continue_base
         else:
-            should_we = tree.move_count < self.tree_move_limit
+            should_we = tree.branch_count < self.tree_move_limit
         return should_we
 
     def respectful_opening_instructions(
@@ -231,7 +231,7 @@ class TreeMoveLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         )
         opening_instructions.pop_items(
             popped=opening_instructions_subset,
-            how_many=self.tree_move_limit - tree.move_count,
+            how_many=self.tree_move_limit - tree.branch_count,
         )
         return opening_instructions_subset
 
@@ -243,8 +243,8 @@ class TreeMoveLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
             a string that display the progress in the terminal
         """
         return (
-            f"========= tree move counting: {tree.move_count} out of {self.tree_move_limit}"
-            f" |  {tree.move_count / self.tree_move_limit:.0%}"
+            f"========= tree move counting: {tree.branch_count} out of {self.tree_move_limit}"
+            f" |  {tree.branch_count / self.tree_move_limit:.0%}"
         )
 
     def get_percent_of_progress(
@@ -252,7 +252,7 @@ class TreeMoveLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         tree: trees.Tree[NodeT],
     ) -> int:
         """Return progress percentage based on move count."""
-        percent: int = int(tree.move_count / self.tree_move_limit * 100)
+        percent: int = int(tree.branch_count / self.tree_move_limit * 100)
         return percent
 
 
@@ -317,7 +317,7 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         """
         return (
             "========= tree move counting: "
-            + str(tree.move_count)
+            + str(tree.branch_count)
             + " | Depth: "
             + str(self.node_selector.get_current_depth_to_expand())
             + " out of "
@@ -336,7 +336,7 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         return percent
 
 
-AllStoppingCriterionArgs = TreeMoveLimitArgs | DepthLimitArgs
+AllStoppingCriterionArgs = TreeBranchLimitArgs | DepthLimitArgs
 
 
 def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
@@ -363,10 +363,10 @@ def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
             stopping_criterion = DepthLimit(
                 depth_limit=args.depth_limit, node_selector=node_selector
             )
-        case StoppingCriterionTypes.TREE_MOVE_LIMIT:
-            assert isinstance(args, TreeMoveLimitArgs)
+        case StoppingCriterionTypes.TREE_BRANCH_LIMIT:
+            assert isinstance(args, TreeBranchLimitArgs)
 
-            stopping_criterion = TreeMoveLimit(tree_move_limit=args.tree_move_limit)
+            stopping_criterion = TreeBranchLimit(tree_move_limit=args.tree_branch_limit)
         case _:
             raise ValueError(
                 f"stopping criterion builder: can not find {args.type} in file {__name__}"

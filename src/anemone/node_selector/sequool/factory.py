@@ -42,7 +42,7 @@ class SequoolArgs:
     type: Literal[NodeSelectorType.SEQUOOL]
     recursive_selection_on_all_nodes: bool
     random_depth_pick: bool
-    consider_all_lesser_half_move: bool
+    consider_all_lesser_tree_depth: bool
 
 
 def create_sequool(
@@ -77,7 +77,7 @@ def create_sequool(
             consider_nodes_from_all_lesser_tree_depths_in_sub_stree
         )
     else:
-        if args.consider_all_lesser_half_move:
+        if args.consider_all_lesser_tree_depth:
             consider_nodes_from_all_lesser_tree_depths = partial(
                 consider_nodes_from_all_lesser_tree_depths_in_descendants,
                 descendants=all_nodes_not_opened,

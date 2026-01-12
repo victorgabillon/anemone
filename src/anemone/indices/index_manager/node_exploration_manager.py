@@ -492,10 +492,9 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
         # todo how are we sure that the hm comes in order?
         parent_node: NodeT
         for parent_node in tree_nodes[tree_depth].values():
-            # for child_node in parent_node.moves_children.values():
-            move_rank: int
+            branch_rank: int
             branch: BranchKey
-            for move_rank, branch in enumerate(
+            for branch_rank, branch in enumerate(
                 parent_node.tree_evaluation.branches_sorted_by_value_
             ):
                 child_node = parent_node.branches_children[branch]
@@ -511,7 +510,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
                 index_manager.update_node_indices(
                     child_node=child_node,
                     tree=tree,
-                    child_rank=move_rank,
+                    child_rank=branch_rank,
                     parent_node=parent_node,
                     parent_node_exploration_index_data=parent_node.exploration_index_data,
                     child_node_exploration_index_data=child_node.exploration_index_data,
@@ -536,10 +535,10 @@ def print_all_indices[NodeT: AlgorithmNode[Any]](
     """
     tree_nodes: RangedDescendants[NodeT] = tree.descendants
 
-    half_move: int
-    for half_move in tree_nodes:
+    tree_depth: TreeDepth
+    for tree_depth in tree_nodes:
         # todo how are we sure that the hm comes in order?
-        for parent_node in tree_nodes[half_move].values():
+        for parent_node in tree_nodes[tree_depth].values():
             assert isinstance(parent_node, AlgorithmNode)
             if parent_node.exploration_index_data is not None:
                 print(

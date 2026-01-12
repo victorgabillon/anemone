@@ -106,7 +106,6 @@ class FakeYamlState(State):
         return len(self.children_by_id.get(self.node_id, [])) == 0
 
     def copy(self, stack: bool, deep_copy_legal_moves: bool = True) -> Self:
-        # stack/deep_copy_legal_moves irrelevant for this toy game
         return FakeYamlState(
             node_id=self.node_id,
             children_by_id=self.children_by_id,

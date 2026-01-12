@@ -51,7 +51,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     stopping_criterion_args: AllStoppingCriterionArgs
     node_selector_create: NodeSelectorFactory
     random_generator: Random
-    recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs
+    recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     queue_progress_player: Queue[IsDataclass] | None
 
     def select_branch(
@@ -87,7 +87,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
             starting_state=state,
             tree_factory=self.tree_factory,
             stopping_criterion_args=self.stopping_criterion_args,
-            recommend_move_after_exploration=self.recommend_move_after_exploration,
+            recommend_branch_after_exploration=self.recommend_branch_after_exploration,
             queue_progress_player=self.queue_progress_player,
         )
         return tree_exploration

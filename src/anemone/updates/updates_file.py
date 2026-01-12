@@ -179,7 +179,7 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
                     ),
                     branches_with_updated_best_branch=(
                         {branch_from_parent}
-                        if update_from_child_node.value_block.new_best_move_for_node
+                        if update_from_child_node.value_block.new_best_branch_for_node
                         else set()
                     ),
                 )

@@ -12,7 +12,7 @@ from valanga import BranchKey
 from anemone import nodes
 from anemone.nodes.utils import (
     a_branch_str_sequence_from_root,
-    a_move_key_sequence_from_root,
+    a_branch_key_sequence_from_root,
 )
 
 type OpeningInstructionKey = tuple[int, BranchKey]
@@ -33,7 +33,7 @@ class OpeningInstruction[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         """
         print(
             f"OpeningInstruction: node_to_open {self.node_to_open.id} at hm {self.node_to_open.tree_depth} {self.node_to_open.state}| "
-            f"a path from root to node_to_open is {a_move_key_sequence_from_root(self.node_to_open)} {a_branch_str_sequence_from_root(self.node_to_open)}| "
+            f"a path from root to node_to_open is {a_branch_key_sequence_from_root(self.node_to_open)} {a_branch_str_sequence_from_root(self.node_to_open)}| "
             f"self.branch {self.branch} {self.node_to_open.state.branch_name_from_key(self.branch)}"
         )
 

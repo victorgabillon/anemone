@@ -39,7 +39,7 @@ class MinMaxEvaluationUpdater:
                 node_sending_update=new_node,
                 is_node_newly_over=new_node.tree_evaluation.over_event.is_over(),
                 new_value_for_node=True,
-                new_best_move_for_node=False,
+                new_best_branch_for_node=False,
             )
         )
         return base_update_instructions
@@ -102,7 +102,7 @@ class MinMaxEvaluationUpdater:
             node_sending_update=node_to_update,
             is_node_newly_over=is_newly_over,
             new_value_for_node=has_value_changed,
-            new_best_move_for_node=has_best_node_seq_changed,
+            new_best_branch_for_node=has_best_node_seq_changed,
         )
 
         return base_update_instructions_block

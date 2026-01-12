@@ -71,12 +71,12 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         opening_instructions_batch: OpeningInstructions[NodeT] = OpeningInstructions()
 
         # generate the nodes to expand
-        current_half_move_to_expand = (
+        current_tree_depth_to_expand = (
             tree.tree_root_tree_depth + self.current_depth_to_expand
         )
 
         # self.tree.descendants.print_info()
-        nodes_to_consider = list(tree.descendants[current_half_move_to_expand].values())
+        nodes_to_consider = list(tree.descendants[current_tree_depth_to_expand].values())
 
         # filter the game-over ones and the ones with values
         nodes_to_consider_not_over: list[NodeT] = [

@@ -36,14 +36,14 @@ def create(
     Creation of a node selector
     """
 
-    node_move_opening_selector: NodeSelector
+    node_branch_opening_selector: NodeSelector
 
     match args.type:
         case NodeSelectorType.UNIFORM:
-            node_move_opening_selector = Uniform(opening_instructor=opening_instructor)
+            node_branch_opening_selector = Uniform(opening_instructor=opening_instructor)
         case NodeSelectorType.RECUR_ZIPF_BASE:
             assert isinstance(args, RecurZipfBaseArgs)
-            node_move_opening_selector = RecurZipfBase(
+            node_branch_opening_selector = RecurZipfBase(
                 args=args,
                 random_generator=random_generator,
                 opening_instructor=opening_instructor,
@@ -51,7 +51,7 @@ def create(
 
         case NodeSelectorType.SEQUOOL:
             assert isinstance(args, SequoolArgs)
-            node_move_opening_selector = create_sequool(
+            node_branch_opening_selector = create_sequool(
                 opening_instructor=opening_instructor,
                 random_generator=random_generator,
                 args=args,
@@ -62,4 +62,4 @@ def create(
                 f"node selector construction: can not find {args.type}  {args} in file {__name__}"
             )
 
-    return node_move_opening_selector
+    return node_branch_opening_selector

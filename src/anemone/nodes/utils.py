@@ -34,51 +34,51 @@ def are_all_moves_and_children_opened(tree_node: TreeNode) -> bool:
     return tree_node.all_branches_generated and tree_node.non_opened_branches == set()
 
 
-def a_move_key_sequence_from_root[StateT: State](
+def a_branch_key_sequence_from_root[StateT: State](
     tree_node: ITreeNode[StateT],
 ) -> list[str]:
     """
-    Returns a list of move sequences from the root node to a given tree node.
+    Returns a list of branch sequences from the root node to a given tree node.
 
     Args:
-        tree_node (ITreeNode): The tree node to get the move sequence for.
+        tree_node (ITreeNode): The tree node to get the branch sequence for.
 
     Returns:
-        list[str]: A list of move sequences from the root node to the given tree node.
+        list[str]: A list of branch sequences from the root node to the given tree node.
     """
-    move_sequence_from_root: list[BranchKey] = []
+    branch_sequence_from_root: list[BranchKey] = []
     child: ITreeNode[StateT] = tree_node
     while child.parent_nodes:
         parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
-        move: BranchKey = child.parent_nodes[parent]
-        move_sequence_from_root.append(move)
+        branch: BranchKey = child.parent_nodes[parent]
+        branch_sequence_from_root.append(branch)
         child = parent
-    move_sequence_from_root.reverse()
-    return [str(i) for i in move_sequence_from_root]
+    branch_sequence_from_root.reverse()
+    return [str(i) for i in branch_sequence_from_root]
 
 
 def a_branch_str_sequence_from_root[StateT: State](
     tree_node: ITreeNode[StateT],
 ) -> list[str]:
     """
-    Returns a list of move sequences from the root node to a given tree node.
+    Returns a list of branch sequences from the root node to a given tree node.
 
     Args:
-        tree_node (ITreeNode): The tree node to get the move sequence for.
+        tree_node (ITreeNode): The tree node to get the branch sequence for.
 
     Returns:
-        list[str]: A list of move sequences from the root node to the given tree node.
+        list[str]: A list of branch sequences from the root node to the given tree node.
     """
-    move_sequence_from_root: list[str] = []
+    branch_sequence_from_root: list[str] = []
     child: ITreeNode[StateT] = tree_node
     while child.parent_nodes:
         parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
         branch_key: BranchKey = child.parent_nodes[parent]
         branch_str: str = parent.state.branch_name_from_key(branch_key)
-        move_sequence_from_root.append(branch_str)
+        branch_sequence_from_root.append(branch_str)
         child = parent
-    move_sequence_from_root.reverse()
-    return [str(i) for i in move_sequence_from_root]
+    branch_sequence_from_root.reverse()
+    return [str(i) for i in branch_sequence_from_root]
 
 
 def best_node_sequence_from_node[StateT: State](
@@ -118,7 +118,7 @@ def print_a_move_sequence_from_root[StateT: State](
     Returns:
         None
     """
-    move_sequence_from_root: list[str] = a_move_key_sequence_from_root(
+    move_sequence_from_root: list[str] = a_branch_key_sequence_from_root(
         tree_node=tree_node
     )
     print(f"a_move_sequence_from_root{move_sequence_from_root}")

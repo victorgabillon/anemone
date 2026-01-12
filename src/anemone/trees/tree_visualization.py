@@ -85,7 +85,7 @@ def display_special[StateT: State](
         )
         dot.edge(str(node.id), str(child.id), edge_description)
         dot.node(str(child.id), child.dot_description())
-        print("--move:", edge_description)
+        print("--branch:", edge_description)
         print("--child:", child.dot_description())
 
     return dot

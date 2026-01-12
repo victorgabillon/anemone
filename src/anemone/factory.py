@@ -155,7 +155,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
         tree_factory=tree_factory,
         node_selector_create=search_factory.create_node_selector_factory(),
         stopping_criterion_args=args.stopping_criterion,
-        recommend_move_after_exploration=args.recommender_rule,
+        recommend_branch_after_exploration=args.recommender_rule,
         queue_progress_player=queue_progress_player,
     )
     return tree_move_selector
