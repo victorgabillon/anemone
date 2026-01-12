@@ -1,11 +1,11 @@
 """
-This module contains utility functions for working with tree nodes in the move selector.
+This module contains utility functions for working with tree nodes in the selector.
 
 Functions:
-- are_all_moves_and_children_opened(tree_node: TreeNode) -> bool: Checks if all moves and children of a tree node are opened.
-- a_move_sequence_from_root(tree_node: ITreeNode) -> list[str]: Returns a list of move sequences from the root node to a given tree node.
-- print_a_move_sequence_from_root(tree_node: TreeNode) -> None: Prints the move sequence from the root node to a given tree node.
-- is_winning(node_minmax_evaluation: NodeMinmaxEvaluation, color: chess.Color) -> bool: Checks if the color to play in the node is winning.
+- are_all_moves_and_children_opened(tree_node: TreeNode) -> bool: Checks if all branches and children are opened.
+- a_branch_key_sequence_from_root(tree_node: ITreeNode) -> list[str]: Returns a list of branch keys from the root to a given node.
+- print_a_move_sequence_from_root(tree_node: TreeNode) -> None: Prints the branch sequence from the root to a given node.
+- is_winning(node_tree_evaluation: NodeTreeEvaluation, color: Color) -> bool: Checks if the color to play in the node is winning.
 """
 
 from valanga import BranchKey, Color, State
@@ -23,7 +23,7 @@ from .tree_node import TreeNode
 
 def are_all_moves_and_children_opened(tree_node: TreeNode) -> bool:
     """
-    Checks if all moves and children of a tree node are opened.
+    Checks if all branches and children of a tree node are opened.
 
     Args:
         tree_node (TreeNode): The tree node to check.
@@ -85,7 +85,7 @@ def best_node_sequence_from_node[StateT: State](
     tree_node: AlgorithmNode[StateT],
 ) -> list[AlgorithmNode[StateT]]:
     """
-    Returns the best node sequence from the given tree node following the best moves.
+    Returns the best node sequence from the given tree node following the best branches.
     Args:
         tree_node (AlgorithmNode): The tree node to start from.
     Returns:
@@ -110,7 +110,7 @@ def print_a_move_sequence_from_root[StateT: State](
     tree_node: ITreeNode[StateT],
 ) -> None:
     """
-    Prints the move sequence from the root node to a given tree node.
+    Prints the branch sequence from the root node to a given tree node.
 
     Args:
         tree_node (TreeNode): The tree node to print the move sequence for.
@@ -129,8 +129,8 @@ def is_winning(node_tree_evaluation: NodeTreeEvaluation, color: Color) -> bool:
     Checks if the color to play in the node is winning.
 
     Args:
-        node_minmax_evaluation (NodeMinmaxEvaluation): The evaluation of the node.
-        color (chess.Color): The color to check.
+        node_tree_evaluation: The evaluation of the node.
+        color: The color to check.
 
     Returns:
         bool: True if the color is winning, False otherwise.

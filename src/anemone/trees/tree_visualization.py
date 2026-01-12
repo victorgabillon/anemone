@@ -7,11 +7,11 @@ Additionally, it provides a function to save the raw data of the tree structure 
 
 Functions:
 - add_dot(dot: Digraph, treenode: ITreeNode) -> None: Adds nodes and edges to the graph representation of the tree.
-- display_special(node: ITreeNode, format: str, index: dict[chess.Move, str]) -> Digraph: Displays a special
+- display_special(node: ITreeNode, format: str, index: dict[BranchKey, str]) -> Digraph: Displays a special
 representation of the tree with additional information.
-- display(tree: ValueTree, format_str: str) -> Digraph: Displays the tree structure as a graph.
-- save_pdf_to_file(tree: ValueTree) -> None: Saves the tree structure as a PDF file.
-- save_raw_data_to_file(tree: ValueTree, count: str = '#') -> None: Saves the raw data of the tree
+- display(tree: Tree, format_str: str) -> Digraph: Displays the tree structure as a graph.
+- save_pdf_to_file(tree: Tree) -> None: Saves the tree structure as a PDF file.
+- save_raw_data_to_file(tree: Tree, count: str = '#') -> None: Saves the raw data of the tree
 structure to a file.
 """
 
@@ -95,14 +95,14 @@ def display[StateT: State](
     tree: Tree[AlgorithmNode[StateT]], format_str: str
 ) -> Digraph:
     """
-    Display the move and value tree using graph visualization.
+    Display a tree using graph visualization.
 
     Args:
-        tree (Tree): The move and value tree to be displayed.
+        tree (Tree): The tree to be displayed.
         format_str (str): The format of the output graph (e.g., 'png', 'pdf', 'svg').
 
     Returns:
-        Digraph: The graph representation of the move and value tree.
+        Digraph: The graph representation of the tree.
     """
     dot = Digraph(format=format_str)
     add_dot(dot, tree.root_node)
@@ -126,7 +126,7 @@ def save_pdf_to_file[StateT: State](tree: Tree[AlgorithmNode[StateT]]) -> None:
 
 def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
     """
-    Save raw data of a ValueTree to a file.
+    Save raw tree data to a file.
 
     Args:
         tree (Tree): The Tree object to save.
