@@ -1,20 +1,5 @@
 """
-Sequool
-
-This module contains the implementation of the Sequool node selector. The Sequool node selector is responsible for
-choosing the best node to open in a move tree based on various selection strategies.
-
-Classes:
-- TreeDepthSelector: Protocol defining the interface for a half-move selector.
-- StaticNotOpenedSelector: A node selector that considers the number of visits and selects half-moves based on zipf distribution.
-- RandomAllSelector: A node selector that selects half-moves randomly.
-- Sequool: The main class implementing the Sequool node selector.
-
-Functions:
-- consider_nodes_from_all_lesser_tree_depths_in_descendants: Consider all nodes in smaller half-moves than the picked half-move using the descendants object.
-- consider_nodes_from_all_lesser_tree_depths_in_sub_stree: Consider all nodes in smaller half-moves than the picked half-move using tree traversal.
-- consider_nodes_only_from_tree_depths_in_descendants: Consider only the nodes at the picked depth.
-- get_best_node_from_candidates: Get the best node from a list of candidate nodes based on their exploration index data.
+Module implementing the Sequool node selector.
 """
 
 from dataclasses import dataclass, field

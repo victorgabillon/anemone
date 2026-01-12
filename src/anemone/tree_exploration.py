@@ -94,14 +94,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     notify_percent_function: Callable[[int], None] | None
 
     def print_info_during_branch_computation(self, random_generator: Random) -> None:
-        """
-        Prints information during the move computation.
-
+        """Print info during the branch computation.
         Args:
         - random_generator: The random number generator.
-
-        Returns:
-        - None
         """
         current_best_branch: str
         if self.tree.root_node.tree_evaluation.best_branch_sequence:

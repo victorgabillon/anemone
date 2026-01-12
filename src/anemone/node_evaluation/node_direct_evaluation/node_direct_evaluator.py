@@ -1,22 +1,5 @@
 """
-This module contains the implementation of the NodeEvaluator class, which is responsible for evaluating the value of
- nodes in a tree-based move selector.
-
-The NodeEvaluator class wraps a board evaluator and a syzygy table to provide more complex evaluations of chess
- positions. It handles queries for evaluating nodes and manages obvious over events.
-
-Classes:
-- NodeEvaluator: Wrapping node evaluator with syzygy and obvious over event.
-
-Enums:
-- NodeEvaluatorTypes: Types of node evaluators.
-
-Constants:
-- DISCOUNT: Discount factor used in the evaluation.
-
-Functions:
-- None
-
+Module for evaluating algorithm nodes directly using a master state evaluator.
 """
 
 from enum import Enum
@@ -116,10 +99,7 @@ class NodeDirectEvaluator[StateT: State = State]:
         master_state_evaluator: MasterStateEvaluator,
     ) -> None:
         """
-        Initializes a NodeEvaluator object.
-
-        Args:
-            state_evaluator (MasterStateEvaluator): The state evaluator used to evaluate the chess state.
+        Initializes a new instance of the NodeEvaluator class.
         """
         self.master_state_evaluator = master_state_evaluator
 
