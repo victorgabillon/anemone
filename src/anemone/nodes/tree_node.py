@@ -1,5 +1,5 @@
 """
-This module defines the TreeNode class, which represents a node in a tree structure for a chess game.
+This module defines the TreeNode class, which represents a node in a tree structure.
 """
 
 from dataclasses import dataclass, field
@@ -18,37 +18,31 @@ class TreeNode[
     StateT: State = State,
 ]:
     r"""
-    The TreeNode class stores information about a specific board position, including the board representation,
-    the player to move, the half-move count, and the parent-child relationships with other nodes.
+    The TreeNode class stores information about a specific state, including its depth
+    and the parent-child relationships with other nodes.
 
     Attributes:
         id\_ (int): The number to identify this node for easier debugging.
-        half_move\_ (int): The number of half-moves since the start of the game to reach the board position.
-        board\_ (boards.BoardChi): The board representation of the node.
-        parent_nodes\_ (set[ITreeNode]): The set of parent nodes to this node.
-        all_legal_moves_generated (bool): A boolean indicating whether all moves have been generated.
-        non_opened_legal_moves (set[chess.Move]): The set of non-opened legal moves.
-        moves_children\_ (dict[chess.Move, ITreeNode | None]): The dictionary mapping moves to child nodes.
-        fast_rep (str): The fast representation of the board.
-        player_to_move\_ (chess.Color): The color of the player that has to move in the board.
+        tree_depth\_ (int): The depth of the node in the tree.
+        state\_ (State): The state associated with the node.
+        parent_nodes\_ (dict[ITreeNode, BranchKey]): Parent nodes and the branch keys linking them.
+        all_branches_generated (bool): Whether all branches have been generated.
+        non_opened_branches (set[BranchKey]): The set of non-opened branches.
+        branches_children\_ (dict[BranchKey, ITreeNode | None]): The dictionary mapping branches to child nodes.
+        tag (str): The fast tag representation of the state.
 
     Methods:
-        __post_init__(): Initializes the TreeNode object after it has been created.
         id(): Returns the id of the node.
-        player_to_move(): Returns the color of the player to move.
-        board(): Returns the board representation.
-        half_move(): Returns the number of half-moves.
-        moves_children(): Returns the dictionary mapping moves to child nodes.
-        parent_nodes(): Returns the set of parent nodes.
+        state(): Returns the state representation.
+        tree_depth(): Returns the depth of the node.
+        branches_children(): Returns the dictionary mapping branches to child nodes.
+        parent_nodes(): Returns the parent node mapping.
         is_root_node(): Checks if the node is a root node.
-        legal_moves(): Returns the legal moves of the board.
+        all_branches_keys(): Returns available branch keys.
         add_parent(new_parent_node: ITreeNode): Adds a parent node to the current node.
-        is_over(): Checks if the game is over.
-        print_moves_children(): Prints the moves-children links of the node.
-        test(): Performs a test on the node.
+        is_over(): Checks if the state is terminal.
+        print_branches_children(): Prints the branches-children links of the node.
         dot_description(): Returns the dot description of the node.
-        test_all_legal_moves_generated(): Tests if all legal moves have been generated.
-        get_descendants(): Returns a dictionary of descendants of the node.
     """
 
     # id is a number to identify this node for easier debug
@@ -89,10 +83,10 @@ class TreeNode[
 
     @property
     def tag(self) -> StateTag:
-        """Returns the fast representation of the board.
+        """Returns the fast tag representation of the state.
 
         Returns:
-            boards.boardKey: The fast representation of the board.
+            StateTag: The fast tag representation of the state.
         """
         return self.state_.tag
 
@@ -130,7 +124,7 @@ class TreeNode[
     def branches_children(self) -> dict[BranchKey, FamilyT | None]:
         """
         Returns a bidirectional dictionary containing the children nodes of the current tree node,
-        along with the corresponding chess moves that lead to each child node.
+        along with the corresponding branches that lead to each child node.
 
         Returns:
             dict[BranchKey, ITreeNode | None]: A bidirectional dictionary mapping branches to
@@ -142,9 +136,9 @@ class TreeNode[
     @property
     def parent_nodes(self) -> dict[FamilyT, BranchKey]:
         """
-        Returns the dictionary of parent nodes of the current tree node with associated move.
+        Returns the dictionary of parent nodes of the current tree node with associated branch.
 
-        :return: A dictionary of parent nodes of the current tree node with associated move.
+        :return: A dictionary of parent nodes of the current tree node with associated branch.
         """
         return self.parent_nodes_
 
@@ -160,7 +154,7 @@ class TreeNode[
     @property
     def all_branches_keys(self) -> BranchKeyGeneratorP:
         """
-        Returns a generator that yields the branch keys for the current board state.
+        Returns a generator that yields the branch keys for the current state.
 
         Returns:
             BranchKeyGenerator: A generator that yields the branch keys.
@@ -172,7 +166,7 @@ class TreeNode[
         Adds a new parent node to the current node.
 
         Args:
-            branch_key (BranchKey): The branch key associated with the move that led to the node from the new_parent_node.
+            branch_key (BranchKey): The branch key that led to the node from the new parent node.
             new_parent_node (ITreeNode): The new parent node to be added.
 
         Raises:
@@ -189,10 +183,10 @@ class TreeNode[
 
     def is_over(self) -> bool:
         """
-        Checks if the game is over.
+        Checks if the state is terminal.
 
         Returns:
-            bool: True if the game is over, False otherwise.
+            bool: True if the state is terminal, False otherwise.
         """
         return self.state.is_game_over()
 
@@ -225,7 +219,7 @@ class TreeNode[
         """
         Returns a string representation of the node in the DOT format.
 
-        The string includes the node's ID, half move, and board FEN.
+        The string includes the node's ID, depth, and state tag.
 
         Returns:
             A string representation of the node in the DOT format.

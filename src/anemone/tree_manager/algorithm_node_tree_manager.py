@@ -43,9 +43,10 @@ if TYPE_CHECKING:
 @dataclass
 class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """
-    This class that and manages a tree by opening new nodes and updating the values and indexes on the nodes.
-    It wraps around the Tree Manager class as it has a tree_manager as member and adds functionality as this handles
-    trees with nodes that are of the class AlgorithmNode (managing the value for instance)
+    Manage an algorithm tree by opening nodes, evaluating new leaves, and updating indices.
+
+    This class wraps :class:`TreeManager` to add AlgorithmNode-specific behavior such as
+    evaluation queries, value updates, and exploration index updates.
     """
 
     tree_manager: TreeManager[NodeT]
@@ -63,13 +64,15 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         branch: BranchKey,
     ) -> TreeExpansion[NodeT]:
         """
+        Open a child node for a specific branch and register it for evaluation.
 
         Args:
-            tree: the tree to open
-            parent_node: the node to open
-            move: to move to open with
+            tree: The tree to expand.
+            parent_node: The node to expand.
+            branch: The branch key to open from the parent node.
 
-        Returns: the tree expansions
+        Returns:
+            The resulting tree expansion.
 
         """
 
@@ -90,12 +93,14 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         opening_instructions: "node_sel.OpeningInstructions[NodeT]",
     ) -> TreeExpansions[NodeT]:
         """
+        Apply multiple opening instructions and evaluate any created child nodes.
 
         Args:
-            tree: the tree object to open
-            opening_instructions: the opening instructions
+            tree: The tree to expand.
+            opening_instructions: The opening instructions to apply.
 
-        Returns: the expansions that have been performed
+        Returns:
+            The expansions that were performed.
 
         """
 
@@ -141,7 +146,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         Updates the indices of the nodes in the given tree.
 
         Args:
-            tree (ValueTree): The tree whose indices need to be updated.
+            tree: The tree whose indices need to be updated.
 
         Returns:
             None
@@ -150,10 +155,10 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def update_backward(self, tree_expansions: TreeExpansions[NodeT]) -> None:
         """
-        Updates the algorithm node tree in a backward manner based on the given tree expansions.
+        Update algorithm nodes by propagating updates from recent expansions.
 
         Args:
-            tree_expansions (TreeExpansions): The tree expansions used to update the algorithm node tree.
+            tree_expansions: The expansions that triggered the updates.
 
         Returns:
             None
@@ -192,14 +197,14 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         update_instructions: UpdateInstructionsTowardsOneParentNode,
     ) -> UpdateInstructionsTowardsMultipleNodes[NodeT]:
         """
-        Updates the given node with the provided update instructions.
+        Update a node using the provided update instructions.
 
         Args:
-            node_to_update (AlgorithmNode): The node to be updated.
-            update_instructions (UpdateInstructions): The instructions for updating the node.
+            node_to_update: The node to be updated.
+            update_instructions: The instructions for updating the node.
 
         Returns:
-            UpdateInstructionsBatch: A batch of update instructions for the parent nodes of the updated node.
+            A batch of update instructions for the parent nodes of the updated node.
         """
 
         # UPDATES
@@ -229,7 +234,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         Prints statistics about the given tree.
 
         Args:
-            tree (ValueTree): The tree to print statistics for.
+            tree: The tree to print statistics for.
 
         Returns:
             None
@@ -238,9 +243,9 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def print_best_line(self, tree: trees.Tree[NodeT]) -> None:
         """
-        Prints the best line of moves based on the tree evaluation of the tree.
+        Print the best branch line based on the current tree evaluation.
 
         Args:
-            tree (ValueTree): The tree containing the moves and their minmax evaluations.
+            tree: The tree containing branches and their evaluations.
         """
         tree.root_node.tree_evaluation.print_best_line()

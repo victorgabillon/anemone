@@ -1,8 +1,8 @@
 """
-This module defines recommender rules for selecting moves in a tree-based move selector.
+This module defines recommender rules for selecting branches in a tree-based selector.
 
 The recommender rules are implemented as data classes that define a `__call__` method. The `__call__` method takes a
-`ValueTree` object and a random generator, and returns a recommended chess move.
+root node and a random generator, and returns a recommended branch.
 
 The available recommender rule types are defined in the `RecommenderRuleTypes` enum.
 
@@ -10,7 +10,7 @@ The module also defines a `RecommenderRule` protocol that all recommender rule c
 
 Example usage:
     rule = AlmostEqualLogistic(type=RecommenderRuleTypes.AlmostEqualLogistic, temperature=0.5)
-    move = rule(tree, random_generator)
+    branch = rule(tree, random_generator)
 """
 
 from dataclasses import dataclass

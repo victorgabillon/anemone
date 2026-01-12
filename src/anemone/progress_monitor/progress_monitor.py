@@ -1,7 +1,7 @@
 """
-This module defines stopping criteria for a move selector in a game tree.
+This module defines stopping criteria for a branch selector in a game tree.
 
-The stopping criteria determine when the move selector should stop exploring the game tree and make a decision.
+The stopping criteria determine when the selector should stop exploring the game tree and make a decision.
 
 The module includes the following classes:
 
@@ -111,7 +111,7 @@ class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
         Returns a string representation of the progress made by the stopping criterion.
 
         Args:
-            tree (ValueTree): The move and value tree.
+            tree (Tree): The tree being explored.
 
         Returns:
             str: A string representation of the progress.
@@ -160,7 +160,7 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         Returns a string representation of the progress made by the stopping criterion.
 
         Args:
-            tree (ValueTree): The move and value tree.
+            tree (Tree): The tree being explored.
 
         Returns:
             str: A string representation of the progress.
@@ -298,7 +298,7 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         Determines whether the search should continue expanding nodes in the tree.
 
         Args:
-            tree (ValueTree): The tree containing the moves and their corresponding values.
+            tree (Tree): The tree containing the nodes and their evaluations.
 
         Returns:
             bool: True if the search should continue, False otherwise.

@@ -35,7 +35,10 @@ class TreeManager[
     FamilyT: node.ITreeNode[Any] = node.ITreeNode[Any],
 ]:
     """
-    This class manages a tree by opening new nodes.This is the core one only responsible for creating core TreeNodes
+    Manage a tree by opening new nodes and tracking expansions.
+
+    This core manager is responsible for creating tree nodes and wiring them into
+    the tree structure.
     """
 
     node_factory: NodeFactory[FamilyT]
@@ -57,12 +60,12 @@ class TreeManager[
         branch: BranchKey,
     ) -> TreeExpansion[FamilyT]:
         """
-        Opening a Node that contains a board following a move.
+        Open a child node by applying a branch to the parent state.
 
         Args:
             tree: The tree object.
             parent_node: The parent node that we want to expand.
-            move: The move to play to expand the node.
+            branch: The branch key to apply.
 
         Returns:
             The tree expansion object.
@@ -98,16 +101,17 @@ class TreeManager[
         branch: BranchKey,
     ) -> TreeExpansion[FamilyT]:
         """
-        Opening a Node that contains a board given the modifications.
-        Checks if the new node needs to be created or if the new_board already existed in the tree
-         (was reached from a different serie of move)
+        Open or reuse a child node for a specific state.
+
+        Checks whether a new node must be created or whether the state already exists
+        in the tree (reached from another branch sequence).
 
         Args:
             tree: The tree object.
             parent_node: The parent node that we want to expand.
-            board: The board object that is a move forward compared to the board in the parent node
-            modifications: The board modifications.
-            move: The move to play to expand the node.
+            state: The state reached from the parent node.
+            modifications: The state modifications produced by the branch.
+            branch: The branch key applied to reach the state.
 
         Returns:
             The tree expansion object.

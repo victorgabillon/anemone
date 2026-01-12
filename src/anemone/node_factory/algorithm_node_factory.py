@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 @dataclass
 class AlgorithmNodeFactory[StateT: State = State]:
     """
-    The classe creating Algorithm Nodes
+    Factory for building AlgorithmNode instances.
     """
 
     tree_node_factory: TreeNodeFactory[AlgorithmNode[StateT], StateT]
@@ -92,18 +92,18 @@ class AlgorithmNodeFactory[StateT: State = State]:
         modifications: StateModifications | None,
     ) -> AlgorithmNode[StateT]:
         """
-        Creates an AlgorithmNode object.
+        Create an AlgorithmNode object.
 
         Args:
-            branch_from_parent (BranchKey | None): the move that led to the node from the parent node
-            state: The state object.
-            tree_depth: The tree depth.
-            count: The count.
+            branch_from_parent: The branch key leading from the parent node.
+            state: The state object for the node.
+            tree_depth: The depth of the node in the tree.
+            count: The node identifier.
             parent_node: The parent node object.
-            modifications: The board modifications object.
+            modifications: The state modifications object.
 
         Returns:
-            An AlgorithmNode object.
+            The created AlgorithmNode.
 
         """
         tree_node: TreeNode[AlgorithmNode[StateT], StateT] = (

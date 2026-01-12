@@ -1,13 +1,14 @@
 """
-This module defines the interface for a tree node in a chess move selector.
+This module defines the interface for a tree node used in branch selection.
 
-The `ITreeNode` protocol represents a node in a tree structure used for selecting chess moves.
-It provides properties and methods for accessing information about the node, such as its ID,
-the chess board state, the half move count, the child nodes, and the parent nodes.
+The `ITreeNode` protocol represents a node in a tree structure for exploring
+possible branches. It provides properties and methods for accessing information
+about the node, such as its ID, state, depth, child nodes, and parent nodes.
 
-The `ITreeNode` protocol also defines methods for adding a parent node, generating a dot description
-for visualization, checking if all legal moves have been generated, accessing the legal moves,
-and checking if the game is over.
+The `ITreeNode` protocol also defines methods for adding a parent node,
+generating a dot description for visualization, checking if all branches have
+been generated, accessing the available branches, and checking if the state is
+terminal.
 
 Note: This is an interface and should not be instantiated directly.
 """
@@ -19,7 +20,7 @@ from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
 
 class ITreeNode[StateT: State = State](Protocol):
     """
-    The `ITreeNode` protocol represents a node in a tree structure used for selecting chess moves.
+    The `ITreeNode` protocol represents a node in a tree structure used for selecting branches.
     """
 
     @property
@@ -35,10 +36,10 @@ class ITreeNode[StateT: State = State](Protocol):
     @property
     def state(self) -> StateT:
         """
-        Get the chess board state of the node.
+        Get the state of the node.
 
         Returns:
-            The chess board state of the node.
+            The state of the node.
         """
         ...
 
@@ -65,9 +66,9 @@ class ITreeNode[StateT: State = State](Protocol):
     @property
     def parent_nodes(self) -> dict[Self, BranchKey]:
         """
-        Returns the dictionary of parent nodes of the current tree node with associated move.
+        Returns the dictionary of parent nodes of the current tree node with associated branch.
 
-        :return: A dictionary of parent nodes of the current tree node with associated move.
+        :return: A dictionary of parent nodes of the current tree node with associated branch.
         """
         ...
 
@@ -77,7 +78,7 @@ class ITreeNode[StateT: State = State](Protocol):
 
         Args:
             new_parent_node: The parent node to add.
-            move (chess.Move): the move that led to the node from the new_parent_node
+            branch_key: The branch key that led to the node from the new parent.
 
         """
 
@@ -109,28 +110,28 @@ class ITreeNode[StateT: State = State](Protocol):
     @property
     def all_branches_keys(self) -> BranchKeyGeneratorP:
         """
-        Get the legal moves of the node.
+        Get the available branch keys of the node.
 
         Returns:
-            A generator for iterating over the legal moves.
+            A generator for iterating over the branch keys.
         """
         ...
 
     @property
     def tag(self) -> StateTag:
         """
-        Get the fast representation of the node.
+        Get the fast tag representation of the node.
 
         Returns:
-            The fast representation of the node as a string.
+            The fast tag representation of the node as a string.
         """
         ...
 
     def is_over(self) -> bool:
         """
-        Check if the game is over.
+        Check if the state is terminal.
 
         Returns:
-            True if the game is over, False otherwise.
+            True if the state is terminal, False otherwise.
         """
         ...

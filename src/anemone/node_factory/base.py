@@ -44,17 +44,18 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
         modifications: StateModifications | None = None,
     ) -> TreeNode[T, StateT]:
         """
-        Creates a new TreeNode object.
+        Create a new TreeNode object.
 
         Args:
-            board (boards.BoardChi): The current board state.
-            half_move (int): The half-move count.
-            count (int): The ID of the new node.
-            parent_node (ITreeNode | None): The parent node of the new node.
-            move_from_parent (chess.Move | None): The move that leads to the new node.
+            state: The current state for the node.
+            tree_depth: The tree depth for the new node.
+            count: The ID of the new node.
+            parent_node: The parent node of the new node.
+            branch_from_parent: The branch key from the parent node.
+            modifications: The state modifications, if any.
 
         Returns:
-            TreeNode: The newly created TreeNode object.
+            The newly created TreeNode object.
         """
 
         # TreeNode doesn't use modifications (it's a pure data container).
