@@ -332,12 +332,12 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
 
         opening_instructions: OpeningInstructions[NodeT] = (
-            self.choose_node_and_move_to_open_recur(from_node=tree.root_node)
+            self.choose_node_and_branch_to_open_recur(from_node=tree.root_node)
         )
 
         return opening_instructions
 
-    def choose_node_and_move_to_open_recur(
+    def choose_node_and_branch_to_open_recur(
         self, from_node: NodeT
     ) -> OpeningInstructions[NodeT]:
         """
@@ -366,7 +366,7 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self.all_nodes_not_opened.remove_descendant(best_node)
 
         if self.recursif and best_node.tree_node.all_branches_generated:
-            return self.choose_node_and_move_to_open_recur(from_node=best_node)
+            return self.choose_node_and_branch_to_open_recur(from_node=best_node)
 
         all_branches_to_open = self.opening_instructor.all_branches_to_open(
             node_to_open=best_node

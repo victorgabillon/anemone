@@ -1,14 +1,5 @@
 """
-This module provides functions for creating a TreeAndValueMoveSelector object.
-
-The TreeAndValueMoveSelector is a player that uses a tree-based approach to select branches in a game. It evaluates the
-game tree using a node evaluator and selects branches based on a set of criteria defined by the node selector. The player
-uses a stopping criterion to determine when to stop the search and a recommender rule to recommend a branch after
-exploration.
-
-This module also provides functions for creating the necessary components of the TreeAndValueMoveSelector, such as the
-node evaluator, node selector, tree factory, and tree manager.
-
+Module for creating Tree and Value Branch Selector objects.
 """
 
 from dataclasses import dataclass
@@ -49,7 +40,7 @@ TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 @dataclass
 class TreeAndValuePlayerArgs:
     """
-    Data class for the arguments of a TreeAndValueMoveSelector.
+    Dataclass for Tree and Value Player Arguments.
     """
 
     node_selector: node_selector_m.AllNodeSelectorArgs
@@ -149,13 +140,15 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
         index_updater=search_factory.create_node_index_updater(),
     )
 
-    tree_move_selector: TreeAndValueBranchSelector[StateT] = TreeAndValueBranchSelector(
-        tree_manager=tree_manager,
-        random_generator=random_generator,
-        tree_factory=tree_factory,
-        node_selector_create=search_factory.create_node_selector_factory(),
-        stopping_criterion_args=args.stopping_criterion,
-        recommend_branch_after_exploration=args.recommender_rule,
-        queue_progress_player=queue_progress_player,
+    tree_branch_selector: TreeAndValueBranchSelector[StateT] = (
+        TreeAndValueBranchSelector(
+            tree_manager=tree_manager,
+            random_generator=random_generator,
+            tree_factory=tree_factory,
+            node_selector_create=search_factory.create_node_selector_factory(),
+            stopping_criterion_args=args.stopping_criterion,
+            recommend_branch_after_exploration=args.recommender_rule,
+            queue_progress_player=queue_progress_player,
+        )
     )
-    return tree_move_selector
+    return tree_branch_selector

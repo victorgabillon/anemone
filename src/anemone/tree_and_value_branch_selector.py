@@ -1,15 +1,4 @@
-"""
-This module contains the implementation of the TreeAndValueMoveSelector class, which is responsible for selecting branches
-based on a tree and value strategy.
-
-The TreeAndValueMoveSelector class uses a tree-based approach to explore possible branches and select the best branch based on
-a value function. It utilizes a tree manager, a tree factory, stopping criterion arguments, a node selector factory, a
-random generator, and recommendation functions to guide the branch selection process.
-
-The TreeAndValueMoveSelector class provides the following methods:
-- select_branch: Selects the best branch based on the tree and value strategy.
-- print_info: Prints information about the branch selector type.
-"""
+"""Module for Tree and Value Branch Selector."""
 
 from dataclasses import dataclass
 from queue import Queue

@@ -58,7 +58,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
 
         Args:
             update_from_one_child_node (ValueUpdateInstructionsFromOneNode): The update instructions from the child node.
-            move_from_parent_to_child (moveKey): The branch key representing the branch from the parent to the child.
+            branch_from_parent_to_child (BranchKey): The branch key representing the branch from the parent to the child.
         """
         if update_from_one_child_node.is_node_newly_over:
             self.branches_with_updated_over.add(branch_from_parent_to_child)

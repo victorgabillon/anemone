@@ -51,7 +51,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
         list[AlgorithmNode]: A list of descendants that are not over.
     """
     if not from_tree_node.all_branches_generated and not from_tree_node.is_over():
-        # should use are_all_moves_and_children_opened() but its messy!
+        # should use are_all_branches_and_children_opened() but its messy!
         # also using is_over is  messy as over_events are defined in a child class!!!
         des = {from_tree_node: None}  # include itself maybe
     else:

@@ -76,7 +76,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
             key: The key for the opening instruction.
             value: The opening instruction.
         """
-        # key is supposed to be a tuple with (node_to_open,  move_to_play)
+        # key is supposed to be a tuple with (node_to_open, branch)
         self.batch[key] = value
 
     def __getitem__(self, key: OpeningInstructionKey) -> OpeningInstruction[NodeT]:
@@ -195,7 +195,6 @@ def create_instructions_to_open_all_branches[NodeT: nodes.ITreeNode[Any]](
         opening_instructions_batch[(node_to_open.id, branch_to_play)] = (
             OpeningInstruction(node_to_open=node_to_open, branch=branch_to_play)
         )
-    #  node_to_open.non_opened_legal_moves.add(move_to_play)
     return opening_instructions_batch
 
 
@@ -242,7 +241,7 @@ class OpeningInstructor:
             # this shuffling add randomness to the playing style
             # (it stills depends on the random seed, but if random seed varies then the behavior will be more random)
             # DEACTIVATED ATM BECAUSE I DO NOT UNDERSTAND or FORGOT THE USE CASE: MAYBE DEAD SINCE SEED SYSTEM CHANGED
-            # self.random_generator.shuffle(moves_to_play)
+            # self.random_generator.shuffle(branches_to_play)
 
         else:
             raise NotImplementedError("Hello-la")

@@ -75,7 +75,7 @@ class MinMaxEvaluationUpdater:
             )
         )
 
-        # UPDATE BEST MOVE
+        # UPDATE BEST BRANCH SEQUENCE
         has_best_node_seq_changed_2: bool
         if updates_instructions_block.branches_with_updated_best_branch:
             has_best_node_seq_changed_2 = (

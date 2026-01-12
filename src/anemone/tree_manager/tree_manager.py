@@ -164,7 +164,6 @@ class TreeManager[
 
         # add it to the list of opened branches and out of the non-opened branches
         parent_node.branches_children[branch] = tree_expansion.child_node
-        #   parent_node.tree_node.non_opened_legal_moves.remove(move)
         tree.branch_count += 1  # counting branches
 
         return tree_expansion
@@ -218,7 +217,7 @@ class TreeManager[
             tree: The tree object.
         """
         print(
-            "Tree stats: move_count",
+            "Tree stats: branch_count",
             tree.branch_count,
             " node_count",
             tree.descendants.get_count(),

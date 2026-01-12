@@ -60,7 +60,7 @@ class IndexUpdateInstructionsTowardsOneParentNode:
 
         Args:
             update_from_one_child_node (IndexUpdateInstructionsFromOneNode): The update instructions from the child node.
-            move_from_parent_to_child (moveKey): The branch key representing the parent's branch to the child.
+            branch_from_parent_to_child (BranchKey): The branch key representing the parent's branch to the child.
         """
         if update_from_one_child_node.updated_index:
             self.branches_with_updated_index.add(branch_from_parent_to_child)
