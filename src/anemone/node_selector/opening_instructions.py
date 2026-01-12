@@ -11,8 +11,8 @@ from valanga import BranchKey
 
 from anemone import nodes
 from anemone.nodes.utils import (
-    a_branch_str_sequence_from_root,
     a_branch_key_sequence_from_root,
+    a_branch_str_sequence_from_root,
 )
 
 type OpeningInstructionKey = tuple[int, BranchKey]

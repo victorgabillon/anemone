@@ -76,7 +76,9 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
 
         # self.tree.descendants.print_info()
-        nodes_to_consider = list(tree.descendants[current_tree_depth_to_expand].values())
+        nodes_to_consider = list(
+            tree.descendants[current_tree_depth_to_expand].values()
+        )
 
         # filter the game-over ones and the ones with values
         nodes_to_consider_not_over: list[NodeT] = [

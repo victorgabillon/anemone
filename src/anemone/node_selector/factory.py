@@ -40,7 +40,9 @@ def create(
 
     match args.type:
         case NodeSelectorType.UNIFORM:
-            node_branch_opening_selector = Uniform(opening_instructor=opening_instructor)
+            node_branch_opening_selector = Uniform(
+                opening_instructor=opening_instructor
+            )
         case NodeSelectorType.RECUR_ZIPF_BASE:
             assert isinstance(args, RecurZipfBaseArgs)
             node_branch_opening_selector = RecurZipfBase(

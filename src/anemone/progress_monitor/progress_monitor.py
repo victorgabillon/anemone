@@ -6,7 +6,7 @@ The stopping criteria determine when the selector should stop exploring the game
 The module includes the following classes:
 
 - StoppingCriterion: The general stopping criterion class.
-- TreeMoveLimit: A stopping criterion based on a tree move limit.
+- TreeBranchLimit: A stopping criterion based on a tree move limit.
 - DepthLimit: A stopping criterion based on a depth limit.
 
 It also includes helper classes and functions for creating and managing stopping criteria.
@@ -188,8 +188,8 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 class TreeBranchLimitArgs:
     """Arguments for the tree move limit stopping criterion."""
 
-    type: Literal[StoppingCriterionTypes.TREE_MOVE_LIMIT]
-    tree_move_limit: int
+    type: Literal[StoppingCriterionTypes.TREE_BRANCH_LIMIT]
+    tree_branch_limit: int
 
 
 class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
@@ -199,11 +199,11 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
     The stopping criterion based on a tree move limit
     """
 
-    tree_move_limit: int
+    tree_branch_limit: int
 
-    def __init__(self, tree_move_limit: int) -> None:
+    def __init__(self, tree_branch_limit: int) -> None:
         """Initialize the monitor with a move-count limit."""
-        self.tree_move_limit = tree_move_limit
+        self.tree_branch_limit = tree_branch_limit
 
     def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
         """Return True while within the move-count budget."""
@@ -213,7 +213,7 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         if not continue_base:
             should_we = continue_base
         else:
-            should_we = tree.branch_count < self.tree_move_limit
+            should_we = tree.branch_count < self.tree_branch_limit
         return should_we
 
     def respectful_opening_instructions(
@@ -231,7 +231,7 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         )
         opening_instructions.pop_items(
             popped=opening_instructions_subset,
-            how_many=self.tree_move_limit - tree.branch_count,
+            how_many=self.tree_branch_limit - tree.branch_count,
         )
         return opening_instructions_subset
 
@@ -243,8 +243,8 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
             a string that display the progress in the terminal
         """
         return (
-            f"========= tree move counting: {tree.branch_count} out of {self.tree_move_limit}"
-            f" |  {tree.branch_count / self.tree_move_limit:.0%}"
+            f"========= tree move counting: {tree.branch_count} out of {self.tree_branch_limit}"
+            f" |  {tree.branch_count / self.tree_branch_limit:.0%}"
         )
 
     def get_percent_of_progress(
@@ -252,7 +252,7 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         tree: trees.Tree[NodeT],
     ) -> int:
         """Return progress percentage based on move count."""
-        percent: int = int(tree.branch_count / self.tree_move_limit * 100)
+        percent: int = int(tree.branch_count / self.tree_branch_limit * 100)
         return percent
 
 
@@ -363,10 +363,12 @@ def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
             stopping_criterion = DepthLimit(
                 depth_limit=args.depth_limit, node_selector=node_selector
             )
-        case StoppingCriterionTypes.TREE_MOVE_LIMIT:
-            assert isinstance(args, TreeMoveLimitArgs)
+        case StoppingCriterionTypes.TREE_BRANCH_LIMIT:
+            assert isinstance(args, TreeBranchLimitArgs)
 
-            stopping_criterion = TreeBranchLimit(tree_move_limit=args.tree_branch_limit)
+            stopping_criterion = TreeBranchLimit(
+                tree_branch_limit=args.tree_branch_limit
+            )
         case _:
             raise ValueError(
                 f"stopping criterion builder: can not find {args.type} in file {__name__}"

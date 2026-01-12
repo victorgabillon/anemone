@@ -39,7 +39,7 @@ from anemone.node_selector.factory import UniformArgs
 from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.progress_monitor.progress_monitor import (
     StoppingCriterionTypes,
-    TreeMoveLimitArgs,
+    TreeBranchLimitArgs,
 )
 from anemone.recommender_rule.recommender_rule import SoftmaxRule
 
@@ -47,9 +47,9 @@ from anemone.recommender_rule.recommender_rule import SoftmaxRule
 args = TreeAndValuePlayerArgs(
     node_selector=UniformArgs(type=NodeSelectorType.UNIFORM),
     opening_type=None,
-    stopping_criterion=TreeMoveLimitArgs(
-        type=StoppingCriterionTypes.TREE_MOVE_LIMIT,
-        tree_move_limit=100,
+    stopping_criterion=TreeBranchLimitArgs(
+        type=StoppingCriterionTypes.TREE_BRANCH_LIMIT,
+        tree_branch_limit=100,
     ),
     recommender_rule=SoftmaxRule(type="softmax", temperature=1.0),
 )
