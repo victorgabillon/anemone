@@ -36,8 +36,8 @@ class Tree[NodeT: ITreeNode[Any]]:
         # number of nodes in the tree (already one as we have the root node provided)
         self.nodes_count = 1
 
-        # integer counting the number of moves in the tree.
-        # the interest of self.move_count over the number of nodes in the descendants
+        # integer counting the number of branches in the tree.
+        # the interest of self.branch_count over the number of nodes in the descendants
         # is that is always increasing at each opening,
         # while self.node_count can stay the same if the nodes already existed.
         self.branch_count = 0

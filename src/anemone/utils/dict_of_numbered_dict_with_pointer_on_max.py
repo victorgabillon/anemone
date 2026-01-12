@@ -11,28 +11,28 @@ class HasTreeDepth(Protocol):
     @property
     def tree_depth(self) -> int:
         """
-        Get the half move count of the node.
+        Get the tree depth of the node.
 
         Returns:
-            The half move count of the node.
+            The tree depth of the node.
         """
         ...
 
 
 class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
     """
-    A dictionary-like data structure that stores numbered dictionaries and keeps track of the maximum half move.
+    A dictionary-like data structure that stores numbered dictionaries and keeps track of the maximum depth.
 
     Attributes:
         tree_depths (dict[int, dict[T_Key, T_Value]]): A dictionary that stores numbered dictionaries.
-        max_tree_depth (int | None): The maximum half move value.
+        max_tree_depth (int | None): The maximum depth value.
 
     Methods:
         __setitem__(self, node: T_Key, value: T_Value) -> None: Adds an item to the data structure.
         __getitem__(self, node: T_Key) -> T_Value: Retrieves an item from the data structure.
         __bool__(self) -> bool: Checks if the data structure is non-empty.
         __contains__(self, node: T_Key) -> bool: Checks if an item is present in the data structure.
-        popitem(self) -> tuple[T_Key, T_Value]: Removes and returns the item with the maximum half move value.
+        popitem(self) -> tuple[T_Key, T_Value]: Removes and returns the item with the maximum depth value.
     """
 
     def __init__(self) -> None:
@@ -104,7 +104,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
 
     def popitem(self) -> tuple[T_Key, T_Value]:
         """
-        Removes and returns the item with the maximum half move value.
+        Removes and returns the item with the maximum depth value.
 
         Returns:
             tuple[T_Key, T_Value]: The key-value pair of the removed item.

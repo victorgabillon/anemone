@@ -2,8 +2,8 @@
 This module defines the ValueUpdateInstructionsBlock class and a helper function to create instances of it.
 
 The ValueUpdateInstructionsBlock class represents a block of update instructions for a tree value node in
- a move selector algorithm. It contains sets of moves that have been updated with new values,
-  best moves, or are newly over.
+ a branch selector algorithm. It contains sets of branches that have been updated with new values,
+  best branches, or are newly over.
 
 The create_value_update_instructions_block function is a helper function that creates an instance of
  the ValueUpdateInstructionsBlock class with the specified update instructions.
@@ -58,7 +58,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
 
         Args:
             update_from_one_child_node (ValueUpdateInstructionsFromOneNode): The update instructions from the child node.
-            move_from_parent_to_child (moveKey): The move key representing the move from the parent to the child.
+            move_from_parent_to_child (moveKey): The branch key representing the branch from the parent to the child.
         """
         if update_from_one_child_node.is_node_newly_over:
             self.branches_with_updated_over.add(branch_from_parent_to_child)

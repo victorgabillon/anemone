@@ -36,7 +36,7 @@ class SequoolArgs:
     Attributes:
         recursive_selection_on_all_nodes (bool): Flag indicating whether to perform recursive selection on all nodes.
         random_depth_pick (bool): Flag indicating whether to randomly pick a depth for selection.
-        consider_all_lesser_half_move (bool): Flag indicating whether to consider all lesser half moves.
+        consider_all_lesser_half_move (bool): Flag indicating whether to consider all lesser depths.
     """
 
     type: Literal[NodeSelectorType.SEQUOOL]

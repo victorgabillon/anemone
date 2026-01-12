@@ -2,17 +2,17 @@
 This module defines the Descendants and RangedDescendants classes.
 
 Descendants:
-- Represents a collection of descendants of a tree node at different half moves.
+- Represents a collection of descendants of a tree node at different depths.
 - Provides methods to add, remove, and access descendants.
-- Keeps track of the number of descendants and the number of descendants at each half move.
+- Keeps track of the number of descendants and the number of descendants at each depth.
 
 RangedDescendants:
-- Inherits from Descendants and adds the ability to track a range of half moves.
-- Provides methods to check if a half move is within the current range or acceptable range.
+- Inherits from Descendants and adds the ability to track a range of depths.
+- Provides methods to check if a depth is within the current range or acceptable range.
 - Allows adding and removing descendants within the range.
-- Provides a method to get the range of half moves.
+- Provides a method to get the range of depths.
 
-Note: The Descendants and RangedDescendants classes are used in the chipiron project for move selection in a game.
+Note: The Descendants and RangedDescendants classes are used in the chipiron project for branch selection in a game.
 """
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
@@ -28,14 +28,14 @@ from anemone.nodes import ITreeNode
 
 class Descendants[NodeT: ITreeNode[Any]]:
     """
-    Represents a collection of descendants for a specific half move in a tree.
+    Represents a collection of descendants for a specific depth in a tree.
 
     Attributes:
-        descendants_at_tree_depth (dict[TreeDepth, dict[str, NodeT]]): A dictionary that maps a half move to a dictionary of descendants.
+        descendants_at_tree_depth (dict[TreeDepth, dict[str, NodeT]]): A dictionary that maps a depth to a dictionary of descendants.
         number_of_descendants (int): The total number of descendants in the collection.
-        number_of_descendants_at_tree_depth (dict[TreeDepth, int]): A dictionary that maps a half move to the number of descendants at that half move.
-        min_tree_depth (int | None): The minimum half move in the collection, or None if the collection is empty.
-        max_tree_depth (int | None): The maximum half move in the collection, or None if the collection is empty.
+        number_of_descendants_at_tree_depth (dict[TreeDepth, int]): A dictionary that maps a depth to the number of descendants at that depth.
+        min_tree_depth (int | None): The minimum depth in the collection, or None if the collection is empty.
+        max_tree_depth (int | None): The maximum depth in the collection, or None if the collection is empty.
     """
 
     descendants_at_tree_depth: dict[TreeDepth, dict[StateTag, NodeT]]
@@ -51,11 +51,11 @@ class Descendants[NodeT: ITreeNode[Any]]:
         This method initializes the Descendants object by setting up the necessary attributes.
 
         Attributes:
-        - descendants_at_tree_depth (dict): A dictionary to store the descendants at each half move.
+        - descendants_at_tree_depth (dict): A dictionary to store the descendants at each depth.
         - number_of_descendants (int): The total number of descendants.
-        - number_of_descendants_at_tree_depth (dict): A dictionary to store the number of descendants at each half move.
-        - min_tree_depth (int or None): The minimum half move.
-        - max_tree_depth (int or None): The maximum half move.
+        - number_of_descendants_at_tree_depth (dict): A dictionary to store the number of descendants at each depth.
+        - min_tree_depth (int or None): The minimum depth.
+        - max_tree_depth (int or None): The maximum depth.
         """
 
         self.descendants_at_tree_depth = {}
@@ -85,10 +85,10 @@ class Descendants[NodeT: ITreeNode[Any]]:
 
     def __setitem__(self, tree_depth: TreeDepth, value: dict[StateTag, NodeT]) -> None:
         """
-        Sets the descendants at a specific half move.
+        Sets the descendants at a specific depth.
 
         Args:
-            tree_depth (TreeDepth): The half move at which to set the descendants.
+            tree_depth (TreeDepth): The depth at which to set the descendants.
             value (dict[str, NodeT]): The descendants to set.
 
         Returns:
@@ -98,22 +98,22 @@ class Descendants[NodeT: ITreeNode[Any]]:
 
     def __getitem__(self, tree_depth: TreeDepth) -> dict[StateTag, NodeT]:
         """
-        Retrieve the descendants at a specific half move.
+        Retrieve the descendants at a specific depth.
 
         Args:
-            tree_depth (TreeDepth): The half move to retrieve the descendants for.
+            tree_depth (TreeDepth): The depth to retrieve the descendants for.
 
         Returns:
-            dict[str, NodeT]: A dictionary of descendants at the specified half move.
+            dict[str, NodeT]: A dictionary of descendants at the specified depth.
         """
         return self.descendants_at_tree_depth[tree_depth]
 
     def __iter__(self) -> Iterator[TreeDepth]:
         """
-        Returns an iterator over the descendants at each half move.
+        Returns an iterator over the descendants at each depth.
 
         Returns:
-            An iterator over the descendants at each half move.
+            An iterator over the descendants at each depth.
         """
         return iter(self.descendants_at_tree_depth)
 
@@ -194,9 +194,9 @@ class Descendants[NodeT: ITreeNode[Any]]:
 
     def __len__(self) -> int:
         """
-        Returns the number of descendants at the current half move.
+        Returns the number of descendants at the current depth.
 
-        :return: The number of descendants at the current half move.
+        :return: The number of descendants at the current depth.
         :rtype: int
         """
         return len(self.descendants_at_tree_depth)
@@ -205,7 +205,7 @@ class Descendants[NodeT: ITreeNode[Any]]:
         """
         Prints information about the descendants.
 
-        This method prints the number of descendants and their corresponding half moves.
+        This method prints the number of descendants and their corresponding depths.
         It also prints the ID and fast representation of each descendant.
 
         Returns:
@@ -228,7 +228,7 @@ class Descendants[NodeT: ITreeNode[Any]]:
         """
         Prints the statistics of the descendants.
 
-        This method prints the number of descendants at each half move.
+        This method prints the number of descendants at each depth.
 
         Returns:
             None
@@ -246,8 +246,8 @@ class Descendants[NodeT: ITreeNode[Any]]:
     def test(self) -> None:
         """
         This method performs a series of assertions to validate the descendants data structure.
-        It checks if the number of descendants at each half move matches the number of descendants stored.
-        It also checks if the sum of the lengths of all descendants at each half move matches the total number of descendants.
+        It checks if the number of descendants at each depth matches the number of descendants stored.
+        It also checks if the sum of the lengths of all descendants at each depth matches the total number of descendants.
         """
         assert set(self.descendants_at_tree_depth.keys()) == set(
             self.number_of_descendants_at_tree_depth
@@ -265,11 +265,11 @@ class Descendants[NodeT: ITreeNode[Any]]:
 
 class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
     """
-    Represents a collection of descendants with a range of half moves.
+    Represents a collection of descendants with a range of depths.
 
     Attributes:
-        min_tree_depth (int | None): The minimum half move in the range.
-        max_tree_depth (int | None): The maximum half move in the range.
+        min_tree_depth (int | None): The minimum depth in the range.
+        max_tree_depth (int | None): The maximum depth in the range.
     """
 
     min_tree_depth: int | None
@@ -287,7 +287,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         """
         Returns a string representation of the Descendants object.
 
-        The string includes information about each half move and its descendants.
+        The string includes information about each depth and its descendants.
 
         Returns:
             str: A string representation of the Descendants object.
@@ -302,13 +302,13 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
     def is_new_generation(self, tree_depth: TreeDepth) -> bool:
         """
-        Checks if the given half move is a new generation.
+        Checks if the given depth is a new generation.
 
         Args:
-            tree_depth (TreeDepth): The half move to check.
+            tree_depth (TreeDepth): The depth to check.
 
         Returns:
-            bool: True if the half move is a new generation, False otherwise.
+            bool: True if the depth is a new generation, False otherwise.
         """
         if self.min_tree_depth is not None:
             assert self.max_tree_depth is not None
@@ -408,12 +408,12 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
     def range(self) -> range:
         """
-        Returns a range object representing the half moves range.
+        Returns a range object representing the depth range.
 
-        The range starts from the minimum half move and ends at the maximum half move.
+        The range starts from the minimum depth and ends at the maximum depth.
 
         Returns:
-            range: A range object representing the half moves range.
+            range: A range object representing the depth range.
         """
 
         assert self.max_tree_depth is not None
@@ -493,9 +493,9 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         This method checks the validity of the descendants object by asserting various conditions.
         If the `min_tree_depth` attribute is None, it asserts that `max_tree_depth` is also None and
         `number_of_descendants` is 0.
-        Otherwise, it asserts that `max_tree_depth` and `min_tree_depth` are not None, and checks if all half moves
+        Otherwise, it asserts that `max_tree_depth` and `min_tree_depth` are not None, and checks if all depths
         between `min_tree_depth` and `max_tree_depth` are present in `descendants_at_tree_depth` dictionary.
-        Finally, it iterates over all half moves in the descendants object and asserts that each half move
+        Finally, it iterates over all depths in the descendants object and asserts that each depth
         is within the current range.
 
         Returns:
@@ -518,7 +518,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         Prints information about the descendants.
 
         This method calls the `print_info` method of the parent class and then prints the count of descendants,
-        the minimum half move, and the maximum half move.
+        the minimum depth, and the maximum depth.
 
         Returns:
             None
@@ -538,7 +538,7 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
     # todo is there a difference between sorted descendant nd sorted value descendant? below?
 
     """
-    Represents a class that stores sorted descendants of a tree node at different half moves.
+    Represents a class that stores sorted descendants of a tree node at different depths.
     Inherits from the Descendants class.
     """
 

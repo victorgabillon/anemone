@@ -1,9 +1,9 @@
 """
 This module provides functions for creating a TreeAndValueMoveSelector object.
 
-The TreeAndValueMoveSelector is a player that uses a tree-based approach to select moves in a game. It evaluates the
-game tree using a node evaluator and selects moves based on a set of criteria defined by the node selector. The player
-uses a stopping criterion to determine when to stop the search and a recommender rule to recommend a move after
+The TreeAndValueMoveSelector is a player that uses a tree-based approach to select branches in a game. It evaluates the
+game tree using a node evaluator and selects branches based on a set of criteria defined by the node selector. The player
+uses a stopping criterion to determine when to stop the search and a recommender rule to recommend a branch after
 exploration.
 
 This module also provides functions for creating the necessary components of the TreeAndValueMoveSelector, such as the

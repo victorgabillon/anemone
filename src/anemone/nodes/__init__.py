@@ -1,10 +1,10 @@
 """
-This module contains the implementation of tree nodes for move selection.
+This module contains the implementation of tree nodes for branch selection.
 
-The tree nodes are used in the move selector to represent different moves and their values.
+The tree nodes are used in the branch selector to represent different branches and their values.
 
 Classes:
-- TreeNode: Represents a tree node for move selection.
+- TreeNode: Represents a tree node for branch selection.
 - ITreeNode: Interface for tree nodes.
 
 """
