@@ -89,13 +89,13 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     tree: trees.Tree[NodeT]
     tree_manager: tree_man.AlgorithmNodeTreeManager[NodeT]
     node_selector: node_sel.NodeSelector[NodeT]
-    recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs
+    recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     stopping_criterion: ProgressMonitor[NodeT]
     notify_percent_function: Callable[[int], None] | None
 
-    def print_info_during_move_computation(self, random_generator: Random) -> None:
+    def print_info_during_branch_computation(self, random_generator: Random) -> None:
         """
-        Prints information during the move computation.
+        Prints information during the branch computation.
 
         Args:
         - random_generator: The random number generator.
@@ -103,13 +103,13 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         Returns:
         - None
         """
-        current_best_move: str
+        current_best_branch: str
         if self.tree.root_node.tree_evaluation.best_branch_sequence:
-            current_best_move = str(
+            current_best_branch = str(
                 self.tree.root_node.tree_evaluation.best_branch_sequence[0]
             )
         else:
-            current_best_move = "?"
+            current_best_branch = "?"
         if random_generator.random() < 0.11:
             anemone_logger.info(
                 "state: %s",
@@ -118,9 +118,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
             str_progress = self.stopping_criterion.get_string_of_progress(self.tree)
             anemone_logger.info(
-                "%s | current best move: %s | current white value: %s",
+                "%s | current best branch: %s | current white value: %s",
                 str_progress,
-                current_best_move,
+                current_best_branch,
                 self.tree.root_node.tree_evaluation.value_white_minmax,
             )
 
@@ -155,7 +155,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             loop = loop + 1
             assert not self.tree.root_node.is_over()
             # print info
-            self.print_info_during_move_computation(random_generator=random_generator)
+            self.print_info_during_branch_computation(random_generator=random_generator)
 
             # choose the moves and nodes to open
             opening_instructions: node_sel.OpeningInstructions[NodeT]
@@ -192,11 +192,11 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         #          f' {child.minmax_evaluation.over_event.get_over_tag()}')
         # chipiron_logger.info(f'evaluation for white: {self.tree.root_node.minmax_evaluation.get_value_white()}')
 
-        policy: BranchPolicy = self.recommend_move_after_exploration.policy(
+        policy: BranchPolicy = self.recommend_branch_after_exploration.policy(
             self.tree.root_node
         )
 
-        best_branch: BranchKey = self.recommend_move_after_exploration.sample(
+        best_branch: BranchKey = self.recommend_branch_after_exploration.sample(
             policy, random_generator
         )
 
@@ -204,7 +204,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             tree=self.tree
         )  # todo maybe almost best chosen line no?
 
-        move_recommendation = BranchRecommendation(
+        branch_recommendation = BranchRecommendation(
             branch_key=best_branch,
             evaluation=self.tree.root_node.tree_evaluation.evaluate(),
             policy=policy,
@@ -212,7 +212,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
 
         tree_exploration_result: TreeExplorationResult[NodeT] = TreeExplorationResult(
-            branch_recommendation=move_recommendation, tree=self.tree
+            branch_recommendation=branch_recommendation, tree=self.tree
         )
 
         return tree_exploration_result
@@ -224,7 +224,7 @@ def create_tree_exploration[StateT: TurnState](
     tree_manager: tree_man.AlgorithmNodeTreeManager[AlgorithmNode[StateT]],
     tree_factory: ValueTreeFactory[StateT],
     stopping_criterion_args: AllStoppingCriterionArgs,
-    recommend_move_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
+    recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
     queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """
@@ -267,7 +267,7 @@ def create_tree_exploration[StateT: TurnState](
         tree_manager=tree_manager,
         stopping_criterion=stopping_criterion,
         node_selector=node_selector,
-        recommend_move_after_exploration=recommend_move_after_exploration,
+        recommend_branch_after_exploration=recommend_branch_after_exploration,
         notify_percent_function=notify_percent_function,
     )
 

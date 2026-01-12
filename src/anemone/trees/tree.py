@@ -42,7 +42,7 @@ class Tree[NodeT: ITreeNode[Any]]:
         # the interest of self.move_count over the number of nodes in the descendants
         # is that is always increasing at each opening,
         # while self.node_count can stay the same if the nodes already existed.
-        self.move_count = 0
+        self.branch_count = 0
 
         self._root_node = root_node
         self.descendants = descendants

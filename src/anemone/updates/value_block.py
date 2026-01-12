@@ -27,7 +27,7 @@ class ValueUpdateInstructionsFromOneNode:
     node_sending_update: AlgorithmNode
     is_node_newly_over: bool
     new_value_for_node: bool
-    new_best_move_for_node: bool
+    new_best_branch_for_node: bool
 
 
 def _new_branchkey_set() -> set[BranchKey]:
@@ -64,7 +64,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             self.branches_with_updated_over.add(branch_from_parent_to_child)
         if update_from_one_child_node.new_value_for_node:
             self.branches_with_updated_value.add(branch_from_parent_to_child)
-        if update_from_one_child_node.new_best_move_for_node:
+        if update_from_one_child_node.new_best_branch_for_node:
             self.branches_with_updated_best_branch.add(branch_from_parent_to_child)
 
     def add_update_toward_one_parent_node(self, another_update: Self) -> None:
