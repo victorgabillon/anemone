@@ -74,7 +74,7 @@ class RecommenderRuleTypes(str, Enum):
 @dataclass(slots=True)
 class AlmostEqualLogistic:
     """
-    Almost Equal Logistic recommender rule that selects moves with nearly equal evaluations.
+    Almost Equal Logistic recommender rule that selects branches with nearly equal evaluations.
     """
 
     type: Literal["almost_equal_logistic"]
@@ -92,7 +92,7 @@ class AlmostEqualLogistic:
                 bk for bk, ch in root_node.branches_children.items() if ch is not None
             ]
 
-        # If still empty, something is wrong (no legal moves / not expanded)
+        # If still empty, something is wrong (no legal branches / not expanded)
         if not best:
             return BranchPolicy(probs={})
 

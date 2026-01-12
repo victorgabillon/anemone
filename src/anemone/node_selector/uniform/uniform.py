@@ -1,8 +1,8 @@
 """
 This module contains the implementation of the Uniform Node selector.
 
-The Uniform Node selector is responsible for selecting nodes to expand in a tree-based move selector algorithm.
-It uses an opening instructor to determine the moves to open for each node and generates opening instructions accordingly.
+The Uniform Node selector is responsible for selecting nodes to expand in a tree-based branch selector algorithm.
+It uses an opening instructor to determine the branches to open for each node and generates opening instructions accordingly.
 
 Classes:
 - Uniform: The Uniform Node selector class.
@@ -34,7 +34,7 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         Initializes a new instance of the Uniform class.
 
         Args:
-        - opening_instructor (OpeningInstructor): The opening instructor to be used for determining moves to open.
+        - opening_instructor (OpeningInstructor): The opening instructor to be used for determining branches to open.
 
         """
         self.opening_instructor = opening_instructor
@@ -56,10 +56,10 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> OpeningInstructions[NodeT]:
         """
-        Chooses a node to expand and determines the moves to open for that node.
+        Chooses a node to expand and determines the branches to open for that node.
 
         Args:
-        - tree (trees.Tree[AlgorithmNode]): The move and value tree.
+        - tree (trees.Tree[AlgorithmNode]): The tree and value tree.
         - latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
 
         Returns:

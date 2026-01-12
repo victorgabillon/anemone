@@ -1,7 +1,7 @@
 """
-This module contains the implementation of the RecurZipfBase class, which is a node selector for a move selector tree.
+This module contains the implementation of the RecurZipfBase class, which is a node selector for a branch selector tree.
 
-The RecurZipfBase class is responsible for selecting the next node to explore in a move selector tree based on the RecurZipf algorithm.
+The RecurZipfBase class is responsible for selecting the next node to explore in a branch selector tree based on the RecurZipf algorithm.
 
 Classes:
 - RecurZipfBase: The RecurZipfBase Node selector.
@@ -32,7 +32,7 @@ class RecurZipfBaseArgs:
     Arguments for the RecurZipfBase node selector.
 
     Attributes:
-        move_explorer_priority (SamplingPriorities): The priority for move exploration.
+        branch_explorer_priority (SamplingPriorities): The priority for branch exploration.
     """
 
     type: Literal[NodeSelectorType.RECUR_ZIPF_BASE]
@@ -71,14 +71,14 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
         """
-        Chooses the next node to explore and the move to open.
+        Chooses the next node to explore and the branch to open.
 
         Args:
-        - tree (trees.Tree[AlgorithmNode]): The move selector tree.
+        - tree (trees.Tree[AlgorithmNode]): The branch selector tree.
         - latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
 
         Returns:
-        - OpeningInstructions: The instructions for opening the selected move.
+        - OpeningInstructions: The instructions for opening the selected branch.
 
         """
         # todo maybe proportions and proportions can be valuesorted dict with smart updates

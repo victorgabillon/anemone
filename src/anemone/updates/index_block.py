@@ -44,7 +44,7 @@ class IndexUpdateInstructionsTowardsOneParentNode:
     This class is used to store and manipulate sets of children with updated index values.
 
     Attributes:
-        moves_with_updated_index (Set[IMove]): A set of children with updated index values.
+        branches_with_updated_index (Set[BranchKey]): A set of children with updated index values.
     """
 
     branches_with_updated_index: set[BranchKey] = field(
@@ -60,7 +60,7 @@ class IndexUpdateInstructionsTowardsOneParentNode:
 
         Args:
             update_from_one_child_node (IndexUpdateInstructionsFromOneNode): The update instructions from the child node.
-            move_from_parent_to_child (moveKey): The move key representing the parent's move to the child.
+            move_from_parent_to_child (moveKey): The branch key representing the parent's branch to the child.
         """
         if update_from_one_child_node.updated_index:
             self.branches_with_updated_index.add(branch_from_parent_to_child)
@@ -87,5 +87,5 @@ class IndexUpdateInstructionsTowardsOneParentNode:
         return empty_bool
 
     def print_info(self) -> None:
-        """Prints information about the moves with updated indices."""
+        """Prints information about the branches with updated indices."""
         print(self.branches_with_updated_index)

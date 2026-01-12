@@ -152,7 +152,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             # print info
             self.print_info_during_branch_computation(random_generator=random_generator)
 
-            # choose the moves and nodes to open
+            # choose the branches and nodes to open
             opening_instructions: node_sel.OpeningInstructions[NodeT]
             opening_instructions = self.node_selector.choose_node_and_branch_to_open(
                 tree=self.tree, latest_tree_expansions=tree_expansions

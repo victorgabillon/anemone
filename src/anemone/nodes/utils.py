@@ -5,7 +5,7 @@ Functions:
 - are_all_moves_and_children_opened(tree_node: TreeNode) -> bool: Checks if all branches and children are opened.
 - a_branch_key_sequence_from_root(tree_node: ITreeNode) -> list[str]: Returns a list of branch keys from the root to a given node.
 - print_a_move_sequence_from_root(tree_node: TreeNode) -> None: Prints the branch sequence from the root to a given node.
-- is_winning(node_tree_evaluation: NodeTreeEvaluation, color: Color) -> bool: Checks if the color to play in the node is winning.
+- is_winning(node_tree_evaluation: NodeTreeEvaluation, color: Color) -> bool: Checks if the side to act in the node is winning.
 """
 
 from valanga import BranchKey, Color, State
@@ -29,7 +29,7 @@ def are_all_moves_and_children_opened(tree_node: TreeNode) -> bool:
         tree_node (TreeNode): The tree node to check.
 
     Returns:
-        bool: True if all moves and children are opened, False otherwise.
+        bool: True if all branches and children are opened, False otherwise.
     """
     return tree_node.all_branches_generated and tree_node.non_opened_branches == set()
 
@@ -89,7 +89,7 @@ def best_node_sequence_from_node[StateT: State](
     Args:
         tree_node (AlgorithmNode): The tree node to start from.
     Returns:
-        list[AlgorithmNode]: A list of tree nodes representing the best node sequence.
+        list[AlgorithmNode]: A list of tree nodes representing the best branch sequence.
     """
 
     best_move_seq: list[BranchKey] = tree_node.tree_evaluation.best_branch_sequence
@@ -113,7 +113,7 @@ def print_a_move_sequence_from_root[StateT: State](
     Prints the branch sequence from the root node to a given tree node.
 
     Args:
-        tree_node (TreeNode): The tree node to print the move sequence for.
+        tree_node (TreeNode): The tree node to print the branch sequence for.
 
     Returns:
         None

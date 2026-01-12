@@ -32,13 +32,13 @@ class NodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
         """
-        Selects a node from the given tree and returns the instructions to move to an open position.
+        Selects a node from the given tree and returns the instructions to open a branch.
 
         Args:
             tree: The tree containing the nodes.
             latest_tree_expansions: The latest expansions of the tree.
 
         Returns:
-            OpeningInstructions: The instructions to move to an open position.
+            OpeningInstructions: The instructions to open a branch.
         """
         raise NotImplementedError()

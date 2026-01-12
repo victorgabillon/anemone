@@ -6,7 +6,7 @@ The stopping criteria determine when the selector should stop exploring the game
 The module includes the following classes:
 
 - StoppingCriterion: The general stopping criterion class.
-- TreeBranchLimit: A stopping criterion based on a tree move limit.
+- TreeBranchLimit: A stopping criterion based on a tree branch limit.
 - DepthLimit: A stopping criterion based on a depth limit.
 
 It also includes helper classes and functions for creating and managing stopping criteria.
@@ -186,7 +186,7 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
 @dataclass
 class TreeBranchLimitArgs:
-    """Arguments for the tree move limit stopping criterion."""
+    """Arguments for the tree branch limit stopping criterion."""
 
     type: Literal[StoppingCriterionTypes.TREE_BRANCH_LIMIT]
     tree_branch_limit: int
@@ -196,17 +196,17 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
     ProgressMonitor[NodeT]
 ):
     """
-    The stopping criterion based on a tree move limit
+    The stopping criterion based on a tree branch limit
     """
 
     tree_branch_limit: int
 
     def __init__(self, tree_branch_limit: int) -> None:
-        """Initialize the monitor with a move-count limit."""
+        """Initialize the monitor with a branch-count limit."""
         self.tree_branch_limit = tree_branch_limit
 
     def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
-        """Return True while within the move-count budget."""
+        """Return True while within the branch-count budget."""
         continue_base: bool = super().should_we_continue(tree=tree)
 
         should_we: bool
@@ -243,7 +243,7 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
             a string that display the progress in the terminal
         """
         return (
-            f"========= tree move counting: {tree.branch_count} out of {self.tree_branch_limit}"
+            f"========= tree branch counting: {tree.branch_count} out of {self.tree_branch_limit}"
             f" |  {tree.branch_count / self.tree_branch_limit:.0%}"
         )
 
@@ -251,7 +251,7 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         self,
         tree: trees.Tree[NodeT],
     ) -> int:
-        """Return progress percentage based on move count."""
+        """Return progress percentage based on branch count."""
         percent: int = int(tree.branch_count / self.tree_branch_limit * 100)
         return percent
 
@@ -316,7 +316,7 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
             a string that display the progress in the terminal
         """
         return (
-            "========= tree move counting: "
+            "========= tree branch counting: "
             + str(tree.branch_count)
             + " | Depth: "
             + str(self.node_selector.get_current_depth_to_expand())
