@@ -1,15 +1,15 @@
 """
 This module contains the implementation of the TreeExploration class, which is responsible for managing a search
- for the best move in a given chess position using a tree-based approach.
+ for the best branch in a given state using a tree-based approach.
 
-The TreeExploration class is used to create and manage a tree structure that represents the possible moves and
- their evaluations in a chess position. It provides methods for exploring the tree, selecting the best move,
-  and printing information during the move computation.
+The TreeExploration class is used to create and manage a tree structure that represents the possible branches and
+ their evaluations in a state space. It provides methods for exploring the tree, selecting the best branch,
+  and printing information during the branch computation.
 
 The module also includes helper functions for creating a TreeExploration object and its dependencies.
 
 Classes:
-- TreeExploration: Manages the search for the best move using a tree-based approach.
+- TreeExploration: Manages the search for the best branch using a tree-based approach.
 
 Functions:
 - create_tree_exploration: Creates a TreeExploration object with the specified dependencies.
@@ -69,18 +69,18 @@ def compute_child_evals[StateT: State](
 @dataclass
 class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """
-    Tree Exploration is an object to manage one best move search.
+    Tree Exploration is an object to manage one best-branch search.
 
     Attributes:
-    - tree: The tree structure representing the possible moves and their evaluations.
+    - tree: The tree structure representing the possible branches and their evaluations.
     - tree_manager: The manager for the tree structure.
-    - node_selector: The selector for choosing nodes and moves to open in the tree.
-    - recommend_move_after_exploration: The recommender rule for selecting the best move after the tree exploration.
+    - node_selector: The selector for choosing nodes and branches to open in the tree.
+    - recommend_branch_after_exploration: The recommender rule for selecting the best branch after the exploration.
     - stopping_criterion: The stopping criterion for determining when to stop the tree exploration.
 
     Methods:
-    - print_info_during_move_computation: Prints information during the move computation.
-    - explore: Explores the tree to find the best move.
+    - print_info_during_branch_computation: Prints information during the branch computation.
+    - explore: Explores the tree to find the best branch.
     """
 
     # TODO Not sure why this class is not simply the TreeAndValuePlayer Class
@@ -95,7 +95,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def print_info_during_branch_computation(self, random_generator: Random) -> None:
         """
-        Prints information during the branch computation.
+        Prints information during the move computation.
 
         Args:
         - random_generator: The random number generator.
@@ -130,13 +130,13 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def explore(self, random_generator: Random) -> TreeExplorationResult[NodeT]:
         """
-        Explores the tree to find the best move.
+        Explore the tree to find the best branch.
 
         Args:
         - random_generator: The random number generator.
 
         Returns:
-        - MoveRecommendation: The recommended move and its evaluation.
+        - BranchRecommendation: The recommended branch and its evaluation.
         """
         # by default the first tree expansion is the creation of the tree node
         tree_expansions: tree_man.TreeExpansions[NodeT] = tree_man.TreeExpansions()
@@ -228,15 +228,15 @@ def create_tree_exploration[StateT: TurnState](
     queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """
-    Creates a TreeExploration object with the specified dependencies.
+    Create a TreeExploration object with the specified dependencies.
 
     Args:
     - node_selector_create: The factory function for creating the node selector.
-    - starting_board: The starting chess board position.
+    - starting_state: The starting state for the exploration.
     - tree_manager: The manager for the tree structure.
     - tree_factory: The factory for creating the tree structure.
     - stopping_criterion_args: The arguments for creating the stopping criterion.
-    - recommend_move_after_exploration: The recommender rule for selecting the best move after the tree exploration.
+    - recommend_branch_after_exploration: The recommender rule for selecting the best branch after exploration.
 
     Returns:
     - TreeExploration: The created TreeExploration object.

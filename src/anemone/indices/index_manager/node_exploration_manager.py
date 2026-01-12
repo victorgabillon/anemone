@@ -71,7 +71,7 @@ class NodeExplorationIndexManager(Protocol):
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.ValueTree): The tree containing the nodes.
+            tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
         ...
@@ -116,7 +116,7 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.ValueTree): The tree containing the nodes.
+            tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
         raise NotImplementedError("should not be raised")
@@ -164,7 +164,7 @@ class UpdateIndexGlobalMinChange:
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.ValueTree): The tree containing the nodes.
+            tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
 
@@ -261,7 +261,7 @@ class UpdateIndexZipfFactoredProba:
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.ValueTree): The tree containing the nodes.
+            tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
         _ = parent_node
@@ -347,7 +347,7 @@ class UpdateIndexLocalMinChange:
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
-            tree (trees.ValueTree): The tree containing the nodes.
+            tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
         """
 
@@ -528,7 +528,7 @@ def print_all_indices[NodeT: AlgorithmNode[Any]](
     Prints the exploration indices of all nodes in the given tree.
 
     Args:
-        tree (trees.ValueTree): The tree containing the nodes.
+        tree (Tree): The tree containing the nodes.
 
     Returns:
         None

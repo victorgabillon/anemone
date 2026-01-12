@@ -1,5 +1,5 @@
 """
-This module contains classes and functions related to opening instructions in a chess game.
+This module contains classes and functions related to opening instructions in a game tree.
 """
 
 from dataclasses import dataclass
@@ -177,10 +177,10 @@ def create_instructions_to_open_all_branches[NodeT: nodes.ITreeNode[Any]](
     branches_to_play: list[BranchKey], node_to_open: NodeT
 ) -> OpeningInstructions[NodeT]:
     """
-    Creates opening instructions for all possible moves to play from a given node.
+    Create opening instructions for all possible branches from a given node.
 
     Args:
-        moves_to_play: A list of chess moves.
+        branches_to_play: The branch keys to open.
         node_to_open: The node to open.
 
     Returns:
@@ -233,7 +233,7 @@ class OpeningInstructor:
             node_to_open: The node to open.
 
         Returns:
-            A list of chess moves.
+            A list of branch keys.
         """
         if self.opening_type == OpeningType.ALL_CHILDREN:
             node_to_open.all_branches_generated = True

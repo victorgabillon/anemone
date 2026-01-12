@@ -12,13 +12,11 @@ from .descendants import RangedDescendants
 
 class Tree[NodeT: ITreeNode[Any]]:
     """
-    This class defines the Tree that is built out of all the combinations of moves given a starting board position.
-    The root node contains the starting board.
-    Each node contains a board and has as many children node as there are legal move in the board.
-    A children node then contains the board that is obtained by playing a particular moves in the board of the parent
-    node.
+    Represents a game tree of reachable states from a starting position.
 
-    It is a pointer to the root node with some counters and keeping track of descendants.
+    The root node contains the starting state. Each node contains a state and has
+    children for each available branch. The tree tracks descendants and expansion
+    counters for bookkeeping.
     """
 
     _root_node: NodeT
