@@ -20,9 +20,10 @@ from queue import Queue
 from random import Random
 from typing import TYPE_CHECKING, Any, Callable
 
-from valanga import BoardEvaluation, BranchKey, PlayerProgressMessage, State, TurnState
+from valanga import BranchKey, PlayerProgressMessage, State, StateEvaluation, TurnState
+from valanga.game import BranchName
+from valanga.policy import Recommendation
 
-from anemone.basics import BranchRecommendation
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
@@ -39,7 +40,7 @@ from . import tree_manager as tree_man
 from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
-    from anemone.recommender_rule.recommender_rule import BranchPolicy
+    from valanga.policy import BranchPolicy
 
 
 @dataclass
@@ -48,21 +49,22 @@ class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     Tree Exploration Result holds the result of a tree exploration.
     """
 
-    branch_recommendation: BranchRecommendation
+    branch_recommendation: Recommendation
     tree: trees.Tree[NodeT]
 
 
 def compute_child_evals[StateT: State](
     root: AlgorithmNode[StateT],
-) -> dict[BranchKey, BoardEvaluation]:
+) -> dict[BranchName, StateEvaluation]:
     """Compute evaluations for each existing child branch."""
-    evals: dict[BranchKey, BoardEvaluation] = {}
+    evals: dict[BranchName, StateEvaluation] = {}
     for bk, child in root.branches_children.items():
         if child is None:
             continue
 
         # Use whatever your canonical per-node evaluation is:
-        evals[bk] = child.tree_evaluation.evaluate()
+        bk_name = root.state.branch_name_from_key(bk)
+        evals[bk_name] = child.tree_evaluation.evaluate()
     return evals
 
 
@@ -195,15 +197,16 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             policy, random_generator
         )
 
+        best_branch_name = self.tree.root_node.state.branch_name_from_key(best_branch)
         self.tree_manager.print_best_line(
             tree=self.tree
         )  # todo maybe almost best chosen line no?
 
-        branch_recommendation = BranchRecommendation(
-            branch_key=best_branch,
+        branch_recommendation = Recommendation(
+            recommended_name=best_branch_name,
             evaluation=self.tree.root_node.tree_evaluation.evaluate(),
             policy=policy,
-            child_evals=compute_child_evals(self.tree.root_node),
+            branch_evals=compute_child_evals(self.tree.root_node),
         )
 
         tree_exploration_result: TreeExplorationResult[NodeT] = TreeExplorationResult(

@@ -16,23 +16,15 @@ Example usage:
 from dataclasses import dataclass
 from enum import Enum
 from random import Random
-from typing import Literal, Mapping, Protocol
+from typing import Literal, Protocol
 
 from valanga import BranchKey, State
+from valanga.policy import BranchPolicy
 
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
 from anemone.utils.small_tools import softmax
-
-
-@dataclass(frozen=True, slots=True)
-class BranchPolicy:
-    """
-    Represents a probability distribution over branches.
-    """
-
-    probs: Mapping[BranchKey, float]  # should sum to ~1.0
 
 
 def sample_from_policy(policy: BranchPolicy, rng: Random) -> BranchKey:

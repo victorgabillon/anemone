@@ -108,7 +108,7 @@ class ITreeNode[StateT: State = State](Protocol):
         """
 
     @property
-    def all_branches_keys(self) -> BranchKeyGeneratorP:
+    def all_branches_keys(self) -> BranchKeyGeneratorP[BranchKey]:
         """
         Get the available branch keys of the node.
 
