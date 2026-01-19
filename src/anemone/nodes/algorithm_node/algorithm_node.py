@@ -97,19 +97,19 @@ class AlgorithmNode[StateT: State = State]:
     @property
     def branches_children(self) -> MutableMapping[BranchKey, Self | None]:
         """
-        Returns the bidirectional dictionary of moves and their corresponding child nodes.
+        Returns the bidirectional dictionary of branches and their corresponding child nodes.
 
         Returns:
-            dict[IMove, ITreeNode | None]: The bidirectional dictionary of moves and their corresponding child nodes.
+            dict[BranchKey, ITreeNode | None]: The bidirectional dictionary of branches and their corresponding child nodes.
         """
         return self.tree_node.branches_children
 
     @property
     def parent_nodes(self) -> dict[Self, BranchKey]:
         """
-        Returns the dictionary of parent nodes of the current tree node with associated move.
+        Returns the dictionary of parent nodes of the current tree node with associated branch.
 
-        :return: A dictionary of parent nodes of the current tree node with associated move.
+        :return: A dictionary of parent nodes of the current tree node with associated branch.
         """
         return self.tree_node.parent_nodes
 
@@ -137,7 +137,7 @@ class AlgorithmNode[StateT: State = State]:
         Adds a parent node.
 
         Args:
-            branch_key (BranchKey): The branch key associated with the move that led to the node from the new_parent_node.
+            branch_key (BranchKey): The branch key associated with the branch that led to the node from the new_parent_node.
             new_parent_node (ITreeNode): The new parent node to add.
         """
         self.tree_node.add_parent(

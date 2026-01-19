@@ -154,7 +154,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             # print info
             self.print_info_during_branch_computation(random_generator=random_generator)
 
-            # choose the moves and nodes to open
+            # choose the branches and nodes to open
             opening_instructions: node_sel.OpeningInstructions[NodeT]
             opening_instructions = self.node_selector.choose_node_and_branch_to_open(
                 tree=self.tree, latest_tree_expansions=tree_expansions
@@ -181,13 +181,6 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 self.stopping_criterion.notify_percent_progress(
                     tree=self.tree, notify_percent_function=self.notify_percent_function
                 )
-
-        # trees.save_raw_data_to_file(tree=self.tree)
-        # self.tree_manager.print_some_stats(tree=self.tree)
-        # for move, child in self.tree.root_node.moves_children.items():
-        #    chipiron_logger.info(f'{move} {self.tree.root_node.moves_children[move].minmax_evaluation.get_value_white()}'
-        #          f' {child.minmax_evaluation.over_event.get_over_tag()}')
-        # chipiron_logger.info(f'evaluation for white: {self.tree.root_node.minmax_evaluation.get_value_white()}')
 
         policy: BranchPolicy = self.recommend_branch_after_exploration.policy(
             self.tree.root_node

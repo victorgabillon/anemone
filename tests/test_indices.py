@@ -1,8 +1,8 @@
 """
-This module contains functions for testing the indices used in the move selector tree.
+This module contains functions for testing the indices used in the branch selector tree.
 
 The main functions in this module are:
-- `make_tree_from_file`: Creates a move and value tree from a YAML file.
+- `make_tree_from_file`: Creates a branch and value tree from a YAML file.
 - `check_from_file`: Compares the indices computed from the tree with the expected indices from a YAML file.
 - `check_index`: Tests the indices for a specific index computation type and tree file.
 - `test_indices`: Runs the index tests for multiple index computation types and tree files.

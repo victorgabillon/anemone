@@ -1,15 +1,4 @@
-"""
-This module contains the implementation of the TreeAndValueMoveSelector class, which is responsible for selecting moves
-based on a tree and value strategy.
-
-The TreeAndValueMoveSelector class uses a tree-based approach to explore possible moves and select the best move based on
-a value function. It utilizes a tree manager, a tree factory, stopping criterion arguments, a node selector factory, a
-random generator, and recommendation functions to guide the move selection process.
-
-The TreeAndValueMoveSelector class provides the following methods:
-- select_move: Selects the best move based on the tree and value strategy.
-- print_info: Prints information about the move selector type.
-"""
+"""Module for Tree and Value Branch Selector."""
 
 from dataclasses import dataclass
 from queue import Queue
@@ -34,15 +23,15 @@ from .trees.factory import ValueTreeFactory
 @dataclass
 class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     """
-    The TreeAndValueBranchSelector class is responsible for selecting moves based on a tree and value strategy.
+    The TreeAndValueBranchSelector class is responsible for selecting branches based on a tree and value strategy.
 
     Attributes:
     - tree_manager: The tree manager responsible for managing the algorithm nodes.
-    - tree_factory: The tree factory responsible for creating move and value trees.
+    - tree_factory: The tree factory responsible for creating branch and value trees.
     - stopping_criterion_args: The stopping criterion arguments used to determine when to stop the tree exploration.
     - node_selector_create: The node selector factory used to create node selectors for tree exploration.
     - random_generator: The random generator used for randomization during tree exploration.
-    - recommend_move_after_exploration: The recommendation functions used to recommend a move after tree exploration.
+    - recommend_branch_after_exploration: The recommendation functions used to recommend a branch after tree exploration.
     """
 
     # pretty empty class but might be useful when dealing with multi round and time , no?
@@ -57,14 +46,14 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
 
     def select_branch(self, state: StateT, selection_seed: Seed) -> Recommendation:
         """
-        Selects the best move based on the tree and value strategy.
+        Selects the best branch based on the tree and value strategy.
 
         Args:
         - board: The current board state.
-        - move_seed: The seed used for randomization during move selection.
+        - selection_seed: The seed used for randomization during branch selection.
 
         Returns:
-        - The recommended move based on the tree and value strategy.
+        - The recommended branch based on the tree and value strategy.
         """
         tree_exploration: TreeExploration = self.create_tree_exploration(state=state)
         self.random_generator.seed(selection_seed)
@@ -93,6 +82,6 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
 
     def print_info(self) -> None:
         """
-        Prints information about the move selector type.
+        Prints information about the branch selector type.
         """
         print("type: Tree and Value")

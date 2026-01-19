@@ -76,7 +76,7 @@ class TreeNode[
         default_factory=_empty_non_opened_branches
     )
 
-    # dictionary mapping moves to children nodes. Node is set to None if not created
+    # dictionary mapping branches to children nodes. Node is set to None if not created
     branches_children_: dict[BranchKey, FamilyT | None] = field(
         default_factory=_empty_branches_children
     )

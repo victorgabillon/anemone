@@ -32,14 +32,14 @@ if TYPE_CHECKING:
 
 class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
     """
-    Protocol defining the interface for a half-move selector.
+    Protocol defining the interface for a tree-depth selector.
     """
 
     def update_from_expansions(
         self, latest_tree_expansions: "tree_man.TreeExpansions[NodeT]"
     ) -> None:
         """
-        Update the half-move selector with the latest tree expansions.
+        Update the tree-depth selector with the latest tree expansions.
 
         Args:
             latest_tree_expansions: The latest tree expansions.
@@ -52,14 +52,14 @@ class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol
         self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
         """
-        Select the next half-move to consider based on the given node and random generator.
+        Select the next depth to consider based on the given node and random generator.
 
         Args:
             from_node: The current node.
             random_generator: The random generator.
 
         Returns:
-            The selected half-move.
+            The selected depth.
         """
         ...
 
@@ -75,7 +75,7 @@ count_visits: dict[TreeDepth, int] = _make_count_visits()
 @dataclass
 class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """
-    A node selector that considers the number of visits and selects half-moves based on zipf distribution.
+    A node selector that considers the number of visits and selects depths based on zipf distribution.
     """
 
     all_nodes_not_opened: Descendants[NodeT]
@@ -112,14 +112,14 @@ class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
         """
-        Select the next half-move to consider based on the given node and random generator.
+        Select the next depth to consider based on the given node and random generator.
 
         Args:
             from_node: The current node.
             random_generator: The random generator.
 
         Returns:
-            The selected half-move.
+            The selected depth.
         """
         _ = from_node  # not used here
 
@@ -129,7 +129,7 @@ class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             if hm in self.all_nodes_not_opened
         }
 
-        # choose a half move based on zipf
+        # choose a depth based on zipf
         tree_depth_picked: int = zipf_picks(
             ranks_values=filtered_count_visits,
             random_generator=random_generator,
@@ -154,10 +154,10 @@ def consider_nodes_from_all_lesser_tree_depths_in_descendants[N: AlgorithmNode[A
     descendants: Descendants[N],
 ) -> list[N]:
     """
-    Consider all the nodes that are in smaller half-moves than the picked half-move using the descendants object.
+    Consider all the nodes that are in shallower depths than the picked depth using the descendants object.
 
     Args:
-        tree_depth_picked: The picked half-move.
+        tree_depth_picked: The picked depth.
         from_node: The current node.
         descendants: The descendants object.
 
@@ -169,7 +169,7 @@ def consider_nodes_from_all_lesser_tree_depths_in_descendants[N: AlgorithmNode[A
 
     nodes_to_consider: list[N] = []
     tree_depth: int
-    # considering all half-move smaller than the half move picked
+    # considering all depths smaller than the depth picked
     for tree_depth in filter(lambda hm: hm < tree_depth_picked + 1, descendants):
         nodes_to_consider += list(descendants[tree_depth].values())
 
@@ -181,10 +181,10 @@ def consider_nodes_from_all_lesser_tree_depths_in_sub_stree[N: AlgorithmNode[Any
     from_node: N,
 ) -> list[N]:
     """
-    Consider all the nodes that are in smaller half-moves than the picked half-move using tree traversal.
+    Consider all the nodes that are in shallower depths than the picked depth using tree traversal.
 
     Args:
-        tree_depth_picked: The picked half-move.
+        tree_depth_picked: The picked depth.
         from_node: The current node.
 
     Returns:
@@ -206,7 +206,7 @@ def consider_nodes_only_from_tree_depths_in_descendants[N: AlgorithmNode[Any]](
     Consider only the nodes at the picked depth.
 
     Args:
-        tree_depth_picked: The picked half-move.
+        tree_depth_picked: The picked depth.
         from_node: The current node.
         descendants: The descendants object.
 
@@ -220,7 +220,7 @@ def consider_nodes_only_from_tree_depths_in_descendants[N: AlgorithmNode[Any]](
 @dataclass
 class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """
-    A node selector that selects half-moves randomly.
+    A node selector that selects depths randomly.
     """
 
     def update_from_expansions(
@@ -240,18 +240,18 @@ class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
         """
-        Select the next half-move to consider based on the given node and random generator.
+        Select the next depth to consider based on the given node and random generator.
 
         Args:
             from_node: The current node.
             random_generator: The random generator.
 
         Returns:
-            The selected half-move.
+            The selected depth.
         """
 
         tree_depth_picked: int
-        # choose a half move based on zipf
+        # choose a depth based on zipf
         assert isinstance(from_node.exploration_index_data, MaxDepthDescendants)
         max_descendants_depth: int = (
             from_node.exploration_index_data.max_depth_descendants
@@ -271,7 +271,7 @@ def get_best_node_from_candidates[N: AlgorithmNode[Any]](
     nodes_to_consider: list[N],
 ) -> N:
     """
-    Returns the best node from a list of candidate nodes based on their exploration index and half move.
+    Returns the best node from a list of candidate nodes based on their exploration index and depth.
 
     Args:
         nodes_to_consider (list[ITreeNode]): A list of candidate nodes to consider.
@@ -317,10 +317,10 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
         """
-        Choose the best node to open in the move tree and return the opening instructions.
+        Choose the best node to open in the branch tree and return the opening instructions.
 
         Args:
-            tree: The move tree.
+            tree: The branch tree.
             latest_tree_expansions: The latest tree expansions.
 
         Returns:
@@ -332,16 +332,16 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
 
         opening_instructions: OpeningInstructions[NodeT] = (
-            self.choose_node_and_move_to_open_recur(from_node=tree.root_node)
+            self.choose_node_and_branch_to_open_recur(from_node=tree.root_node)
         )
 
         return opening_instructions
 
-    def choose_node_and_move_to_open_recur(
+    def choose_node_and_branch_to_open_recur(
         self, from_node: NodeT
     ) -> OpeningInstructions[NodeT]:
         """
-        Recursively choose the best node to open in the move tree and return the opening instructions.
+        Recursively choose the best node to open in the branch tree and return the opening instructions.
 
         Args:
             from_node: The current node.
@@ -366,7 +366,7 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self.all_nodes_not_opened.remove_descendant(best_node)
 
         if self.recursif and best_node.tree_node.all_branches_generated:
-            return self.choose_node_and_move_to_open_recur(from_node=best_node)
+            return self.choose_node_and_branch_to_open_recur(from_node=best_node)
 
         all_branches_to_open = self.opening_instructor.all_branches_to_open(
             node_to_open=best_node
