@@ -43,7 +43,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
     value_white_minmax: float | None = None
 
     def set_evaluation(self, evaluation: float) -> None:
-        """sets the evaluation from the board evaluator
+        """Set the evaluation from the state evaluator.
 
         Args:
             evaluation (float): The evaluation value to be set.

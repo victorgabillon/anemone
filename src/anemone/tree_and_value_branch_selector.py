@@ -49,7 +49,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         Selects the best branch based on the tree and value strategy.
 
         Args:
-        - board: The current board state.
+        - state: The current state to explore.
         - selection_seed: The seed used for randomization during branch selection.
 
         Returns:

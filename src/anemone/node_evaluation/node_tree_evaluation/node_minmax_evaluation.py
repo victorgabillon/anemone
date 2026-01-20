@@ -140,7 +140,7 @@ class NodeMinmaxEvaluation[
         return self.value_white_minmax
 
     def set_evaluation(self, evaluation: float) -> None:
-        """sets the evaluation from the board evaluator
+        """Set the evaluation from the state evaluator.
 
         Args:
             evaluation (float): The evaluation value to be set.
@@ -876,6 +876,7 @@ class NodeMinmaxEvaluation[
 
     def evaluate(self) -> StateEvaluation:
         """Build a StateEvaluation from current minmax state."""
+
         if self.over_event.is_over():
             return ForcedOutcome(
                 outcome=self.over_event,
