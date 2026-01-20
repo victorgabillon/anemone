@@ -57,7 +57,7 @@ class AlgorithmNode[StateT: State = State]:
             tree_node (TreeNode): The tree node that is wrapped.
             tree_evaluation (NodeTreeEvaluation): The object computing the value.
             exploration_index_data (NodeExplorationData | None): The object storing the information to help the algorithm decide the next nodes to explore.
-            state_representation (StateRepresentation | None): The board representation.
+            state_representation (ContentRepresentation | None): The state representation used for evaluation.
         """
         self.tree_node = tree_node
         self.tree_evaluation = tree_evaluation
@@ -147,7 +147,7 @@ class AlgorithmNode[StateT: State = State]:
     @property
     def all_branches_keys(self) -> BranchKeyGeneratorP:
         """
-        Returns a generator that yields the branch keys for the current board state.
+        Returns a generator that yields the branch keys for the current state.
 
         Returns:
             BranchKeyGenerator: A generator that yields the branch keys.
