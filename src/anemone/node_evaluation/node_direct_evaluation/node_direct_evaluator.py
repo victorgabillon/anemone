@@ -89,7 +89,7 @@ class MasterStateEvaluator(Protocol):
 class NodeDirectEvaluator[StateT: State = State]:
     """
     The NodeEvaluator class is responsible for evaluating the value of nodes in a tree structure.
-    It uses a board evaluator and a syzygy evaluator to calculate the value of the nodes.
+    It uses a state evaluator and a syzygy evaluator to calculate the value of the nodes.
     """
 
     master_state_evaluator: MasterStateEvaluator

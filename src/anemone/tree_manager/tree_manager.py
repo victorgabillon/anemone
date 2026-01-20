@@ -70,7 +70,7 @@ class TreeManager[
         Returns:
             The tree expansion object.
         """
-        # The parent board is copied, we only copy the stack (history of previous board) if the depth is smaller than 2
+        # The parent state is copied; we only copy the stack (history of previous states) if the depth is smaller than 2.
         # Having the stack information allows checking for draw by repetition.
         # To limit computation we limit copying it all the time. The resulting policy will only be aware of immediate
         # risk of draw by repetition
@@ -117,7 +117,7 @@ class TreeManager[
             The tree expansion object.
         """
 
-        # Creation of the child node. If the board already exited in another node, that node is returned as child_node.
+        # Creation of the child node. If the state already existed in another node, that node is returned as child_node.
         tree_depth: int = parent_node.tree_depth + 1
         state_tag: StateTag = state.tag
 
