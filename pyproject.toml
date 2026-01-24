@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algorhino-anemone"
-version = "0.1.2"
+version = "0.1.3"
 description = "anemone searches trees"
 keywords = ["tree", "search"]
 classifiers = [
@@ -14,9 +14,8 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "valanga",
-"atomheart",
-
+    "valanga>=0.1.4",
+    "atomheart>=0.1.2",
     "rich",
     "sortedcollections>=2.1.0",
     "graphviz",
@@ -236,8 +235,16 @@ extraPaths = ["src"]
 
 [tool.tox]
 min_version = "4.32.0"
-env_list = ["py313", "lint", "typecheck"]
+env_list = ["py313", "lint", "typecheck", "build"]
 isolated_build = true
+
+[tool.tox.env.build]
+deps = ["build", "twine"]
+commands = [
+  ["python", "-m", "build"],
+  ["python", "-m", "twine", "check", "dist/*"],
+]
+
 
 [tool.tox.env_run_base]
 base_python = ["python3.13"]
@@ -258,8 +265,8 @@ description = "ruff + pylint (fast, no package build/install)"
 package = "skip"
 deps = [
   # runtime deps needed for pylint imports (match [project].dependencies)
-  "valanga",
-  "atomheart",
+  "valanga>=0.1.4",
+  "atomheart>=0.1.2",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",
@@ -283,8 +290,8 @@ description = "mypy + pyright (fast, no package build/install)"
 package = "skip"
 deps = [
   # runtime deps for import resolution
-  "valanga",
-  "atomheart",
+  "valanga>=0.1.4",
+  "atomheart>=0.1.2",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",

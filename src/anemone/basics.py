@@ -1,11 +1,8 @@
 """Basic types and protocols for Anemone."""
 
-from dataclasses import dataclass
-from typing import Annotated, Mapping, Protocol
+from typing import Annotated, Protocol
 
-from valanga import BoardEvaluation, BranchKey, Color, HasTurn, State
-
-from anemone.recommender_rule.recommender_rule import BranchPolicy
+from valanga import Color, HasTurn, State
 
 type Seed = Annotated[int, "seed"]
 type TreeDepth = Annotated[int, "Depth level of a node in a tree structure"]
@@ -15,16 +12,6 @@ class StateWithTurn(State, HasTurn, Protocol):
     """A `valanga.State` that also exposes turn information."""
 
     ...
-
-
-@dataclass(frozen=True, slots=True)
-class BranchRecommendation:
-    """A recommendation for a specific branch in a tree node."""
-
-    branch_key: BranchKey
-    evaluation: BoardEvaluation | None = None
-    policy: BranchPolicy | None = None
-    child_evals: Mapping[BranchKey, BoardEvaluation] | None = None
 
 
 class HasBlackAndWhiteTurn(Protocol):

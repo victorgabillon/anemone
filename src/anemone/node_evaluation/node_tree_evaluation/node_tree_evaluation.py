@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING, Protocol, Self
 
 from valanga import (
-    BoardEvaluation,
     BranchKey,
     OverEvent,
     State,
+    StateEvaluation,
 )
 
 type BranchSortValue = tuple[float, int, int]
@@ -43,7 +43,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
     value_white_minmax: float | None = None
 
     def set_evaluation(self, evaluation: float) -> None:
-        """sets the evaluation from the board evaluator
+        """Set the evaluation from the state evaluator.
 
         Args:
             evaluation (float): The evaluation value to be set.
@@ -90,8 +90,8 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Update terminal state based on updated branches."""
         ...
 
-    def evaluate(self) -> BoardEvaluation:
-        """Return a board evaluation for this node."""
+    def evaluate(self) -> StateEvaluation:
+        """Return a state evaluation for this node."""
         ...
 
     def description_tree_visualizer_branch(self, child: "ITreeNode[StateT]") -> str:

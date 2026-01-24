@@ -5,8 +5,9 @@ from queue import Queue
 from random import Random
 
 from valanga import TurnState
+from valanga.policy import Recommendation
 
-from anemone.basics import BranchRecommendation, Seed
+from anemone.basics import Seed
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
 )
@@ -43,14 +44,12 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     queue_progress_player: Queue[IsDataclass] | None
 
-    def select_branch(
-        self, state: StateT, selection_seed: Seed
-    ) -> BranchRecommendation:
+    def select_branch(self, state: StateT, selection_seed: Seed) -> Recommendation:
         """
         Selects the best branch based on the tree and value strategy.
 
         Args:
-        - board: The current board state.
+        - state: The current state to explore.
         - selection_seed: The seed used for randomization during branch selection.
 
         Returns:
@@ -59,7 +58,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         tree_exploration: TreeExploration = self.create_tree_exploration(state=state)
         self.random_generator.seed(selection_seed)
 
-        branch_recommendation: BranchRecommendation = tree_exploration.explore(
+        branch_recommendation: Recommendation = tree_exploration.explore(
             random_generator=self.random_generator
         ).branch_recommendation
 
