@@ -56,7 +56,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
-    state_representation_factory: RepresentationFactory[ContentRepresentation] | None,
+    state_representation_factory: RepresentationFactory[StateT,ContentRepresentation] | None,
     queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector[StateT]:
     """Convenience constructor using the default minmax tree evaluation.
@@ -85,7 +85,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
-    state_representation_factory: RepresentationFactory[ContentRepresentation] | None,
+    state_representation_factory: RepresentationFactory[StateT,ContentRepresentation] | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
     queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector[StateT]:

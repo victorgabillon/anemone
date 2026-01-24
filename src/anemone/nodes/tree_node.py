@@ -152,7 +152,7 @@ class TreeNode[
         return not self.parent_nodes
 
     @property
-    def all_branches_keys(self) -> BranchKeyGeneratorP:
+    def all_branches_keys(self) -> BranchKeyGeneratorP[BranchKey]:
         """
         Returns a generator that yields the branch keys for the current state.
 
