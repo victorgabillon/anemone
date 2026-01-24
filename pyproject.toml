@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algorhino-anemone"
-version = "0.1.3"
+version = "0.1.4"
 description = "anemone searches trees"
 keywords = ["tree", "search"]
 classifiers = [
