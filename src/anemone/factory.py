@@ -8,7 +8,6 @@ from random import Random
 from typing import Literal, Type
 
 from valanga import (
-    ContentRepresentation,
     RepresentationFactory,
     StateModifications,
     TurnState,
@@ -63,7 +62,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
     state_representation_factory: RepresentationFactory[
-        StateT, ContentRepresentation[StateT, EvaluatorInput], StateModifications
+        StateT, StateModifications, EvaluatorInput
     ]
     | None,
     queue_progress_player: Queue[IsDataclass] | None,
@@ -95,7 +94,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
     state_representation_factory: RepresentationFactory[
-        StateT, ContentRepresentation[StateT, EvaluatorInput], StateModifications
+        StateT, StateModifications, EvaluatorInput
     ]
     | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
