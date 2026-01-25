@@ -7,7 +7,7 @@ from queue import Queue
 from random import Random
 from typing import Literal, Type
 
-from valanga import RepresentationFactory, TurnState
+from valanga import RepresentationFactory, StateModifications, TurnState
 from valanga.evaluator_types import EvaluatorInput
 
 from anemone import node_factory
@@ -57,7 +57,10 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
-    state_representation_factory: RepresentationFactory[StateT, EvaluatorInput] | None,
+    state_representation_factory: RepresentationFactory[
+        StateT, EvaluatorInput, StateModifications
+    ]
+    | None,
     queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector[StateT]:
     """Convenience constructor using the default minmax tree evaluation.
@@ -86,7 +89,10 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
-    state_representation_factory: RepresentationFactory[StateT, EvaluatorInput] | None,
+    state_representation_factory: RepresentationFactory[
+        StateT, EvaluatorInput, StateModifications
+    ]
+    | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
     queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector[StateT]:
