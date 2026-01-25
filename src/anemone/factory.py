@@ -63,7 +63,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
     state_representation_factory: RepresentationFactory[
-        StateT, StateModifications, ContentRepresentation[StateT, EvaluatorInput]
+        StateT, ContentRepresentation[StateT, EvaluatorInput], StateModifications
     ]
     | None,
     queue_progress_player: Queue[IsDataclass] | None,
@@ -95,7 +95,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
     state_representation_factory: RepresentationFactory[
-        StateT, StateModifications, ContentRepresentation[StateT, EvaluatorInput]
+        StateT, ContentRepresentation[StateT, EvaluatorInput], StateModifications
     ]
     | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],

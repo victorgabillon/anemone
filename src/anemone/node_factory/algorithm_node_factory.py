@@ -40,7 +40,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
     tree_node_factory: TreeNodeFactory[AlgorithmNode[StateT], StateT]
     state_representation_factory: (
         RepresentationFactory[
-            StateT, StateModifications, ContentRepresentation[StateT, EvaluatorInput]
+            StateT, ContentRepresentation[StateT, EvaluatorInput], StateModifications
         ]
         | None
     )
