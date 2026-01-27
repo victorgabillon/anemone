@@ -39,7 +39,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
 
     tree_node_factory: TreeNodeFactory[AlgorithmNode[StateT], StateT]
     state_representation_factory: (
-        RepresentationFactory[StateT, StateModifications, EvaluatorInput] | None
+        RepresentationFactory[StateT, EvaluatorInput, StateModifications] | None
     )
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT]
     exploration_index_data_create: node_indices.ExplorationIndexDataFactory[
