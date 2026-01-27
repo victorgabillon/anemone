@@ -12,6 +12,7 @@ from valanga import (
     State,
     StateModifications,
 )
+from valanga.evaluator_types import EvaluatorInput
 
 from anemone.basics import TreeDepth
 from anemone.indices import node_indices
@@ -37,7 +38,9 @@ class AlgorithmNodeFactory[StateT: State = State]:
     """
 
     tree_node_factory: TreeNodeFactory[AlgorithmNode[StateT], StateT]
-    state_representation_factory: RepresentationFactory | None
+    state_representation_factory: (
+        RepresentationFactory[StateT, EvaluatorInput, StateModifications] | None
+    )
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT]
     exploration_index_data_create: node_indices.ExplorationIndexDataFactory[
         AlgorithmNode[StateT], StateT
@@ -60,7 +63,9 @@ class AlgorithmNodeFactory[StateT: State = State]:
             node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None
         ) = self.exploration_index_data_create(tree_node)
 
-        state_representation: ContentRepresentation | None = None
+        state_representation: ContentRepresentation[StateT, EvaluatorInput] | None = (
+            None
+        )
         if self.state_representation_factory is not None:
             if parent_node is not None:
                 parent_node_representation = parent_node.state_representation

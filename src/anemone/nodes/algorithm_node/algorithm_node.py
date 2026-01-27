@@ -12,6 +12,7 @@ from valanga import (
     State,
     StateTag,
 )
+from valanga.evaluator_types import EvaluatorInput
 
 from anemone.indices.node_indices import NodeExplorationData
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
@@ -33,11 +34,13 @@ class AlgorithmNode[StateT: State = State]:
         NodeExplorationData[Self, StateT] | None
     )  # the object storing the information to help the algorithm decide the next nodes to explore
     _state_representation: (
-        ContentRepresentation | None
+        ContentRepresentation[StateT, EvaluatorInput] | None
     )  # the state representation for evaluation
 
     @property
-    def state_representation(self) -> ContentRepresentation | None:
+    def state_representation(
+        self,
+    ) -> ContentRepresentation[StateT, EvaluatorInput] | None:
         """
         Returns the state representation.
         """
@@ -48,7 +51,7 @@ class AlgorithmNode[StateT: State = State]:
         tree_node: TreeNode[Self, StateT],
         tree_evaluation: NodeTreeEvaluation[StateT],
         exploration_index_data: NodeExplorationData[Self, StateT] | None,
-        state_representation: ContentRepresentation | None,
+        state_representation: ContentRepresentation[StateT, EvaluatorInput] | None,
     ) -> None:
         """
         Initializes an AlgorithmNode object.

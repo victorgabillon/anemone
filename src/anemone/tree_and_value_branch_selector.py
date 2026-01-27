@@ -44,7 +44,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     queue_progress_player: Queue[IsDataclass] | None
 
-    def select_branch(self, state: StateT, selection_seed: Seed) -> Recommendation:
+    def recommend(self, state: StateT, seed: Seed) -> Recommendation:
         """
         Selects the best branch based on the tree and value strategy.
 
@@ -56,7 +56,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         - The recommended branch based on the tree and value strategy.
         """
         tree_exploration: TreeExploration = self.create_tree_exploration(state=state)
-        self.random_generator.seed(selection_seed)
+        self.random_generator.seed(seed)
 
         branch_recommendation: Recommendation = tree_exploration.explore(
             random_generator=self.random_generator

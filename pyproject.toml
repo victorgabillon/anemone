@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algorhino-anemone"
-version = "0.1.3"
+version = "0.1.10"
 description = "anemone searches trees"
 keywords = ["tree", "search"]
 classifiers = [
@@ -14,8 +14,8 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "valanga>=0.1.4",
-    "atomheart>=0.1.2",
+    "valanga>=0.1.13",
+    "atomheart>=0.1.6",
     "rich",
     "sortedcollections>=2.1.0",
     "graphviz",
@@ -265,8 +265,8 @@ description = "ruff + pylint (fast, no package build/install)"
 package = "skip"
 deps = [
   # runtime deps needed for pylint imports (match [project].dependencies)
-  "valanga>=0.1.4",
-  "atomheart>=0.1.2",
+    "valanga>=0.1.13",
+    "atomheart>=0.1.6",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",
@@ -290,8 +290,8 @@ description = "mypy + pyright (fast, no package build/install)"
 package = "skip"
 deps = [
   # runtime deps for import resolution
-  "valanga>=0.1.4",
-  "atomheart>=0.1.2",
+    "valanga>=0.1.13",
+    "atomheart>=0.1.6",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",
