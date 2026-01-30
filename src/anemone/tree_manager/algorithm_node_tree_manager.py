@@ -118,8 +118,6 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 branch=opening_instruction.branch,
             )
 
-            print("opened", tree_expansion)
-
             record_tree_expansion(
                 tree=tree,
                 tree_expansions=tree_expansions,
