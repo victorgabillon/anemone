@@ -3,9 +3,8 @@ Module for creating Tree and Value Branch Selector objects.
 """
 
 from dataclasses import dataclass
-from queue import Queue
 from random import Random
-from typing import Literal, Type
+from typing import  Literal, Type
 
 from valanga import RepresentationFactory, StateModifications, TurnState
 from valanga.evaluator_types import EvaluatorInput
@@ -26,7 +25,6 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
 )
-from anemone.utils.dataclass import IsDataclass
 
 from . import node_selector as node_selector_m
 from . import recommender_rule
@@ -61,7 +59,6 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
         StateT, EvaluatorInput, StateModifications
     ]
     | None,
-    queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector[StateT]:
     """Convenience constructor using the default minmax tree evaluation.
 
@@ -80,7 +77,6 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
         master_state_evaluator=master_state_evaluator,
         state_representation_factory=state_representation_factory,
         node_tree_evaluation_factory=node_tree_evaluation_factory,
-        queue_progress_player=queue_progress_player,
     )
 
 
@@ -94,7 +90,6 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     ]
     | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
-    queue_progress_player: Queue[IsDataclass] | None,
 ) -> TreeAndValueBranchSelector[StateT]:
     """
     Create a TreeAndValueBranchSelector object with the given arguments.
@@ -155,7 +150,6 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
             node_selector_create=search_factory.create_node_selector_factory(),
             stopping_criterion_args=args.stopping_criterion,
             recommend_branch_after_exploration=args.recommender_rule,
-            queue_progress_player=queue_progress_player,
-        )
+            )
     )
     return tree_branch_selector
