@@ -5,7 +5,7 @@ Module for creating Tree and Value Branch Selector objects.
 from dataclasses import dataclass
 from queue import Queue
 from random import Random
-from typing import Literal, Type
+from typing import Literal
 
 from valanga import RepresentationFactory, StateModifications, TurnState
 from valanga.evaluator_types import EvaluatorInput
@@ -53,7 +53,7 @@ class TreeAndValuePlayerArgs:
 
 
 def create_tree_and_value_branch_selector[StateT: TurnState](
-    state_type: Type[StateT],
+    state_type: type[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
@@ -85,7 +85,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
 
 
 def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnState](
-    state_type: Type[StateT],
+    state_type: type[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,

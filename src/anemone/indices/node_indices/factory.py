@@ -13,8 +13,9 @@ Types:
 - ExplorationIndexDataFactory: A callable type for creating exploration index data.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from valanga import State
 
@@ -39,8 +40,6 @@ class DepthExtendedIntervalExplo[
 ](IntervalExplo[T, StateT], MaxDepthDescendants[T, StateT]):
     """Depth extended interval exploration data."""
 
-    ...
-
 
 @dataclass
 class DepthExtendedMinMaxPathValue[
@@ -49,8 +48,6 @@ class DepthExtendedMinMaxPathValue[
 ](MinMaxPathValue[T, StateT], MaxDepthDescendants[T, StateT]):
     """Depth extended min-max path value exploration data."""
 
-    ...
-
 
 @dataclass
 class DepthExtendedRecurZipfQuoolExplorationData[
@@ -58,8 +55,6 @@ class DepthExtendedRecurZipfQuoolExplorationData[
     StateT: State = State,
 ](RecurZipfQuoolExplorationData[T, StateT], MaxDepthDescendants[T, StateT]):
     """Depth extended recur zipf quool exploration data."""
-
-    ...
 
 
 # Generic factory type that preserves the node type through the TreeNode parameter

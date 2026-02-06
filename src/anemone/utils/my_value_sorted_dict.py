@@ -23,5 +23,4 @@ def sort_dic[K, V: _Sortable](dic: dict[K, V]) -> dict[K, V]:
     """
     z = dic.items()
     a = sorted(z, key=lambda item: item[1])
-    sorted_dic = dict(a)
-    return sorted_dic
+    return dict(a)

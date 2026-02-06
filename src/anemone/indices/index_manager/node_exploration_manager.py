@@ -98,7 +98,6 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         Args:
             root_node (AlgorithmNode): The root node of the tree.
         """
-        ...
 
     def update_node_indices[NodeT: AlgorithmNode[Any]](
         self,
@@ -405,7 +404,6 @@ class UpdateIndexLocalMinChange:
                             value=child_white_value, interval=inter_level_interval
                         )
                     else:
-                        ...
                         local_index = None
                 if parent_node_state.turn == Color.BLACK:
                     best_branch_black: BranchKey | None = (
@@ -459,7 +457,7 @@ class UpdateIndexLocalMinChange:
                 )
 
 
-# TODO their might be ways to optimize the computation such as not recomptuing for the whole tree
+# TODO: their might be ways to optimize the computation such as not recomptuing for the whole tree
 def update_all_indices[NodeT: AlgorithmNode[Any]](
     tree: Tree[NodeT], index_manager: NodeExplorationIndexManager
 ) -> None:
@@ -489,7 +487,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
 
     tree_depth: TreeDepth
     for tree_depth in tree_nodes:
-        # todo how are we sure that the hm comes in order?
+        # TODO: how are we sure that the hm comes in order?
         parent_node: NodeT
         for parent_node in tree_nodes[tree_depth].values():
             branch_rank: int
@@ -518,7 +516,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
                 )
 
 
-# TODO their might be ways to optimize the computation such as not recomptuing for the whole tree
+# TODO: their might be ways to optimize the computation such as not recomptuing for the whole tree
 
 
 def print_all_indices[NodeT: AlgorithmNode[Any]](
@@ -537,7 +535,7 @@ def print_all_indices[NodeT: AlgorithmNode[Any]](
 
     tree_depth: TreeDepth
     for tree_depth in tree_nodes:
-        # todo how are we sure that the hm comes in order?
+        # TODO: how are we sure that the hm comes in order?
         for parent_node in tree_nodes[tree_depth].values():
             assert isinstance(parent_node, AlgorithmNode)
             if parent_node.exploration_index_data is not None:

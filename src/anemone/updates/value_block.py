@@ -125,9 +125,8 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         Returns:
             bool: True if all components are empty, False otherwise.
         """
-        empty_bool = (
+        return (
             not bool(self.branches_with_updated_value)
             and not bool(self.branches_with_updated_best_branch)
             and not bool(self.branches_with_updated_over)
         )
-        return empty_bool

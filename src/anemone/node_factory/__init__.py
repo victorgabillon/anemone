@@ -11,4 +11,4 @@ The available classes in this module are:
 from .algorithm_node_factory import AlgorithmNodeFactory
 from .base import TreeNodeFactory
 
-__all__ = ["TreeNodeFactory", "AlgorithmNodeFactory"]
+__all__ = ["AlgorithmNodeFactory", "TreeNodeFactory"]

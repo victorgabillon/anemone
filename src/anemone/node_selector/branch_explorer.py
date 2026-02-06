@@ -3,7 +3,7 @@ This module contains the branchExplorer class and its subclasses.
 branchExplorer is responsible for exploring branches in a game tree.
 """
 
-from enum import Enum
+from enum import StrEnum
 from random import Random
 from typing import Any
 
@@ -15,7 +15,7 @@ from anemone.node_selector.notations_and_statics import (
 from anemone.nodes.algorithm_node import AlgorithmNode
 
 
-class SamplingPriorities(str, Enum):
+class SamplingPriorities(StrEnum):
     """
     Enumeration class representing the sampling priorities for branch exploration.
 
@@ -38,7 +38,7 @@ class BranchExplorer:
 
     priority_sampling: SamplingPriorities
 
-    def __init__(self, priority_sampling: SamplingPriorities):
+    def __init__(self, priority_sampling: SamplingPriorities) -> None:
         """
         Initializes a branchExplorer instance.
 
@@ -82,8 +82,7 @@ class ZipfBranchExplorer(BranchExplorer):
             tree_node_to_sample_from.tree_evaluation.sort_branches_not_over()
         )
 
-        branch = zipf_picks_random(
+        return zipf_picks_random(
             ordered_list_elements=sorted_not_over_branches,
             random_generator=self.random_generator,
         )
-        return branch

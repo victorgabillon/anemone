@@ -32,9 +32,9 @@ from anemone.updates.updates_file import (
 from .tree_expander import TreeExpansion, TreeExpansions, record_tree_expansion
 from .tree_manager import TreeManager
 
-# todo should we use a discount? and discounted per round reward?
-# todo maybe convenient to seperate this object into openner updater and dsiplayer
-# todo have the reward with a discount
+# TODO: should we use a discount? and discounted per round reward?
+# TODO: maybe convenient to seperate this object into openner updater and dsiplayer
+# TODO: have the reward with a discount
 # DISCOUNT = 1/.99999
 if TYPE_CHECKING:
     from anemone import node_selector as node_sel
@@ -118,7 +118,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 branch=opening_instruction.branch,
             )
 
-            print("opened", tree_expansion)
+            #    print("opened", tree_expansion)
 
             record_tree_expansion(
                 tree=tree,
@@ -128,7 +128,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         assert self.node_evaluator is not None
         for tree_expansion in tree_expansions.expansions_with_node_creation:
-            # TODO give the tree expansion to the function directly
+            # TODO: give the tree expansion to the function directly
             assert isinstance(tree_expansion.child_node, AlgorithmNode)
             self.node_evaluator.add_evaluation_query(
                 node=tree_expansion.child_node,

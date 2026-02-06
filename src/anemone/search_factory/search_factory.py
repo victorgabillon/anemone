@@ -19,10 +19,11 @@ Functions:
 - node_index_create: A function that creates node indices for a given tree node.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 from random import Random
-from typing import Callable, Protocol
+from typing import Protocol
 
 from valanga import State
 
@@ -161,10 +162,7 @@ class SearchFactory:
             An instance of the IndexUpdater class if depth indexing is enabled, otherwise None.
         """
         index_updater: IndexUpdater | None
-        if self.depth_index:
-            index_updater = IndexUpdater()
-        else:
-            index_updater = None
+        index_updater = IndexUpdater() if self.depth_index else None
         return index_updater
 
     def node_index_create[StateT: State](

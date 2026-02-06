@@ -81,11 +81,11 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         - OpeningInstructions: The instructions for opening the selected branch.
 
         """
-        # todo maybe proportions and proportions can be valuesorted dict with smart updates
+        # TODO: maybe proportions and proportions can be valuesorted dict with smart updates
 
         _ = latest_tree_expansions  # not used here
         opening_instructions: OpeningInstructions[NodeT]
-        # TODO make sure this block is put in chipiron now with a wrapper
+        # TODO: make sure this block is put in chipiron now with a wrapper
         # best_node_sequence = best_node_sequence_from_node(tree.root_node)
         # if best_node_sequence:
         #     last_node_in_best_line = best_node_sequence[-1]

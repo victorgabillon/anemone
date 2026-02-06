@@ -28,7 +28,6 @@ class IndexUpdater:
 
     def __init__(self) -> None:
         """Initialize the index updater."""
-        ...
 
     def create_update_instructions_after_node_birth(
         self, new_node: AlgorithmNode
@@ -97,4 +96,4 @@ class IndexUpdater:
 
         return base_update_instructions
 
-        # todo i dont understand anymore when the instructions stops beeing propagated back
+        # TODO: i dont understand anymore when the instructions stops beeing propagated back

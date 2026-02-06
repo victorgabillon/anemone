@@ -2,9 +2,10 @@
 Module implementing the Sequool node selector.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from random import Random
-from typing import TYPE_CHECKING, Any, Callable, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from anemone import trees
 from anemone.basics import TreeDepth

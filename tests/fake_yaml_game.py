@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterator, Self, Sequence
+from typing import TYPE_CHECKING, Any, Self
 
 from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
 
@@ -9,6 +9,9 @@ from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import
     MasterStateEvaluator,
     OverEventDetector,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 
 def build_yaml_maps(

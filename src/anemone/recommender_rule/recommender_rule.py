@@ -14,7 +14,7 @@ Example usage:
 """
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from random import Random
 from typing import Literal, Protocol
 
@@ -50,7 +50,7 @@ class RecommenderRule(Protocol):
         ...
 
 
-class RecommenderRuleTypes(str, Enum):
+class RecommenderRuleTypes(StrEnum):
     """
     Enum class that defines the available recommender rule types.
     """

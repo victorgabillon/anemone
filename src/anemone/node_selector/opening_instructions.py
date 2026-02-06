@@ -2,10 +2,11 @@
 This module contains classes and functions related to opening instructions in a game tree.
 """
 
+from collections.abc import ItemsView, Iterator, ValuesView
 from dataclasses import dataclass
 from enum import Enum
 from random import Random
-from typing import Any, ItemsView, Iterator, Self, ValuesView
+from typing import Any, Self
 
 from valanga import BranchKey
 
@@ -39,7 +40,7 @@ class OpeningInstruction[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
 
 
 class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
-    # todo do we need a dict? why not a set? verify
+    # TODO: do we need a dict? why not a set? verify
 
     """
     Represents a collection of opening instructions.
@@ -160,7 +161,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         Prints information about the opening instructions in the collection.
         """
         print("OpeningInstructionsBatch: batch contains", len(self.batch), "elements:")
-        for _key, opening_instructions in self.batch.items():
+        for opening_instructions in self.batch.values():
             opening_instructions.print_info()
 
     def __len__(self) -> int:

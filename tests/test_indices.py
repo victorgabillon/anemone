@@ -216,7 +216,7 @@ def check_from_file(file_path: path, tree: Tree[AlgorithmNode]) -> None:
     Returns:
         None
     """
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         tree_yaml = yaml.safe_load(file)
     print("tree", tree_yaml)
     yaml_nodes = tree_yaml["nodes"]

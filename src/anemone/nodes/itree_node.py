@@ -13,7 +13,8 @@ terminal.
 Note: This is an interface and should not be instantiated directly.
 """
 
-from typing import MutableMapping, Protocol, Self
+from collections.abc import MutableMapping
+from typing import Protocol, Self
 
 from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
 

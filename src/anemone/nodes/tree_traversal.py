@@ -30,7 +30,7 @@ def get_descendants[NodeT: ITreeNode[Any]](from_tree_node: NodeT) -> dict[NodeT,
         for node in generation:
             assert node is not None
             des[node] = None
-            for _, next_generation_child in node.branches_children.items():
+            for next_generation_child in node.branches_children.values():
                 if next_generation_child is not None:
                     next_depth_generation.add(next_generation_child)
         generation = next_depth_generation
@@ -66,7 +66,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
         for node in generation:
             if not node.all_branches_generated and not node.is_over():
                 des[node] = None
-            for _, next_generation_child in node.branches_children.items():
+            for next_generation_child in node.branches_children.values():
                 if next_generation_child is not None:
                     next_depth_generation.add(next_generation_child)
         generation = next_depth_generation
@@ -101,7 +101,7 @@ def get_descendants_candidate_not_over[NodeT: AlgorithmNode[Any]](
         for node in generation:
             if not node.is_over():
                 des[node] = None
-            for _, next_generation_child in node.branches_children.items():
+            for next_generation_child in node.branches_children.values():
                 if next_generation_child is not None:
                     next_depth_generation.add(next_generation_child)
         generation = next_depth_generation

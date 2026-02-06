@@ -34,10 +34,7 @@ def zipf_picks(
     """
     shift_rank: int
 
-    if shift:
-        shift_rank = min(ranks_values.keys())
-    else:
-        shift_rank = 0
+    shift_rank = min(ranks_values.keys()) if shift else 0
 
     best_weight: float | None = None
     best_rank: int = shift_rank

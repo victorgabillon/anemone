@@ -13,7 +13,7 @@ It also provides methods for accessing and manipulating the evaluation values, d
 Note: This code snippet is a partial implementation and may require additional code to work properly.
 """
 
-# todo maybe further split values from over?
+# TODO: maybe further split values from over?
 
 from dataclasses import dataclass, field
 from math import log
@@ -166,10 +166,7 @@ class NodeMinmaxEvaluation[
         Returns:
             float: The subjective value of `value_white` based on the player to branch.
         """
-        subjective_value = (
-            value_white if self.tree_node.state.turn is Color.WHITE else -value_white
-        )
-        return subjective_value
+        return value_white if self.tree_node.state.turn is Color.WHITE else -value_white
 
     def subjective_value(self) -> float:
         """Return the subjective value of self.value_white from the point of view of the self.tree_node.player_to_branch.
@@ -180,12 +177,11 @@ class NodeMinmaxEvaluation[
         Returns:
             float: The subjective value of self.value_white.
         """
-        subjective_value = (
+        return (
             self.get_value_white()
             if self.tree_node.state.turn is Color.WHITE
             else -self.get_value_white()
         )
-        return subjective_value
 
     def subjective_value_of(self, another_node_eval: Self) -> float:
         """
@@ -379,7 +375,7 @@ class NodeMinmaxEvaluation[
         self.tree_node.print_branches_children()
         self.print_branches_sorted_by_value()
         self.print_branches_not_over()
-        # todo probably more to print...
+        # TODO: probably more to print...
 
     def record_sort_value_of_child(self, branch_key: BranchKey) -> None:
         """Stores the subjective value of the branch in the self.branches_sorted_by_value (automatically sorted).
@@ -475,7 +471,7 @@ class NodeMinmaxEvaluation[
 
         # becoming over triggers a full update record_sort_value_of_child
         # where ties are now broken to reach over as fast as possible
-        # todo we should reach it asap if we are winning and think about what to ddo in other scenarios....
+        # TODO: we should reach it asap if we are winning and think about what to ddo in other scenarios....
         branch_key: BranchKey
         for branch_key in self.tree_node.branches_children:
             self.record_sort_value_of_child(branch_key=branch_key)
@@ -551,13 +547,13 @@ class NodeMinmaxEvaluation[
         Returns:
             A sorted list of branches that are not over.
         """
-        # todo: looks like the determinism of the sort induces some determinisin the play like always
+        # TODO:: looks like the determinism of the sort induces some determinisin the play like always
         #  playing the same actions when a lot of them have equal value: introduce some randomness?
         return [
             branch
             for branch in self.branches_sorted_by_value
             if branch in self.branches_not_over
-        ]  # todo is this a fast way to do it?
+        ]  # TODO: is this a fast way to do it?
 
     def update_value_minmax(self) -> None:
         """
@@ -615,8 +611,9 @@ class NodeMinmaxEvaluation[
             and best_node is not None
         ):
             self.best_branch_sequence = [
-                best_branch_key
-            ] + best_node.tree_evaluation.best_branch_sequence
+                best_branch_key,
+                *best_node.tree_evaluation.best_branch_sequence,
+            ]
             has_best_branch_seq_changed = True
 
         return has_best_branch_seq_changed
@@ -644,8 +641,9 @@ class NodeMinmaxEvaluation[
         # best_child = best_children[len(best_children) - 1]  # for debug!!
         assert best_child is not None
         self.best_branch_sequence = [
-            best_branch_key
-        ] + best_child.tree_evaluation.best_branch_sequence
+            best_branch_key,
+            *best_child.tree_evaluation.best_branch_sequence,
+        ]
         assert self.best_branch_sequence
 
     def is_value_subjectively_better_than_evaluation(self, value_white: float) -> bool:
@@ -676,7 +674,7 @@ class NodeMinmaxEvaluation[
             changed.
         """
 
-        # todo to be tested!!
+        # TODO: to be tested!!
 
         # updates value
         value_white_before_update = self.get_value_white()
@@ -688,12 +686,12 @@ class NodeMinmaxEvaluation[
         value_white_after_update = self.get_value_white()
         has_value_changed: bool = value_white_before_update != value_white_after_update
 
-        # # updates best_branch #todo maybe split in two functions but be careful one has to be done oft the other
+        # # updates best_branch #TODO: maybe split in two functions but be careful one has to be done oft the other
         if best_branch_key_before_update is None:
             best_child_before_update_not_the_best_anymore = True
         else:
             # here we compare the values in the self.children_sorted_by_value which might include more
-            # than just the basic values #todo make that more clear at some point maybe even creating a value object
+            # than just the basic values #TODO: make that more clear at some point maybe even creating a value object
             updated_value_of_best_child_before_update = self.branches_sorted_by_value[
                 best_branch_key_before_update
             ]
@@ -746,12 +744,12 @@ class NodeMinmaxEvaluation[
             A string representation of the node's description in DOT format.
         """
         value_mm = (
-            "{:.3f}".format(self.value_white_minmax)
+            f"{self.value_white_minmax:.3f}"
             if self.value_white_minmax is not None
             else "None"
         )
         value_eval = (
-            "{:.3f}".format(self.value_white_direct_evaluation)
+            f"{self.value_white_direct_evaluation:.3f}"
             if self.value_white_direct_evaluation is not None
             else "None"
         )
@@ -804,12 +802,12 @@ class NodeMinmaxEvaluation[
         Returns:
             None
         """
-        info_string: str = f"Best line from node {str(self.tree_node.id)}: "
+        info_string: str = f"Best line from node {self.tree_node.id!s}: "
         minmax: Any = self
         for branch in self.best_branch_sequence:
             child = minmax.tree_node.branches_children[branch]
             assert child is not None
-            info_string += f"{branch} ({str(child.tree_node.id)}) "
+            info_string += f"{branch} ({child.tree_node.id!s}) "
             minmax = child.tree_evaluation
         anemone_logger.info(info_string)
 
@@ -882,5 +880,4 @@ class NodeMinmaxEvaluation[
                 outcome=self.over_event,
                 line=[branch_key for branch_key in self.best_branch_sequence],
             )
-        else:
-            return FloatyStateEvaluation(value_white=self.value_white_minmax)
+        return FloatyStateEvaluation(value_white=self.value_white_minmax)

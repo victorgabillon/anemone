@@ -17,7 +17,8 @@ Note: The Descendants and RangedDescendants classes are used in the chipiron pro
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
-from typing import Any, Iterator, KeysView, Self
+from collections.abc import Iterator, KeysView
+from typing import Any, Self
 
 from sortedcollections import ValueSortedDict
 from valanga import StateTag
@@ -535,7 +536,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
 
 class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
-    # todo is there a difference between sorted descendant nd sorted value descendant? below?
+    # TODO: is there a difference between sorted descendant nd sorted value descendant? below?
 
     """
     Represents a class that stores sorted descendants of a tree node at different depths.

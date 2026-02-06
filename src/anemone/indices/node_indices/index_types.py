@@ -2,10 +2,10 @@
 This module defines the enumeration for index computation types.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class IndexComputationType(str, Enum):
+class IndexComputationType(StrEnum):
     """
     Enumeration for index computation types.
 

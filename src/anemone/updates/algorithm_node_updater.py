@@ -92,12 +92,12 @@ class AlgorithmNodeUpdater:
         Returns:
             UpdateInstructionsBatch: The update instructions for the batch of tree expansions.
         """
-        # TODO is the way of merging now overkill?
+        # TODO: is the way of merging now overkill?
 
         update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[NodeT]
         update_instructions_batch = UpdateInstructionsTowardsMultipleNodes()
 
-        tree_expansion: "TreeExpansion[NodeT]"
+        tree_expansion: TreeExpansion[NodeT]
         for tree_expansion in tree_expansions:
             update_instructions: UpdateInstructionsFromOneNode = (
                 self.create_update_instructions_after_node_birth(

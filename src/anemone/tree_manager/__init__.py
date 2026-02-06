@@ -21,9 +21,9 @@ from .tree_expander import TreeExpansion, TreeExpansions
 from .tree_manager import TreeManager
 
 __all__ = [
-    "create_algorithm_node_tree_manager",
-    "TreeManager",
     "AlgorithmNodeTreeManager",
     "TreeExpansion",
     "TreeExpansions",
+    "TreeManager",
+    "create_algorithm_node_tree_manager",
 ]

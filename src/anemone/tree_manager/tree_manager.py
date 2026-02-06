@@ -25,9 +25,9 @@ from anemone.tree_manager.tree_expander import (
 if TYPE_CHECKING:
     from anemone.basics import TreeDepth
 
-# todo should we use a discount? and discounted per round reward?
-# todo maybe convenient to seperate this object into openner updater and dsiplayer
-# todo have the reward with a discount
+# TODO: should we use a discount? and discounted per round reward?
+# TODO: maybe convenient to seperate this object into openner updater and dsiplayer
+# TODO: have the reward with a discount
 # DISCOUNT = 1/.99999
 
 

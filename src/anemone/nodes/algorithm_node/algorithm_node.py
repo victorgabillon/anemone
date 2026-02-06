@@ -3,7 +3,8 @@ This module defines the AlgorithmNode class, which is a generic node used by the
 It wraps tree nodes with values, minimax computation, and exploration tools.
 """
 
-from typing import MutableMapping, Self
+from collections.abc import MutableMapping
+from typing import Self
 
 from valanga import (
     BranchKey,

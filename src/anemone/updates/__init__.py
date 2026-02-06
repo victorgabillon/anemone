@@ -24,10 +24,10 @@ from .updates_file import (
 )
 
 __all__ = [
-    "create_algorithm_node_updater",
     "AlgorithmNodeUpdater",
-    "UpdateInstructionsFromOneNode",
-    "UpdateInstructionsTowardsOneParentNode",
     "MinMaxEvaluationUpdater",
+    "UpdateInstructionsFromOneNode",
     "UpdateInstructionsTowardsMultipleNodes",
+    "UpdateInstructionsTowardsOneParentNode",
+    "create_algorithm_node_updater",
 ]

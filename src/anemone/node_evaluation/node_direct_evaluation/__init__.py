@@ -16,7 +16,7 @@ from .factory import create_node_evaluator
 from .node_direct_evaluator import EvaluationQueries, NodeDirectEvaluator
 
 __all__ = [
+    "EvaluationQueries",
     "NodeDirectEvaluator",
     "create_node_evaluator",
-    "EvaluationQueries",
 ]

@@ -1,8 +1,8 @@
 # logger_module.py
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from logging import DEBUG, ERROR, WARNING, Logger, getLogger
-from typing import Generator
 
 from rich.logging import RichHandler
 
@@ -33,9 +33,7 @@ def set_chipiron_logger_level(level: int) -> None:
 
 
 @contextmanager
-def suppress_logging(
-    logger: Logger, level: int = WARNING
-) -> Generator[None, None, None]:
+def suppress_logging(logger: Logger, level: int = WARNING) -> Generator[None]:
     """
     Context manager to temporarily suppress logging for a specific logger to a given level.
 
@@ -60,7 +58,7 @@ def suppress_logging(
 
 # Suppress all logging from all loggers (global)
 @contextmanager
-def suppress_all_logging(level: int = ERROR) -> Generator[None, None, None]:
+def suppress_all_logging(level: int = ERROR) -> Generator[None]:
     """
     Context manager to temporarily suppress logging from all loggers to a specified level.
 

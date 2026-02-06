@@ -99,8 +99,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         """
         if node.tree_depth not in self.tree_depths:
             return False
-        else:
-            return node in self.tree_depths[node.tree_depth]
+        return node in self.tree_depths[node.tree_depth]
 
     def popitem(self) -> tuple[T_Key, T_Value]:
         """

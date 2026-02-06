@@ -13,9 +13,10 @@ It also includes helper classes and functions for creating and managing stopping
 """
 
 from abc import abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Callable, Literal, Protocol, runtime_checkable
+from enum import StrEnum
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from anemone import node_selector as node_sel
 from anemone import trees
@@ -59,7 +60,7 @@ class DepthToExpendP(Protocol):
         ...
 
 
-class StoppingCriterionTypes(str, Enum):
+class StoppingCriterionTypes(StrEnum):
     """
     Enum class representing different types of stopping criteria for tree value calculation.
     """
@@ -138,9 +139,7 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         Returns:
             boolean of should we continue
         """
-        if tree.root_node.is_over():
-            return False
-        return True
+        return not tree.root_node.is_over()
 
     def respectful_opening_instructions(
         self,
@@ -210,10 +209,7 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         continue_base: bool = super().should_we_continue(tree=tree)
 
         should_we: bool
-        if not continue_base:
-            should_we = continue_base
-        else:
-            should_we = tree.branch_count < self.tree_branch_limit
+        should_we = continue_base and tree.branch_count < self.tree_branch_limit
         return should_we
 
     def respectful_opening_instructions(
@@ -329,7 +325,7 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         tree: trees.Tree[NodeT],
     ) -> int:
         """Return progress percentage based on current depth."""
-        # todo this percent is not precise
+        # TODO: this percent is not precise
         percent: int = int(
             self.node_selector.get_current_depth_to_expand() / self.depth_limit * 100
         )

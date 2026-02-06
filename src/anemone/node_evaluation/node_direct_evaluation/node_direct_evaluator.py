@@ -2,8 +2,9 @@
 Module for evaluating algorithm nodes directly using a master state evaluator.
 """
 
-from enum import Enum
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from enum import StrEnum
+from typing import Protocol
 
 from valanga import OverEvent, State
 from valanga.evaluations import EvalItem
@@ -13,7 +14,7 @@ from anemone.nodes.algorithm_node import AlgorithmNode
 DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
 
 
-class NodeEvaluatorTypes(str, Enum):
+class NodeEvaluatorTypes(StrEnum):
     """
     Enum class representing different types of node evaluators.
     """
@@ -168,5 +169,4 @@ class NodeDirectEvaluator[StateT: State = State]:
         """
         Processes the evaluation for a node that is not over.
         """
-        processed_evaluation = (1 / DISCOUNT) ** node.tree_depth * evaluation
-        return processed_evaluation
+        return (1 / DISCOUNT) ** node.tree_depth * evaluation

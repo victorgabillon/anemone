@@ -20,7 +20,6 @@ class MinMaxEvaluationUpdater:
 
     def __init__(self) -> None:
         """Initializes a new instance of the MinMaxEvaluationUpdater class."""
-        ...
 
     def create_update_instructions_after_node_birth(
         self, new_node: AlgorithmNode

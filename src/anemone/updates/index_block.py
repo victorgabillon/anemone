@@ -83,8 +83,7 @@ class IndexUpdateInstructionsTowardsOneParentNode:
         Returns:
             bool: True if the block is empty, False otherwise.
         """
-        empty_bool = not bool(self.branches_with_updated_index)
-        return empty_bool
+        return not bool(self.branches_with_updated_index)
 
     def print_info(self) -> None:
         """Prints information about the branches with updated indices."""

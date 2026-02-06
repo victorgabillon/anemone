@@ -2,8 +2,9 @@
 Tree expansion representations for managing game trees.
 """
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Iterator, TypeVar
+from typing import Any, TypeVar
 
 from valanga import BranchKey, StateModifications
 

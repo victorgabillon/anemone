@@ -15,10 +15,11 @@ Functions:
 - create_tree_exploration: Creates a TreeExploration object with the specified dependencies.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from queue import Queue
 from random import Random
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from valanga import BranchKey, PlayerProgressMessage, State, StateEvaluation, TurnState
 from valanga.game import BranchName
@@ -85,7 +86,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     - explore: Explores the tree to find the best branch.
     """
 
-    # TODO Not sure why this class is not simply the TreeAndValuePlayer Class
+    # TODO: Not sure why this class is not simply the TreeAndValuePlayer Class
     #  but might be useful when dealing with multi round and time , no?
 
     tree: trees.Tree[NodeT]
@@ -193,7 +194,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         best_branch_name = self.tree.root_node.state.branch_name_from_key(best_branch)
         self.tree_manager.print_best_line(
             tree=self.tree
-        )  # todo maybe almost best chosen line no?
+        )  # TODO: maybe almost best chosen line no?
 
         branch_recommendation = Recommendation(
             recommended_name=best_branch_name,

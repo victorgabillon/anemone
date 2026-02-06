@@ -18,8 +18,6 @@ if TYPE_CHECKING:
 class NodeSelectorState:
     """Node Selector State"""
 
-    ...
-
 
 class NodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
     """
@@ -41,4 +39,4 @@ class NodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
         Returns:
             OpeningInstructions: The instructions to open a branch.
         """
-        raise NotImplementedError()
+        raise NotImplementedError

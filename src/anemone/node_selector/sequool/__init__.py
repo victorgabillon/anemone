@@ -16,4 +16,4 @@ Example usage:
 
 from .factory import SequoolArgs, create_sequool
 
-__all__ = ["create_sequool", "SequoolArgs"]
+__all__ = ["SequoolArgs", "create_sequool"]

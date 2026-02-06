@@ -9,7 +9,7 @@ from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
 
 from .itree_node import ITreeNode
 
-# todo replace the any with a defaut value in ITReenode when availble in python; 3.13?
+# TODO: replace the any with a defaut value in ITReenode when availble in python; 3.13?
 
 
 @dataclass(slots=True)

@@ -3,8 +3,9 @@ Torch-based MasterStateEvaluator for efficient batch evaluations.
 """
 # pyright: reportMissingImports=false
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from valanga import State
 from valanga.evaluations import EvalItem
@@ -58,7 +59,7 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
         """Evaluate a batch of items with torch and return white values."""
         torch = self._torch
 
-        xs: list["Tensor"] = []
+        xs: list[Tensor] = []
         states: list[ItemStateT] = []
 
         for it in items:

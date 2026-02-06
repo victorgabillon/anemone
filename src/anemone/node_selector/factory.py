@@ -4,7 +4,7 @@ Factory to build node selectors
 
 from dataclasses import dataclass
 from random import Random
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from .node_selector import NodeSelector
 from .node_selector_types import NodeSelectorType
@@ -24,7 +24,7 @@ class UniformArgs:
     type: Literal[NodeSelectorType.UNIFORM]
 
 
-AllNodeSelectorArgs: TypeAlias = RecurZipfBaseArgs | SequoolArgs | UniformArgs
+type AllNodeSelectorArgs = RecurZipfBaseArgs | SequoolArgs | UniformArgs
 
 
 def create(
