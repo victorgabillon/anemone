@@ -1,3 +1,5 @@
+"""Small utility helpers used across the project."""
+
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import islice
@@ -94,3 +96,4 @@ def softmax(x: Sequence[float], temperature: float = 1.0) -> list[float]:
     s = sum(exp_vals)
 
     return [v / s for v in exp_vals]
+"""Small utility helpers used across the project."""

@@ -7,6 +7,7 @@ Classes:
 
 """
 
+
 from dataclasses import dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, Literal
@@ -82,30 +83,6 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         _ = latest_tree_expansions  # not used here
         opening_instructions: OpeningInstructions[NodeT]
-        # TODO: make sure this block is put in chipiron now with a wrapper
-        # best_node_sequence = best_node_sequence_from_node(tree.root_node)
-        # if best_node_sequence:
-        #     last_node_in_best_line = best_node_sequence[-1]
-        #     assert isinstance(last_node_in_best_line, AlgorithmNode)
-        #     if (
-        #         last_node_in_best_line.state.is_attacked(
-        #             not last_node_in_best_line.tree_node.player_to_move
-        #         )
-        #         and not last_node_in_best_line.minmax_evaluation.is_over()
-        #     ):
-        #         # print('best line is underattacked')
-        #         if self.random_generator.random() > 0.5:
-        #             # print('best line is underattacked and i do')
-        #             all_moves_to_open: list[BranchKey] = (
-        #                 self.opening_instructor.all_branches_to_open(
-        #                     node_to_open=last_node_in_best_line.tree_node
-        #                 )
-        #             )
-        #             opening_instructions = create_instructions_to_open_all_branches(
-        #                 branches_to_play=all_moves_to_open,
-        #                 node_to_open=last_node_in_best_line,
-        #             )
-        #             return opening_instructions
 
         wandering_node: NodeT = tree.root_node
 

@@ -1,10 +1,11 @@
-"""This module defines the IndexUpdateInstructionsBlock class, which represents a block of update instructions for
+"""Module defining the IndexUpdateInstructionsBlock class, which represents a block of update instructions for
 index values in a tree structure.
 
 The IndexUpdateInstructionsBlock class is a dataclass that contains a set of AlgorithmNode objects representing
 children with updated index values. It provides methods for merging update instructions and printing information
 about the block.
 """
+
 
 from dataclasses import dataclass, field
 from typing import Self

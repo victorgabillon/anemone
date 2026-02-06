@@ -1,4 +1,4 @@
-"""This module provides functions for traversing a tree of nodes.
+"""Provide functions for traversing a tree of nodes.
 
 The functions in this module allow you to retrieve descendants of a given node in a tree structure.
 """

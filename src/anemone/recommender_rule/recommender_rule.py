@@ -1,4 +1,4 @@
-"""This module defines recommender rules for selecting branches in a tree-based selector.
+"""Define recommender rules for selecting branches in a tree-based selector.
 
 The recommender rules are implemented as data classes that define a `__call__` method. The `__call__` method takes a
 root node and a random generator, and returns a recommended branch.

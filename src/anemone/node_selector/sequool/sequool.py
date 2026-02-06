@@ -1,5 +1,6 @@
 """Module implementing the Sequool node selector."""
 
+
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from random import Random

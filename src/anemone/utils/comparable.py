@@ -1,4 +1,4 @@
-"""This module defines the Comparable class, which is an abstract base class for objects that can be compared.
+"""Module defining the Comparable base class for comparable objects.
 
 Classes that inherit from Comparable must implement the __lt__ method, which defines the less-than comparison operation.
 

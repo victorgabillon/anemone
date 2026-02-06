@@ -1,6 +1,7 @@
-"""This module defines the AlgorithmNode class, which is a generic node used by the tree and value algorithm.
+"""Define the AlgorithmNode class, which is a generic node used by the tree and value algorithm.
 It wraps tree nodes with values, minimax computation, and exploration tools.
 """
+
 
 from collections.abc import MutableMapping
 from typing import Self

@@ -1,10 +1,11 @@
-"""This module contains the AlgorithmNodeUpdater class, which is responsible for updating AlgorithmNode objects in a
+"""Module containing AlgorithmNodeUpdater for updating AlgorithmNode objects in a
  tree structure.
 
 The AlgorithmNodeUpdater class provides methods for creating update instructions after a node is added to the
  tree, generating update instructions for a batch of tree expansions, and performing updates on a specific node
   based on the given update instructions.
 """
+
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

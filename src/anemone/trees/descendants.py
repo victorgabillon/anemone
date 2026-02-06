@@ -1,3 +1,4 @@
+
 """This module defines the Descendants and RangedDescendants classes.
 
 Descendants:
@@ -413,26 +414,6 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         assert self.min_tree_depth is not None
         return range(self.min_tree_depth, self.max_tree_depth + 1)
 
-    #  def update(
-    #          self,
-    #          new_descendants: typing.Self
-    #  ) -> RangedDescendants:
-    #      really_new_descendants : RangedDescendants()#
-
-    #        for tree_depth in new_descendants.range():
-    #            if tree_depth in self:
-    #               really_new_descendants_keys = set(new_descendants[tree_depth].keys()).difference(
-    #                  set(self[tree_depth].keys()))
-    #          else:
-    #              really_new_descendants_keys = set(new_descendants[tree_depth].keys())
-    #          for key in really_new_descendants_keys:
-    #              really_new_descendants.add_descendant(new_descendants[tree_depth][key])
-    #             self.add_descendant(new_descendants[tree_depth][key])
-
-    #   # really_new_descendants.print_info()
-
-    #    return really_new_descendants
-
     def merge(self, descendant_1: Self, descendant_2: Self) -> None:
         """Merges the descendants of two nodes into the current node.
 
@@ -451,8 +432,6 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         for tree_depth in tree_depths_range:
             if descendant_1.is_in_the_current_range(tree_depth):
                 if descendant_2.is_in_the_current_range(tree_depth):
-                    #  print('dd',type(self.descendants_at_tree_depth),type())
-                    # in python 3.9 we can use a |
                     self.descendants_at_tree_depth[tree_depth] = {
                         **descendant_1[tree_depth],
                         **descendant_2[tree_depth],

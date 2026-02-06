@@ -2,6 +2,7 @@
 branchExplorer is responsible for exploring branches in a game tree.
 """
 
+
 from enum import StrEnum
 from random import Random
 from typing import Any

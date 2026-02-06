@@ -1,3 +1,4 @@
+
 """This module contains the implementation of the NodeMinmaxEvaluation class, which represents a node in a tree structure
  used for the Minimax algorithm evaluation.
 
@@ -36,6 +37,14 @@ from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.utils.small_tools import nth_key
 
 type BranchSortValue = tuple[float, int, int]
+
+
+class NoAvailableBranchError(RuntimeError):
+    """Raised when no non-terminal branch is available."""
+
+    def __init__(self) -> None:
+        """Initialize the error for missing non-terminal branches."""
+        super().__init__("No non-terminal branch is available.")
 
 
 @runtime_checkable
@@ -98,12 +107,9 @@ class NodeMinmaxEvaluation[
     # subjective value means the values is from the point of view of player_to_branch
     # careful, I have hard coded in the self.best_child() function the descending order for
     # fast access to the best element, so please do not change!
-    # self.children_sorted_by_value_vsd = ValueSortedDict({})
     branches_sorted_by_value_: dict[BranchKey, BranchSortValue] = field(
         default_factory=lambda: dict[BranchKey, BranchSortValue]()
     )
-
-    # self.children_sorted_by_value = {}
 
     # convention of descending order, careful if changing read above!!
     best_index_for_value: int = 0
@@ -231,7 +237,7 @@ class NodeMinmaxEvaluation[
             assert child is not None
             if not child.is_over():
                 return branch_key
-        raise Exception("Not ok")
+        raise NoAvailableBranchError
 
     def best_branch_value(self) -> BranchSortValue | None:
         """Returns the value of the best branch.
@@ -548,7 +554,7 @@ class NodeMinmaxEvaluation[
             A sorted list of branches that are not over.
 
         """
-        # TODO:: looks like the determinism of the sort induces some determinisin the play like always
+        # TODO: looks like the determinism of the sort induces some determinisin the play like always
         #  playing the same actions when a lot of them have equal value: introduce some randomness?
         return [
             branch
@@ -640,7 +646,6 @@ class NodeMinmaxEvaluation[
             assert len(best_branches) == 1
         best_branch_key = choice(best_branches)
         best_child = self.tree_node.branches_children[best_branch_key]
-        # best_child = best_children[len(best_children) - 1]  # for debug!!
         assert best_child is not None
         self.best_branch_sequence = [
             best_branch_key,

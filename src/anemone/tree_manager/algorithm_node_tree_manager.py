@@ -1,5 +1,6 @@
 """Defining the AlgorithmNodeTreeManager class."""
 
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -30,10 +31,6 @@ from anemone.updates.updates_file import (
 from .tree_expander import TreeExpansion, TreeExpansions, record_tree_expansion
 from .tree_manager import TreeManager
 
-# TODO: should we use a discount? and discounted per round reward?
-# TODO: maybe convenient to seperate this object into openner updater and dsiplayer
-# TODO: have the reward with a discount
-# DISCOUNT = 1/.99999
 if TYPE_CHECKING:
     from anemone import node_selector as node_sel
 

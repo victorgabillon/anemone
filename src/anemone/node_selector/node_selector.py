@@ -1,5 +1,6 @@
 """This module contains the definition of the NodeSelector class and related types."""
 
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 

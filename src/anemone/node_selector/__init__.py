@@ -1,4 +1,4 @@
-"""This module provides classes and functions for selecting nodes in a tree structure.
+"""Provide classes and functions for selecting nodes in a tree structure.
 
 The module includes the following components:
 - `create`: A factory function for creating node selectors.

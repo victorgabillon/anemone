@@ -1,3 +1,6 @@
+"""Provide the NodeTreeEvaluation interface."""
+
+
 from typing import TYPE_CHECKING, Protocol, Self
 
 from valanga import (

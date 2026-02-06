@@ -1,4 +1,4 @@
-"""This module provides the node factory classes for creating tree nodes in the branch selector algorithm.
+"""Provide node factory classes for creating tree nodes in the branch selector algorithm.
 
 The available classes in this module are:
 - TreeNodeFactory: A base class for creating tree nodes.

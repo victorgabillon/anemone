@@ -1,4 +1,4 @@
-"""This module defines the ValueUpdateInstructionsBlock class and a helper function to create instances of it.
+"""Module defining the ValueUpdateInstructionsBlock class and helpers.
 
 The ValueUpdateInstructionsBlock class represents a block of update instructions for a tree value node in
  a branch selector algorithm. It contains sets of branches that have been updated with new values,
@@ -8,6 +8,7 @@ The create_value_update_instructions_block function is a helper function that cr
  the ValueUpdateInstructionsBlock class with the specified update instructions.
 
 """
+
 
 from dataclasses import dataclass, field
 from typing import Self

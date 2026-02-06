@@ -1,4 +1,4 @@
-"""This module provides a factory function to create an instance of AlgorithmNodeUpdater.
+"""Provide a factory function to create an instance of AlgorithmNodeUpdater.
 
 The AlgorithmNodeUpdater is responsible for updating the algorithm node in a tree structure.
 
@@ -7,6 +7,7 @@ The factory function `create_algorithm_node_updater` takes an optional `index_up
 Example usage:
     algorithm_node_updater = create_algorithm_node_updater(index_updater)
 """
+
 
 from .algorithm_node_updater import AlgorithmNodeUpdater
 from .index_updater import IndexUpdater

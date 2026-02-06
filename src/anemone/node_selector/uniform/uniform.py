@@ -8,6 +8,7 @@ Classes:
 
 """
 
+
 from typing import TYPE_CHECKING, Any
 
 from anemone import tree_manager as tree_man
@@ -71,7 +72,6 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             tree.tree_root_tree_depth + self.current_depth_to_expand
         )
 
-        # self.tree.descendants.print_info()
         nodes_to_consider = list(
             tree.descendants[current_tree_depth_to_expand].values()
         )

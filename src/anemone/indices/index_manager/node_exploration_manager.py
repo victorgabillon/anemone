@@ -1,5 +1,6 @@
 """Module that contains the logic to compute the exploration index of a node in a tree."""
 
+
 from math import inf
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -187,10 +188,6 @@ class UpdateIndexGlobalMinChange:
         child_index: float = (
             abs(child_node_max_path_value - child_node_min_path_value) / 2
         )
-
-        # the amount of change for the child to become better than any of its ancestor
-        # and become the overall best bode, the max is computed with the parent index
-        # child_index: float = max(local_child_index, parent_index)
 
         # the index of the child node is updated now
         # as a child node can have multiple parents we take the min if an index was previously computed
@@ -451,17 +448,19 @@ class UpdateIndexLocalMinChange:
 def update_all_indices[NodeT: AlgorithmNode[Any]](
     tree: Tree[NodeT], index_manager: NodeExplorationIndexManager
 ) -> None:
-    """The idea is to compute an index $ind(n)$ for a node $n$ that measures the minimum amount of change
-     in the value of all the nodes such that this node $n$ becomes the best.
+    """Compute exploration indices for nodes in the tree.
 
-    This can be computed recursively as :
-    ind(n) = max( ind(parent(n),.5*abs(value(n)-value(parent(n))))
+    This computes an index $ind(n)$ for a node $n$ that measures the minimum amount
+    of change in the value of all the nodes such that this node $n$ becomes the best.
+    It can be computed recursively as:
+    ind(n) = max(ind(parent(n), 0.5 * abs(value(n) - value(parent(n)))))
 
     Args:
-        index_manager:
-        tree: a tree
+        tree: The tree to update.
+        index_manager: The index manager that defines the update logic.
 
     Returns:
+        None
 
     """
     if isinstance(index_manager, NullNodeExplorationIndexManager):
