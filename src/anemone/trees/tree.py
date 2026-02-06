@@ -1,5 +1,6 @@
 """Tree."""
 
+
 from typing import Any
 
 from anemone.basics import TreeDepth

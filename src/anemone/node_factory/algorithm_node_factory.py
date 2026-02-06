@@ -1,6 +1,4 @@
-""" "
-AlgorithmNodeFactory.
-"""
+"""Provide the algorithm node factory."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING

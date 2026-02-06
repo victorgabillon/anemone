@@ -18,9 +18,21 @@ if TYPE_CHECKING:
     from torch import Tensor
 
 
+class TorchDependencyError(ModuleNotFoundError):
+    """Raised when torch is required but not installed."""
+
+    def __init__(self) -> None:
+        """Initialize the error for missing torch dependencies."""
+        super().__init__(
+            "TorchMasterNNStateEvaluator requires 'torch'. "
+            "Install the optional torch dependencies."
+        )
+
+
 @dataclass(slots=True)
 class TorchMasterNNStateEvaluator(MasterStateEvaluator):
     """Torch-backed MasterStateEvaluator that supports efficient batch evaluation.
+
     This lives in an optional module so anemone core has no torch dependency.
     """
 
@@ -34,10 +46,7 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
         try:
             import torch
         except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "TorchMasterNNStateEvaluator requires 'torch'. "
-                "Install the optional torch dependencies."
-            ) from e
+            raise TorchDependencyError from e
 
         self._torch = torch
 

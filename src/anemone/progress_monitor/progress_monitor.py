@@ -11,6 +11,7 @@ The module includes the following classes:
 It also includes helper classes and functions for creating and managing stopping criteria.
 """
 
+
 from abc import abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -312,6 +313,16 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
 AllStoppingCriterionArgs = TreeBranchLimitArgs | DepthLimitArgs
 
 
+class UnknownStoppingCriterionError(ValueError):
+    """Raised when a stopping criterion type is not recognized."""
+
+    def __init__(self, criterion_type: StoppingCriterionTypes) -> None:
+        """Initialize the error with the unsupported criterion type."""
+        super().__init__(
+            f"stopping criterion builder: can not find {criterion_type} in file {__name__}"
+        )
+
+
 def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
     args: AllStoppingCriterionArgs,
     node_selector: node_sel.NodeSelector[NodeT],
@@ -342,8 +353,6 @@ def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
                 tree_branch_limit=args.tree_branch_limit
             )
         case _:
-            raise ValueError(
-                f"stopping criterion builder: can not find {args.type} in file {__name__}"
-            )
+            raise UnknownStoppingCriterionError(args.type)
 
     return stopping_criterion

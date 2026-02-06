@@ -1,5 +1,6 @@
 """This module contains classes and functions related to opening instructions in a game tree."""
 
+
 from collections.abc import ItemsView, Iterator, ValuesView
 from dataclasses import dataclass
 from enum import Enum
@@ -81,7 +82,6 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
             The opening instruction.
 
         """
-        # assert(0==1)
         return self.batch[key]
 
     def __iter__(self) -> Iterator[OpeningInstructionKey]:
@@ -223,11 +223,6 @@ class OpeningInstructor:
         if self.opening_type == OpeningType.ALL_CHILDREN:
             node_to_open.all_branches_generated = True
             branches_to_play: list[BranchKey] = node_to_open.state.branch_keys.get_all()
-
-            # this shuffling add randomness to the playing style
-            # (it stills depends on the random seed, but if random seed varies then the behavior will be more random)
-            # DEACTIVATED ATM BECAUSE I DO NOT UNDERSTAND or FORGOT THE USE CASE: MAYBE DEAD SINCE SEED SYSTEM CHANGED
-            # self.random_generator.shuffle(branches_to_play)
 
         else:
             raise NotImplementedError("Hello-la")

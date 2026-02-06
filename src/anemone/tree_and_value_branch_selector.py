@@ -1,5 +1,6 @@
 """Module for Tree and Value Branch Selector."""
 
+
 from dataclasses import dataclass
 from random import Random
 

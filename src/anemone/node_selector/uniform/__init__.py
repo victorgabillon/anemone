@@ -1,4 +1,4 @@
-"""This module provides a uniform selection strategy for nodes in a tree.
+"""Provide a uniform selection strategy for nodes in a tree.
 
 The Uniform selection strategy selects nodes uniformly at random from the available options.
 

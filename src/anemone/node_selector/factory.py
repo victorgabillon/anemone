@@ -22,6 +22,16 @@ class UniformArgs:
 type AllNodeSelectorArgs = RecurZipfBaseArgs | SequoolArgs | UniformArgs
 
 
+class UnknownNodeSelectorError(ValueError):
+    """Raised when a node selector type is not recognized."""
+
+    def __init__(self, args: AllNodeSelectorArgs) -> None:
+        """Initialize the error with the unsupported selector arguments."""
+        super().__init__(
+            f"node selector construction: can not find {args.type}  {args} in file {__name__}"
+        )
+
+
 def create(
     args: AllNodeSelectorArgs,
     opening_instructor: OpeningInstructor,
@@ -52,8 +62,6 @@ def create(
             )
 
         case _:
-            raise ValueError(
-                f"node selector construction: can not find {args.type}  {args} in file {__name__}"
-            )
+            raise UnknownNodeSelectorError(args)
 
     return node_branch_opening_selector

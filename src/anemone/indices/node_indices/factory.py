@@ -1,4 +1,4 @@
-"""This module provides functions for creating exploration index data for tree nodes.
+"""Provide functions for creating exploration index data for tree nodes.
 
 The main function in this module is `create_exploration_index_data`, which takes a tree node and optional parameters
 to create the exploration index data for that node.
@@ -30,6 +30,16 @@ from anemone.indices.node_indices.index_types import (
 )
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
+
+
+class UnknownIndexComputationError(ValueError):
+    """Raised when an index computation type is not recognized."""
+
+    def __init__(self, index_computation: IndexComputationType) -> None:
+        """Initialize the error with the unsupported computation type."""
+        super().__init__(
+            f"not finding good case for {index_computation} in file {__name__}"
+        )
 
 
 @dataclass
@@ -71,7 +81,7 @@ def create_exploration_index_data[
     index_computation: IndexComputationType | None = None,
     depth_index: bool = False,
 ) -> NodeExplorationData[NodeT, NodeStateT] | None:
-    """Creates exploration index data for a given tree node.
+    """Create exploration index data for a given tree node.
 
     Args:
         tree_node (TreeNode): The tree node for which to create the exploration index data.
@@ -104,9 +114,7 @@ def create_exploration_index_data[
                 else RecurZipfQuoolExplorationData
             )
         case _:
-            raise ValueError(
-                f"not finding good case for {index_computation} in file {__name__}"
-            )
+            raise UnknownIndexComputationError(index_computation)
 
     exploration_index_data: NodeExplorationData[NodeT, NodeStateT] | None
     exploration_index_data = (

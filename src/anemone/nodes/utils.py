@@ -1,5 +1,6 @@
 """Utility functions for tree nodes."""
 
+
 from valanga import BranchKey, Color, State
 
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (

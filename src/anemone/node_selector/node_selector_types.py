@@ -1,4 +1,4 @@
-"""This module defines the NodeSelectorType enumeration, which represents the types of node selectors."""
+"""Define the NodeSelectorType enumeration, which represents the types of node selectors."""
 
 from enum import StrEnum
 

@@ -1,4 +1,5 @@
-"""This module contains the MinMaxEvaluationUpdater class, which is responsible for updating the min-max evaluation values of AlgorithmNode objects."""
+"""Module containing the MinMaxEvaluationUpdater for algorithm node updates."""
+
 
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,

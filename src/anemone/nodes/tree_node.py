@@ -1,4 +1,5 @@
-"""This module defines the TreeNode class, which represents a node in a tree structure."""
+"""Define the TreeNode class, which represents a node in a tree structure."""
+
 
 from dataclasses import dataclass, field
 from typing import Any

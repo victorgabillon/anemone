@@ -5,6 +5,7 @@ The functions in this module provide methods for selecting elements based on the
 
 """
 
+
 from math import e, log
 from random import Random
 

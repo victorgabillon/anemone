@@ -1,3 +1,6 @@
+"""Provide factories for node tree evaluation implementations."""
+
+
 from typing import Any, Protocol
 
 from valanga import State, TurnState

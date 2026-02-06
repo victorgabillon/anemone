@@ -1,4 +1,4 @@
-"""This module contains the factory function to create a node exploration index manager based on the given index computation."""
+"""Provide a factory for node exploration index managers."""
 
 from anemone.indices.index_manager.node_exploration_manager import (
     NodeExplorationIndexManager,
@@ -12,10 +12,20 @@ from anemone.indices.node_indices.index_types import (
 )
 
 
+class UnknownIndexComputationError(ValueError):
+    """Raised when an index computation type is not recognized."""
+
+    def __init__(self, index_computation: IndexComputationType) -> None:
+        """Initialize the error with the unsupported computation type."""
+        super().__init__(
+            f"player creator: can not find {index_computation} in {__name__}"
+        )
+
+
 def create_exploration_index_manager(
     index_computation: IndexComputationType | None = None,
 ) -> NodeExplorationIndexManager:
-    """Creates a node exploration index manager based on the given index computation type.
+    """Create a node exploration index manager for the given index computation type.
 
     Args:
         index_computation (IndexComputationType | None): The type of index computation to be used.
@@ -40,8 +50,6 @@ def create_exploration_index_manager(
             case IndexComputationType.MIN_LOCAL_CHANGE:
                 node_exploration_manager = UpdateIndexLocalMinChange()
             case _:
-                raise ValueError(
-                    f"player creator: can not find {index_computation} in {__name__}"
-                )
+                raise UnknownIndexComputationError(index_computation)
 
     return node_exploration_manager

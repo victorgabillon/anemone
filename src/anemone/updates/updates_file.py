@@ -1,9 +1,10 @@
-"""This module contains classes for managing update instructions in a batch.
+"""Module containing classes for managing update instructions in a batch.
 
 Classes:
 - UpdateInstructions: Represents update instructions for a single node.
 - UpdateInstructionsBatch: Represents a batch of update instructions for multiple nodes.
 """
+
 
 from dataclasses import dataclass, field
 from typing import Self

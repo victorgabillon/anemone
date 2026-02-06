@@ -1,4 +1,5 @@
-"""This module contains the IndexUpdater class, which is responsible for updating the indices of AlgorithmNode objects in a tree structure."""
+"""Module containing the IndexUpdater for updating AlgorithmNode indices."""
+
 
 from typing import TYPE_CHECKING
 

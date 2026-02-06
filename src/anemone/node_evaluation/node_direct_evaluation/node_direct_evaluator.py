@@ -1,5 +1,6 @@
 """Module for evaluating algorithm nodes directly using a master state evaluator."""
 
+
 from collections.abc import Sequence
 from enum import StrEnum
 from typing import Protocol
@@ -115,11 +116,6 @@ class NodeDirectEvaluator[StateT: State = State]:
         self, evaluation_queries: EvaluationQueries[StateT]
     ) -> None:
         """Evaluates all the queried nodes."""
-        # node_over: AlgorithmNode
-        # for node_over in evaluation_queries.over_nodes:
-        # assert isinstance(node_over, AlgorithmNode)
-        #    self.evaluate_over(node_over)
-
         if evaluation_queries.not_over_nodes:
             self.evaluate_all_not_over(evaluation_queries.not_over_nodes)
 

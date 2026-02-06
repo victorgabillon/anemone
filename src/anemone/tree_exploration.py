@@ -14,6 +14,7 @@ Functions:
 - create_tree_exploration: Creates a TreeExploration object with the specified dependencies.
 """
 
+
 from dataclasses import dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any
@@ -172,7 +173,6 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 tree=self.tree, opening_instructions=opening_instructions_subset
             )
 
-            # self.node_selector.communicate_expansions()
             self.tree_manager.update_backward(tree_expansions=tree_expansions)
             self.tree_manager.update_indices(tree=self.tree)
 

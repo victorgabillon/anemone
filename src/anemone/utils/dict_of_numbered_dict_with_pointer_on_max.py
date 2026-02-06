@@ -1,5 +1,6 @@
 """Module for DictOfNumberedDictWithPointerOnMax class."""
 
+
 from typing import Protocol
 
 
@@ -119,7 +120,3 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
                 self.max_tree_depth = None
 
         return popped
-
-    # def sort_dic(self):
-    #    self.dic = dict(sorted(self.dic.items(), key=lambda item: item[0]))
-    # {k: v for k, v in sorted(x.items(), key=lambda item: item[1])}

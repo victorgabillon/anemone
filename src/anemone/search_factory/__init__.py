@@ -1,4 +1,4 @@
-"""This module provides factories for creating search objects and node selectors.
+"""Provide factories for creating search objects and node selectors.
 
 The factories included in this module are:
 - SearchFactoryP: A factory for creating search objects with parallel execution.

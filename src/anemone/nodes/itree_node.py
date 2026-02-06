@@ -1,4 +1,4 @@
-"""This module defines the interface for a tree node used in branch selection.
+"""Define the interface for a tree node used in branch selection.
 
 The `ITreeNode` protocol represents a node in a tree structure for exploring
 possible branches. It provides properties and methods for accessing information

@@ -1,4 +1,4 @@
-"""This module provides functions for visualizing and saving tree structures.
+"""Provide functions for visualizing and saving tree structures.
 
 The functions in this module allow for the visualization of tree structures using the Graphviz library.
 It provides a way to display the tree structure as a graph and save it as a PDF file.
@@ -13,6 +13,7 @@ representation of the tree with additional information.
 - save_raw_data_to_file(tree: Tree, count: str = '#') -> None: Saves the raw data of the tree
 structure to a file.
 """
+
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
