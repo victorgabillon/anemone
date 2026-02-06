@@ -1,5 +1,4 @@
-"""This module contains classes and functions related to opening instructions in a game tree."""
-
+"""Provide classes and functions related to opening instructions in a game tree."""
 
 from collections.abc import ItemsView, Iterator, ValuesView
 from dataclasses import dataclass
@@ -26,7 +25,7 @@ class OpeningInstruction[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
     branch: BranchKey
 
     def print_info(self) -> None:
-        """Prints information about the opening instruction."""
+        """Print information about the opening instruction."""
         print(
             f"OpeningInstruction: node_to_open {self.node_to_open.id} at hm {self.node_to_open.tree_depth} {self.node_to_open.state}| "
             f"a path from root to node_to_open is {a_branch_key_sequence_from_root(self.node_to_open)} {a_branch_str_sequence_from_root(self.node_to_open)}| "
@@ -45,7 +44,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         dictionary: dict[OpeningInstructionKey, OpeningInstruction[NodeT]]
         | None = None,
     ) -> None:
-        """Initializes the OpeningInstructions object.
+        """Initialize the OpeningInstructions object.
 
         Args:
             dictionary: A dictionary of opening instructions (optional).
@@ -62,7 +61,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
     def __setitem__(
         self, key: OpeningInstructionKey, value: OpeningInstruction[NodeT]
     ) -> None:
-        """Sets an opening instruction in the collection.
+        """Set an opening instruction in the collection.
 
         Args:
             key: The key for the opening instruction.
@@ -73,7 +72,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         self.batch[key] = value
 
     def __getitem__(self, key: OpeningInstructionKey) -> OpeningInstruction[NodeT]:
-        """Retrieves an opening instruction from the collection.
+        """Retrieve an opening instruction from the collection.
 
         Args:
             key: The key for the opening instruction.
@@ -85,7 +84,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         return self.batch[key]
 
     def __iter__(self) -> Iterator[OpeningInstructionKey]:
-        """Returns an iterator over the keys of the opening instructions.
+        """Return an iterator over the keys of the opening instructions.
 
         Returns:
             An iterator over the keys.
@@ -94,7 +93,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         return iter(self.batch)
 
     def __bool__(self) -> bool:
-        """Checks if the collection is non-empty.
+        """Check if the collection is non-empty.
 
         Returns:
             True if the collection is non-empty, False otherwise.
@@ -103,7 +102,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         return bool(self.batch)
 
     def merge(self, another_opening_instructions_batch: Self) -> None:
-        """Merges another batch of opening instructions into the current collection.
+        """Merge another batch of opening instructions into the current collection.
 
         Args:
             another_opening_instructions_batch: Another OpeningInstructions object.
@@ -117,7 +116,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
                 self.batch[opening_instruction_key] = opening_instruction
 
     def pop_items(self, how_many: int, popped: Self) -> None:
-        """Pops a specified number of opening instructions from the collection.
+        """Pop a specified number of opening instructions from the collection.
 
         Args:
             how_many: The number of opening instructions to pop.
@@ -130,7 +129,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
             popped[key] = value
 
     def values(self) -> ValuesView[OpeningInstruction[NodeT]]:
-        """Returns a view of the values in the collection.
+        """Return a view of the values in the collection.
 
         Returns:
             A view of the values.
@@ -139,7 +138,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         return self.batch.values()
 
     def items(self) -> ItemsView[OpeningInstructionKey, OpeningInstruction[NodeT]]:
-        """Returns a view of the items (key-value pairs) in the collection.
+        """Return a view of the items (key-value pairs) in the collection.
 
         Returns:
             A view of the items.
@@ -148,13 +147,13 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         return self.batch.items()
 
     def print_info(self) -> None:
-        """Prints information about the opening instructions in the collection."""
+        """Print information about the opening instructions in the collection."""
         print("OpeningInstructionsBatch: batch contains", len(self.batch), "elements:")
         for opening_instructions in self.batch.values():
             opening_instructions.print_info()
 
     def __len__(self) -> int:
-        """Returns the number of opening instructions in the collection.
+        """Return the number of opening instructions in the collection.
 
         Returns:
             The number of opening instructions.
@@ -198,7 +197,7 @@ class OpeningInstructor:
     """Represents an opening instructor that provides opening instructions based on a specific opening type."""
 
     def __init__(self, opening_type: OpeningType, random_generator: Random) -> None:
-        """Initializes the OpeningInstructor object.
+        """Initialize the OpeningInstructor object.
 
         Args:
             opening_type: The type of opening to use.
@@ -211,7 +210,7 @@ class OpeningInstructor:
     def all_branches_to_open(
         self, node_to_open: nodes.ITreeNode[Any]
     ) -> list[BranchKey]:
-        """Returns a list of all possible branches to open from a given node.
+        """Return a list of all possible branches to open from a given node.
 
         Args:
             node_to_open: The node to open.

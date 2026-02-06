@@ -9,7 +9,6 @@ The create_value_update_instructions_block function is a helper function that cr
 
 """
 
-
 from dataclasses import dataclass, field
 from typing import Self
 
@@ -54,7 +53,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         update_from_one_child_node: ValueUpdateInstructionsFromOneNode,
         branch_from_parent_to_child: BranchKey,
     ) -> None:
-        """Adds an update from a child node to the parent node.
+        """Add an update from a child node to the parent node.
 
         Args:
             update_from_one_child_node (ValueUpdateInstructionsFromOneNode): The update instructions from the child node.
@@ -69,7 +68,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             self.branches_with_updated_best_branch.add(branch_from_parent_to_child)
 
     def add_update_toward_one_parent_node(self, another_update: Self) -> None:
-        """Adds an update towards one parent node.
+        """Add an update towards one parent node.
 
         Args:
             another_update (Self): The update instructions from another child node.

@@ -1,6 +1,5 @@
 """Provide factories for node tree evaluation implementations."""
 
-
 from typing import Any, Protocol
 
 from valanga import State, TurnState
@@ -21,7 +20,7 @@ class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
         self,
         tree_node: TreeNode[Any, StateT],
     ) -> NodeMinmaxEvaluation[Any, StateT]:
-        """Creates a new NodeEvaluationIncludingChildren object.
+        """Create a new NodeEvaluationIncludingChildren object.
 
         Args:
             tree_node (TreeNode): The tree node for which the evaluation is created.

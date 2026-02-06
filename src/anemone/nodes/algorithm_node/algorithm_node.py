@@ -1,7 +1,7 @@
-"""Define the AlgorithmNode class, which is a generic node used by the tree and value algorithm.
+"""Define the AlgorithmNode class used by the tree and value algorithm.
+
 It wraps tree nodes with values, minimax computation, and exploration tools.
 """
-
 
 from collections.abc import MutableMapping
 from typing import Self
@@ -23,8 +23,9 @@ from anemone.nodes.tree_node import TreeNode
 
 
 class AlgorithmNode[StateT: State = State]:
-    """The generic Node used by the tree and value algorithm.
-    It wraps tree nodes with values, minimax computation and exploration tools.
+    """The generic node used by the tree and value algorithm.
+
+    It wraps tree nodes with values, minimax computation, and exploration tools.
     """
 
     tree_node: TreeNode[Self, StateT]
@@ -51,7 +52,7 @@ class AlgorithmNode[StateT: State = State]:
         exploration_index_data: NodeExplorationData[Self, StateT] | None,
         state_representation: ContentRepresentation[StateT, EvaluatorInput] | None,
     ) -> None:
-        """Initializes an AlgorithmNode object.
+        """Initialize an AlgorithmNode object.
 
         Args:
             tree_node (TreeNode): The tree node that is wrapped.
@@ -124,7 +125,7 @@ class AlgorithmNode[StateT: State = State]:
         return self.tree_node.state
 
     def is_over(self) -> bool:
-        """Checks if the game is over.
+        """Check if the game is over.
 
         Returns:
             bool: True if the game is over, False otherwise.
@@ -133,7 +134,7 @@ class AlgorithmNode[StateT: State = State]:
         return self.tree_evaluation.is_over()
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: Self) -> None:
-        """Adds a parent node.
+        """Add a parent node.
 
         Args:
             branch_key (BranchKey): The branch key associated with the branch that led to the node from the new_parent_node.
@@ -166,7 +167,7 @@ class AlgorithmNode[StateT: State = State]:
 
     @all_branches_generated.setter
     def all_branches_generated(self, value: bool) -> None:
-        """Sets the flag indicating if all branches have been generated.
+        """Set the flag indicating if all branches have been generated.
 
         Args:
             value (bool): The value to set.
@@ -185,7 +186,7 @@ class AlgorithmNode[StateT: State = State]:
         return self.tree_node.non_opened_branches
 
     def dot_description(self) -> str:
-        """Returns the dot description of the node.
+        """Return the dot description of the node.
 
         Returns:
             str: The dot description of the node.

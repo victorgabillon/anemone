@@ -1,4 +1,4 @@
-"""This module defines stopping criteria for a branch selector in a game tree.
+"""Define stopping criteria for a branch selector in a game tree.
 
 The stopping criteria determine when the selector should stop exploring the game tree and make a decision.
 
@@ -10,7 +10,6 @@ The module includes the following classes:
 
 It also includes helper classes and functions for creating and managing stopping criteria.
 """
-
 
 from abc import abstractmethod
 from collections.abc import Callable
@@ -48,7 +47,7 @@ class DepthToExpendP(Protocol):
     """
 
     def get_current_depth_to_expand(self) -> int:
-        """Returns the current depth to expand as an integer.
+        """Return the current depth to expand as an integer.
 
         Returns:
             The current depth to expand.
@@ -96,11 +95,11 @@ class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
         opening_instructions: node_sel.OpeningInstructions[NodeT],
         tree: trees.Tree[NodeT],
     ) -> node_sel.OpeningInstructions[NodeT]:
-        """Ensures the opening request do not exceed the stopping criterion."""
+        """Ensure the opening request does not exceed the stopping criterion."""
         ...
 
     def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
-        """Returns a string representation of the progress made by the stopping criterion.
+        """Return a string representation of the progress made by the stopping criterion.
 
         Args:
             tree (Tree): The tree being explored.
@@ -136,12 +135,12 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         opening_instructions: node_sel.OpeningInstructions[NodeT],
         tree: trees.Tree[NodeT],
     ) -> node_sel.OpeningInstructions[NodeT]:
-        """Ensures the opening request do not exceed the stopping criterion."""
+        """Ensure the opening request does not exceed the stopping criterion."""
         _ = tree
         return opening_instructions
 
     def get_string_of_progress(self, _tree: trees.Tree[NodeT]) -> str:
-        """Returns a string representation of the progress made by the stopping criterion.
+        """Return a string representation of the progress made by the stopping criterion.
 
         Args:
             tree (Tree): The tree being explored.
@@ -201,7 +200,7 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         opening_instructions: node_sel.OpeningInstructions[NodeT],
         tree: trees.Tree[NodeT],
     ) -> node_sel.OpeningInstructions[NodeT]:
-        """Ensures the opening request do not exceed the stopping criterion."""
+        """Ensure the opening request does not exceed the stopping criterion."""
         opening_instructions_subset: node_sel.OpeningInstructions[NodeT] = (
             node_sel.OpeningInstructions()
         )
@@ -254,7 +253,7 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
     node_selector: DepthToExpendP
 
     def __init__(self, depth_limit: int, node_selector: DepthToExpendP) -> None:
-        """Initializes a StoppingCriterion object.
+        """Initialize a StoppingCriterion object.
 
         Args:
             depth_limit (int): The maximum depth to search in the tree.
@@ -268,7 +267,7 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         self.node_selector = node_selector
 
     def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
-        """Determines whether the search should continue expanding nodes in the tree.
+        """Determine whether the search should continue expanding nodes in the tree.
 
         Args:
             tree (Tree): The tree containing the nodes and their evaluations.
@@ -327,14 +326,14 @@ def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
     args: AllStoppingCriterionArgs,
     node_selector: node_sel.NodeSelector[NodeT],
 ) -> ProgressMonitor[NodeT]:
-    """Creating the stopping criterion.
+    """Create the stopping criterion.
 
     Args:
-        args:
-        node_selector:
+        args (AllStoppingCriterionArgs): Configuration for the stopping criterion.
+        node_selector (node_sel.NodeSelector[NodeT]): Node selector used by the criterion.
 
     Returns:
-        A stopping criterion
+        ProgressMonitor[NodeT]: The constructed stopping criterion.
 
     """
     stopping_criterion: ProgressMonitor[NodeT]

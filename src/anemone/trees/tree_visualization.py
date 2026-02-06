@@ -32,7 +32,7 @@ from .tree import Tree
 
 
 def add_dot[StateT: State](dot: Digraph, treenode: ITreeNode[StateT]) -> None:
-    """Adds a node and edges to the given Dot graph based on the provided tree node.
+    """Add a node and edges to the given Dot graph based on the provided tree node.
 
     Args:
         dot (Digraph): The Dot graph to add the node and edges to.
@@ -110,7 +110,7 @@ def display[StateT: State](
 
 
 def save_pdf_to_file[StateT: State](tree: Tree[AlgorithmNode[StateT]]) -> None:
-    """Saves the visualization of a tree as a PDF file.
+    """Save the visualization of a tree as a PDF file.
 
     Args:
         tree (Tree): The tree to be visualized and saved.

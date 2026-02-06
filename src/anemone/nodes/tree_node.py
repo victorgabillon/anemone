@@ -1,6 +1,5 @@
 """Define the TreeNode class, which represents a node in a tree structure."""
 
-
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -16,8 +15,10 @@ class TreeNode[
     FamilyT: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ]:
-    r"""The TreeNode class stores information about a specific state, including its depth
-    and the parent-child relationships with other nodes.
+    r"""Represent a node in a tree structure.
+
+    The TreeNode class stores information about a specific state, including its depth
+    and parent-child relationships with other nodes.
 
     Attributes:
         id\_ (int): The number to identify this node for easier debugging.
@@ -122,8 +123,9 @@ class TreeNode[
 
     @property
     def branches_children(self) -> dict[BranchKey, FamilyT | None]:
-        """Returns a bidirectional dictionary containing the children nodes of the current tree node,
-        along with the corresponding branches that lead to each child node.
+        """Return a bidirectional dictionary of children nodes for the current tree node.
+
+        This includes the corresponding branches that lead to each child node.
 
         Returns:
             dict[BranchKey, ITreeNode | None]: A bidirectional dictionary mapping branches to
@@ -161,7 +163,7 @@ class TreeNode[
         return self.state_.branch_keys
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: FamilyT) -> None:
-        """Adds a new parent node to the current node.
+        """Add a new parent node to the current node.
 
         Args:
             branch_key (BranchKey): The branch key that led to the node from the new parent node.
@@ -181,7 +183,7 @@ class TreeNode[
         self.parent_nodes[new_parent_node] = branch_key
 
     def is_over(self) -> bool:
-        """Checks if the state is terminal.
+        """Check if the state is terminal.
 
         Returns:
             bool: True if the state is terminal, False otherwise.
@@ -190,7 +192,7 @@ class TreeNode[
         return self.state.is_game_over()
 
     def print_branches_children(self) -> None:
-        """Prints the branches-children link of the node.
+        """Print the branches-children link of the node.
 
         This method prints the branches-children link of the node, showing the branch and the ID of the child node.
         If a child node is None, it will be displayed as 'None'.
@@ -215,7 +217,7 @@ class TreeNode[
         print(" ")
 
     def dot_description(self) -> str:
-        """Returns a string representation of the node in the DOT format.
+        """Return a string representation of the node in the DOT format.
 
         The string includes the node's ID, depth, and state tag.
 

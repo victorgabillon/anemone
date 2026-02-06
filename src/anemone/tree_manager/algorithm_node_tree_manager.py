@@ -1,6 +1,5 @@
 """Defining the AlgorithmNodeTreeManager class."""
 
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -130,7 +129,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return tree_expansions
 
     def update_indices(self, tree: trees.Tree[NodeT]) -> None:
-        """Updates the indices of the nodes in the given tree.
+        """Update the indices of the nodes in the given tree.
 
         Args:
             tree: The tree whose indices need to be updated.
@@ -217,7 +216,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return update_instructions_batch
 
     def print_some_stats(self, tree: trees.Tree[NodeT]) -> None:
-        """Prints statistics about the given tree.
+        """Print statistics about the given tree.
 
         Args:
             tree: The tree to print statistics for.

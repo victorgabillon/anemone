@@ -8,7 +8,6 @@ Example usage:
     algorithm_node_updater = create_algorithm_node_updater(index_updater)
 """
 
-
 from .algorithm_node_updater import AlgorithmNodeUpdater
 from .index_updater import IndexUpdater
 from .minmax_evaluation_updater import MinMaxEvaluationUpdater
@@ -17,7 +16,7 @@ from .minmax_evaluation_updater import MinMaxEvaluationUpdater
 def create_algorithm_node_updater(
     index_updater: IndexUpdater | None,
 ) -> AlgorithmNodeUpdater:
-    """Creates an instance of AlgorithmNodeUpdater.
+    """Create an instance of AlgorithmNodeUpdater.
 
     Args:
         index_updater (IndexUpdater | None): The index updater object.

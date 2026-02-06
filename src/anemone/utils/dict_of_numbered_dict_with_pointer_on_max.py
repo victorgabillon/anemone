@@ -1,6 +1,5 @@
 """Module for DictOfNumberedDictWithPointerOnMax class."""
 
-
 from typing import Protocol
 
 
@@ -40,7 +39,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         self.max_tree_depth: int | None = None
 
     def __setitem__(self, node: T_Key, value: T_Value) -> None:
-        """Adds an item to the data structure.
+        """Add an item to the data structure.
 
         Args:
             node (T_Key): The key of the item.
@@ -63,7 +62,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         assert self.max_tree_depth == max(self.tree_depths)
 
     def __getitem__(self, node: T_Key) -> T_Value:
-        """Retrieves an item from the data structure.
+        """Retrieve an item from the data structure.
 
         Args:
             node (T_Key): The key of the item.
@@ -78,7 +77,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         return self.tree_depths[node.tree_depth][node]
 
     def __bool__(self) -> bool:
-        """Checks if the data structure is non-empty.
+        """Check if the data structure is non-empty.
 
         Returns:
             bool: True if the data structure is non-empty, False otherwise.
@@ -87,7 +86,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         return bool(self.tree_depths)
 
     def __contains__(self, node: T_Key) -> bool:
-        """Checks if an item is present in the data structure.
+        """Check if an item is present in the data structure.
 
         Args:
             node (T_Key): The key of the item.
@@ -101,7 +100,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         return node in self.tree_depths[node.tree_depth]
 
     def popitem(self) -> tuple[T_Key, T_Value]:
-        """Removes and returns the item with the maximum depth value.
+        """Remove and return the item with the maximum depth value.
 
         Returns:
             tuple[T_Key, T_Value]: The key-value pair of the removed item.

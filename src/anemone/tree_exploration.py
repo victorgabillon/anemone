@@ -1,5 +1,6 @@
-"""This module contains the implementation of the TreeExploration class, which is responsible for managing a search
- for the best branch in a given state using a tree-based approach.
+"""Provide the implementation of the TreeExploration class.
+
+The TreeExploration class is responsible for managing a search for the best branch in a given state using a tree-based approach.
 
 The TreeExploration class is used to create and manage a tree structure that represents the possible branches and
  their evaluations in a state space. It provides methods for exploring the tree, selecting the best branch,
@@ -14,14 +15,13 @@ Functions:
 - create_tree_exploration: Creates a TreeExploration object with the specified dependencies.
 """
 
-
 from dataclasses import dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any
 
 from valanga import BranchKey, State, StateEvaluation, TurnState
 from valanga.game import BranchName
-from valanga.policy import Recommendation
+from valanga.policy import NotifyProgressCallable, Recommendation
 
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
@@ -39,8 +39,6 @@ from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
     from valanga.policy import BranchPolicy
-
-from valanga.policy import NotifyProgressCallable
 
 
 @dataclass
@@ -97,7 +95,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Print info during the branch computation.
 
         Args:
-        - random_generator: The random number generator.
+            random_generator (Random): The random number generator.
 
         """
         current_best_branch: str
@@ -129,10 +127,10 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Explore the tree to find the best branch.
 
         Args:
-        - random_generator: The random number generator.
+            random_generator (Random): The random number generator.
 
         Returns:
-        - BranchRecommendation: The recommended branch and its evaluation.
+            TreeExplorationResult[NodeT]: The recommended branch and its evaluation.
 
         """
         # by default the first tree expansion is the creation of the tree node
@@ -220,15 +218,16 @@ def create_tree_exploration[StateT: TurnState](
     """Create a TreeExploration object with the specified dependencies.
 
     Args:
-    - node_selector_create: The factory function for creating the node selector.
-    - starting_state: The starting state for the exploration.
-    - tree_manager: The manager for the tree structure.
-    - tree_factory: The factory for creating the tree structure.
-    - stopping_criterion_args: The arguments for creating the stopping criterion.
-    - recommend_branch_after_exploration: The recommender rule for selecting the best branch after exploration.
+        node_selector_create (NodeSelectorFactory): Factory for creating the node selector.
+        starting_state (StateT): Starting state for exploration.
+        tree_manager (tree_man.AlgorithmNodeTreeManager): Manager for the tree structure.
+        tree_factory (ValueTreeFactory[StateT]): Factory for creating the tree structure.
+        stopping_criterion_args (AllStoppingCriterionArgs): Arguments for the stopping criterion.
+        recommend_branch_after_exploration (recommender_rule.AllRecommendFunctionsArgs): Recommender rule.
+        notify_percent_function (NotifyProgressCallable | None): Optional progress callback.
 
     Returns:
-    - TreeExploration: The created TreeExploration object.
+        TreeExploration[AlgorithmNode[StateT]]: The created TreeExploration object.
 
     """
     # creates the tree

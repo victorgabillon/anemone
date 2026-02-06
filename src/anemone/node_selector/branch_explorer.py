@@ -1,7 +1,7 @@
-"""This module contains the branchExplorer class and its subclasses.
-branchExplorer is responsible for exploring branches in a game tree.
-"""
+"""Provide branch explorers for game trees.
 
+BranchExplorer is responsible for exploring branches in a game tree.
+"""
 
 from enum import StrEnum
 from random import Random
@@ -31,14 +31,15 @@ class SamplingPriorities(StrEnum):
 
 
 class BranchExplorer:
-    """BranchExplorer is responsible for exploring branches in a game tree.
+    """Explore branches in a game tree.
+
     It provides a method to sample a child node to explore.
     """
 
     priority_sampling: SamplingPriorities
 
     def __init__(self, priority_sampling: SamplingPriorities) -> None:
-        """Initializes a branchExplorer instance.
+        """Initialize a BranchExplorer instance.
 
         Args:
             priority_sampling (SamplingPriorities): The priority sampling strategy to use.
@@ -53,7 +54,7 @@ class ZipfBranchExplorer(BranchExplorer):
     def __init__(
         self, priority_sampling: SamplingPriorities, random_generator: Random
     ) -> None:
-        """Initializes a ZipfbranchExplorer instance.
+        """Initialize a ZipfBranchExplorer instance.
 
         Args:
             priority_sampling (SamplingPriorities): The priority sampling strategy to use.
@@ -66,7 +67,7 @@ class ZipfBranchExplorer(BranchExplorer):
     def sample_branch_to_explore(
         self, tree_node_to_sample_from: AlgorithmNode[Any]
     ) -> BranchKey:
-        """Samples a child node to explore from the given tree node.
+        """Sample a child node to explore from the given tree node.
 
         Args:
             tree_node_to_sample_from (AlgorithmNode): The tree node to sample from.

@@ -1,3 +1,1 @@
-"""
-Tests package for anemone tree exploration module.
-"""
+"""Tests package for anemone tree exploration module."""

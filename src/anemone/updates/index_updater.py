@@ -1,6 +1,5 @@
 """Module containing the IndexUpdater for updating AlgorithmNode indices."""
 
-
 from typing import TYPE_CHECKING
 
 from anemone.indices.node_indices.index_data import (
@@ -29,7 +28,7 @@ class IndexUpdater:
     def create_update_instructions_after_node_birth(
         self, new_node: AlgorithmNode
     ) -> IndexUpdateInstructionsFromOneNode:
-        """Creates the update instructions block after a new node is added to the tree.
+        """Create the update instructions block after a new node is added to the tree.
 
         Args:
             new_node (AlgorithmNode): The newly added node.
@@ -50,7 +49,7 @@ class IndexUpdater:
         node_to_update: AlgorithmNode,
         updates_instructions: UpdateInstructionsTowardsOneParentNode,
     ) -> IndexUpdateInstructionsFromOneNode:
-        """Performs the index updates based on the given update instructions.
+        """Perform the index updates based on the given update instructions.
 
         Args:
             node_to_update (AlgorithmNode): The node to update.

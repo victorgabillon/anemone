@@ -1,4 +1,4 @@
-"""This module provides functionality for evaluating nodes in a tree structure.
+"""Provide functionality for evaluating nodes in a tree structure.
 
 The module includes a factory function for creating node evaluators, as well as classes for representing
 node evaluators, evaluation queries, and node evaluator arguments.

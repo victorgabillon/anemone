@@ -1,4 +1,4 @@
-"""This module contains the implementation of the RecurZipfBase class, which is a node selector for a branch selector tree.
+"""Provide the implementation of the RecurZipfBase class for branch selector trees.
 
 The RecurZipfBase class is responsible for selecting the next node to explore in a branch selector tree based on the RecurZipf algorithm.
 
@@ -6,7 +6,6 @@ Classes:
 - RecurZipfBase: The RecurZipfBase Node selector.
 
 """
-
 
 from dataclasses import dataclass
 from random import Random
@@ -50,12 +49,12 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         random_generator: Random,
         opening_instructor: OpeningInstructor,
     ) -> None:
-        """Initializes a new instance of the RecurZipfBase class.
+        """Initialize a new instance of the RecurZipfBase class.
 
         Args:
-        - args (RecurZipfBaseArgs): The arguments for the RecurZipfBase node selector.
-        - random_generator (random.Random): The random number generator.
-        - opening_instructor (OpeningInstructor): The opening instructor.
+            args (RecurZipfBaseArgs): Arguments for the node selector.
+            random_generator (Random): Random number generator.
+            opening_instructor (OpeningInstructor): Opening instructor.
 
         """
         self.opening_instructor = opening_instructor
@@ -69,14 +68,14 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
-        """Chooses the next node to explore and the branch to open.
+        """Choose the next node to explore and the branch to open.
 
         Args:
-        - tree (trees.Tree[AlgorithmNode]): The branch selector tree.
-        - latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
+            tree (trees.Tree[AlgorithmNode]): The branch selector tree.
+            latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
 
         Returns:
-        - OpeningInstructions: The instructions for opening the selected branch.
+            OpeningInstructions: Instructions for opening the selected branch.
 
         """
         # TODO: maybe proportions and proportions can be valuesorted dict with smart updates
@@ -105,7 +104,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return opening_instructions
 
     def __str__(self) -> str:
-        """Returns a string representation of the RecurZipfBase node selector.
+        """Return a string representation of the RecurZipfBase node selector.
 
         Returns:
         - str: The string representation of the RecurZipfBase node selector.

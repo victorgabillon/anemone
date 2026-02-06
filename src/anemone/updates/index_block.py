@@ -1,11 +1,9 @@
-"""Module defining the IndexUpdateInstructionsBlock class, which represents a block of update instructions for
-index values in a tree structure.
+"""Define IndexUpdateInstructionsBlock for index update instructions in a tree.
 
 The IndexUpdateInstructionsBlock class is a dataclass that contains a set of AlgorithmNode objects representing
 children with updated index values. It provides methods for merging update instructions and printing information
 about the block.
 """
-
 
 from dataclasses import dataclass, field
 from typing import Self
@@ -56,7 +54,7 @@ class IndexUpdateInstructionsTowardsOneParentNode:
         update_from_one_child_node: IndexUpdateInstructionsFromOneNode,
         branch_from_parent_to_child: BranchKey,
     ) -> None:
-        """Adds an update from a child node to the parent node.
+        """Add an update from a child node to the parent node.
 
         Args:
             update_from_one_child_node (IndexUpdateInstructionsFromOneNode): The update instructions from the child node.
@@ -67,7 +65,7 @@ class IndexUpdateInstructionsTowardsOneParentNode:
             self.branches_with_updated_index.add(branch_from_parent_to_child)
 
     def add_update_toward_one_parent_node(self, another_update: Self) -> None:
-        """Adds an update from another child node to the parent node.
+        """Add an update from another child node to the parent node.
 
         Args:
             another_update (Self): The update instructions from another child node.
@@ -88,5 +86,5 @@ class IndexUpdateInstructionsTowardsOneParentNode:
         return not bool(self.branches_with_updated_index)
 
     def print_info(self) -> None:
-        """Prints information about the branches with updated indices."""
+        """Print information about the branches with updated indices."""
         print(self.branches_with_updated_index)

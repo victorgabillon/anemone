@@ -1,6 +1,5 @@
 """Module that contains the logic to compute the exploration index of a node in a tree."""
 
-
 from math import inf
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -48,10 +47,11 @@ class NodeExplorationIndexManager(Protocol):
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """Updates the exploration index of the root node in the tree.
+        """Update the exploration index of the root node in the tree.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
 
         """
         ...
@@ -66,11 +66,14 @@ class NodeExplorationIndexManager(Protocol):
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """Updates the exploration index of a child node in the tree.
+        """Update the exploration index of a child node in the tree.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
 
@@ -92,10 +95,11 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """Updates the exploration index of the root node in the tree.
+        """Update the exploration index of the root node in the tree.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
 
         """
 
@@ -109,11 +113,14 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """Updates the exploration index of a child node in the tree.
+        """Update the exploration index of a child node in the tree.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
 
@@ -131,10 +138,11 @@ class UpdateIndexGlobalMinChange:
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """Updates the exploration index of the root node in the tree using the global minimum change strategy.
+        """Update the exploration index of the root node using the global minimum change strategy.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
 
         """
         root_value: float = root_node.tree_evaluation.get_value_white()
@@ -155,11 +163,14 @@ class UpdateIndexGlobalMinChange:
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """Updates the exploration index of a child node in the tree using the global minimum change strategy.
+        """Update the exploration index of a child node using the global minimum change strategy.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
 
@@ -221,10 +232,11 @@ class UpdateIndexZipfFactoredProba:
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """Updates the exploration index of the root node in the tree using the Zipf factored probability strategy.
+        """Update the exploration index of the root node using the Zipf factored probability strategy.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
 
         """
         _ = root_node
@@ -244,11 +256,14 @@ class UpdateIndexZipfFactoredProba:
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """Updates the exploration index of a child node in the tree using the Zipf factored probability strategy.
+        """Update the exploration index of a child node using the Zipf factored probability strategy.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
 
@@ -304,10 +319,11 @@ class UpdateIndexLocalMinChange:
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """Updates the exploration index of the root node in the tree using the local minimum change strategy.
+        """Update the exploration index of the root node using the local minimum change strategy.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
 
         """
         _ = root_node
@@ -328,11 +344,14 @@ class UpdateIndexLocalMinChange:
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """Updates the exploration index of a child node in the tree using the local minimum change strategy.
+        """Update the exploration index of a child node using the local minimum change strategy.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
 
@@ -510,7 +529,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
 def print_all_indices[NodeT: AlgorithmNode[Any]](
     tree: Tree[NodeT],
 ) -> None:
-    """Prints the exploration indices of all nodes in the given tree.
+    """Print the exploration indices of all nodes in the given tree.
 
     Args:
         tree (Tree): The tree containing the nodes.

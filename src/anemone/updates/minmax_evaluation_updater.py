@@ -1,6 +1,5 @@
 """Module containing the MinMaxEvaluationUpdater for algorithm node updates."""
 
-
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
@@ -16,12 +15,12 @@ class MinMaxEvaluationUpdater:
     """The MinMaxEvaluationUpdater class is responsible for updating the min-max evaluation values of AlgorithmNode objects."""
 
     def __init__(self) -> None:
-        """Initializes a new instance of the MinMaxEvaluationUpdater class."""
+        """Initialize a new instance of the MinMaxEvaluationUpdater class."""
 
     def create_update_instructions_after_node_birth(
         self, new_node: AlgorithmNode
     ) -> ValueUpdateInstructionsFromOneNode:
-        """Creates the update instructions for a newly created AlgorithmNode.
+        """Create the update instructions for a newly created AlgorithmNode.
 
         Args:
             new_node (AlgorithmNode): The newly created AlgorithmNode.
@@ -45,7 +44,7 @@ class MinMaxEvaluationUpdater:
         node_to_update: AlgorithmNode,
         updates_instructions: UpdateInstructionsTowardsOneParentNode,
     ) -> ValueUpdateInstructionsFromOneNode:
-        """Performs the updates on an AlgorithmNode based on the given update instructions.
+        """Perform the updates on an AlgorithmNode based on the given update instructions.
 
         Args:
             node_to_update (AlgorithmNode): The AlgorithmNode to update.

@@ -1,6 +1,5 @@
 """ValueTreeFactory."""
 
-
 from valanga import State
 
 from anemone import node_factory as nod_fac
@@ -25,21 +24,24 @@ class ValueTreeFactory[StateT: State = State]:
         node_factory: nod_fac.AlgorithmNodeFactory[StateT],
         node_direct_evaluator: NodeDirectEvaluator[StateT],
     ) -> None:
-        """Creates the tree factory
+        """Create the tree factory.
+
         Args:
-            node_factory:
-            node_evaluator:
+            node_factory: Factory used to create algorithm nodes.
+            node_direct_evaluator: Evaluator used to score nodes.
+
         """
         self.node_factory = node_factory
         self.node_direct_evaluator = node_direct_evaluator
 
     def create(self, starting_state: StateT) -> Tree[AlgorithmNode[StateT]]:
-        """Creates the tree.
+        """Create the tree.
 
         Args:
             starting_state: the starting position
 
         Returns:
+            Tree[AlgorithmNode[StateT]]: The created tree.
 
         """
         root_node: AlgorithmNode[StateT] = self.node_factory.create(

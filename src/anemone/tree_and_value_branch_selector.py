@@ -1,11 +1,10 @@
 """Module for Tree and Value Branch Selector."""
 
-
 from dataclasses import dataclass
 from random import Random
 
 from valanga import TurnState
-from valanga.policy import Recommendation
+from valanga.policy import NotifyProgressCallable, Recommendation
 
 from anemone.basics import Seed
 from anemone.progress_monitor.progress_monitor import (
@@ -16,7 +15,6 @@ from anemone.search_factory import NodeSelectorFactory
 from . import recommender_rule
 from . import tree_manager as tree_man
 from .tree_exploration import (
-    NotifyProgressCallable,
     TreeExploration,
     create_tree_exploration,
 )
@@ -52,14 +50,15 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         seed: Seed,
         notify_progress: NotifyProgressCallable | None = None,
     ) -> Recommendation:
-        """Selects the best branch based on the tree and value strategy.
+        """Select the best branch based on the tree and value strategy.
 
         Args:
-        - state: The current state to explore.
-        - selection_seed: The seed used for randomization during branch selection.
+            state (StateT): The current state to explore.
+            seed (Seed): The seed used for randomization during branch selection.
+            notify_progress (NotifyProgressCallable | None): Optional progress callback.
 
         Returns:
-        - The recommended branch based on the tree and value strategy.
+            Recommendation: The recommended branch based on the tree and value strategy.
 
         """
         tree_exploration: TreeExploration = self.create_tree_exploration(
@@ -91,5 +90,5 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         return tree_exploration
 
     def print_info(self) -> None:
-        """Prints information about the branch selector type."""
+        """Print information about the branch selector type."""
         print("type: Tree and Value")

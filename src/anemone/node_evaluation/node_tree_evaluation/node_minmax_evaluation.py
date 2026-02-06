@@ -1,16 +1,12 @@
+"""Provide the implementation of the NodeMinmaxEvaluation class for Minimax evaluation.
 
-"""This module contains the implementation of the NodeMinmaxEvaluation class, which represents a node in a tree structure
- used for the Minimax algorithm evaluation.
+The NodeMinmaxEvaluation class stores information about a tree node evaluation, including the
+estimated value for the white player, the computed Minimax value, the best branch sequence, and
+children sorted by their evaluations.
 
-The NodeMinmaxEvaluation class stores information about the evaluation of a tree node, including the estimated value
- for the white player, the computed value using the Minimax procedure, the best node sequence, and the children of
-  the tree node sorted by their evaluations.
-
-It also provides methods for accessing and manipulating the evaluation values, determining the subjective value from
- the point of view of the player to branch, finding the best child node, checking if the node is over, and printing
- information about the node.
-
-Note: This code snippet is a partial implementation and may require additional code to work properly.
+It also provides methods for accessing and manipulating evaluation values, determining subjective
+values from the point of view of the player to branch, finding the best child node, checking if the
+node is over, and printing information about the node.
 """
 
 # TODO: maybe further split values from over?
@@ -126,7 +122,7 @@ class NodeMinmaxEvaluation[
 
     @property
     def branches_sorted_by_value(self) -> dict[BranchKey, BranchSortValue]:
-        """Returns a dictionary containing the branches of the node sorted by their values.
+        """Return a dictionary containing the branches of the node sorted by their values.
 
         Returns:
             dict[BranchKey, BranchSortValue]: A dictionary where the keys are the branches in the node and
@@ -136,7 +132,7 @@ class NodeMinmaxEvaluation[
         return self.branches_sorted_by_value_
 
     def get_value_white(self) -> float:
-        """Returns the best estimation of the value for white in this node.
+        """Return the best estimation of the value for white in this node.
 
         Returns:
             float: The best estimation of the value for white in this node.
@@ -192,7 +188,7 @@ class NodeMinmaxEvaluation[
         )
 
     def subjective_value_of(self, another_node_eval: Self) -> float:
-        """Calculates the subjective value of the current node evaluation based on the player to branch.
+        """Calculate the subjective value of the current node evaluation based on the player to branch.
 
         Args:
             another_node_eval (Self): The evaluation of another node.
@@ -208,7 +204,7 @@ class NodeMinmaxEvaluation[
         return subjective_value
 
     def best_branch(self) -> BranchKey | None:
-        """Returns the best branch node based on the subjective value.
+        """Return the best branch node based on the subjective value.
 
         Returns:
             The best branch based on the subjective value, or None if there are no branch open.
@@ -222,7 +218,7 @@ class NodeMinmaxEvaluation[
         return best_branch
 
     def best_branch_not_over(self) -> BranchKey:
-        """Returns the best branch that is not leading to a game-over.
+        """Return the best branch that is not leading to a game-over.
 
         Returns:
             The best branch that is not leading to a game-over.
@@ -240,7 +236,7 @@ class NodeMinmaxEvaluation[
         raise NoAvailableBranchError
 
     def best_branch_value(self) -> BranchSortValue | None:
-        """Returns the value of the best branch.
+        """Return the value of the best branch.
 
         If the `branches_sorted_by_value` dictionary is not empty, it returns the value of the first child node with
         the highest subjective value. Otherwise, it returns None.
@@ -258,7 +254,7 @@ class NodeMinmaxEvaluation[
         return best_value
 
     def second_best_branch(self) -> BranchKey:
-        """Returns the second-best branch based on the subjective value.
+        """Return the second-best branch based on the subjective value.
 
         Returns:
             The second-best branch.
@@ -270,7 +266,7 @@ class NodeMinmaxEvaluation[
         return second_best_branch
 
     def is_over(self) -> bool:
-        """Checks if the game is over.
+        """Check if the game is over.
 
         Returns:
             bool: True if the game is over, False otherwise.
@@ -279,7 +275,7 @@ class NodeMinmaxEvaluation[
         return self.over_event.is_over()
 
     def is_win(self) -> bool:
-        """Checks if the current game state is a win.
+        """Check if the current game state is a win.
 
         Returns:
             bool: True if the game state is a win, False otherwise.
@@ -288,7 +284,7 @@ class NodeMinmaxEvaluation[
         return self.over_event.is_win()
 
     def is_draw(self) -> bool:
-        """Checks if the current game state is a draw.
+        """Check if the current game state is a draw.
 
         Returns:
             bool: True if the game state is a draw, False otherwise.
@@ -297,7 +293,7 @@ class NodeMinmaxEvaluation[
         return self.over_event.is_draw()
 
     def is_winner(self, player: Color) -> bool:
-        """Determines if the specified player is the winner.
+        """Determine if the specified player is the winner.
 
         Args:
             player (Color): The color of the player to check.
@@ -309,7 +305,7 @@ class NodeMinmaxEvaluation[
         return self.over_event.is_winner(player)
 
     def print_branches_sorted_by_value(self) -> None:
-        """Prints the branches sorted by their subjective sort value.
+        """Print the branches sorted by their subjective sort value.
 
         The method iterates over the branch_sorted_by_value dictionary and prints each branch along with its
         subjective sort value. The output is formatted as follows:
@@ -334,7 +330,7 @@ class NodeMinmaxEvaluation[
         print("")
 
     def print_branches_sorted_by_value_and_exploration(self) -> None:
-        """Prints the branch of the node sorted by their value and exploration.
+        """Print the branch of the node sorted by their value and exploration.
 
         This method prints the branches of the node along with their subjective sort value.
         The branches are sorted based on their value and exploration.
@@ -356,7 +352,7 @@ class NodeMinmaxEvaluation[
         anemone_logger.info(string_info)
 
     def print_branches_not_over(self) -> None:
-        """Prints the branches that are not over.
+        """Print the branches that are not over.
 
         This method prints the branches that are not marked as 'over'.
         It iterates over the `branches_not_over` list and prints each child's ID.
@@ -373,7 +369,7 @@ class NodeMinmaxEvaluation[
         print(" ")
 
     def print_info(self) -> None:
-        """Prints information about the node.
+        """Print information about the node.
 
         This method prints the ID of the node, the branches of its children, the children sorted by value,
         and the children that are not over.
@@ -385,7 +381,7 @@ class NodeMinmaxEvaluation[
         # TODO: probably more to print...
 
     def record_sort_value_of_child(self, branch_key: BranchKey) -> None:
-        """Stores the subjective value of the branch in the self.branches_sorted_by_value (automatically sorted).
+        """Store the subjective value of the branch in self.branches_sorted_by_value (automatically sorted).
 
         Args:
             branch_key (BranchKey): The branch key whose value needs to be recorded.
@@ -466,7 +462,7 @@ class NodeMinmaxEvaluation[
         return value_1 > value_2 - epsilon and value_2 > value_1 - epsilon
 
     def becoming_over_from_children(self) -> None:
-        """This node is asked to switch to over status.
+        """Switch the node to over status.
 
         This method is called when the node is requested to switch to the "over" status. It performs the necessary
         operations to update the node's status and determine the winner.
@@ -534,7 +530,7 @@ class NodeMinmaxEvaluation[
         return is_newly_over
 
     def update_branches_values(self, branches_to_consider: set[BranchKey]) -> None:
-        """Updates the values of the branches based on the given set of branches to consider.
+        """Update the values of the branches based on the given set of branches to consider.
 
         Args:
             branches_to_consider (set[BranchKey]): The set of branches to consider.
@@ -548,7 +544,7 @@ class NodeMinmaxEvaluation[
         self.branches_sorted_by_value_ = sort_dic(self.branches_sorted_by_value_)
 
     def sort_branches_not_over(self) -> list[BranchKey]:
-        """Sorts the branches that are not over based on their value.
+        """Sort the branches that are not over based on their value.
 
         Returns:
             A sorted list of branches that are not over.
@@ -563,7 +559,7 @@ class NodeMinmaxEvaluation[
         ]  # TODO: is this a fast way to do it?
 
     def update_value_minmax(self) -> None:
-        """Updates the minmax value for the current node based on the best child node's evaluation.
+        """Update the minmax value for the current node based on the best child node's evaluation.
 
         If all the children of the current node have been evaluated, the minmax value is set to the best child's
         evaluation value. Otherwise, if not all children have been evaluated, the minmax value is determined by
@@ -597,8 +593,9 @@ class NodeMinmaxEvaluation[
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
     ) -> bool:
-        """Updates the best branch sequence based on the notification from children nodes identified through their
-        corresponding branch.
+        """Update the best branch sequence based on notifications from children nodes.
+
+        This uses the branch keys that identify children which updated their best-branch sequence.
 
         Args:
             branches_with_updated_best_branch_seq (set[Ibranch]): A set of branch that have
@@ -654,7 +651,7 @@ class NodeMinmaxEvaluation[
         assert self.best_branch_sequence
 
     def is_value_subjectively_better_than_evaluation(self, value_white: float) -> bool:
-        """Checks if the given value_white is subjectively better than the value_white_evaluator.
+        """Check if the given value_white is subjectively better than the value_white_evaluator.
 
         Args:
             value_white (float): The value to compare with the value_white_evaluator.
@@ -670,7 +667,7 @@ class NodeMinmaxEvaluation[
     def minmax_value_update_from_children(
         self, branches_with_updated_value: set[BranchKey]
     ) -> tuple[bool, bool]:
-        """Updates the value and best branch of the node based on the updated values of its children.
+        """Update the value and best branch of the node based on updated child values.
 
         Args:
             branches_with_updated_value (set[Ibranch]): A set of branches with updated values.
@@ -740,7 +737,7 @@ class NodeMinmaxEvaluation[
         return has_value_changed, has_best_node_seq_changed
 
     def dot_description(self) -> str:
-        """Returns a string representation of the node's description in DOT format.
+        """Return a string representation of the node's description in DOT format.
 
         The description includes the values of `value_white_minmax` and `value_white_evaluator`,
         as well as the best branch sequence and the over event tag.
@@ -771,7 +768,7 @@ class NodeMinmaxEvaluation[
         )
 
     def description_best_branch_sequence(self) -> str:
-        """Returns a string representation of the best branch sequence.
+        """Return a string representation of the best branch sequence.
 
         This method iterates over the best node sequence and constructs a string representation
         of the branches in the sequence. Each branch is appended to the result string, separated by an underscore.
@@ -787,21 +784,19 @@ class NodeMinmaxEvaluation[
         return res
 
     def description_tree_visualizer_branch(self, child: ITreeNode[StateT]) -> str:
-        """Returns a string representation of the branch for the tree visualizer.
+        """Return a string representation of the branch for the tree visualizer.
 
-        Parameters
-        ----------
-        - child (Any): The child node representing the branch.
+        Args:
+            child (ITreeNode[StateT]): The child node representing the branch.
 
-        Returns
-        -------
-        - str: A string representation of the branch for the tree visualizer.
+        Returns:
+            str: A string representation of the branch for the tree visualizer.
 
         """
         return ""
 
     def print_best_line(self) -> None:
-        """Prints the best line from the current node to the leaf node.
+        """Print the best line from the current node to the leaf node.
 
         The best line is determined by following the sequence of child nodes with the highest values.
         Each child node is printed along with its corresponding branch and node ID.
@@ -820,7 +815,7 @@ class NodeMinmaxEvaluation[
         anemone_logger.info(info_string)
 
     def my_logit(self, x: float) -> float:
-        """Applies the logit function to the input value.
+        """Apply the logit function to the input value.
 
         Args:
             x (float): The input value.
@@ -837,7 +832,7 @@ class NodeMinmaxEvaluation[
     def get_all_of_the_best_branches(
         self, how_equal: str | None = None
     ) -> list[BranchKey]:
-        """Returns a list of all the best branches based on the specified equality criteria.
+        """Return a list of all the best branches based on the specified equality criteria.
 
         Args:
             how_equal (str | None): The equality criteria to determine the best branches.

@@ -5,7 +5,6 @@ Classes:
 - UpdateInstructionsBatch: Represents a batch of update instructions for multiple nodes.
 """
 
-
 from dataclasses import dataclass, field
 from typing import Self
 
@@ -62,11 +61,11 @@ class UpdateInstructionsTowardsOneParentNode:
         update_from_a_child_node: UpdateInstructionsFromOneNode,
         branch_from_parent_to_child: BranchKey,
     ) -> None:
-        """Adds update instructions from a child node.
+        """Add update instructions from a child node.
 
         Args:
-        - update_from_a_child_node: The update instructions from the child node.
-        - branch_from_parent_to_child: The branch key from the parent to the child.
+            update_from_a_child_node: The update instructions from the child node.
+            branch_from_parent_to_child: The branch key from the parent to the child.
 
         """
         assert self.value_updates_toward_one_parent_node is not None
@@ -86,10 +85,10 @@ class UpdateInstructionsTowardsOneParentNode:
                 )
 
     def add_updates_towards_one_parent_node(self, another_update: Self) -> None:
-        """Adds update instructions from another UpdateInstructionsTowardsOneParentNode.
+        """Add update instructions from another UpdateInstructionsTowardsOneParentNode.
 
         Args:
-        - another_update: The other update instructions to add.
+            another_update: The other update instructions to add.
 
         """
         assert self.value_updates_toward_one_parent_node is not None
@@ -107,7 +106,7 @@ class UpdateInstructionsTowardsOneParentNode:
                 )
 
     def print_info(self) -> None:
-        """Prints information about the update instructions."""
+        """Print information about the update instructions."""
         print("printing info of update instructions")
         assert (
             self.index_updates_toward_one_parent_node is not None
@@ -117,7 +116,7 @@ class UpdateInstructionsTowardsOneParentNode:
         self.index_updates_toward_one_parent_node.print_info()
 
     def empty(self) -> bool:
-        """Checks if the update instructions are empty.
+        """Check if the update instructions are empty.
 
         Returns:
         - True if the update instructions are empty, False otherwise.
@@ -151,7 +150,7 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
         parent_node: NodeT,
         branch_from_parent: BranchKey,
     ) -> None:
-        """Adds update instructions from a child node to a parent node.
+        """Add update instructions from a child node to a parent node.
 
         Args:
             update_from_child_node: The update instructions from the child node.
@@ -217,7 +216,7 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
         update_from_child_node: UpdateInstructionsTowardsOneParentNode,
         parent_node: NodeT,
     ) -> None:
-        """Adds update instructions from another UpdateInstructionsTowardsOneParentNode to a parent node.
+        """Add update instructions from another UpdateInstructionsTowardsOneParentNode to a parent node.
 
         Args:
             update_from_child_node: The update instructions from another UpdateInstructionsTowardsOneParentNode.
@@ -241,7 +240,7 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
         return self.one_node_instructions.popitem()
 
     def __bool__(self) -> bool:
-        """Checks if the data structure is non-empty.
+        """Check if the data structure is non-empty.
 
         Returns:
             bool: True if the data structure is non-empty, False otherwise.

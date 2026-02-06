@@ -90,4 +90,6 @@ def suppress_all_logging(level: int = ERROR) -> Generator[None]:
         for name, original_level in original_levels.items():
             getLogger(name).setLevel(original_level)
         root_logger.setLevel(original_root_level)
+
+
 """Logging helpers for anemone."""

@@ -1,11 +1,9 @@
-"""Module containing AlgorithmNodeUpdater for updating AlgorithmNode objects in a
- tree structure.
+"""Provide AlgorithmNodeUpdater for updating AlgorithmNode objects in a tree structure.
 
 The AlgorithmNodeUpdater class provides methods for creating update instructions after a node is added to the
  tree, generating update instructions for a batch of tree expansions, and performing updates on a specific node
   based on the given update instructions.
 """
-
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -45,7 +43,7 @@ class AlgorithmNodeUpdater:
     def create_update_instructions_after_node_birth(
         self, new_node: AlgorithmNode
     ) -> UpdateInstructionsFromOneNode:
-        """Creates update instructions after a new node is added to the tree.
+        """Create update instructions after a new node is added to the tree.
 
         Args:
             new_node (AlgorithmNode): The newly added AlgorithmNode.
@@ -83,7 +81,7 @@ class AlgorithmNodeUpdater:
     def generate_update_instructions[NodeT: AlgorithmNode](
         self, tree_expansions: "TreeExpansions[NodeT]"
     ) -> "UpdateInstructionsTowardsMultipleNodes[NodeT]":
-        """Generates update instructions for a batch of tree expansions.
+        """Generate update instructions for a batch of tree expansions.
 
         Args:
             tree_expansions (tree_man.TreeExpansions): The batch of tree expansions.
@@ -123,7 +121,7 @@ class AlgorithmNodeUpdater:
         node_to_update: AlgorithmNode,
         update_instructions: UpdateInstructionsTowardsOneParentNode,
     ) -> UpdateInstructionsFromOneNode:
-        """Performs updates on a specific node based on the given update instructions.
+        """Perform updates on a specific node based on the given update instructions.
 
         Args:
             node_to_update (AlgorithmNode): The node to update.

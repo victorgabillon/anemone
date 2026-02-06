@@ -1,5 +1,4 @@
-"""This module contains the definition of the NodeSelector class and related types."""
-
+"""Define the NodeSelector class and related types."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
@@ -26,7 +25,7 @@ class NodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
         tree: trees.Tree[NodeT],
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
-        """Selects a node from the given tree and returns the instructions to open a branch.
+        """Select a node from the given tree and return the instructions to open a branch.
 
         Args:
             tree: The tree containing the nodes.

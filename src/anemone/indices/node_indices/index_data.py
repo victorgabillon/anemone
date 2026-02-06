@@ -30,7 +30,7 @@ class NodeExplorationData[
     index: float | None = None
 
     def dot_description(self) -> str:
-        """Returns a string representation of the dot description for the index.
+        """Return a string representation of the dot description for the index.
 
         Returns:
             str: The dot description of the index.
@@ -59,7 +59,7 @@ class RecurZipfQuoolExplorationData[
     zipf_factored_proba: float | None = None
 
     def dot_description(self) -> str:
-        """Returns a string representation of the index and zipf_factored_proba values.
+        """Return a string representation of the index and zipf_factored_proba values.
 
         Returns:
             str: A string representation of the index and zipf_factored_proba values.
@@ -110,7 +110,7 @@ class IntervalExplo[
     interval: Interval | None = field(default_factory=Interval)
 
     def dot_description(self) -> str:
-        """Returns a string representation of the interval values.
+        """Return a string representation of the interval values.
 
         If the interval is None, returns 'None'.
         Otherwise, returns a string in the format 'min_interval_value: {min_value}, max_interval_value: {max_value}'.
@@ -134,7 +134,7 @@ class MaxDepthDescendants[
     max_depth_descendants: int = 0
 
     def update_from_child(self, child_max_depth_descendants: int) -> bool:
-        """Updates the max_depth_descendants value based on the child's max_depth_descendants.
+        """Update the max_depth_descendants value based on the child's max_depth_descendants.
 
         Args:
             child_max_depth_descendants (int): The max_depth_descendants value of the child node.
@@ -153,7 +153,7 @@ class MaxDepthDescendants[
         return has_index_changed
 
     def dot_description(self) -> str:
-        """Returns a string representation of the dot description for the node indices.
+        """Return a string representation of the dot description for the node indices.
 
         Returns:
             str: The dot description for the node indices.

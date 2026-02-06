@@ -1,6 +1,5 @@
 """Provide the NodeTreeEvaluation interface."""
 
-
 from typing import TYPE_CHECKING, Protocol, Self
 
 from valanga import (
@@ -18,9 +17,10 @@ if TYPE_CHECKING:
 
 
 class NodeTreeEvaluation[StateT: State = State](Protocol):
-    """Interface for Node Tree Evaluation
-    This is the evaluation of a node that is based both on a direct evaluation of the state within and of the NodeTreeEvaluation
-    and its children.
+    """Interface for node tree evaluation.
+
+    This is the evaluation of a node that is based both on a direct evaluation of the state within
+    the NodeTreeEvaluation and its children.
     The direct evaluation is used to evaluate leaf nodes, while the children evaluations are used to propagate values up the tree.
 
     """
@@ -57,7 +57,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         ...
 
     def is_over(self) -> bool:
-        """Checks if the game is over.
+        """Check if the game is over.
 
         Returns:
             bool: True if the game is over, False otherwise.
@@ -66,7 +66,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         ...
 
     def dot_description(self) -> str:
-        """Returns a string representation of the node's description in DOT format.
+        """Return a string representation of the node's description in DOT format.
 
         The description includes the values of `value_white_minmax` and `value_white_evaluator`,
         as well as the best branch sequence and the over event tag.

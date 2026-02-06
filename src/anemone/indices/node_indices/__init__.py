@@ -1,4 +1,4 @@
-"""This module provides functionality for managing node indices in the tree value package.
+"""Provide functionality for managing node indices in the tree value package.
 
 The following classes and functions are available:
 

@@ -1,4 +1,4 @@
-"""This module defines the enumeration for index computation types."""
+"""Define the enumeration for index computation types."""
 
 from enum import StrEnum
 

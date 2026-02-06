@@ -1,6 +1,5 @@
 """Tree."""
 
-
 from typing import Any
 
 from anemone.basics import TreeDepth
@@ -54,7 +53,7 @@ class Tree[NodeT: ITreeNode[Any]]:
         return self._root_node
 
     def node_depth(self, node: NodeT) -> int:
-        """Calculates the depth of a given node in the tree.
+        """Calculate the depth of a given node in the tree.
 
         Args:
             node: The node for which to calculate the depth.

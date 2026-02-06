@@ -1,6 +1,5 @@
 """Module containing the TreeManager class for managing tree expansions."""
 
-
 from typing import TYPE_CHECKING, Any
 
 from valanga import BranchKey, State, StateModifications, StateTag
@@ -165,7 +164,7 @@ class TreeManager[
         tree: trees.Tree[FamilyT],
         opening_instructions: OpeningInstructions[FamilyT],
     ) -> TreeExpansions[FamilyT]:
-        """Opening multiple nodes based on the opening instructions.
+        """Open multiple nodes based on the opening instructions.
 
         Args:
             tree: The tree object.

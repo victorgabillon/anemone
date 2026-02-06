@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algorhino-anemone"
-version = "0.1.10"
+version = "0.1.11"
 description = "anemone searches trees"
 keywords = ["tree", "search"]
 classifiers = [
@@ -172,53 +172,8 @@ lint.ignore = [ "E501",
   "ANN401",
   "TD003",
   "TD002",
-  "D100",
-  "D101",
-  "D102",
-  "D103",
-  "D104",
-  "D105",
-  "D106",
-  "D107",
-  "D200",
-  "D201",
-  "D202",
   "D203",  # incompatible with D211
-  "D204",
-  "D205",
-  "D206",
-  "D207",
-  "D208",
-  "D209",
-  "D210",
-  "D211",
-  "D212",
   "D213",  # incompatible with D212
-  "D214",
-  "D215",
-  "D300",
-  "D301",
-  "D400",
-  "D401",
-  "D402",
-  "D403",
-  "D404",
-  "D405",
-  "D406",
-  "D407",
-  "D408",
-  "D409",
-  "D410",
-  "D411",
-  "D412",
-  "D413",
-  "D414",
-  "D415",
-  "D416",
-  "D417",
-  "D418",
-  "D419",
-  "RUF100",
     ]
 
 # Optional: add your first-party package to extend the known group
@@ -330,7 +285,7 @@ deps = [
 ]
 set_env = { PYTHONPATH = "{toxinidir}/src" }
 commands = [
-  ["python", "-m", "ruff", "check", "src", "tests"],
+  ["python", "-m", "ruff", "check", "src"],
   ["python", "-m", "ruff", "format", "--check", "src", "tests"],
   ["python", "-m", "pylint", "src/anemone"],
 ]

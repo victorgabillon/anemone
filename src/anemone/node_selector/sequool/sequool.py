@@ -1,6 +1,5 @@
 """Module implementing the Sequool node selector."""
 
-
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from random import Random
@@ -63,11 +62,8 @@ class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol
 
 
 def _make_count_visits() -> dict[TreeDepth, int]:
-    """Helper function to create a default count visits dictionary."""
+    """Create a default count visits dictionary."""
     return {}
-
-
-count_visits: dict[TreeDepth, int] = _make_count_visits()
 
 
 @dataclass
@@ -260,7 +256,7 @@ class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 def get_best_node_from_candidates[N: AlgorithmNode[Any]](
     nodes_to_consider: list[N],
 ) -> N:
-    """Returns the best node from a list of candidate nodes based on their exploration index and depth.
+    """Return the best node from a list of candidate nodes based on their exploration index and depth.
 
     Args:
         nodes_to_consider (list[ITreeNode]): A list of candidate nodes to consider.

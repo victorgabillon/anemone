@@ -56,7 +56,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
     ]
     | None,
 ) -> TreeAndValueBranchSelector[StateT]:
-    """Convenience constructor using the default minmax tree evaluation.
+    """Create a branch selector using the default minmax tree evaluation.
 
     This keeps the existing API stable, while allowing advanced users to inject a
     different tree-evaluation strategy via
@@ -89,9 +89,12 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     """Create a TreeAndValueBranchSelector object with the given arguments.
 
     Args:
-        args (TreeAndValuePlayerArgs): The arguments for creating the TreeAndValueBranchSelector.
-        syzygy (SyzygyTable | None): The SyzygyTable object for tablebase endgame evaluation.
-        random_generator (random.Random): The random number generator.
+        state_type (type[StateT]): The state type for the search.
+        args (TreeAndValuePlayerArgs): Arguments for creating the selector.
+        random_generator (Random): The random number generator.
+        master_state_evaluator (MasterStateEvaluator): Evaluator for state values.
+        state_representation_factory (RepresentationFactory | None): Optional state representation factory.
+        node_tree_evaluation_factory (NodeTreeEvaluationFactory[StateT]): Factory for node tree evaluations.
 
     Returns:
         TreeAndValueBranchSelector: The created TreeAndValueBranchSelector object.

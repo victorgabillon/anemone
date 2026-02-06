@@ -1,4 +1,4 @@
-"""This module provides functionality for creating tree and value builders for the TreeAndValuePlayer.
+"""Provide functionality for creating tree and value builders for the TreeAndValuePlayer.
 
 The TreeAndValuePlayerArgs class represents the arguments for configuring the TreeAndValuePlayer.
 The create_tree_and_value_builders function is used to create the tree and value builders.
