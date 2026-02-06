@@ -1,5 +1,4 @@
-"""
-This module provides functionality for managing algorithm node trees.
+"""This module provides functionality for managing algorithm node trees.
 
 The module includes classes for creating and managing algorithm node tree managers,
 expanding tree structures, and managing tree expansions.

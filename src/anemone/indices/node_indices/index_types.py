@@ -1,18 +1,16 @@
-"""
-This module defines the enumeration for index computation types.
-"""
+"""This module defines the enumeration for index computation types."""
 
 from enum import StrEnum
 
 
 class IndexComputationType(StrEnum):
-    """
-    Enumeration for index computation types.
+    """Enumeration for index computation types.
 
     Attributes:
         MinGlobalChange (str): Represents the minimum global change computation type.
         MinLocalChange (str): Represents the minimum local change computation type.
         RecurZipf (str): Represents the recurzipf computation type.
+
     """
 
     MIN_GLOBAL_CHANGE = "min_global_change"

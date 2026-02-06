@@ -1,6 +1,4 @@
-"""
-Torch-based MasterStateEvaluator for efficient batch evaluations.
-"""
+"""Torch-based MasterStateEvaluator for efficient batch evaluations."""
 # pyright: reportMissingImports=false
 
 from collections.abc import Sequence
@@ -22,8 +20,7 @@ if TYPE_CHECKING:
 
 @dataclass(slots=True)
 class TorchMasterNNStateEvaluator(MasterStateEvaluator):
-    """
-    Torch-backed MasterStateEvaluator that supports efficient batch evaluation.
+    """Torch-backed MasterStateEvaluator that supports efficient batch evaluation.
     This lives in an optional module so anemone core has no torch dependency.
     """
 

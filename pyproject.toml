@@ -161,11 +161,11 @@ target-version = "py313"
 
 # Enable import sorting (alphabetical + group order)
 lint.select = ["I", "F", "E", "B", "TCH","UP","SIM", "RUF","RET","N","A",
-"ANN", "PERF", "TRY","LOG","RSE","ICN","TID","Q","W",
+"ANN", "PERF", "TRY","LOG","RSE","ICN","TID","Q","W","D",
 "ISC","PIE","ERA","TD"]  # I = imports, F = pyflakes, E = pycodestyle, TCH = type-checking, B = black
 
 # Allow auto-fixing for imports and type-checking imports
-lint.fixable = ["I", "TCH", "F401","UP","SIM","RET","RUF","E","TRY","PERF","RSE","ANN","PIE","ERA","TD"]
+lint.fixable = ["I", "TCH", "D","F401","UP","SIM","RET","RUF","E","TRY","PERF","RSE","ANN","PIE","ERA","TD"]
 
 # Ignore rules you don't care about
 lint.ignore = [ "E501",

@@ -1,6 +1,4 @@
-"""
-Tree expansion representations for managing game trees.
-"""
+"""Tree expansion representations for managing game trees."""
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -16,8 +14,7 @@ NodeT = TypeVar("NodeT", bound=node.ITreeNode[Any])
 
 @dataclass(slots=True)
 class TreeExpansion[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
-    """
-    Represents a single tree expansion.
+    """Represents a single tree expansion.
 
     Attributes:
         child_node: The child node connected or created during the expansion.
@@ -25,6 +22,7 @@ class TreeExpansion[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
         state_modifications: The state modifications produced by the transition.
         creation_child_node: Whether a new node was created during the expansion.
         branch_key: The branch key from parent to child.
+
     """
 
     child_node: NodeT
@@ -49,7 +47,6 @@ def record_tree_expansion(
     tree_expansion: TreeExpansion[NodeT],
 ) -> None:
     """Apply one TreeExpansion's bookkeeping to a tree + its log."""
-
     if tree_expansion.creation_child_node:
         tree.nodes_count += 1
         tree.descendants.add_descendant(tree_expansion.child_node)
@@ -64,12 +61,12 @@ def _new_expansions_list() -> list[TreeExpansion[Any]]:
 
 @dataclass(slots=True)
 class TreeExpansions[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
-    """
-    Represents a collection of tree expansions for bookkeeping.
+    """Represents a collection of tree expansions for bookkeeping.
 
     Attributes:
         expansions_with_node_creation: Expansions where child nodes were created.
         expansions_without_node_creation: Expansions where child nodes already existed.
+
     """
 
     expansions_with_node_creation: list[TreeExpansion[NodeT]] = field(
@@ -86,11 +83,11 @@ class TreeExpansions[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
         )
 
     def add(self, tree_expansion: TreeExpansion[NodeT]) -> None:
-        """
-        Add a tree expansion to the collection.
+        """Add a tree expansion to the collection.
 
         Args:
             tree_expansion: The tree expansion to add.
+
         """
         if tree_expansion.creation_child_node:
             self.add_creation(tree_expansion=tree_expansion)
@@ -98,20 +95,20 @@ class TreeExpansions[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
             self.add_connection(tree_expansion=tree_expansion)
 
     def add_creation(self, tree_expansion: TreeExpansion[NodeT]) -> None:
-        """
-        Add a tree expansion with a newly created child node.
+        """Add a tree expansion with a newly created child node.
 
         Args:
             tree_expansion: The tree expansion to add.
+
         """
         self.expansions_with_node_creation.append(tree_expansion)
 
     def add_connection(self, tree_expansion: TreeExpansion[NodeT]) -> None:
-        """
-        Add a tree expansion that only connects to an existing node.
+        """Add a tree expansion that only connects to an existing node.
 
         Args:
             tree_expansion: The tree expansion to add.
+
         """
         self.expansions_without_node_creation.append(tree_expansion)
 

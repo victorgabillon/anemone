@@ -1,6 +1,4 @@
-"""
-Module to check if an object is a dataclass
-"""
+"""Module to check if an object is a dataclass."""
 
 from collections.abc import Iterable
 from enum import Enum
@@ -8,8 +6,7 @@ from typing import Any, ClassVar, Protocol, no_type_check
 
 
 class DataClass(Protocol):
-    """
-    Protocol to represent a dataclass.
+    """Protocol to represent a dataclass.
 
     This protocol is used to check if an object is a dataclass by checking
     for the presence of the `__dataclass_fields__` attribute.
@@ -19,8 +16,7 @@ class DataClass(Protocol):
 
 
 class IsDataclass(Protocol):
-    """
-    Protocol to represent a dataclass.
+    """Protocol to represent a dataclass.
 
     This protocol is used to check if an object is a dataclass by checking
     for the presence of the `__dataclass_fields__` attribute.
@@ -39,6 +35,7 @@ def custom_asdict_factory(data: Iterable[tuple[Any, Any]]) -> dict[Any, Any]:
 
     Returns:
         dict[Any, Any]: The converted dictionary.
+
     """
 
     @no_type_check
@@ -50,6 +47,7 @@ def custom_asdict_factory(data: Iterable[tuple[Any, Any]]) -> dict[Any, Any]:
 
         Returns:
             Any: The converted value.
+
         """
         if isinstance(obj, Enum):
             return obj.value

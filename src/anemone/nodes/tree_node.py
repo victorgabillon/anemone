@@ -1,6 +1,4 @@
-"""
-This module defines the TreeNode class, which represents a node in a tree structure.
-"""
+"""This module defines the TreeNode class, which represents a node in a tree structure."""
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -17,8 +15,7 @@ class TreeNode[
     FamilyT: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ]:
-    r"""
-    The TreeNode class stores information about a specific state, including its depth
+    r"""The TreeNode class stores information about a specific state, including its depth
     and the parent-child relationships with other nodes.
 
     Attributes:
@@ -43,6 +40,7 @@ class TreeNode[
         is_over(): Checks if the state is terminal.
         print_branches_children(): Prints the branches-children links of the node.
         dot_description(): Returns the dot description of the node.
+
     """
 
     # id is a number to identify this node for easier debug
@@ -87,83 +85,82 @@ class TreeNode[
 
         Returns:
             StateTag: The fast tag representation of the state.
+
         """
         return self.state_.tag
 
     @property
     def id(self) -> int:
-        """
-        Returns the ID of the tree node.
+        """Returns the ID of the tree node.
 
         Returns:
             int: The ID of the tree node.
+
         """
         return self.id_
 
     @property
     def state(self) -> StateT:
-        """
-        Returns the state associated with this tree node.
+        """Returns the state associated with this tree node.
 
         Returns:
             State: The state associated with this tree node.
+
         """
         return self.state_
 
     @property
     def tree_depth(self) -> int:
-        """
-        Returns the tree depth of this node.
+        """Returns the tree depth of this node.
 
         Returns:
             int: The tree depth of this node.
+
         """
         return self.tree_depth_
 
     @property
     def branches_children(self) -> dict[BranchKey, FamilyT | None]:
-        """
-        Returns a bidirectional dictionary containing the children nodes of the current tree node,
+        """Returns a bidirectional dictionary containing the children nodes of the current tree node,
         along with the corresponding branches that lead to each child node.
 
         Returns:
             dict[BranchKey, ITreeNode | None]: A bidirectional dictionary mapping branches to
             the corresponding child nodes. If a branch does not have a corresponding child node, it is
             mapped to None.
+
         """
         return self.branches_children_
 
     @property
     def parent_nodes(self) -> dict[FamilyT, BranchKey]:
-        """
-        Returns the dictionary of parent nodes of the current tree node with associated branch.
+        """Returns the dictionary of parent nodes of the current tree node with associated branch.
 
         :return: A dictionary of parent nodes of the current tree node with associated branch.
         """
         return self.parent_nodes_
 
     def is_root_node(self) -> bool:
-        """
-        Check if the current node is a root node.
+        """Check if the current node is a root node.
 
         Returns:
             bool: True if the node is a root node, False otherwise.
+
         """
         return not self.parent_nodes
 
     @property
     def all_branches_keys(self) -> BranchKeyGeneratorP[BranchKey]:
-        """
-        Returns a generator that yields the branch keys for the current state.
+        """Returns a generator that yields the branch keys for the current state.
 
         Returns:
             BranchKeyGenerator: A generator that yields the branch keys.
+
         """
         return self.state_.branch_keys
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: FamilyT) -> None:
-        """
-        Adds a new parent node to the current node.
+        """Adds a new parent node to the current node.
 
         Args:
             branch_key (BranchKey): The branch key that led to the node from the new parent node.
@@ -174,6 +171,7 @@ class TreeNode[
 
         Returns:
             None
+
         """
         # debug
         assert (
@@ -182,23 +180,23 @@ class TreeNode[
         self.parent_nodes[new_parent_node] = branch_key
 
     def is_over(self) -> bool:
-        """
-        Checks if the state is terminal.
+        """Checks if the state is terminal.
 
         Returns:
             bool: True if the state is terminal, False otherwise.
+
         """
         return self.state.is_game_over()
 
     def print_branches_children(self) -> None:
-        """
-        Prints the branches-children link of the node.
+        """Prints the branches-children link of the node.
 
         This method prints the branches-children link of the node, showing the branch and the ID of the child node.
         If a child node is None, it will be displayed as 'None'.
 
         Returns:
             None
+
         """
         print(
             "here are the ",
@@ -216,13 +214,13 @@ class TreeNode[
         print(" ")
 
     def dot_description(self) -> str:
-        """
-        Returns a string representation of the node in the DOT format.
+        """Returns a string representation of the node in the DOT format.
 
         The string includes the node's ID, depth, and state tag.
 
         Returns:
             A string representation of the node in the DOT format.
+
         """
         return (
             "id:"

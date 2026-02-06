@@ -1,5 +1,4 @@
-"""
-This module defines stopping criteria for a branch selector in a game tree.
+"""This module defines stopping criteria for a branch selector in a game tree.
 
 The stopping criteria determine when the selector should stop exploring the game tree and make a decision.
 
@@ -25,8 +24,7 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 @runtime_checkable
 class DepthToExpendP(Protocol):
-    """
-    Protocol for objects that provide the current depth to expand.
+    """Protocol for objects that provide the current depth to expand.
 
     This protocol defines a single method `get_current_depth_to_expand` that should be implemented by classes
     that want to provide the current depth to expand.
@@ -45,25 +43,24 @@ class DepthToExpendP(Protocol):
         >>> obj = MyDepthToExpend()
         >>> obj.get_current_depth_to_expand()
         5
+
     """
 
     def get_current_depth_to_expand(self) -> int:
-        """
-        Returns the current depth to expand as an integer.
+        """Returns the current depth to expand as an integer.
 
         Returns:
             The current depth to expand.
 
         Raises:
             None
+
         """
         ...
 
 
 class StoppingCriterionTypes(StrEnum):
-    """
-    Enum class representing different types of stopping criteria for tree value calculation.
-    """
+    """Enum class representing different types of stopping criteria for tree value calculation."""
 
     DEPTH_LIMIT = "depth_limit"
     TREE_BRANCH_LIMIT = "tree_branch_limit"
@@ -71,27 +68,25 @@ class StoppingCriterionTypes(StrEnum):
 
 @dataclass
 class StoppingCriterionArgs:
-    """
-    Represents the arguments for a stopping criterion.
+    """Represents the arguments for a stopping criterion.
 
     Attributes:
         type (StoppingCriterionTypes): The type of stopping criterion.
+
     """
 
     type: StoppingCriterionTypes
 
 
 class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
-    """
-    The general stopping criterion Protocol
-    """
+    """The general stopping criterion Protocol."""
 
     def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
-        """
-        Asking should we continue
+        """Asking should we continue.
 
         Returns:
             boolean of should we continue
+
         """
         ...
 
@@ -100,22 +95,18 @@ class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
         opening_instructions: node_sel.OpeningInstructions[NodeT],
         tree: trees.Tree[NodeT],
     ) -> node_sel.OpeningInstructions[NodeT]:
-        """
-        Ensures the opening request do not exceed the stopping criterion
-
-
-        """
+        """Ensures the opening request do not exceed the stopping criterion."""
         ...
 
     def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
-        """
-        Returns a string representation of the progress made by the stopping criterion.
+        """Returns a string representation of the progress made by the stopping criterion.
 
         Args:
             tree (Tree): The tree being explored.
 
         Returns:
             str: A string representation of the progress.
+
         """
         ...
 
@@ -128,16 +119,14 @@ class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
 
 
 class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """
-    The general stopping criterion base class
-    """
+    """The general stopping criterion base class."""
 
     def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
-        """
-        Asking should we continue
+        """Asking should we continue.
 
         Returns:
             boolean of should we continue
+
         """
         return not tree.root_node.is_over()
 
@@ -146,23 +135,19 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         opening_instructions: node_sel.OpeningInstructions[NodeT],
         tree: trees.Tree[NodeT],
     ) -> node_sel.OpeningInstructions[NodeT]:
-        """
-        Ensures the opening request do not exceed the stopping criterion
-
-
-        """
+        """Ensures the opening request do not exceed the stopping criterion."""
         _ = tree
         return opening_instructions
 
     def get_string_of_progress(self, _tree: trees.Tree[NodeT]) -> str:
-        """
-        Returns a string representation of the progress made by the stopping criterion.
+        """Returns a string representation of the progress made by the stopping criterion.
 
         Args:
             tree (Tree): The tree being explored.
 
         Returns:
             str: A string representation of the progress.
+
         """
         return ""
 
@@ -194,9 +179,7 @@ class TreeBranchLimitArgs:
 class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
     ProgressMonitor[NodeT]
 ):
-    """
-    The stopping criterion based on a tree branch limit
-    """
+    """The stopping criterion based on a tree branch limit."""
 
     tree_branch_limit: int
 
@@ -217,11 +200,7 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         opening_instructions: node_sel.OpeningInstructions[NodeT],
         tree: trees.Tree[NodeT],
     ) -> node_sel.OpeningInstructions[NodeT]:
-        """
-        Ensures the opening request do not exceed the stopping criterion
-
-
-        """
+        """Ensures the opening request do not exceed the stopping criterion."""
         opening_instructions_subset: node_sel.OpeningInstructions[NodeT] = (
             node_sel.OpeningInstructions()
         )
@@ -232,11 +211,11 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         return opening_instructions_subset
 
     def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
-        """
-        compute the string that display the progress in the terminal
+        """Compute the string that display the progress in the terminal.
 
         Returns:
             a string that display the progress in the terminal
+
         """
         return (
             f"========= tree branch counting: {tree.branch_count} out of {self.tree_branch_limit}"
@@ -254,11 +233,11 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
 
 @dataclass
 class DepthLimitArgs:
-    """
-    Arguments for the depth limit stopping criterion.
+    """Arguments for the depth limit stopping criterion.
 
     Attributes:
         depth_limit (int): The maximum depth allowed for the search.
+
     """
 
     type: Literal[StoppingCriterionTypes.DEPTH_LIMIT]
@@ -268,16 +247,13 @@ class DepthLimitArgs:
 class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
     ProgressMonitor[NodeT]
 ):
-    """
-    The stopping criterion based on a depth limit
-    """
+    """The stopping criterion based on a depth limit."""
 
     depth_limit: int
     node_selector: DepthToExpendP
 
     def __init__(self, depth_limit: int, node_selector: DepthToExpendP) -> None:
-        """
-        Initializes a StoppingCriterion object.
+        """Initializes a StoppingCriterion object.
 
         Args:
             depth_limit (int): The maximum depth to search in the tree.
@@ -285,19 +261,20 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
 
         Returns:
             None
+
         """
         self.depth_limit = depth_limit
         self.node_selector = node_selector
 
     def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
-        """
-        Determines whether the search should continue expanding nodes in the tree.
+        """Determines whether the search should continue expanding nodes in the tree.
 
         Args:
             tree (Tree): The tree containing the nodes and their evaluations.
 
         Returns:
             bool: True if the search should continue, False otherwise.
+
         """
         continue_base = super().should_we_continue(tree=tree)
         if not continue_base:
@@ -305,11 +282,11 @@ class DepthLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         return self.node_selector.get_current_depth_to_expand() < self.depth_limit
 
     def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
-        """
-        compute the string that display the progress in the terminal
+        """Compute the string that display the progress in the terminal.
 
         Returns:
             a string that display the progress in the terminal
+
         """
         return (
             "========= tree branch counting: "
@@ -339,8 +316,7 @@ def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
     args: AllStoppingCriterionArgs,
     node_selector: node_sel.NodeSelector[NodeT],
 ) -> ProgressMonitor[NodeT]:
-    """
-    creating the stopping criterion
+    """Creating the stopping criterion.
 
     Args:
         args:

@@ -1,5 +1,4 @@
-"""
-This module provides functions for visualizing and saving tree structures.
+"""This module provides functions for visualizing and saving tree structures.
 
 The functions in this module allow for the visualization of tree structures using the Graphviz library.
 It provides a way to display the tree structure as a graph and save it as a PDF file.
@@ -32,8 +31,7 @@ from .tree import Tree
 
 
 def add_dot[StateT: State](dot: Digraph, treenode: ITreeNode[StateT]) -> None:
-    """
-    Adds a node and edges to the given Dot graph based on the provided tree node.
+    """Adds a node and edges to the given Dot graph based on the provided tree node.
 
     Args:
         dot (Digraph): The Dot graph to add the node and edges to.
@@ -41,6 +39,7 @@ def add_dot[StateT: State](dot: Digraph, treenode: ITreeNode[StateT]) -> None:
 
     Returns:
         None
+
     """
     nd = treenode.dot_description()
     dot.node(str(treenode.id), nd)
@@ -94,8 +93,7 @@ def display_special[StateT: State](
 def display[StateT: State](
     tree: Tree[AlgorithmNode[StateT]], format_str: str
 ) -> Digraph:
-    """
-    Display a tree using graph visualization.
+    """Display a tree using graph visualization.
 
     Args:
         tree (Tree): The tree to be displayed.
@@ -103,6 +101,7 @@ def display[StateT: State](
 
     Returns:
         Digraph: The graph representation of the tree.
+
     """
     dot = Digraph(format=format_str)
     add_dot(dot, tree.root_node)
@@ -110,14 +109,14 @@ def display[StateT: State](
 
 
 def save_pdf_to_file[StateT: State](tree: Tree[AlgorithmNode[StateT]]) -> None:
-    """
-    Saves the visualization of a tree as a PDF file.
+    """Saves the visualization of a tree as a PDF file.
 
     Args:
         tree (Tree): The tree to be visualized and saved.
 
     Returns:
         None
+
     """
     dot = display(tree=tree, format_str="pdf")
     tag_ = tree.root_node.state.tag
@@ -125,8 +124,7 @@ def save_pdf_to_file[StateT: State](tree: Tree[AlgorithmNode[StateT]]) -> None:
 
 
 def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
-    """
-    Save raw tree data to a file.
+    """Save raw tree data to a file.
 
     Args:
         tree (Tree): The Tree object to save.
@@ -134,6 +132,7 @@ def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
 
     Returns:
         None
+
     """
     tag_ = tree.root_node.state.tag
     filename = "chipiron/debugTreeData_" + str(tag_) + "-" + str(count) + ".td"

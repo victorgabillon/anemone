@@ -1,5 +1,4 @@
-"""
-This module defines the ValueUpdateInstructionsBlock class and a helper function to create instances of it.
+"""This module defines the ValueUpdateInstructionsBlock class and a helper function to create instances of it.
 
 The ValueUpdateInstructionsBlock class represents a block of update instructions for a tree value node in
  a branch selector algorithm. It contains sets of branches that have been updated with new values,
@@ -59,6 +58,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         Args:
             update_from_one_child_node (ValueUpdateInstructionsFromOneNode): The update instructions from the child node.
             branch_from_parent_to_child (BranchKey): The branch key representing the branch from the parent to the child.
+
         """
         if update_from_one_child_node.is_node_newly_over:
             self.branches_with_updated_over.add(branch_from_parent_to_child)
@@ -72,6 +72,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
 
         Args:
             another_update (Self): The update instructions from another child node.
+
         """
         self.branches_with_updated_value = (
             self.branches_with_updated_value
@@ -86,11 +87,11 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         )
 
     def print_info(self) -> None:
-        """
-        Print information about the update instructions block.
+        """Print information about the update instructions block.
 
         Returns:
             None
+
         """
         print("upInstructions printing")
         print(
@@ -119,11 +120,11 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         print()
 
     def empty(self) -> bool:
-        """
-        Check if all the components of the update instructions block are empty.
+        """Check if all the components of the update instructions block are empty.
 
         Returns:
             bool: True if all components are empty, False otherwise.
+
         """
         return (
             not bool(self.branches_with_updated_value)

@@ -1,6 +1,4 @@
-"""
-This module contains the factory function to create a node exploration index manager based on the given index computation
-"""
+"""This module contains the factory function to create a node exploration index manager based on the given index computation."""
 
 from anemone.indices.index_manager.node_exploration_manager import (
     NodeExplorationIndexManager,
@@ -17,8 +15,7 @@ from anemone.indices.node_indices.index_types import (
 def create_exploration_index_manager(
     index_computation: IndexComputationType | None = None,
 ) -> NodeExplorationIndexManager:
-    """
-    Creates a node exploration index manager based on the given index computation type.
+    """Creates a node exploration index manager based on the given index computation type.
 
     Args:
         index_computation (IndexComputationType | None): The type of index computation to be used.

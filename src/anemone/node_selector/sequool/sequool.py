@@ -1,6 +1,4 @@
-"""
-Module implementing the Sequool node selector.
-"""
+"""Module implementing the Sequool node selector."""
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -32,28 +30,25 @@ if TYPE_CHECKING:
 
 
 class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
-    """
-    Protocol defining the interface for a tree-depth selector.
-    """
+    """Protocol defining the interface for a tree-depth selector."""
 
     def update_from_expansions(
         self, latest_tree_expansions: "tree_man.TreeExpansions[NodeT]"
     ) -> None:
-        """
-        Update the tree-depth selector with the latest tree expansions.
+        """Update the tree-depth selector with the latest tree expansions.
 
         Args:
             latest_tree_expansions: The latest tree expansions.
 
         Returns:
             None
+
         """
 
     def select_tree_depth(
         self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
-        """
-        Select the next depth to consider based on the given node and random generator.
+        """Select the next depth to consider based on the given node and random generator.
 
         Args:
             from_node: The current node.
@@ -61,6 +56,7 @@ class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol
 
         Returns:
             The selected depth.
+
         """
         ...
 
@@ -75,9 +71,7 @@ count_visits: dict[TreeDepth, int] = _make_count_visits()
 
 @dataclass
 class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """
-    A node selector that considers the number of visits and selects depths based on zipf distribution.
-    """
+    """A node selector that considers the number of visits and selects depths based on zipf distribution."""
 
     all_nodes_not_opened: Descendants[NodeT]
 
@@ -87,16 +81,15 @@ class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def update_from_expansions(
         self, latest_tree_expansions: "tree_man.TreeExpansions[NodeT]"
     ) -> None:
-        """
-        Update the node selector with the latest tree expansions.
+        """Update the node selector with the latest tree expansions.
 
         Args:
             latest_tree_expansions: The latest tree expansions.
 
         Returns:
             None
-        """
 
+        """
         # Update internal info with the latest tree expansions
         expansion: tree_man.TreeExpansion[NodeT]
         for expansion in latest_tree_expansions:
@@ -112,8 +105,7 @@ class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def select_tree_depth(
         self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
-        """
-        Select the next depth to consider based on the given node and random generator.
+        """Select the next depth to consider based on the given node and random generator.
 
         Args:
             from_node: The current node.
@@ -121,6 +113,7 @@ class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         Returns:
             The selected depth.
+
         """
         _ = from_node  # not used here
 
@@ -154,8 +147,7 @@ def consider_nodes_from_all_lesser_tree_depths_in_descendants[N: AlgorithmNode[A
     from_node: N,
     descendants: Descendants[N],
 ) -> list[N]:
-    """
-    Consider all the nodes that are in shallower depths than the picked depth using the descendants object.
+    """Consider all the nodes that are in shallower depths than the picked depth using the descendants object.
 
     Args:
         tree_depth_picked: The picked depth.
@@ -164,8 +156,8 @@ def consider_nodes_from_all_lesser_tree_depths_in_descendants[N: AlgorithmNode[A
 
     Returns:
         A list of nodes to consider.
-    """
 
+    """
     _ = from_node  # not used here
 
     nodes_to_consider: list[N] = []
@@ -181,8 +173,7 @@ def consider_nodes_from_all_lesser_tree_depths_in_sub_stree[N: AlgorithmNode[Any
     tree_depth_picked: TreeDepth,
     from_node: N,
 ) -> list[N]:
-    """
-    Consider all the nodes that are in shallower depths than the picked depth using tree traversal.
+    """Consider all the nodes that are in shallower depths than the picked depth using tree traversal.
 
     Args:
         tree_depth_picked: The picked depth.
@@ -190,8 +181,8 @@ def consider_nodes_from_all_lesser_tree_depths_in_sub_stree[N: AlgorithmNode[Any
 
     Returns:
         A list of nodes to consider.
-    """
 
+    """
     nodes_to_consider: list[N] = get_descendants_candidate_not_over(
         from_tree_node=from_node, max_depth=tree_depth_picked - from_node.tree_depth
     )
@@ -203,8 +194,7 @@ def consider_nodes_only_from_tree_depths_in_descendants[N: AlgorithmNode[Any]](
     from_node: N,
     descendants: Descendants[N],
 ) -> list[N]:
-    """
-    Consider only the nodes at the picked depth.
+    """Consider only the nodes at the picked depth.
 
     Args:
         tree_depth_picked: The picked depth.
@@ -213,6 +203,7 @@ def consider_nodes_only_from_tree_depths_in_descendants[N: AlgorithmNode[Any]](
 
     Returns:
         A list of nodes to consider.
+
     """
     _ = from_node  # not used here
     return list(descendants[tree_depth_picked].values())
@@ -220,28 +211,25 @@ def consider_nodes_only_from_tree_depths_in_descendants[N: AlgorithmNode[Any]](
 
 @dataclass
 class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """
-    A node selector that selects depths randomly.
-    """
+    """A node selector that selects depths randomly."""
 
     def update_from_expansions(
         self, latest_tree_expansions: "tree_man.TreeExpansions[NodeT]"
     ) -> None:
-        """
-        Update the node selector with the latest tree expansions.
+        """Update the node selector with the latest tree expansions.
 
         Args:
             latest_tree_expansions: The latest tree expansions.
 
         Returns:
             None
+
         """
 
     def select_tree_depth(
         self, from_node: NodeT, random_generator: Random
     ) -> TreeDepth:
-        """
-        Select the next depth to consider based on the given node and random generator.
+        """Select the next depth to consider based on the given node and random generator.
 
         Args:
             from_node: The current node.
@@ -249,8 +237,8 @@ class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         Returns:
             The selected depth.
-        """
 
+        """
         tree_depth_picked: int
         # choose a depth based on zipf
         assert isinstance(from_node.exploration_index_data, MaxDepthDescendants)
@@ -271,14 +259,14 @@ class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 def get_best_node_from_candidates[N: AlgorithmNode[Any]](
     nodes_to_consider: list[N],
 ) -> N:
-    """
-    Returns the best node from a list of candidate nodes based on their exploration index and depth.
+    """Returns the best node from a list of candidate nodes based on their exploration index and depth.
 
     Args:
         nodes_to_consider (list[ITreeNode]): A list of candidate nodes to consider.
 
     Returns:
         AlgorithmNode: The best node from the list of candidates.
+
     """
     best_node: N = nodes_to_consider[0]
     assert best_node.exploration_index_data is not None
@@ -300,9 +288,7 @@ def get_best_node_from_candidates[N: AlgorithmNode[Any]](
 
 @dataclass
 class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """
-    The main class implementing the Sequool node selector.
-    """
+    """The main class implementing the Sequool node selector."""
 
     opening_instructor: OpeningInstructor
     all_nodes_not_opened: Descendants[NodeT]
@@ -317,8 +303,7 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
-        """
-        Choose the best node to open in the branch tree and return the opening instructions.
+        """Choose the best node to open in the branch tree and return the opening instructions.
 
         Args:
             tree: The branch tree.
@@ -326,8 +311,8 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         Returns:
             The opening instructions.
-        """
 
+        """
         self.tree_depth_selector.update_from_expansions(
             latest_tree_expansions=latest_tree_expansions
         )
@@ -341,16 +326,15 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def choose_node_and_branch_to_open_recur(
         self, from_node: NodeT
     ) -> OpeningInstructions[NodeT]:
-        """
-        Recursively choose the best node to open in the branch tree and return the opening instructions.
+        """Recursively choose the best node to open in the branch tree and return the opening instructions.
 
         Args:
             from_node: The current node.
 
         Returns:
             The opening instructions.
-        """
 
+        """
         tree_depth_selected: TreeDepth = self.tree_depth_selector.select_tree_depth(
             from_node=from_node, random_generator=self.random_generator
         )

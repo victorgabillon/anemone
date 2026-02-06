@@ -1,5 +1,4 @@
-"""
-This module contains the implementation of the SearchFactory class, which is an abstract factory that creates
+"""This module contains the implementation of the SearchFactory class, which is an abstract factory that creates
 dependent factories for selecting nodes to open, creating indices, and updating indices. These factories need to
 operate on the same data, so they are created in a coherent way.
 
@@ -47,29 +46,28 @@ NodeSelectorFactory = Callable[[], node_selectors.NodeSelector]
 
 
 class SearchFactoryP(Protocol):
-    """
-    The abstract Factory that creates the following dependent factories in charge of selecting nodes to open
+    """The abstract Factory that creates the following dependent factories in charge of selecting nodes to open
     - the node selector
     - the index creator
     - the index updater
-    These three classes needs to operate on the same data, so they need to be created in a coherent way
+    These three classes needs to operate on the same data, so they need to be created in a coherent way.
     """
 
     def create_node_selector_factory(self) -> NodeSelectorFactory:
-        """
-        Creates a NodeSelectorFactory object.
+        """Creates a NodeSelectorFactory object.
 
         Returns:
             NodeSelectorFactory: The created NodeSelectorFactory object.
+
         """
         ...
 
     def create_node_index_updater(self) -> IndexUpdater | None:
-        """
-        Creates and returns an instance of the IndexUpdater class, which is responsible for updating the node index.
+        """Creates and returns an instance of the IndexUpdater class, which is responsible for updating the node index.
 
         Returns:
             IndexUpdater | None: An instance of the IndexUpdater class if successful, None otherwise.
+
         """
         ...
 
@@ -77,26 +75,25 @@ class SearchFactoryP(Protocol):
         self,
         tree_node: nodes.TreeNode[AlgorithmNode[StateT], StateT],
     ) -> node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None:
-        """
-        Creates a node index for the given tree node.
+        """Creates a node index for the given tree node.
 
         Args:
             tree_node (nodes.TreeNode): The tree node for which to create the index.
 
         Returns:
             node_indices.NodeExplorationData | None: The created node index, or None if the index could not be created.
+
         """
         ...
 
 
 @dataclass
 class SearchFactory:
-    """
-    The abstract Factory that creates the following dependent factories in charge of selecting nodes to open
+    """The abstract Factory that creates the following dependent factories in charge of selecting nodes to open
     - the node selector
     - the index creator
     - the index updater
-    These three classes needs to operate on the same data, so they need to be created in a coherent way
+    These three classes needs to operate on the same data, so they need to be created in a coherent way.
     """
 
     node_selector_args: node_selectors.AllNodeSelectorArgs | None
@@ -106,8 +103,7 @@ class SearchFactory:
     depth_index: bool = False
 
     def __post_init__(self) -> None:
-        """
-        Initializes the object after it has been created.
+        """Initializes the object after it has been created.
 
         This method is automatically called after the object has been initialized.
         It sets the value of `depth_index` based on the type of `node_selector_args`.
@@ -123,14 +119,14 @@ class SearchFactory:
             self.depth_index: bool = False
 
     def create_node_selector_factory(self) -> NodeSelectorFactory:
-        """
-        Creates the node selector factory .
+        """Creates the node selector factory .
 
         Returns:
             A callable object that creates the node selector.
 
         Raises:
             AssertionError: If the random generator is not provided.
+
         """
         # creates the opening instructor
 
@@ -155,11 +151,11 @@ class SearchFactory:
         return node_selector_create
 
     def create_node_index_updater(self) -> IndexUpdater | None:
-        """
-        Creates the index updater.
+        """Creates the index updater.
 
         Returns:
             An instance of the IndexUpdater class if depth indexing is enabled, otherwise None.
+
         """
         index_updater: IndexUpdater | None
         index_updater = IndexUpdater() if self.depth_index else None
@@ -169,16 +165,15 @@ class SearchFactory:
         self,
         tree_node: nodes.TreeNode[AlgorithmNode[StateT], StateT],
     ) -> node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None:
-        """
-        Creates node indices for a given tree node.
+        """Creates node indices for a given tree node.
 
         Args:
             tree_node: The tree node for which to create the node indices.
 
         Returns:
             An instance of the NodeExplorationData class if depth indexing is enabled, otherwise None.
-        """
 
+        """
         exploration_index_data: (
             node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None
         ) = create_exploration_index_data(

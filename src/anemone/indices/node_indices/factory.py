@@ -1,5 +1,4 @@
-"""
-This module provides functions for creating exploration index data for tree nodes.
+"""This module provides functions for creating exploration index data for tree nodes.
 
 The main function in this module is `create_exploration_index_data`, which takes a tree node and optional parameters
 to create the exploration index data for that node.
@@ -72,8 +71,7 @@ def create_exploration_index_data[
     index_computation: IndexComputationType | None = None,
     depth_index: bool = False,
 ) -> NodeExplorationData[NodeT, NodeStateT] | None:
-    """
-    Creates exploration index data for a given tree node.
+    """Creates exploration index data for a given tree node.
 
     Args:
         tree_node (TreeNode): The tree node for which to create the exploration index data.
@@ -85,6 +83,7 @@ def create_exploration_index_data[
 
     Raises:
         ValueError: If the index_computation value is not recognized.
+
     """
     index_dataclass_name: type[Any] | None
     match index_computation:

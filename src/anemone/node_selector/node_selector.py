@@ -1,6 +1,4 @@
-"""
-This module contains the definition of the NodeSelector class and related types.
-"""
+"""This module contains the definition of the NodeSelector class and related types."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
@@ -16,21 +14,18 @@ if TYPE_CHECKING:
 
 @dataclass
 class NodeSelectorState:
-    """Node Selector State"""
+    """Node Selector State."""
 
 
 class NodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
-    """
-    Protocol for Node Selectors.
-    """
+    """Protocol for Node Selectors."""
 
     def choose_node_and_branch_to_open(
         self,
         tree: trees.Tree[NodeT],
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
-        """
-        Selects a node from the given tree and returns the instructions to open a branch.
+        """Selects a node from the given tree and returns the instructions to open a branch.
 
         Args:
             tree: The tree containing the nodes.
@@ -38,5 +33,6 @@ class NodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
 
         Returns:
             OpeningInstructions: The instructions to open a branch.
+
         """
         raise NotImplementedError

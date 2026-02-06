@@ -1,5 +1,4 @@
-"""
-This module contains the AlgorithmNodeUpdater class, which is responsible for updating AlgorithmNode objects in a
+"""This module contains the AlgorithmNodeUpdater class, which is responsible for updating AlgorithmNode objects in a
  tree structure.
 
 The AlgorithmNodeUpdater class provides methods for creating update instructions after a node is added to the
@@ -31,12 +30,12 @@ if TYPE_CHECKING:
 
 @dataclass
 class AlgorithmNodeUpdater:
-    """
-    The AlgorithmNodeUpdater class is responsible for updating AlgorithmNode objects in a tree.
+    """The AlgorithmNodeUpdater class is responsible for updating AlgorithmNode objects in a tree.
 
     Attributes:
         minmax_evaluation_updater (MinMaxEvaluationUpdater): The updater for min-max evaluation values.
         index_updater (IndexUpdater | None): The updater for node indices, if available.
+
     """
 
     minmax_evaluation_updater: MinMaxEvaluationUpdater
@@ -45,14 +44,14 @@ class AlgorithmNodeUpdater:
     def create_update_instructions_after_node_birth(
         self, new_node: AlgorithmNode
     ) -> UpdateInstructionsFromOneNode:
-        """
-        Creates update instructions after a new node is added to the tree.
+        """Creates update instructions after a new node is added to the tree.
 
         Args:
             new_node (AlgorithmNode): The newly added AlgorithmNode.
 
         Returns:
             UpdateInstructions: The update instructions for the new node.
+
         """
         value_update_instructions: ValueUpdateInstructionsFromOneNode
         value_update_instructions = (
@@ -83,14 +82,14 @@ class AlgorithmNodeUpdater:
     def generate_update_instructions[NodeT: AlgorithmNode](
         self, tree_expansions: "TreeExpansions[NodeT]"
     ) -> "UpdateInstructionsTowardsMultipleNodes[NodeT]":
-        """
-        Generates update instructions for a batch of tree expansions.
+        """Generates update instructions for a batch of tree expansions.
 
         Args:
             tree_expansions (tree_man.TreeExpansions): The batch of tree expansions.
 
         Returns:
             UpdateInstructionsBatch: The update instructions for the batch of tree expansions.
+
         """
         # TODO: is the way of merging now overkill?
 
@@ -123,8 +122,7 @@ class AlgorithmNodeUpdater:
         node_to_update: AlgorithmNode,
         update_instructions: UpdateInstructionsTowardsOneParentNode,
     ) -> UpdateInstructionsFromOneNode:
-        """
-        Performs updates on a specific node based on the given update instructions.
+        """Performs updates on a specific node based on the given update instructions.
 
         Args:
             node_to_update (AlgorithmNode): The node to update.
@@ -132,6 +130,7 @@ class AlgorithmNodeUpdater:
 
         Returns:
             UpdateInstructions: The new update instructions after performing the updates.
+
         """
         value_update_instructions: ValueUpdateInstructionsFromOneNode = (
             self.minmax_evaluation_updater.perform_updates(

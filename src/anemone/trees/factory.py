@@ -1,6 +1,4 @@
-"""
-ValueTreeFactory
-"""
+"""ValueTreeFactory."""
 
 from valanga import State
 
@@ -16,9 +14,7 @@ from .descendants import RangedDescendants
 
 
 class ValueTreeFactory[StateT: State = State]:
-    """
-    ValueTreeFactory
-    """
+    """ValueTreeFactory."""
 
     node_factory: nod_fac.AlgorithmNodeFactory[StateT]
     node_direct_evaluator: NodeDirectEvaluator[StateT]
@@ -28,8 +24,7 @@ class ValueTreeFactory[StateT: State = State]:
         node_factory: nod_fac.AlgorithmNodeFactory[StateT],
         node_direct_evaluator: NodeDirectEvaluator[StateT],
     ) -> None:
-        """
-        creates the tree factory
+        """Creates the tree factory
         Args:
             node_factory:
             node_evaluator:
@@ -38,8 +33,7 @@ class ValueTreeFactory[StateT: State = State]:
         self.node_direct_evaluator = node_direct_evaluator
 
     def create(self, starting_state: StateT) -> Tree[AlgorithmNode[StateT]]:
-        """
-        creates the tree
+        """Creates the tree.
 
         Args:
             starting_state: the starting position
@@ -47,7 +41,6 @@ class ValueTreeFactory[StateT: State = State]:
         Returns:
 
         """
-
         root_node: AlgorithmNode[StateT] = self.node_factory.create(
             state=starting_state,
             tree_depth=0,  # by default

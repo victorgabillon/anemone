@@ -1,5 +1,4 @@
-"""
-This module provides classes and functions for updating tree values in the branch selector.
+"""This module provides classes and functions for updating tree values in the branch selector.
 
 Classes:
 - AlgorithmNodeUpdater: A class for updating algorithm nodes in the tree.

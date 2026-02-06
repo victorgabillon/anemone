@@ -1,5 +1,4 @@
-"""
-This module contains the implementation of the Uniform Node selector.
+"""This module contains the implementation of the Uniform Node selector.
 
 The Uniform Node selector is responsible for selecting nodes to expand in a tree-based branch selector algorithm.
 It uses an opening instructor to determine the branches to open for each node and generates opening instructions accordingly.
@@ -25,13 +24,12 @@ if TYPE_CHECKING:
 
 
 class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """The Uniform Node selector"""
+    """The Uniform Node selector."""
 
     opening_instructor: OpeningInstructor
 
     def __init__(self, opening_instructor: OpeningInstructor) -> None:
-        """
-        Initializes a new instance of the Uniform class.
+        """Initializes a new instance of the Uniform class.
 
         Args:
         - opening_instructor (OpeningInstructor): The opening instructor to be used for determining branches to open.
@@ -41,8 +39,7 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self.current_depth_to_expand = 0
 
     def get_current_depth_to_expand(self) -> int:
-        """
-        Gets the current depth to expand.
+        """Gets the current depth to expand.
 
         Returns:
         - int: The current depth to expand.
@@ -55,8 +52,7 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> OpeningInstructions[NodeT]:
-        """
-        Chooses a node to expand and determines the branches to open for that node.
+        """Chooses a node to expand and determines the branches to open for that node.
 
         Args:
         - tree (trees.Tree[AlgorithmNode]): The tree and value tree.
@@ -108,8 +104,5 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return opening_instructions_batch
 
     def print_info(self) -> None:
-        """
-        Prints information about the Uniform Node selector.
-
-        """
+        """Prints information about the Uniform Node selector."""
         print("Uniform")

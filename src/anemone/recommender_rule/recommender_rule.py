@@ -1,5 +1,4 @@
-"""
-This module defines recommender rules for selecting branches in a tree-based selector.
+"""This module defines recommender rules for selecting branches in a tree-based selector.
 
 The recommender rules are implemented as data classes that define a `__call__` method. The `__call__` method takes a
 root node and a random generator, and returns a recommended branch.
@@ -35,9 +34,7 @@ def sample_from_policy(policy: BranchPolicy, rng: Random) -> BranchKey:
 
 
 class RecommenderRule(Protocol):
-    """
-    Protocol for recommender rules.
-    """
+    """Protocol for recommender rules."""
 
     type: str
 
@@ -51,9 +48,7 @@ class RecommenderRule(Protocol):
 
 
 class RecommenderRuleTypes(StrEnum):
-    """
-    Enum class that defines the available recommender rule types.
-    """
+    """Enum class that defines the available recommender rule types."""
 
     ALMOST_EQUAL_LOGISTIC = "almost_equal_logistic"
     SOFTMAX = "softmax"
@@ -65,9 +60,7 @@ class RecommenderRuleTypes(StrEnum):
 
 @dataclass(slots=True)
 class AlmostEqualLogistic:
-    """
-    Almost Equal Logistic recommender rule that selects branches with nearly equal evaluations.
-    """
+    """Almost Equal Logistic recommender rule that selects branches with nearly equal evaluations."""
 
     type: Literal["almost_equal_logistic"]
     temperature: float  # kept for config compatibility; rule uses minmax method
@@ -98,9 +91,7 @@ class AlmostEqualLogistic:
 
 @dataclass(slots=True)
 class SoftmaxRule:
-    """
-    Softmax recommender rule that computes a softmax distribution over child evaluations.
-    """
+    """Softmax recommender rule that computes a softmax distribution over child evaluations."""
 
     type: Literal["softmax"]
     temperature: float

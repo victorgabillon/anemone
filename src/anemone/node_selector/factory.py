@@ -1,6 +1,4 @@
-"""
-Factory to build node selectors
-"""
+"""Factory to build node selectors."""
 
 from dataclasses import dataclass
 from random import Random
@@ -16,10 +14,7 @@ from .uniform import Uniform
 
 @dataclass
 class UniformArgs:
-    """
-    Arguments for the Uniform node selector.
-
-    """
+    """Arguments for the Uniform node selector."""
 
     type: Literal[NodeSelectorType.UNIFORM]
 
@@ -32,10 +27,7 @@ def create(
     opening_instructor: OpeningInstructor,
     random_generator: Random,
 ) -> NodeSelector:
-    """
-    Creation of a node selector
-    """
-
+    """Creation of a node selector."""
     node_branch_opening_selector: NodeSelector
 
     match args.type:

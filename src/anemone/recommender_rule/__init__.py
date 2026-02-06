@@ -1,5 +1,4 @@
-"""
-This module provides classes for defining recommender rules.
+"""This module provides classes for defining recommender rules.
 
 Classes:
 - RecommenderRule: Represents a recommender rule.

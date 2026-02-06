@@ -24,8 +24,7 @@ from .trees.factory import ValueTreeFactory
 
 @dataclass
 class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
-    """
-    The TreeAndValueBranchSelector class is responsible for selecting branches based on a tree and value strategy.
+    """The TreeAndValueBranchSelector class is responsible for selecting branches based on a tree and value strategy.
 
     Attributes:
     - tree_manager: The tree manager responsible for managing the algorithm nodes.
@@ -34,6 +33,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     - node_selector_create: The node selector factory used to create node selectors for tree exploration.
     - random_generator: The random generator used for randomization during tree exploration.
     - recommend_branch_after_exploration: The recommendation functions used to recommend a branch after tree exploration.
+
     """
 
     # pretty empty class but might be useful when dealing with multi round and time , no?
@@ -51,8 +51,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         seed: Seed,
         notify_progress: NotifyProgressCallable | None = None,
     ) -> Recommendation:
-        """
-        Selects the best branch based on the tree and value strategy.
+        """Selects the best branch based on the tree and value strategy.
 
         Args:
         - state: The current state to explore.
@@ -60,6 +59,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
 
         Returns:
         - The recommended branch based on the tree and value strategy.
+
         """
         tree_exploration: TreeExploration = self.create_tree_exploration(
             state=state, notify_progress=notify_progress
@@ -90,7 +90,5 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         return tree_exploration
 
     def print_info(self) -> None:
-        """
-        Prints information about the branch selector type.
-        """
+        """Prints information about the branch selector type."""
         print("type: Tree and Value")

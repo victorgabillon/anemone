@@ -1,6 +1,4 @@
-"""
-init file for trees module
-"""
+"""init file for trees module."""
 
 from .descendants import Descendants, RangedDescendants
 from .tree import Tree

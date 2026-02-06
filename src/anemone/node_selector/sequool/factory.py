@@ -1,6 +1,4 @@
-"""
-factory for sequool node selector
-"""
+"""factory for sequool node selector."""
 
 from dataclasses import dataclass
 from functools import partial
@@ -30,9 +28,7 @@ from .sequool import (
 
 @dataclass
 class SequoolArgs:
-    """
-    Dataclass for Sequool Arguments.
-    """
+    """Dataclass for Sequool Arguments."""
 
     type: Literal[NodeSelectorType.SEQUOOL]
     recursive_selection_on_all_nodes: bool
@@ -45,8 +41,7 @@ def create_sequool(
     args: SequoolArgs,
     random_generator: Random,
 ) -> Sequool[AlgorithmNode]:
-    """
-    Create a sequool node selector object.
+    """Create a sequool node selector object.
 
     Args:
         opening_instructor: An opening instructor object.

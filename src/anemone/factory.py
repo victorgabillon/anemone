@@ -1,6 +1,4 @@
-"""
-Module for creating Tree and Value Branch Selector objects.
-"""
+"""Module for creating Tree and Value Branch Selector objects."""
 
 from dataclasses import dataclass
 from random import Random
@@ -38,9 +36,7 @@ TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 
 @dataclass
 class TreeAndValuePlayerArgs:
-    """
-    Dataclass for Tree and Value Player Arguments.
-    """
+    """Dataclass for Tree and Value Player Arguments."""
 
     node_selector: node_selector_m.AllNodeSelectorArgs
     opening_type: node_selector_m.OpeningType
@@ -66,7 +62,6 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
     different tree-evaluation strategy via
     `create_tree_and_value_branch_selector_with_tree_eval_factory`.
     """
-
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT]
     node_tree_evaluation_factory = NodeTreeMinmaxEvaluationFactory[StateT]()
 
@@ -91,8 +86,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
 ) -> TreeAndValueBranchSelector[StateT]:
-    """
-    Create a TreeAndValueBranchSelector object with the given arguments.
+    """Create a TreeAndValueBranchSelector object with the given arguments.
 
     Args:
         args (TreeAndValuePlayerArgs): The arguments for creating the TreeAndValueBranchSelector.
@@ -103,7 +97,6 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
         TreeAndValueBranchSelector: The created TreeAndValueBranchSelector object.
 
     """
-
     _ = state_type  # not used here
 
     node_evaluator: NodeDirectEvaluator[StateT] = create_node_evaluator(

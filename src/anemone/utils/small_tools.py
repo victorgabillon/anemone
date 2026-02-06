@@ -9,8 +9,7 @@ path = Annotated[str | PathLike[str], "path"]
 
 
 def nth_key[T, V](dct: dict[T, V], n: int) -> T:
-    """
-    Get the nth key from a dictionary.
+    """Get the nth key from a dictionary.
 
     Args:
         dct: The dictionary.
@@ -31,17 +30,14 @@ def nth_key[T, V](dct: dict[T, V], n: int) -> T:
 
 @dataclass
 class Interval:
-    """
-    Represents an interval with a minimum and maximum value.
-    """
+    """Represents an interval with a minimum and maximum value."""
 
     min_value: float | None = None
     max_value: float | None = None
 
 
 def intersect_intervals(interval_1: Interval, interval_2: Interval) -> Interval | None:
-    """
-    Find the intersection of two intervals.
+    """Find the intersection of two intervals.
 
     Args:
         interval_1: The first interval.
@@ -64,8 +60,7 @@ def intersect_intervals(interval_1: Interval, interval_2: Interval) -> Interval 
 
 
 def distance_number_to_interval(value: float, interval: Interval) -> float:
-    """
-    Calculate the distance between a number and an interval.
+    """Calculate the distance between a number and an interval.
 
     Args:
         value: The number.

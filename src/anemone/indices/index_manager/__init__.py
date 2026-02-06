@@ -1,5 +1,4 @@
-"""
-This module provides functionality for managing exploration index managers.
+"""This module provides functionality for managing exploration index managers.
 
 The module includes the following functions and classes:
 - create_exploration_index_manager: A function to create an exploration index manager.

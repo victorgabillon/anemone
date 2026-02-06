@@ -1,5 +1,4 @@
-"""
-This module provides functionality for creating and managing Sequool objects.
+"""This module provides functionality for creating and managing Sequool objects.
 
 A Sequool object represents a sequence of operations that can be applied to a dataset.
 

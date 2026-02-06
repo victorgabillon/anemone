@@ -1,5 +1,4 @@
-"""
-This module contains the implementation of the RecurZipfBase class, which is a node selector for a branch selector tree.
+"""This module contains the implementation of the RecurZipfBase class, which is a node selector for a branch selector tree.
 
 The RecurZipfBase class is responsible for selecting the next node to explore in a branch selector tree based on the RecurZipf algorithm.
 
@@ -28,11 +27,11 @@ if TYPE_CHECKING:
 
 @dataclass
 class RecurZipfBaseArgs:
-    """
-    Arguments for the RecurZipfBase node selector.
+    """Arguments for the RecurZipfBase node selector.
 
     Attributes:
         branch_explorer_priority (SamplingPriorities): The priority for branch exploration.
+
     """
 
     type: Literal[NodeSelectorType.RECUR_ZIPF_BASE]
@@ -40,7 +39,7 @@ class RecurZipfBaseArgs:
 
 
 class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """The RecurZipfBase Node selector"""
+    """The RecurZipfBase Node selector."""
 
     opening_instructor: OpeningInstructor
 
@@ -50,8 +49,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         random_generator: Random,
         opening_instructor: OpeningInstructor,
     ) -> None:
-        """
-        Initializes a new instance of the RecurZipfBase class.
+        """Initializes a new instance of the RecurZipfBase class.
 
         Args:
         - args (RecurZipfBaseArgs): The arguments for the RecurZipfBase node selector.
@@ -70,8 +68,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
-        """
-        Chooses the next node to explore and the branch to open.
+        """Chooses the next node to explore and the branch to open.
 
         Args:
         - tree (trees.Tree[AlgorithmNode]): The branch selector tree.
@@ -131,8 +128,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return opening_instructions
 
     def __str__(self) -> str:
-        """
-        Returns a string representation of the RecurZipfBase node selector.
+        """Returns a string representation of the RecurZipfBase node selector.
 
         Returns:
         - str: The string representation of the RecurZipfBase node selector.

@@ -1,5 +1,4 @@
-"""
-This module contains the implementation of the TreeExploration class, which is responsible for managing a search
+"""This module contains the implementation of the TreeExploration class, which is responsible for managing a search
  for the best branch in a given state using a tree-based approach.
 
 The TreeExploration class is used to create and manage a tree structure that represents the possible branches and
@@ -45,9 +44,7 @@ from valanga.policy import NotifyProgressCallable
 
 @dataclass
 class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """
-    Tree Exploration Result holds the result of a tree exploration.
-    """
+    """Tree Exploration Result holds the result of a tree exploration."""
 
     branch_recommendation: Recommendation
     tree: trees.Tree[NodeT]
@@ -70,8 +67,7 @@ def compute_child_evals[StateT: State](
 
 @dataclass
 class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """
-    Tree Exploration is an object to manage one best-branch search.
+    """Tree Exploration is an object to manage one best-branch search.
 
     Attributes:
     - tree: The tree structure representing the possible branches and their evaluations.
@@ -83,6 +79,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     Methods:
     - print_info_during_branch_computation: Prints information during the branch computation.
     - explore: Explores the tree to find the best branch.
+
     """
 
     # TODO: Not sure why this class is not simply the TreeAndValuePlayer Class
@@ -97,8 +94,10 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def print_info_during_branch_computation(self, random_generator: Random) -> None:
         """Print info during the branch computation.
+
         Args:
         - random_generator: The random number generator.
+
         """
         current_best_branch: str
         if self.tree.root_node.tree_evaluation.best_branch_sequence:
@@ -126,14 +125,14 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self.tree_manager.print_best_line(tree=self.tree)
 
     def explore(self, random_generator: Random) -> TreeExplorationResult[NodeT]:
-        """
-        Explore the tree to find the best branch.
+        """Explore the tree to find the best branch.
 
         Args:
         - random_generator: The random number generator.
 
         Returns:
         - BranchRecommendation: The recommended branch and its evaluation.
+
         """
         # by default the first tree expansion is the creation of the tree node
         tree_expansions: tree_man.TreeExpansions[NodeT] = tree_man.TreeExpansions()
@@ -218,8 +217,7 @@ def create_tree_exploration[StateT: TurnState](
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
     notify_percent_function: NotifyProgressCallable | None = None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
-    """
-    Create a TreeExploration object with the specified dependencies.
+    """Create a TreeExploration object with the specified dependencies.
 
     Args:
     - node_selector_create: The factory function for creating the node selector.
@@ -231,6 +229,7 @@ def create_tree_exploration[StateT: TurnState](
 
     Returns:
     - TreeExploration: The created TreeExploration object.
+
     """
     # creates the tree
     tree: trees.Tree[AlgorithmNode[StateT]] = tree_factory.create(

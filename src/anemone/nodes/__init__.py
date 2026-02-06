@@ -1,5 +1,4 @@
-"""
-This module contains the implementation of tree nodes for branch selection.
+"""This module contains the implementation of tree nodes for branch selection.
 
 The tree nodes are used in the branch selector to represent different branches and their values.
 

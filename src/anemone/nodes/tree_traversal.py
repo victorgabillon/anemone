@@ -1,5 +1,4 @@
-"""
-This module provides functions for traversing a tree of nodes.
+"""This module provides functions for traversing a tree of nodes.
 
 The functions in this module allow you to retrieve descendants of a given node in a tree structure.
 """
@@ -11,14 +10,14 @@ from .itree_node import ITreeNode
 
 
 def get_descendants[NodeT: ITreeNode[Any]](from_tree_node: NodeT) -> dict[NodeT, None]:
-    """
-    Get all descendants of a given tree node.
+    """Get all descendants of a given tree node.
 
     Args:
         from_tree_node (ITreeNode): The starting tree node.
 
     Returns:
         dict[ITreeNode, None]: A dictionary containing all descendants of the starting tree node.
+
     """
     des: dict[NodeT, None] = {from_tree_node: None}  # include itself
     generation: set[NodeT] = {
@@ -40,8 +39,7 @@ def get_descendants[NodeT: ITreeNode[Any]](from_tree_node: NodeT) -> dict[NodeT,
 def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
     from_tree_node: NodeT, max_depth: int | None = None
 ) -> list[NodeT]:
-    """
-    Get descendants of a given tree node that are not over.
+    """Get descendants of a given tree node that are not over.
 
     Args:
         from_tree_node (AlgorithmNode): The starting tree node.
@@ -49,6 +47,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
 
     Returns:
         list[AlgorithmNode]: A list of descendants that are not over.
+
     """
     if not from_tree_node.all_branches_generated and not from_tree_node.is_over():
         # should use are_all_branches_and_children_opened() but its messy!
@@ -76,8 +75,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
 def get_descendants_candidate_not_over[NodeT: AlgorithmNode[Any]](
     from_tree_node: NodeT, max_depth: int | None = None
 ) -> list[NodeT]:
-    """
-    Get descendants of a given tree node that are not over.
+    """Get descendants of a given tree node that are not over.
 
     Args:
         from_tree_node (ITreeNode): The starting tree node.
@@ -85,6 +83,7 @@ def get_descendants_candidate_not_over[NodeT: AlgorithmNode[Any]](
 
     Returns:
         list[ITreeNode]: A list of descendants that are not over.
+
     """
     assert not from_tree_node.is_over()
     if not from_tree_node.branches_children:
