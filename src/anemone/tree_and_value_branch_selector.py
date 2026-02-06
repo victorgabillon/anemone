@@ -1,7 +1,6 @@
 """Module for Tree and Value Branch Selector."""
 
 from dataclasses import dataclass
-from queue import Queue
 from random import Random
 
 from valanga import TurnState
@@ -12,11 +11,14 @@ from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
 )
 from anemone.search_factory import NodeSelectorFactory
-from anemone.utils.dataclass import IsDataclass
 
 from . import recommender_rule
 from . import tree_manager as tree_man
-from .tree_exploration import TreeExploration, create_tree_exploration
+from .tree_exploration import (
+    NotifyProgressCallable,
+    TreeExploration,
+    create_tree_exploration,
+)
 from .trees.factory import ValueTreeFactory
 
 
@@ -42,9 +44,13 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     node_selector_create: NodeSelectorFactory
     random_generator: Random
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
-    queue_progress_player: Queue[IsDataclass] | None
 
-    def recommend(self, state: StateT, seed: Seed) -> Recommendation:
+    def recommend(
+        self,
+        state: StateT,
+        seed: Seed,
+        notify_progress: NotifyProgressCallable | None = None,
+    ) -> Recommendation:
         """
         Selects the best branch based on the tree and value strategy.
 
@@ -55,7 +61,9 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
         Returns:
         - The recommended branch based on the tree and value strategy.
         """
-        tree_exploration: TreeExploration = self.create_tree_exploration(state=state)
+        tree_exploration: TreeExploration = self.create_tree_exploration(
+            state=state, notify_progress=notify_progress
+        )
         self.random_generator.seed(seed)
 
         branch_recommendation: Recommendation = tree_exploration.explore(
@@ -67,6 +75,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     def create_tree_exploration(
         self,
         state: StateT,
+        notify_progress: NotifyProgressCallable | None = None,
     ) -> TreeExploration:
         """Create a TreeExploration instance for the given state."""
         tree_exploration: TreeExploration = create_tree_exploration(
@@ -76,7 +85,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
             tree_factory=self.tree_factory,
             stopping_criterion_args=self.stopping_criterion_args,
             recommend_branch_after_exploration=self.recommend_branch_after_exploration,
-            queue_progress_player=self.queue_progress_player,
+            notify_percent_function=notify_progress,
         )
         return tree_exploration
 

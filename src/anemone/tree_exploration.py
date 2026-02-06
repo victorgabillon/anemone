@@ -15,13 +15,11 @@ Functions:
 - create_tree_exploration: Creates a TreeExploration object with the specified dependencies.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from queue import Queue
 from random import Random
 from typing import TYPE_CHECKING, Any
 
-from valanga import BranchKey, PlayerProgressMessage, State, StateEvaluation, TurnState
+from valanga import BranchKey, State, StateEvaluation, TurnState
 from valanga.game import BranchName
 from valanga.policy import Recommendation
 
@@ -32,7 +30,6 @@ from anemone.progress_monitor.progress_monitor import (
     create_stopping_criterion,
 )
 from anemone.search_factory import NodeSelectorFactory
-from anemone.utils.dataclass import IsDataclass
 from anemone.utils.logger import anemone_logger
 
 from . import node_selector as node_sel
@@ -42,6 +39,8 @@ from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
     from valanga.policy import BranchPolicy
+
+from valanga.policy import NotifyProgressCallable
 
 
 @dataclass
@@ -94,7 +93,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     node_selector: node_sel.NodeSelector[NodeT]
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     stopping_criterion: ProgressMonitor[NodeT]
-    notify_percent_function: Callable[[int], None] | None
+    notify_percent_function: NotifyProgressCallable
 
     def print_info_during_branch_computation(self, random_generator: Random) -> None:
         """Print info during the branch computation.
@@ -217,7 +216,7 @@ def create_tree_exploration[StateT: TurnState](
     tree_factory: ValueTreeFactory[StateT],
     stopping_criterion_args: AllStoppingCriterionArgs,
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
-    queue_progress_player: Queue[IsDataclass] | None,
+    notify_percent_function: NotifyProgressCallable | None = None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """
     Create a TreeExploration object with the specified dependencies.
@@ -244,15 +243,6 @@ def create_tree_exploration[StateT: TurnState](
             args=stopping_criterion_args, node_selector=node_selector
         )
     )
-
-    def notify_percent_function(progress_percent: int) -> None:
-        """Send progress updates to the queue if configured."""
-        if queue_progress_player is not None:
-            queue_progress_player.put(
-                PlayerProgressMessage(
-                    progress_percent=progress_percent, player_color=starting_state.turn
-                )
-            )
 
     tree_exploration: TreeExploration[AlgorithmNode[StateT]] = TreeExploration(
         tree=tree,
