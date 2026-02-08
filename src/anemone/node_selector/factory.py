@@ -19,7 +19,7 @@ class UniformArgs:
     type: Literal[NodeSelectorType.UNIFORM]
 
 
-type AllNodeSelectorArgs = RecurZipfBaseArgs | SequoolArgs | UniformArgs
+AllNodeSelectorArgs = RecurZipfBaseArgs | SequoolArgs | UniformArgs
 
 
 class UnknownNodeSelectorError(ValueError):
