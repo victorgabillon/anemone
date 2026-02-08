@@ -1,5 +1,4 @@
-"""
-This module provides classes and functions for updating tree values in the branch selector.
+"""Provide classes and functions for updating tree values in the branch selector.
 
 Classes:
 - AlgorithmNodeUpdater: A class for updating algorithm nodes in the tree.
@@ -24,10 +23,10 @@ from .updates_file import (
 )
 
 __all__ = [
-    "create_algorithm_node_updater",
     "AlgorithmNodeUpdater",
-    "UpdateInstructionsFromOneNode",
-    "UpdateInstructionsTowardsOneParentNode",
     "MinMaxEvaluationUpdater",
+    "UpdateInstructionsFromOneNode",
     "UpdateInstructionsTowardsMultipleNodes",
+    "UpdateInstructionsTowardsOneParentNode",
+    "create_algorithm_node_updater",
 ]

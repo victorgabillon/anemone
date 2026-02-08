@@ -1,6 +1,4 @@
-"""
-This module contains the MinMaxEvaluationUpdater class, which is responsible for updating the min-max evaluation values of AlgorithmNode objects.
-"""
+"""Module containing the MinMaxEvaluationUpdater for algorithm node updates."""
 
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
@@ -14,25 +12,22 @@ from .value_block import (
 
 
 class MinMaxEvaluationUpdater:
-    """
-    The MinMaxEvaluationUpdater class is responsible for updating the min-max evaluation values of AlgorithmNode objects.
-    """
+    """The MinMaxEvaluationUpdater class is responsible for updating the min-max evaluation values of AlgorithmNode objects."""
 
     def __init__(self) -> None:
-        """Initializes a new instance of the MinMaxEvaluationUpdater class."""
-        ...
+        """Initialize a new instance of the MinMaxEvaluationUpdater class."""
 
     def create_update_instructions_after_node_birth(
         self, new_node: AlgorithmNode
     ) -> ValueUpdateInstructionsFromOneNode:
-        """
-        Creates the update instructions for a newly created AlgorithmNode.
+        """Create the update instructions for a newly created AlgorithmNode.
 
         Args:
             new_node (AlgorithmNode): The newly created AlgorithmNode.
 
         Returns:
             ValueUpdateInstructionsBlock: The update instructions for the newly created node.
+
         """
         base_update_instructions: ValueUpdateInstructionsFromOneNode = (
             ValueUpdateInstructionsFromOneNode(
@@ -49,8 +44,7 @@ class MinMaxEvaluationUpdater:
         node_to_update: AlgorithmNode,
         updates_instructions: UpdateInstructionsTowardsOneParentNode,
     ) -> ValueUpdateInstructionsFromOneNode:
-        """
-        Performs the updates on an AlgorithmNode based on the given update instructions.
+        """Perform the updates on an AlgorithmNode based on the given update instructions.
 
         Args:
             node_to_update (AlgorithmNode): The AlgorithmNode to update.
@@ -58,6 +52,7 @@ class MinMaxEvaluationUpdater:
 
         Returns:
             ValueUpdateInstructionsFromOneNode: The update instructions for the parents of the updated node.
+
         """
         # get the base block
         updates_instructions_block: ValueUpdateInstructionsTowardsOneParentNode | None

@@ -1,5 +1,4 @@
-"""
-This module provides a factory function to create an instance of AlgorithmNodeUpdater.
+"""Provide a factory function to create an instance of AlgorithmNodeUpdater.
 
 The AlgorithmNodeUpdater is responsible for updating the algorithm node in a tree structure.
 
@@ -17,8 +16,7 @@ from .minmax_evaluation_updater import MinMaxEvaluationUpdater
 def create_algorithm_node_updater(
     index_updater: IndexUpdater | None,
 ) -> AlgorithmNodeUpdater:
-    """
-    Creates an instance of AlgorithmNodeUpdater.
+    """Create an instance of AlgorithmNodeUpdater.
 
     Args:
         index_updater (IndexUpdater | None): The index updater object.

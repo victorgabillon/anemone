@@ -1,5 +1,4 @@
-"""
-This module contains functions for testing the indices used in the branch selector tree.
+"""This module contains functions for testing the indices used in the branch selector tree.
 
 The main functions in this module are:
 - `make_tree_from_file`: Creates a branch and value tree from a YAML file.
@@ -126,9 +125,7 @@ class OpenAllInBfsOrder(NodeSelector[AlgorithmNode[FakeYamlState]]):
 
 
 class TestResult(Enum):
-    """
-    Enumeration for the test results.
-    """
+    """Enumeration for the test results."""
 
     __test__ = False
     PASSED = 0
@@ -206,8 +203,7 @@ def build_tree_from_yaml_clean(
 
 
 def check_from_file(file_path: path, tree: Tree[AlgorithmNode]) -> None:
-    """
-    Check the values in the given file against the values in the tree.
+    """Check the values in the given file against the values in the tree.
 
     Args:
         file_path (str): The path to the file containing the values to check.
@@ -215,8 +211,9 @@ def check_from_file(file_path: path, tree: Tree[AlgorithmNode]) -> None:
 
     Returns:
         None
+
     """
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         tree_yaml = yaml.safe_load(file)
     print("tree", tree_yaml)
     yaml_nodes = tree_yaml["nodes"]
@@ -225,7 +222,7 @@ def check_from_file(file_path: path, tree: Tree[AlgorithmNode]) -> None:
 
     tree_depth: int
     for tree_depth in tree_nodes:
-        # todo how are we sure that the hm comes in order?
+        # TODO how are we sure that the hm comes in order?
         # print('hmv', tree_depth)
         parent_node: ITreeNode
         for parent_node in tree_nodes[tree_depth].values():
@@ -268,8 +265,7 @@ def check_index(index_computation: IndexComputationType, tree_file: path) -> Tes
 
 @pytest.mark.integration
 def test_indices() -> None:
-    """
-    Test the index computations on multiple tree files.
+    """Test the index computations on multiple tree files.
 
     This function iterates over a list of index computations and tree files,
     and performs a test for each combination. The results of the tests are
@@ -277,6 +273,7 @@ def test_indices() -> None:
 
     Returns:
         None
+
     """
     index_computations: list[IndexComputationType] = [
         IndexComputationType.MIN_GLOBAL_CHANGE,

@@ -1,5 +1,4 @@
-"""
-This module defines the Descendants and RangedDescendants classes.
+"""Define the Descendants and RangedDescendants classes.
 
 Descendants:
 - Represents a collection of descendants of a tree node at different depths.
@@ -17,7 +16,8 @@ Note: The Descendants and RangedDescendants classes are used in the chipiron pro
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
-from typing import Any, Iterator, KeysView, Self
+from collections.abc import Iterator, KeysView
+from typing import Any, Self
 
 from sortedcollections import ValueSortedDict
 from valanga import StateTag
@@ -27,8 +27,7 @@ from anemone.nodes import ITreeNode
 
 
 class Descendants[NodeT: ITreeNode[Any]]:
-    """
-    Represents a collection of descendants for a specific depth in a tree.
+    """Represents a collection of descendants for a specific depth in a tree.
 
     Attributes:
         descendants_at_tree_depth (dict[TreeDepth, dict[str, NodeT]]): A dictionary that maps a depth to a dictionary of descendants.
@@ -36,6 +35,7 @@ class Descendants[NodeT: ITreeNode[Any]]:
         number_of_descendants_at_tree_depth (dict[TreeDepth, int]): A dictionary that maps a depth to the number of descendants at that depth.
         min_tree_depth (int | None): The minimum depth in the collection, or None if the collection is empty.
         max_tree_depth (int | None): The maximum depth in the collection, or None if the collection is empty.
+
     """
 
     descendants_at_tree_depth: dict[TreeDepth, dict[StateTag, NodeT]]
@@ -45,8 +45,7 @@ class Descendants[NodeT: ITreeNode[Any]]:
     max_tree_depth: TreeDepth | None
 
     def __init__(self) -> None:
-        """
-        Initializes a Descendants object.
+        """Initialize a Descendants object.
 
         This method initializes the Descendants object by setting up the necessary attributes.
 
@@ -56,8 +55,8 @@ class Descendants[NodeT: ITreeNode[Any]]:
         - number_of_descendants_at_tree_depth (dict): A dictionary to store the number of descendants at each depth.
         - min_tree_depth (int or None): The minimum depth.
         - max_tree_depth (int or None): The maximum depth.
-        """
 
+        """
         self.descendants_at_tree_depth = {}
         self.number_of_descendants = 0
         self.number_of_descendants_at_tree_depth = {}
@@ -75,17 +74,16 @@ class Descendants[NodeT: ITreeNode[Any]]:
         )
 
     def keys(self) -> KeysView[TreeDepth]:
-        """
-        Returns a view of the keys in the descendants_at_tree_depth dictionary.
+        """Return a view of the keys in the descendants_at_tree_depth dictionary.
 
         Returns:
             KeysView[TreeDepth]: A view of the keys in the descendants_at_tree_depth dictionary.
+
         """
         return self.descendants_at_tree_depth.keys()
 
     def __setitem__(self, tree_depth: TreeDepth, value: dict[StateTag, NodeT]) -> None:
-        """
-        Sets the descendants at a specific depth.
+        """Set the descendants at a specific depth.
 
         Args:
             tree_depth (TreeDepth): The depth at which to set the descendants.
@@ -93,48 +91,49 @@ class Descendants[NodeT: ITreeNode[Any]]:
 
         Returns:
             None
+
         """
         self.descendants_at_tree_depth[tree_depth] = value
 
     def __getitem__(self, tree_depth: TreeDepth) -> dict[StateTag, NodeT]:
-        """
-        Retrieve the descendants at a specific depth.
+        """Retrieve the descendants at a specific depth.
 
         Args:
             tree_depth (TreeDepth): The depth to retrieve the descendants for.
 
         Returns:
             dict[str, NodeT]: A dictionary of descendants at the specified depth.
+
         """
         return self.descendants_at_tree_depth[tree_depth]
 
     def __iter__(self) -> Iterator[TreeDepth]:
-        """
-        Returns an iterator over the descendants at each depth.
+        """Return an iterator over the descendants at each depth.
 
         Returns:
             An iterator over the descendants at each depth.
+
         """
         return iter(self.descendants_at_tree_depth)
 
     def get_count(self) -> int:
-        """
-        Returns the number of descendants for the current node.
+        """Return the number of descendants for the current node.
 
         Returns:
             int: The number of descendants.
+
         """
         return self.number_of_descendants
 
     def contains_node(self, node: NodeT) -> bool:
-        """
-        Checks if the descendants contain a specific node.
+        """Check if the descendants contain a specific node.
 
         Args:
             node (NodeT): The node to check for.
 
         Returns:
             bool: True if the descendants contain the node, False otherwise.
+
         """
         return (
             node.tree_depth in self.descendants_at_tree_depth
@@ -142,14 +141,14 @@ class Descendants[NodeT: ITreeNode[Any]]:
         )
 
     def remove_descendant(self, node: NodeT) -> None:
-        """
-        Removes a descendant node from the tree.
+        """Remove a descendant node from the tree.
 
         Args:
             node (NodeT): The node to be removed.
 
         Returns:
             None
+
         """
         tree_depth = node.tree_depth
         fen = node.tag
@@ -162,23 +161,23 @@ class Descendants[NodeT: ITreeNode[Any]]:
             self.descendants_at_tree_depth.pop(tree_depth)
 
     def empty(self) -> bool:
-        """
-        Check if the descendants are empty.
+        """Check if the descendants are empty.
 
         Returns:
             bool: True if the number of descendants is 0, False otherwise.
+
         """
         return self.number_of_descendants == 0
 
     def add_descendant(self, node: NodeT) -> None:
-        """
-        Adds a descendant node to the tree.
+        """Add a descendant node to the tree.
 
         Args:
             node (NodeT): The descendant node to be added.
 
         Returns:
             None
+
         """
         tree_depth: TreeDepth = node.tree_depth
         node_tag: StateTag = node.tag
@@ -193,8 +192,7 @@ class Descendants[NodeT: ITreeNode[Any]]:
         self.number_of_descendants += 1
 
     def __len__(self) -> int:
-        """
-        Returns the number of descendants at the current depth.
+        """Return the number of descendants at the current depth.
 
         :return: The number of descendants at the current depth.
         :rtype: int
@@ -202,14 +200,14 @@ class Descendants[NodeT: ITreeNode[Any]]:
         return len(self.descendants_at_tree_depth)
 
     def print_info(self) -> None:
-        """
-        Prints information about the descendants.
+        """Print information about the descendants.
 
         This method prints the number of descendants and their corresponding depths.
         It also prints the ID and fast representation of each descendant.
 
         Returns:
             None
+
         """
         print("---here are the ", self.get_count(), " descendants.")
         for tree_depth in self:
@@ -225,13 +223,13 @@ class Descendants[NodeT: ITreeNode[Any]]:
             print("")
 
     def print_stats(self) -> None:
-        """
-        Prints the statistics of the descendants.
+        """Print the statistics of the descendants.
 
         This method prints the number of descendants at each depth.
 
         Returns:
             None
+
         """
         print("---here are the ", self.get_count(), " descendants")
         for tree_depth in self:
@@ -244,8 +242,8 @@ class Descendants[NodeT: ITreeNode[Any]]:
             )
 
     def test(self) -> None:
-        """
-        This method performs a series of assertions to validate the descendants data structure.
+        """Perform a series of assertions to validate the descendants data structure.
+
         It checks if the number of descendants at each depth matches the number of descendants stored.
         It also checks if the sum of the lengths of all descendants at each depth matches the total number of descendants.
         """
@@ -264,33 +262,31 @@ class Descendants[NodeT: ITreeNode[Any]]:
 
 
 class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
-    """
-    Represents a collection of descendants with a range of depths.
+    """Represent a collection of descendants with a range of depths.
 
     Attributes:
         min_tree_depth (int | None): The minimum depth in the range.
         max_tree_depth (int | None): The maximum depth in the range.
+
     """
 
     min_tree_depth: int | None
     max_tree_depth: int | None
 
     def __init__(self) -> None:
-        """
-        Initializes a Descendants object.
-        """
+        """Initialize a Descendants object."""
         super().__init__()
         self.min_tree_depth = None
         self.max_tree_depth = None
 
     def __str__(self) -> str:
-        """
-        Returns a string representation of the Descendants object.
+        """Return a string representation of the Descendants object.
 
         The string includes information about each depth and its descendants.
 
         Returns:
             str: A string representation of the Descendants object.
+
         """
         string: str = ""
         for tree_depth in self:
@@ -301,14 +297,14 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         return string
 
     def is_new_generation(self, tree_depth: TreeDepth) -> bool:
-        """
-        Checks if the given depth is a new generation.
+        """Check if the given depth is a new generation.
 
         Args:
             tree_depth (TreeDepth): The depth to check.
 
         Returns:
             bool: True if the depth is a new generation, False otherwise.
+
         """
         if self.min_tree_depth is not None:
             assert self.max_tree_depth is not None
@@ -316,43 +312,42 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         return True
 
     def is_in_the_current_range(self, tree_depth: int) -> bool:
-        """
-        Checks if the given tree_depth is within the current range.
+        """Check if the given tree_depth is within the current range.
 
         Args:
             tree_depth (int): The tree_depth to check.
 
         Returns:
             bool: True if the tree_depth is within the range, False otherwise.
-        """
 
+        """
         if self.min_tree_depth is not None and self.max_tree_depth is not None:
             return self.max_tree_depth >= tree_depth >= self.min_tree_depth
         return False
 
     def is_in_the_acceptable_range(self, tree_depth: int) -> bool:
-        """
-        Checks if the given tree_depth is within the acceptable range.
+        """Check if the given tree_depth is within the acceptable range.
 
         Args:
             tree_depth (int): The tree_depth to check.
 
         Returns:
             bool: True if the tree_depth is within the acceptable range, False otherwise.
+
         """
         if self.min_tree_depth is not None and self.max_tree_depth is not None:
             return self.max_tree_depth + 1 >= tree_depth >= self.min_tree_depth
         return True
 
     def add_descendant(self, node: NodeT) -> None:
-        """
-        Adds a descendant node to the tree.
+        """Add a descendant node to the tree.
 
         Args:
             node (NodeT): The descendant node to be added.
 
         Returns:
             None
+
         """
         tree_depth: int = node.tree_depth
         node_tag: StateTag = node.tag
@@ -375,14 +370,14 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         self.number_of_descendants += 1
 
     def remove_descendant(self, node: NodeT) -> None:
-        """
-        Removes a descendant node from the tree.
+        """Remove a descendant node from the tree.
 
         Args:
             node (NodeT): The node to be removed.
 
         Returns:
             None
+
         """
         tree_depth: int = node.tree_depth
         fen = node.tag
@@ -407,42 +402,20 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
                 assert self.number_of_descendants == 0
 
     def range(self) -> range:
-        """
-        Returns a range object representing the depth range.
+        """Return a range object representing the depth range.
 
         The range starts from the minimum depth and ends at the maximum depth.
 
         Returns:
             range: A range object representing the depth range.
-        """
 
+        """
         assert self.max_tree_depth is not None
         assert self.min_tree_depth is not None
         return range(self.min_tree_depth, self.max_tree_depth + 1)
 
-    #  def update(
-    #          self,
-    #          new_descendants: typing.Self
-    #  ) -> RangedDescendants:
-    #      really_new_descendants : RangedDescendants()#
-
-    #        for tree_depth in new_descendants.range():
-    #            if tree_depth in self:
-    #               really_new_descendants_keys = set(new_descendants[tree_depth].keys()).difference(
-    #                  set(self[tree_depth].keys()))
-    #          else:
-    #              really_new_descendants_keys = set(new_descendants[tree_depth].keys())
-    #          for key in really_new_descendants_keys:
-    #              really_new_descendants.add_descendant(new_descendants[tree_depth][key])
-    #             self.add_descendant(new_descendants[tree_depth][key])
-
-    #   # really_new_descendants.print_info()
-
-    #    return really_new_descendants
-
     def merge(self, descendant_1: Self, descendant_2: Self) -> None:
-        """
-        Merges the descendants of two nodes into the current node.
+        """Merge the descendants of two nodes into the current node.
 
         Args:
             descendant_1 (Self): The first descendant node.
@@ -450,6 +423,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
         Returns:
             None
+
         """
         tree_depths_range = set(descendant_1.keys()) | set(descendant_2.keys())
         assert len(tree_depths_range) > 0
@@ -458,8 +432,6 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         for tree_depth in tree_depths_range:
             if descendant_1.is_in_the_current_range(tree_depth):
                 if descendant_2.is_in_the_current_range(tree_depth):
-                    #  print('dd',type(self.descendants_at_tree_depth),type())
-                    # in python 3.9 we can use a |
                     self.descendants_at_tree_depth[tree_depth] = {
                         **descendant_1[tree_depth],
                         **descendant_2[tree_depth],
@@ -487,8 +459,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             ]
 
     def test(self) -> None:
-        """
-        Perform a test on the descendants object.
+        """Perform a test on the descendants object.
 
         This method checks the validity of the descendants object by asserting various conditions.
         If the `min_tree_depth` attribute is None, it asserts that `max_tree_depth` is also None and
@@ -500,6 +471,7 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
         Returns:
             None
+
         """
         super().test()
         if self.min_tree_depth is None:
@@ -514,14 +486,14 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             assert self.is_in_the_current_range(tree_depth)
 
     def print_info(self) -> None:
-        """
-        Prints information about the descendants.
+        """Print information about the descendants.
 
         This method calls the `print_info` method of the parent class and then prints the count of descendants,
         the minimum depth, and the maximum depth.
 
         Returns:
             None
+
         """
         super().print_info()
         print(
@@ -535,10 +507,9 @@ class RangedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
 
 class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
-    # todo is there a difference between sorted descendant nd sorted value descendant? below?
+    # TODO: is there a difference between sorted descendant nd sorted value descendant? below?
+    """Represent a class that stores sorted descendants of a tree node at different depths.
 
-    """
-    Represents a class that stores sorted descendants of a tree node at different depths.
     Inherits from the Descendants class.
     """
 
@@ -550,22 +521,22 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         self.sorted_descendants_at_tree_depth = {}
 
     def update_value(self, node: NodeT, value: float) -> None:
-        """
-        Updates the value of a descendant node.
+        """Update the value of a descendant node.
 
         Args:
             node (NodeT): The descendant node.
             value (float): The new value for the descendant node.
+
         """
         self.sorted_descendants_at_tree_depth[node.tree_depth][node] = value
 
     def add_descendant_with_val(self, node: NodeT, value: float) -> None:
-        """
-        Adds a descendant node with its corresponding value.
+        """Add a descendant node with its corresponding value.
 
         Args:
             node (NodeT): The descendant node to add.
             value (float): The value of the descendant node.
+
         """
         super().add_descendant(node)
         tree_depth = node.tree_depth
@@ -579,9 +550,7 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         assert self.contains_node(node)
 
     def test(self) -> None:
-        """
-        Performs a test to ensure the integrity of the data structure.
-        """
+        """Performs a test to ensure the integrity of the data structure."""
         super().test()
         assert len(self.sorted_descendants_at_tree_depth) == len(
             self.descendants_at_tree_depth
@@ -599,9 +568,7 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             )
 
     def print_info(self) -> None:
-        """
-        Prints information about the sorted descendants.
-        """
+        """Print information about the sorted descendants."""
         super().print_info()
         print("sorted")
         for tree_depth in self:
@@ -619,11 +586,11 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             print("")
 
     def remove_descendant(self, node: NodeT) -> None:
-        """
-        Removes a descendant node from the data structure.
+        """Remove a descendant node from the data structure.
 
         Args:
             node (NodeT): The descendant node to remove.
+
         """
         super().remove_descendant(node)
         tree_depth = node.tree_depth
@@ -633,14 +600,14 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
         assert not self.contains_node(node)
 
     def contains_node(self, node: NodeT) -> bool:
-        """
-        Checks if a descendant node is present in the data structure.
+        """Check if a descendant node is present in the data structure.
 
         Args:
             node (NodeT): The descendant node to check.
 
         Returns:
             bool: True if the descendant node is present, False otherwise.
+
         """
         reply_base = super().contains_node(node)
         rep = (
@@ -652,23 +619,20 @@ class SortedDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
 
 class SortedValueDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
-    """
-    Represents a class for managing sorted descendants with associated values.
+    """Represent a class for managing sorted descendants with associated values.
+
     Inherits from the `Descendants` class.
     """
 
     sorted_descendants_at_tree_depth: dict[TreeDepth, ValueSortedDict]
 
     def __init__(self) -> None:
-        """
-        Initializes a Sorted Value Descendants object.
-        """
+        """Initialize a Sorted Value Descendants object."""
         super().__init__()
         self.sorted_descendants_at_tree_depth = {}
 
     def update_value(self, node: NodeT, value: float) -> None:
-        """
-        Updates the value associated with a given node.
+        """Update the value associated with a given node.
 
         Args:
             node (NodeT): The node to update the value for.
@@ -676,12 +640,12 @@ class SortedValueDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
         Returns:
             None
+
         """
         self.sorted_descendants_at_tree_depth[node.tree_depth][node] = value
 
     def add_descendant_val(self, node: NodeT, value: float) -> None:
-        """
-        Adds a descendant node with an associated value.
+        """Add a descendant node with an associated value.
 
         Args:
             node (NodeT): The descendant node to add.
@@ -689,6 +653,7 @@ class SortedValueDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
 
         Returns:
             None
+
         """
         super().add_descendant(node)
         tree_depth = node.tree_depth
@@ -702,11 +667,11 @@ class SortedValueDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             )
 
     def test(self) -> None:
-        """
-        Performs a test to ensure the integrity of the sorted descendants.
+        """Performs a test to ensure the integrity of the sorted descendants.
 
         Returns:
             None
+
         """
         super().test()
         assert len(self.sorted_descendants_at_tree_depth) == len(
@@ -725,11 +690,11 @@ class SortedValueDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             )
 
     def print_info(self) -> None:
-        """
-        Prints information about the sorted descendants.
+        """Print information about the sorted descendants.
 
         Returns:
             None
+
         """
         super().print_info()
         print("sorted")
@@ -748,14 +713,14 @@ class SortedValueDescendants[NodeT: ITreeNode[Any]](Descendants[NodeT]):
             print("")
 
     def remove_descendant(self, node: NodeT) -> None:
-        """
-        Removes a descendant node.
+        """Remove a descendant node.
 
         Args:
             node (NodeT): The descendant node to remove.
 
         Returns:
             None
+
         """
         super().remove_descendant(node)
         tree_depth = node.tree_depth

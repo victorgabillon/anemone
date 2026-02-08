@@ -1,5 +1,4 @@
-"""
-This module contains classes for managing update instructions in a batch.
+"""Module containing classes for managing update instructions in a batch.
 
 Classes:
 - UpdateInstructions: Represents update instructions for a single node.
@@ -28,12 +27,12 @@ from .value_block import (
 
 @dataclass(slots=True)
 class UpdateInstructionsFromOneNode:
-    """
-    Represents update instructions generated from a single node.
+    """Represents update instructions generated from a single node.
 
     Attributes:
     - value_block: The value update instructions generated from a single node.
     - index_block: The index update instructions generated from a single node.
+
     """
 
     value_block: ValueUpdateInstructionsFromOneNode | None = None
@@ -42,12 +41,12 @@ class UpdateInstructionsFromOneNode:
 
 @dataclass(slots=True)
 class UpdateInstructionsTowardsOneParentNode:
-    """
-    Represents update instructions for a single node.
+    """Represents update instructions for a single node.
 
     Attributes:
     - value_block: The value update instructions block.
     - index_block: The index update instructions block.
+
     """
 
     value_updates_toward_one_parent_node: (
@@ -62,12 +61,12 @@ class UpdateInstructionsTowardsOneParentNode:
         update_from_a_child_node: UpdateInstructionsFromOneNode,
         branch_from_parent_to_child: BranchKey,
     ) -> None:
-        """
-        Adds update instructions from a child node.
+        """Add update instructions from a child node.
 
         Args:
-        - update_from_a_child_node: The update instructions from the child node.
-        - branch_from_parent_to_child: The branch key from the parent to the child.
+            update_from_a_child_node: The update instructions from the child node.
+            branch_from_parent_to_child: The branch key from the parent to the child.
+
         """
         assert self.value_updates_toward_one_parent_node is not None
         assert update_from_a_child_node.value_block is not None
@@ -86,10 +85,11 @@ class UpdateInstructionsTowardsOneParentNode:
                 )
 
     def add_updates_towards_one_parent_node(self, another_update: Self) -> None:
-        """
-        Adds update instructions from another UpdateInstructionsTowardsOneParentNode.
+        """Add update instructions from another UpdateInstructionsTowardsOneParentNode.
+
         Args:
-        - another_update: The other update instructions to add.
+            another_update: The other update instructions to add.
+
         """
         assert self.value_updates_toward_one_parent_node is not None
         assert another_update.value_updates_toward_one_parent_node is not None
@@ -106,9 +106,7 @@ class UpdateInstructionsTowardsOneParentNode:
                 )
 
     def print_info(self) -> None:
-        """
-        Prints information about the update instructions.
-        """
+        """Print information about the update instructions."""
         print("printing info of update instructions")
         assert (
             self.index_updates_toward_one_parent_node is not None
@@ -118,11 +116,11 @@ class UpdateInstructionsTowardsOneParentNode:
         self.index_updates_toward_one_parent_node.print_info()
 
     def empty(self) -> bool:
-        """
-        Checks if the update instructions are empty.
+        """Check if the update instructions are empty.
 
         Returns:
         - True if the update instructions are empty, False otherwise.
+
         """
         assert self.value_updates_toward_one_parent_node is not None
         return self.value_updates_toward_one_parent_node.empty() and (
@@ -152,12 +150,13 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
         parent_node: NodeT,
         branch_from_parent: BranchKey,
     ) -> None:
-        """
-        Adds update instructions from a child node to a parent node.
+        """Add update instructions from a child node to a parent node.
+
         Args:
             update_from_child_node: The update instructions from the child node.
             parent_node: The parent node to which the updates are directed.
             branch_from_parent: The branch key from the parent to the child.
+
         """
         if parent_node not in self.one_node_instructions:
             # build the UpdateInstructionsTowardsOneParentNode
@@ -217,11 +216,12 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
         update_from_child_node: UpdateInstructionsTowardsOneParentNode,
         parent_node: NodeT,
     ) -> None:
-        """
-        Adds update instructions from another UpdateInstructionsTowardsOneParentNode to a parent node.
+        """Add update instructions from another UpdateInstructionsTowardsOneParentNode to a parent node.
+
         Args:
             update_from_child_node: The update instructions from another UpdateInstructionsTowardsOneParentNode.
             parent_node: The parent node to which the updates are directed.
+
         """
         if parent_node in self.one_node_instructions:
             self.one_node_instructions[parent_node].add_updates_towards_one_parent_node(
@@ -231,18 +231,19 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
             self.one_node_instructions[parent_node] = update_from_child_node
 
     def pop_item(self) -> tuple[NodeT, UpdateInstructionsTowardsOneParentNode]:
-        """
-        Pops an item from the update instructions.
+        """Pops an item from the update instructions.
+
         Returns:
             A tuple containing the parent node and its corresponding update instructions.
+
         """
         return self.one_node_instructions.popitem()
 
     def __bool__(self) -> bool:
-        """
-        Checks if the data structure is non-empty.
+        """Check if the data structure is non-empty.
 
         Returns:
             bool: True if the data structure is non-empty, False otherwise.
+
         """
         return bool(self.one_node_instructions)

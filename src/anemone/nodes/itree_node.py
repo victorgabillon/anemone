@@ -1,5 +1,4 @@
-"""
-This module defines the interface for a tree node used in branch selection.
+"""Define the interface for a tree node used in branch selection.
 
 The `ITreeNode` protocol represents a node in a tree structure for exploring
 possible branches. It provides properties and methods for accessing information
@@ -13,68 +12,65 @@ terminal.
 Note: This is an interface and should not be instantiated directly.
 """
 
-from typing import MutableMapping, Protocol, Self
+from collections.abc import MutableMapping
+from typing import Protocol, Self
 
 from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
 
 
 class ITreeNode[StateT: State = State](Protocol):
-    """
-    The `ITreeNode` protocol represents a node in a tree structure used for selecting branches.
-    """
+    """The `ITreeNode` protocol represents a node in a tree structure used for selecting branches."""
 
     @property
     def id(self) -> int:
-        """
-        Get the ID of the node.
+        """Get the ID of the node.
 
         Returns:
             The ID of the node.
+
         """
         ...
 
     @property
     def state(self) -> StateT:
-        """
-        Get the state of the node.
+        """Get the state of the node.
 
         Returns:
             The state of the node.
+
         """
         ...
 
     @property
     def tree_depth(self) -> int:
-        """
-        Get the tree depth of the node.
+        """Get the tree depth of the node.
 
         Returns:
             The tree depth of the node.
+
         """
         ...
 
     @property
     def branches_children(self) -> MutableMapping[BranchKey, Self | None]:
-        """
-        Get the child nodes of the node.
+        """Get the child nodes of the node.
 
         Returns:
             A bidirectional dictionary mapping branches to child nodes.
+
         """
         ...
 
     @property
     def parent_nodes(self) -> dict[Self, BranchKey]:
-        """
-        Returns the dictionary of parent nodes of the current tree node with associated branch.
+        """Returns the dictionary of parent nodes of the current tree node with associated branch.
 
         :return: A dictionary of parent nodes of the current tree node with associated branch.
         """
         ...
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: Self) -> None:
-        """
-        Add a parent node to the node.
+        """Add a parent node to the node.
 
         Args:
             new_parent_node: The parent node to add.
@@ -83,55 +79,53 @@ class ITreeNode[StateT: State = State](Protocol):
         """
 
     def dot_description(self) -> str:
-        """
-        Generate a dot description for visualization.
+        """Generate a dot description for visualization.
 
         Returns:
             A string containing the dot description.
+
         """
         ...
 
     @property
     def all_branches_generated(self) -> bool:
-        """
-        Check if all branches have been generated.
+        """Check if all branches have been generated.
 
         Returns:
             True if all branches have been generated, False otherwise.
+
         """
         ...
 
     @all_branches_generated.setter
     def all_branches_generated(self, value: bool) -> None:
-        """
-        Set the flag indicating that all branches have been generated.
-        """
+        """Set the flag indicating that all branches have been generated."""
 
     @property
     def all_branches_keys(self) -> BranchKeyGeneratorP[BranchKey]:
-        """
-        Get the available branch keys of the node.
+        """Get the available branch keys of the node.
 
         Returns:
             A generator for iterating over the branch keys.
+
         """
         ...
 
     @property
     def tag(self) -> StateTag:
-        """
-        Get the fast tag representation of the node.
+        """Get the fast tag representation of the node.
 
         Returns:
             The fast tag representation of the node as a string.
+
         """
         ...
 
     def is_over(self) -> bool:
-        """
-        Check if the state is terminal.
+        """Check if the state is terminal.
 
         Returns:
             True if the state is terminal, False otherwise.
+
         """
         ...

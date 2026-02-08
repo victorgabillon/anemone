@@ -1,5 +1,4 @@
-"""
-This module contains functions for selecting elements based on Zipf distribution.
+"""Provide functions for selecting elements based on Zipf distribution.
 
 Zipf distribution is a discrete probability distribution that models the occurrence of elements in a dataset.
 The functions in this module provide methods for selecting elements based on their rank and value.
@@ -16,8 +15,7 @@ def zipf_picks(
     shift: bool = False,
     random_pick: bool = False,
 ) -> int:
-    """
-    Selects an element based on its rank and value.
+    """Select an element based on its rank and value.
 
     Args:
         ranks_values (dict[int, int | float]): A dictionary containing the ranks and values of the elements.
@@ -34,10 +32,7 @@ def zipf_picks(
     """
     shift_rank: int
 
-    if shift:
-        shift_rank = min(ranks_values.keys())
-    else:
-        shift_rank = 0
+    shift_rank = min(ranks_values.keys()) if shift else 0
 
     best_weight: float | None = None
     best_rank: int = shift_rank
@@ -63,8 +58,7 @@ def zipf_picks(
 
 
 def zipf_picks_random[T](ordered_list_elements: list[T], random_generator: Random) -> T:
-    """
-    Selects a random element from an ordered list based on Zipf distribution.
+    """Select a random element from an ordered list based on Zipf distribution.
 
     Args:
         ordered_list_elements (list[T]): A list of elements.

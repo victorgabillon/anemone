@@ -1,6 +1,4 @@
-"""
-Tree
-"""
+"""Tree."""
 
 from typing import Any
 
@@ -11,8 +9,7 @@ from .descendants import RangedDescendants
 
 
 class Tree[NodeT: ITreeNode[Any]]:
-    """
-    Represents a game tree of reachable states from a starting position.
+    """Represents a game tree of reachable states from a starting position.
 
     The root node contains the starting state. Each node contains a state and has
     children for each available branch. The tree tracks descendants and expansion
@@ -24,12 +21,12 @@ class Tree[NodeT: ITreeNode[Any]]:
     tree_root_tree_depth: TreeDepth
 
     def __init__(self, root_node: NodeT, descendants: RangedDescendants[NodeT]) -> None:
-        """
-        Initialize the Tree with a root node and descendants.
+        """Initialize the Tree with a root node and descendants.
 
         Args:
             root_node: The root node of the tree.
             descendants: The descendants collection for the tree.
+
         """
         self.tree_root_tree_depth = root_node.tree_depth
 
@@ -47,22 +44,22 @@ class Tree[NodeT: ITreeNode[Any]]:
 
     @property
     def root_node(self) -> NodeT:
-        """
-        Returns the root node of the tree.
+        """Returns the root node of the tree.
 
         Returns:
             NodeT: The root node of the tree.
+
         """
         return self._root_node
 
     def node_depth(self, node: NodeT) -> int:
-        """
-        Calculates the depth of a given node in the tree.
+        """Calculate the depth of a given node in the tree.
 
         Args:
             node: The node for which to calculate the depth.
 
         Returns:
             int: The depth of the node.
+
         """
         return node.tree_depth - self.tree_root_tree_depth

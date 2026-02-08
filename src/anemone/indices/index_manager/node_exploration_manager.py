@@ -31,13 +31,13 @@ class _StateWithTurn(State, Protocol):
 
 
 class NodeExplorationIndexManager(Protocol):
-    """
-    A protocol for managing the exploration indices of nodes in a tree.
+    """A protocol for managing the exploration indices of nodes in a tree.
 
     This protocol defines methods for updating the exploration indices of nodes in a tree.
 
     Args:
         Protocol (type): The base protocol type.
+
     """
 
     needs_parent_state: bool
@@ -47,11 +47,12 @@ class NodeExplorationIndexManager(Protocol):
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """
-        Updates the exploration index of the root node in the tree.
+        """Update the exploration index of the root node in the tree.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
+
         """
         ...
 
@@ -65,21 +66,23 @@ class NodeExplorationIndexManager(Protocol):
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """
-        Updates the exploration index of a child node in the tree.
+        """Update the exploration index of a child node in the tree.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
+
         """
         ...
 
 
 class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
-    """
-    A class representing a null node exploration index manager.
+    """A class representing a null node exploration index manager.
 
     This class is used when there is no need to update the exploration index of nodes in a tree.
     It inherits from the NodeExplorationIndexManager class.
@@ -92,13 +95,13 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """
-        Updates the exploration index of the root node in the tree.
+        """Update the exploration index of the root node in the tree.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
+
         """
-        ...
 
     def update_node_indices[NodeT: AlgorithmNode[Any]](
         self,
@@ -110,22 +113,23 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """
-        Updates the exploration index of a child node in the tree.
+        """Update the exploration index of a child node in the tree.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
+
         """
         raise NotImplementedError("should not be raised")
 
 
 class UpdateIndexGlobalMinChange:
-    """
-    A class that updates the exploration index of nodes in a tree using the global minimum change strategy.
-    """
+    """A class that updates the exploration index of nodes in a tree using the global minimum change strategy."""
 
     needs_parent_state = False
 
@@ -134,11 +138,12 @@ class UpdateIndexGlobalMinChange:
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """
-        Updates the exploration index of the root node in the tree using the global minimum change strategy.
+        """Update the exploration index of the root node using the global minimum change strategy.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
+
         """
         root_value: float = root_node.tree_evaluation.get_value_white()
 
@@ -158,16 +163,18 @@ class UpdateIndexGlobalMinChange:
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """
-        Updates the exploration index of a child node in the tree using the global minimum change strategy.
+        """Update the exploration index of a child node using the global minimum change strategy.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
-        """
 
+        """
         _ = child_rank
         _ = parent_node
         _ = tree
@@ -193,10 +200,6 @@ class UpdateIndexGlobalMinChange:
             abs(child_node_max_path_value - child_node_min_path_value) / 2
         )
 
-        # the amount of change for the child to become better than any of its ancestor
-        # and become the overall best bode, the max is computed with the parent index
-        # child_index: float = max(local_child_index, parent_index)
-
         # the index of the child node is updated now
         # as a child node can have multiple parents we take the min if an index was previously computed
         if child_node_exploration_index_data.index is None:
@@ -220,9 +223,7 @@ class UpdateIndexGlobalMinChange:
 
 
 class UpdateIndexZipfFactoredProba:
-    """
-    A class that updates the exploration index of nodes in a tree using the Zipf factored probability strategy.
-    """
+    """A class that updates the exploration index of nodes in a tree using the Zipf factored probability strategy."""
 
     needs_parent_state = False
 
@@ -231,13 +232,13 @@ class UpdateIndexZipfFactoredProba:
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """
-        Updates the exploration index of the root node in the tree using the Zipf factored probability strategy.
+        """Update the exploration index of the root node using the Zipf factored probability strategy.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
-        """
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
 
+        """
         _ = root_node
         assert isinstance(
             root_node_exploration_index_data, RecurZipfQuoolExplorationData
@@ -255,14 +256,17 @@ class UpdateIndexZipfFactoredProba:
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """
-        Updates the exploration index of a child node in the tree using the Zipf factored probability strategy.
+        """Update the exploration index of a child node using the Zipf factored probability strategy.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
+
         """
         _ = parent_node
 
@@ -306,9 +310,7 @@ class UpdateIndexZipfFactoredProba:
 
 
 class UpdateIndexLocalMinChange:
-    """
-    A class that updates the exploration index of nodes in a tree using the local minimum change strategy.
-    """
+    """A class that updates the exploration index of nodes in a tree using the local minimum change strategy."""
 
     needs_parent_state = True
 
@@ -317,11 +319,12 @@ class UpdateIndexLocalMinChange:
         root_node: NodeT,
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
-        """
-        Updates the exploration index of the root node in the tree using the local minimum change strategy.
+        """Update the exploration index of the root node using the local minimum change strategy.
 
         Args:
             root_node (AlgorithmNode): The root node of the tree.
+            root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
+
         """
         _ = root_node
         assert isinstance(root_node_exploration_index_data, IntervalExplo)
@@ -341,16 +344,18 @@ class UpdateIndexLocalMinChange:
         tree: Tree[NodeT],
         child_rank: int,
     ) -> None:
-        """
-        Updates the exploration index of a child node in the tree using the local minimum change strategy.
+        """Update the exploration index of a child node using the local minimum change strategy.
 
         Args:
             child_node (AlgorithmNode): The child node to update.
             parent_node (AlgorithmNode): The parent node of the child node.
+            parent_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the parent.
+            child_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the child.
+            parent_node_state (_StateWithTurn | None): Parent node state with turn information, if needed.
             tree (Tree): The tree containing the nodes.
             child_rank (int): The rank of the child node among its siblings.
-        """
 
+        """
         _ = tree
         _ = child_rank
 
@@ -405,7 +410,6 @@ class UpdateIndexLocalMinChange:
                             value=child_white_value, interval=inter_level_interval
                         )
                     else:
-                        ...
                         local_index = None
                 if parent_node_state.turn == Color.BLACK:
                     best_branch_black: BranchKey | None = (
@@ -459,22 +463,23 @@ class UpdateIndexLocalMinChange:
                 )
 
 
-# TODO their might be ways to optimize the computation such as not recomptuing for the whole tree
+# TODO: their might be ways to optimize the computation such as not recomptuing for the whole tree
 def update_all_indices[NodeT: AlgorithmNode[Any]](
     tree: Tree[NodeT], index_manager: NodeExplorationIndexManager
 ) -> None:
-    """
-    The idea is to compute an index $ind(n)$ for a node $n$ that measures the minimum amount of change
-     in the value of all the nodes such that this node $n$ becomes the best.
+    """Compute exploration indices for nodes in the tree.
 
-    This can be computed recursively as :
-    ind(n) = max( ind(parent(n),.5*abs(value(n)-value(parent(n))))
+    This computes an index $ind(n)$ for a node $n$ that measures the minimum amount
+    of change in the value of all the nodes such that this node $n$ becomes the best.
+    It can be computed recursively as:
+    ind(n) = max(ind(parent(n), 0.5 * abs(value(n) - value(parent(n)))))
 
     Args:
-        index_manager:
-        tree: a tree
+        tree: The tree to update.
+        index_manager: The index manager that defines the update logic.
 
     Returns:
+        None
 
     """
     if isinstance(index_manager, NullNodeExplorationIndexManager):
@@ -489,7 +494,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
 
     tree_depth: TreeDepth
     for tree_depth in tree_nodes:
-        # todo how are we sure that the hm comes in order?
+        # TODO: how are we sure that the hm comes in order?
         parent_node: NodeT
         for parent_node in tree_nodes[tree_depth].values():
             branch_rank: int
@@ -518,26 +523,26 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
                 )
 
 
-# TODO their might be ways to optimize the computation such as not recomptuing for the whole tree
+# TODO: their might be ways to optimize the computation such as not recomptuing for the whole tree
 
 
 def print_all_indices[NodeT: AlgorithmNode[Any]](
     tree: Tree[NodeT],
 ) -> None:
-    """
-    Prints the exploration indices of all nodes in the given tree.
+    """Print the exploration indices of all nodes in the given tree.
 
     Args:
         tree (Tree): The tree containing the nodes.
 
     Returns:
         None
+
     """
     tree_nodes: RangedDescendants[NodeT] = tree.descendants
 
     tree_depth: TreeDepth
     for tree_depth in tree_nodes:
-        # todo how are we sure that the hm comes in order?
+        # TODO: how are we sure that the hm comes in order?
         for parent_node in tree_nodes[tree_depth].values():
             assert isinstance(parent_node, AlgorithmNode)
             if parent_node.exploration_index_data is not None:

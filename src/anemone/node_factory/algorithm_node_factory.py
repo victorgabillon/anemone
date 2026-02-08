@@ -1,6 +1,4 @@
-""" "
-AlgorithmNodeFactory
-"""
+"""Provide the algorithm node factory."""
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -33,9 +31,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class AlgorithmNodeFactory[StateT: State = State]:
-    """
-    Factory for building AlgorithmNode instances.
-    """
+    """Factory for building AlgorithmNode instances."""
 
     tree_node_factory: TreeNodeFactory[AlgorithmNode[StateT], StateT]
     state_representation_factory: (
@@ -96,8 +92,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None,
     ) -> AlgorithmNode[StateT]:
-        """
-        Create an AlgorithmNode object.
+        """Create an AlgorithmNode object.
 
         Args:
             branch_from_parent: The branch key leading from the parent node.

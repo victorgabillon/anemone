@@ -1,6 +1,6 @@
-"""
-This module contains the implementation of the TreeExploration class, which is responsible for managing a search
- for the best branch in a given state using a tree-based approach.
+"""Provide the implementation of the TreeExploration class.
+
+The TreeExploration class is responsible for managing a search for the best branch in a given state using a tree-based approach.
 
 The TreeExploration class is used to create and manage a tree structure that represents the possible branches and
  their evaluations in a state space. It provides methods for exploring the tree, selecting the best branch,
@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 
 from valanga import BranchKey, State, StateEvaluation, TurnState
 from valanga.game import BranchName
-from valanga.policy import Recommendation
+from valanga.policy import NotifyProgressCallable, Recommendation
 
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
@@ -40,13 +40,10 @@ from .trees.factory import ValueTreeFactory
 if TYPE_CHECKING:
     from valanga.policy import BranchPolicy
 
-from valanga.policy import NotifyProgressCallable
 
 @dataclass
 class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """
-    Tree Exploration Result holds the result of a tree exploration.
-    """
+    """Tree Exploration Result holds the result of a tree exploration."""
 
     branch_recommendation: Recommendation
     tree: trees.Tree[NodeT]
@@ -69,8 +66,7 @@ def compute_child_evals[StateT: State](
 
 @dataclass
 class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """
-    Tree Exploration is an object to manage one best-branch search.
+    """Tree Exploration is an object to manage one best-branch search.
 
     Attributes:
     - tree: The tree structure representing the possible branches and their evaluations.
@@ -82,9 +78,10 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     Methods:
     - print_info_during_branch_computation: Prints information during the branch computation.
     - explore: Explores the tree to find the best branch.
+
     """
 
-    # TODO Not sure why this class is not simply the TreeAndValuePlayer Class
+    # TODO: Not sure why this class is not simply the TreeAndValuePlayer Class
     #  but might be useful when dealing with multi round and time , no?
 
     tree: trees.Tree[NodeT]
@@ -96,8 +93,10 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def print_info_during_branch_computation(self, random_generator: Random) -> None:
         """Print info during the branch computation.
+
         Args:
-        - random_generator: The random number generator.
+            random_generator (Random): The random number generator.
+
         """
         current_best_branch: str
         if self.tree.root_node.tree_evaluation.best_branch_sequence:
@@ -125,14 +124,14 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self.tree_manager.print_best_line(tree=self.tree)
 
     def explore(self, random_generator: Random) -> TreeExplorationResult[NodeT]:
-        """
-        Explore the tree to find the best branch.
+        """Explore the tree to find the best branch.
 
         Args:
-        - random_generator: The random number generator.
+            random_generator (Random): The random number generator.
 
         Returns:
-        - BranchRecommendation: The recommended branch and its evaluation.
+            TreeExplorationResult[NodeT]: The recommended branch and its evaluation.
+
         """
         # by default the first tree expansion is the creation of the tree node
         tree_expansions: tree_man.TreeExpansions[NodeT] = tree_man.TreeExpansions()
@@ -172,7 +171,6 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 tree=self.tree, opening_instructions=opening_instructions_subset
             )
 
-            # self.node_selector.communicate_expansions()
             self.tree_manager.update_backward(tree_expansions=tree_expansions)
             self.tree_manager.update_indices(tree=self.tree)
 
@@ -192,7 +190,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         best_branch_name = self.tree.root_node.state.branch_name_from_key(best_branch)
         self.tree_manager.print_best_line(
             tree=self.tree
-        )  # todo maybe almost best chosen line no?
+        )  # TODO: maybe almost best chosen line no?
 
         branch_recommendation = Recommendation(
             recommended_name=best_branch_name,
@@ -217,19 +215,20 @@ def create_tree_exploration[StateT: TurnState](
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
     notify_percent_function: NotifyProgressCallable | None = None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
-    """
-    Create a TreeExploration object with the specified dependencies.
+    """Create a TreeExploration object with the specified dependencies.
 
     Args:
-    - node_selector_create: The factory function for creating the node selector.
-    - starting_state: The starting state for the exploration.
-    - tree_manager: The manager for the tree structure.
-    - tree_factory: The factory for creating the tree structure.
-    - stopping_criterion_args: The arguments for creating the stopping criterion.
-    - recommend_branch_after_exploration: The recommender rule for selecting the best branch after exploration.
+        node_selector_create (NodeSelectorFactory): Factory for creating the node selector.
+        starting_state (StateT): Starting state for exploration.
+        tree_manager (tree_man.AlgorithmNodeTreeManager): Manager for the tree structure.
+        tree_factory (ValueTreeFactory[StateT]): Factory for creating the tree structure.
+        stopping_criterion_args (AllStoppingCriterionArgs): Arguments for the stopping criterion.
+        recommend_branch_after_exploration (recommender_rule.AllRecommendFunctionsArgs): Recommender rule.
+        notify_percent_function (NotifyProgressCallable | None): Optional progress callback.
 
     Returns:
-    - TreeExploration: The created TreeExploration object.
+        TreeExploration[AlgorithmNode[StateT]]: The created TreeExploration object.
+
     """
     # creates the tree
     tree: trees.Tree[AlgorithmNode[StateT]] = tree_factory.create(
@@ -242,7 +241,6 @@ def create_tree_exploration[StateT: TurnState](
             args=stopping_criterion_args, node_selector=node_selector
         )
     )
-
 
     tree_exploration: TreeExploration[AlgorithmNode[StateT]] = TreeExploration(
         tree=tree,

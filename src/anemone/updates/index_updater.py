@@ -1,6 +1,4 @@
-"""
-This module contains the IndexUpdater class, which is responsible for updating the indices of AlgorithmNode objects in a tree structure.
-"""
+"""Module containing the IndexUpdater for updating AlgorithmNode indices."""
 
 from typing import TYPE_CHECKING
 
@@ -22,25 +20,22 @@ if TYPE_CHECKING:
 
 
 class IndexUpdater:
-    """
-    The IndexUpdater class is responsible for updating the indices of AlgorithmNode objects in a tree structure.
-    """
+    """The IndexUpdater class is responsible for updating the indices of AlgorithmNode objects in a tree structure."""
 
     def __init__(self) -> None:
         """Initialize the index updater."""
-        ...
 
     def create_update_instructions_after_node_birth(
         self, new_node: AlgorithmNode
     ) -> IndexUpdateInstructionsFromOneNode:
-        """
-        Creates the update instructions block after a new node is added to the tree.
+        """Create the update instructions block after a new node is added to the tree.
 
         Args:
             new_node (AlgorithmNode): The newly added node.
 
         Returns:
             IndexUpdateInstructionsBlock: The update instructions block.
+
         """
         base_update_instructions: IndexUpdateInstructionsFromOneNode = (
             IndexUpdateInstructionsFromOneNode(
@@ -54,8 +49,7 @@ class IndexUpdater:
         node_to_update: AlgorithmNode,
         updates_instructions: UpdateInstructionsTowardsOneParentNode,
     ) -> IndexUpdateInstructionsFromOneNode:
-        """
-        Performs the index updates based on the given update instructions.
+        """Perform the index updates based on the given update instructions.
 
         Args:
             node_to_update (AlgorithmNode): The node to update.
@@ -63,6 +57,7 @@ class IndexUpdater:
 
         Returns:
             IndexUpdateInstructionsFromOneNode: The update instructions coming from the updated node.
+
         """
         # get the base block
         updates_instructions_index: IndexUpdateInstructionsTowardsOneParentNode | None
@@ -97,4 +92,4 @@ class IndexUpdater:
 
         return base_update_instructions
 
-        # todo i dont understand anymore when the instructions stops beeing propagated back
+        # TODO: i dont understand anymore when the instructions stops beeing propagated back

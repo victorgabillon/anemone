@@ -1,5 +1,4 @@
-"""
-This module provides functionality for managing exploration index managers.
+"""Provide functionality for managing exploration index managers.
 
 The module includes the following functions and classes:
 - create_exploration_index_manager: A function to create an exploration index manager.
@@ -9,4 +8,4 @@ The module includes the following functions and classes:
 from .factory import create_exploration_index_manager
 from .node_exploration_manager import NodeExplorationIndexManager
 
-__all__ = ["create_exploration_index_manager", "NodeExplorationIndexManager"]
+__all__ = ["NodeExplorationIndexManager", "create_exploration_index_manager"]

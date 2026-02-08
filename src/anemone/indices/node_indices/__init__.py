@@ -1,5 +1,4 @@
-"""
-This module provides functionality for managing node indices in the tree value package.
+"""Provide functionality for managing node indices in the tree value package.
 
 The following classes and functions are available:
 
@@ -15,8 +14,8 @@ from .index_data import NodeExplorationData
 from .index_types import IndexComputationType
 
 __all__ = [
-    "NodeExplorationData",
     "ExplorationIndexDataFactory",
     "IndexComputationType",
+    "NodeExplorationData",
     "create_exploration_index_data",
 ]

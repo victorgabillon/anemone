@@ -1,10 +1,8 @@
-"""
-Module for creating Tree and Value Branch Selector objects.
-"""
+"""Module for creating Tree and Value Branch Selector objects."""
 
 from dataclasses import dataclass
 from random import Random
-from typing import  Literal, Type
+from typing import Literal
 
 from valanga import RepresentationFactory, StateModifications, TurnState
 from valanga.evaluator_types import EvaluatorInput
@@ -38,9 +36,7 @@ TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 
 @dataclass
 class TreeAndValuePlayerArgs:
-    """
-    Dataclass for Tree and Value Player Arguments.
-    """
+    """Dataclass for Tree and Value Player Arguments."""
 
     node_selector: node_selector_m.AllNodeSelectorArgs
     opening_type: node_selector_m.OpeningType
@@ -51,7 +47,7 @@ class TreeAndValuePlayerArgs:
 
 
 def create_tree_and_value_branch_selector[StateT: TurnState](
-    state_type: Type[StateT],
+    state_type: type[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
@@ -60,13 +56,12 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
     ]
     | None,
 ) -> TreeAndValueBranchSelector[StateT]:
-    """Convenience constructor using the default minmax tree evaluation.
+    """Create a branch selector using the default minmax tree evaluation.
 
     This keeps the existing API stable, while allowing advanced users to inject a
     different tree-evaluation strategy via
     `create_tree_and_value_branch_selector_with_tree_eval_factory`.
     """
-
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT]
     node_tree_evaluation_factory = NodeTreeMinmaxEvaluationFactory[StateT]()
 
@@ -81,7 +76,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
 
 
 def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnState](
-    state_type: Type[StateT],
+    state_type: type[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
@@ -91,19 +86,20 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
 ) -> TreeAndValueBranchSelector[StateT]:
-    """
-    Create a TreeAndValueBranchSelector object with the given arguments.
+    """Create a TreeAndValueBranchSelector object with the given arguments.
 
     Args:
-        args (TreeAndValuePlayerArgs): The arguments for creating the TreeAndValueBranchSelector.
-        syzygy (SyzygyTable | None): The SyzygyTable object for tablebase endgame evaluation.
-        random_generator (random.Random): The random number generator.
+        state_type (type[StateT]): The state type for the search.
+        args (TreeAndValuePlayerArgs): Arguments for creating the selector.
+        random_generator (Random): The random number generator.
+        master_state_evaluator (MasterStateEvaluator): Evaluator for state values.
+        state_representation_factory (RepresentationFactory | None): Optional state representation factory.
+        node_tree_evaluation_factory (NodeTreeEvaluationFactory[StateT]): Factory for node tree evaluations.
 
     Returns:
         TreeAndValueBranchSelector: The created TreeAndValueBranchSelector object.
 
     """
-
     _ = state_type  # not used here
 
     node_evaluator: NodeDirectEvaluator[StateT] = create_node_evaluator(
@@ -150,6 +146,6 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
             node_selector_create=search_factory.create_node_selector_factory(),
             stopping_criterion_args=args.stopping_criterion,
             recommend_branch_after_exploration=args.recommender_rule,
-            )
+        )
     )
     return tree_branch_selector

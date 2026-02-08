@@ -1,6 +1,4 @@
-"""
-init file for algorithm_node module
-"""
+"""init file for algorithm_node module."""
 
 from .algorithm_node import AlgorithmNode
 

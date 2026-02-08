@@ -1,5 +1,4 @@
-"""
-This module provides functionality for evaluating nodes in a tree structure.
+"""Provide functionality for evaluating nodes in a tree structure.
 
 The module includes a factory function for creating node evaluators, as well as classes for representing
 node evaluators, evaluation queries, and node evaluator arguments.
@@ -16,7 +15,7 @@ from .factory import create_node_evaluator
 from .node_direct_evaluator import EvaluationQueries, NodeDirectEvaluator
 
 __all__ = [
+    "EvaluationQueries",
     "NodeDirectEvaluator",
     "create_node_evaluator",
-    "EvaluationQueries",
 ]

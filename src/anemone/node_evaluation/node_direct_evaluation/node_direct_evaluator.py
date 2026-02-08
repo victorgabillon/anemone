@@ -1,9 +1,8 @@
-"""
-Module for evaluating algorithm nodes directly using a master state evaluator.
-"""
+"""Module for evaluating algorithm nodes directly using a master state evaluator."""
 
-from enum import Enum
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from enum import StrEnum
+from typing import Protocol
 
 from valanga import OverEvent, State
 from valanga.evaluations import EvalItem
@@ -13,10 +12,8 @@ from anemone.nodes.algorithm_node import AlgorithmNode
 DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
 
 
-class NodeEvaluatorTypes(str, Enum):
-    """
-    Enum class representing different types of node evaluators.
-    """
+class NodeEvaluatorTypes(StrEnum):
+    """Enum class representing different types of node evaluators."""
 
     NEURAL_NETWORK = "neural_network"
 
@@ -32,28 +29,24 @@ class NodeBatchValueEvaluator(Protocol):
 
 
 class EvaluationQueries[StateT: State = State]:
-    """
-    A class that represents evaluation queries for algorithm nodes.
+    """A class that represents evaluation queries for algorithm nodes.
 
     Attributes:
         over_nodes (list[AlgorithmNode]): A list of algorithm nodes that are considered "over".
         not_over_nodes (list[AlgorithmNode]): A list of algorithm nodes that are not considered "over".
+
     """
 
     over_nodes: list[AlgorithmNode[StateT]]
     not_over_nodes: list[AlgorithmNode[StateT]]
 
     def __init__(self) -> None:
-        """
-        Initializes a new instance of the NodeEvaluator class.
-        """
+        """Initialize a new instance of the EvaluationQueries class."""
         self.over_nodes = []
         self.not_over_nodes = []
 
     def clear_queries(self) -> None:
-        """
-        Clears the evaluation queries by resetting the over_nodes and not_over_nodes lists.
-        """
+        """Clear the evaluation queries by resetting the over_nodes and not_over_nodes lists."""
         self.over_nodes = []
         self.not_over_nodes = []
 
@@ -87,9 +80,9 @@ class MasterStateEvaluator(Protocol):
 
 
 class NodeDirectEvaluator[StateT: State = State]:
-    """
-    The NodeEvaluator class is responsible for evaluating the value of nodes in a tree structure.
-    It uses a state evaluator and a syzygy evaluator to calculate the value of the nodes.
+    """Evaluate the value of nodes in a tree structure.
+
+    The evaluator uses a master state evaluator to calculate node values.
     """
 
     master_state_evaluator: MasterStateEvaluator
@@ -98,15 +91,11 @@ class NodeDirectEvaluator[StateT: State = State]:
         self,
         master_state_evaluator: MasterStateEvaluator,
     ) -> None:
-        """
-        Initializes a new instance of the NodeEvaluator class.
-        """
+        """Initialize a new instance of the NodeDirectEvaluator class."""
         self.master_state_evaluator = master_state_evaluator
 
     def check_obvious_over_events(self, node: AlgorithmNode[StateT]) -> None:
-        """
-        Updates the node.over object if the game is obviously over.
-        """
+        """Update the node.over object if the game is obviously over."""
         over_event: OverEvent | None
         evaluation: float | None
         over_event, evaluation = (
@@ -126,14 +115,7 @@ class NodeDirectEvaluator[StateT: State = State]:
     def evaluate_all_queried_nodes(
         self, evaluation_queries: EvaluationQueries[StateT]
     ) -> None:
-        """
-        Evaluates all the queried nodes.
-        """
-        # node_over: AlgorithmNode
-        # for node_over in evaluation_queries.over_nodes:
-        # assert isinstance(node_over, AlgorithmNode)
-        #    self.evaluate_over(node_over)
-
+        """Evaluate all the queried nodes."""
         if evaluation_queries.not_over_nodes:
             self.evaluate_all_not_over(evaluation_queries.not_over_nodes)
 
@@ -142,9 +124,7 @@ class NodeDirectEvaluator[StateT: State = State]:
     def add_evaluation_query(
         self, node: AlgorithmNode[StateT], evaluation_queries: EvaluationQueries[StateT]
     ) -> None:
-        """
-        Adds an evaluation query for a node.
-        """
+        """Add an evaluation query for a node."""
         assert node.tree_evaluation.value_white_direct_evaluation is None
         self.check_obvious_over_events(node)
         if node.is_over():
@@ -165,8 +145,5 @@ class NodeDirectEvaluator[StateT: State = State]:
     def process_evalution_not_over(
         self, evaluation: float, node: AlgorithmNode[StateT]
     ) -> float:
-        """
-        Processes the evaluation for a node that is not over.
-        """
-        processed_evaluation = (1 / DISCOUNT) ** node.tree_depth * evaluation
-        return processed_evaluation
+        """Process the evaluation for a node that is not over."""
+        return (1 / DISCOUNT) ** node.tree_depth * evaluation

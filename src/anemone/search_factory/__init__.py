@@ -1,5 +1,4 @@
-"""
-This module provides factories for creating search objects and node selectors.
+"""Provide factories for creating search objects and node selectors.
 
 The factories included in this module are:
 - SearchFactoryP: A factory for creating search objects with parallel execution.
@@ -11,4 +10,4 @@ To use this module, import the desired factory class from this module and use it
 
 from .search_factory import NodeSelectorFactory, SearchFactory, SearchFactoryP
 
-__all__ = ["SearchFactoryP", "SearchFactory", "NodeSelectorFactory"]
+__all__ = ["NodeSelectorFactory", "SearchFactory", "SearchFactoryP"]

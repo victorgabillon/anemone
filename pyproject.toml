@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=80.9.0"]
+requires = ["setuptools>=80.10.2"]
 build-backend = "setuptools.build_meta"
 
 
 [project]
 name = "algorhino-anemone"
-version = "0.1.10"
+version = "0.1.11"
 description = "anemone searches trees"
 keywords = ["tree", "search"]
 classifiers = [
@@ -14,8 +14,8 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "valanga>=0.1.13",
-    "atomheart>=0.1.6",
+    "valanga>=0.1.14",
+    "atomheart>=0.1.7",
     "rich",
     "sortedcollections>=2.1.0",
     "graphviz",
@@ -32,14 +32,14 @@ authors = [
 
 [project.optional-dependencies]
 test = [
-  "pytest>=8.4.1",
+  "pytest>=9.0.2",
   "coverage",
   "pytest-cov>=6.0.0",
 ]
 
 lint = [
-  "ruff>=0.14.1",
-  "pylint>=3.3.8",
+  "ruff>=0.15.0",
+  "pylint>=4.0.4",
 ]
 
 typecheck = [
@@ -163,13 +163,21 @@ line-length = 88
 target-version = "py313"
 
 # Enable import sorting (alphabetical + group order)
-lint.select = ["I", "F", "E", "B", "TCH"]  # I = imports, F = pyflakes, E = pycodestyle, TCH = type-checking, B = black
+lint.select = ["I", "F", "E", "B", "TCH","UP","SIM", "RUF","RET","N","A",
+"ANN", "PERF", "TRY","LOG","RSE","ICN","TID","Q","W","D",
+"ISC","PIE","ERA","TD"]  # I = imports, F = pyflakes, E = pycodestyle, TCH = type-checking, B = black
 
 # Allow auto-fixing for imports and type-checking imports
-lint.fixable = ["I", "TCH", "F401"]
+lint.fixable = ["I", "TCH", "D","F401","UP","SIM","RET","RUF","E","TRY","PERF","RSE","ANN","PIE","ERA","TD"]
 
 # Ignore rules you don't care about
-lint.ignore = [ "E501"]
+lint.ignore = [ "E501",
+  "ANN401",
+  "TD003",
+  "TD002",
+  "D203",  # incompatible with D211
+  "D213",  # incompatible with D212
+    ]
 
 # Optional: add your first-party package to extend the known group
 [tool.ruff.lint.per-file-ignores]
@@ -268,19 +276,19 @@ description = "ruff + pylint (fast, no package build/install)"
 package = "skip"
 deps = [
   # runtime deps needed for pylint imports (match [project].dependencies)
-    "valanga>=0.1.13",
-    "atomheart>=0.1.6",
+    "valanga>=0.1.14",
+    "atomheart>=0.1.7",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",
 
   # tools
-  "ruff>=0.14.1",
-  "pylint>=3.3.8",
+  "ruff>=0.15.0",
+  "pylint>=4.0.4",
 ]
 set_env = { PYTHONPATH = "{toxinidir}/src" }
 commands = [
-  ["python", "-m", "ruff", "check", "src", "tests"],
+  ["python", "-m", "ruff", "check", "src"],
   ["python", "-m", "ruff", "format", "--check", "src", "tests"],
   ["python", "-m", "pylint", "src/anemone"],
 ]
@@ -293,8 +301,8 @@ description = "mypy + pyright (fast, no package build/install)"
 package = "skip"
 deps = [
   # runtime deps for import resolution
-    "valanga>=0.1.13",
-    "atomheart>=0.1.6",
+    "valanga>=0.1.14",
+    "atomheart>=0.1.7",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",

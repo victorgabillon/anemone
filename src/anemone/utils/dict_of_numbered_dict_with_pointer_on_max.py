@@ -1,6 +1,4 @@
-"""
-Module for DictOfNumberedDictWithPointerOnMax class.
-"""
+"""Module for DictOfNumberedDictWithPointerOnMax class."""
 
 from typing import Protocol
 
@@ -10,18 +8,17 @@ class HasTreeDepth(Protocol):
 
     @property
     def tree_depth(self) -> int:
-        """
-        Get the tree depth of the node.
+        """Get the tree depth of the node.
 
         Returns:
             The tree depth of the node.
+
         """
         ...
 
 
 class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
-    """
-    A dictionary-like data structure that stores numbered dictionaries and keeps track of the maximum depth.
+    """A dictionary-like data structure that stores numbered dictionaries and keeps track of the maximum depth.
 
     Attributes:
         tree_depths (dict[int, dict[T_Key, T_Value]]): A dictionary that stores numbered dictionaries.
@@ -33,6 +30,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         __bool__(self) -> bool: Checks if the data structure is non-empty.
         __contains__(self, node: T_Key) -> bool: Checks if an item is present in the data structure.
         popitem(self) -> tuple[T_Key, T_Value]: Removes and returns the item with the maximum depth value.
+
     """
 
     def __init__(self) -> None:
@@ -41,8 +39,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         self.max_tree_depth: int | None = None
 
     def __setitem__(self, node: T_Key, value: T_Value) -> None:
-        """
-        Adds an item to the data structure.
+        """Add an item to the data structure.
 
         Args:
             node (T_Key): The key of the item.
@@ -50,6 +47,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
 
         Returns:
             None
+
         """
         tree_depth = node.tree_depth
         if self.max_tree_depth is None:
@@ -64,8 +62,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         assert self.max_tree_depth == max(self.tree_depths)
 
     def __getitem__(self, node: T_Key) -> T_Value:
-        """
-        Retrieves an item from the data structure.
+        """Retrieve an item from the data structure.
 
         Args:
             node (T_Key): The key of the item.
@@ -75,42 +72,42 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
 
         Raises:
             KeyError: If the item is not found in the data structure.
+
         """
         return self.tree_depths[node.tree_depth][node]
 
     def __bool__(self) -> bool:
-        """
-        Checks if the data structure is non-empty.
+        """Check if the data structure is non-empty.
 
         Returns:
             bool: True if the data structure is non-empty, False otherwise.
+
         """
         return bool(self.tree_depths)
 
     def __contains__(self, node: T_Key) -> bool:
-        """
-        Checks if an item is present in the data structure.
+        """Check if an item is present in the data structure.
 
         Args:
             node (T_Key): The key of the item.
 
         Returns:
             bool: True if the item is present, False otherwise.
+
         """
         if node.tree_depth not in self.tree_depths:
             return False
-        else:
-            return node in self.tree_depths[node.tree_depth]
+        return node in self.tree_depths[node.tree_depth]
 
     def popitem(self) -> tuple[T_Key, T_Value]:
-        """
-        Removes and returns the item with the maximum depth value.
+        """Remove and return the item with the maximum depth value.
 
         Returns:
             tuple[T_Key, T_Value]: The key-value pair of the removed item.
 
         Raises:
             AssertionError: If the data structure is empty.
+
         """
         assert self.max_tree_depth is not None
         popped: tuple[T_Key, T_Value] = self.tree_depths[self.max_tree_depth].popitem()
@@ -122,7 +119,3 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
                 self.max_tree_depth = None
 
         return popped
-
-    # def sort_dic(self):
-    #    self.dic = dict(sorted(self.dic.items(), key=lambda item: item[0]))
-    # {k: v for k, v in sorted(x.items(), key=lambda item: item[1])}

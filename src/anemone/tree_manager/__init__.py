@@ -1,5 +1,4 @@
-"""
-This module provides functionality for managing algorithm node trees.
+"""Provide functionality for managing algorithm node trees.
 
 The module includes classes for creating and managing algorithm node tree managers,
 expanding tree structures, and managing tree expansions.
@@ -21,9 +20,9 @@ from .tree_expander import TreeExpansion, TreeExpansions
 from .tree_manager import TreeManager
 
 __all__ = [
-    "create_algorithm_node_tree_manager",
-    "TreeManager",
     "AlgorithmNodeTreeManager",
     "TreeExpansion",
     "TreeExpansions",
+    "TreeManager",
+    "create_algorithm_node_tree_manager",
 ]

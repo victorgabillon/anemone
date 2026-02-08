@@ -1,6 +1,4 @@
-"""
-Basic class for Creating Tree nodes
-"""
+"""Basic class for Creating Tree nodes."""
 
 from typing import Any, Protocol
 
@@ -12,9 +10,7 @@ from anemone.nodes.tree_node import TreeNode
 
 
 class NodeFactory[NodeT: ITreeNode[Any] = ITreeNode[Any]](Protocol):
-    """
-    Node Factory
-    """
+    """Node Factory."""
 
     def create(
         self,
@@ -30,9 +26,7 @@ class NodeFactory[NodeT: ITreeNode[Any] = ITreeNode[Any]](Protocol):
 
 
 class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]:
-    """
-    Basic class for Creating Tree nodes
-    """
+    """Basic class for Creating Tree nodes."""
 
     def create(
         self,
@@ -43,8 +37,7 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None = None,
     ) -> TreeNode[T, StateT]:
-        """
-        Create a new TreeNode object.
+        """Create a new TreeNode object.
 
         Args:
             state: The current state for the node.
@@ -56,8 +49,8 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
 
         Returns:
             The newly created TreeNode object.
-        """
 
+        """
         # TreeNode doesn't use modifications (it's a pure data container).
         _ = modifications
 

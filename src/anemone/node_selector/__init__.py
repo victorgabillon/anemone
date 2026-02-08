@@ -1,5 +1,4 @@
-"""
-This module provides classes and functions for selecting nodes in a tree structure.
+"""Provide classes and functions for selecting nodes in a tree structure.
 
 The module includes the following components:
 - `create`: A factory function for creating node selectors.
@@ -21,12 +20,12 @@ from .node_selector_types import NodeSelectorType
 from .opening_instructions import OpeningInstruction, OpeningInstructions, OpeningType
 
 __all__ = [
-    "OpeningInstructions",
-    "OpeningInstruction",
     "AllNodeSelectorArgs",
-    "OpeningType",
     "NodeSelector",
-    "create",
     "NodeSelectorArgs",
     "NodeSelectorType",
+    "OpeningInstruction",
+    "OpeningInstructions",
+    "OpeningType",
+    "create",
 ]

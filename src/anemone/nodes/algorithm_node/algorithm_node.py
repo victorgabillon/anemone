@@ -1,9 +1,10 @@
-"""
-This module defines the AlgorithmNode class, which is a generic node used by the tree and value algorithm.
+"""Define the AlgorithmNode class used by the tree and value algorithm.
+
 It wraps tree nodes with values, minimax computation, and exploration tools.
 """
 
-from typing import MutableMapping, Self
+from collections.abc import MutableMapping
+from typing import Self
 
 from valanga import (
     BranchKey,
@@ -22,9 +23,9 @@ from anemone.nodes.tree_node import TreeNode
 
 
 class AlgorithmNode[StateT: State = State]:
-    """
-    The generic Node used by the tree and value algorithm.
-    It wraps tree nodes with values, minimax computation and exploration tools
+    """The generic node used by the tree and value algorithm.
+
+    It wraps tree nodes with values, minimax computation, and exploration tools.
     """
 
     tree_node: TreeNode[Self, StateT]
@@ -41,9 +42,7 @@ class AlgorithmNode[StateT: State = State]:
     def state_representation(
         self,
     ) -> ContentRepresentation[StateT, EvaluatorInput] | None:
-        """
-        Returns the state representation.
-        """
+        """Returns the state representation."""
         return self._state_representation
 
     def __init__(
@@ -53,14 +52,14 @@ class AlgorithmNode[StateT: State = State]:
         exploration_index_data: NodeExplorationData[Self, StateT] | None,
         state_representation: ContentRepresentation[StateT, EvaluatorInput] | None,
     ) -> None:
-        """
-        Initializes an AlgorithmNode object.
+        """Initialize an AlgorithmNode object.
 
         Args:
             tree_node (TreeNode): The tree node that is wrapped.
             tree_evaluation (NodeTreeEvaluation): The object computing the value.
             exploration_index_data (NodeExplorationData | None): The object storing the information to help the algorithm decide the next nodes to explore.
             state_representation (ContentRepresentation | None): The state representation used for evaluation.
+
         """
         self.tree_node = tree_node
         self.tree_evaluation = tree_evaluation
@@ -69,48 +68,47 @@ class AlgorithmNode[StateT: State = State]:
 
     @property
     def id(self) -> int:
-        """
-        Returns the ID of the node.
+        """Returns the ID of the node.
 
         Returns:
             int: The ID of the node.
+
         """
         return self.tree_node.id
 
     @property
     def tree_depth(self) -> int:
-        """
-        Returns the tree depth.
+        """Returns the tree depth.
 
         Returns:
             int: The tree depth.
+
         """
         return self.tree_node.tree_depth_
 
     @property
     def tag(self) -> StateTag:
-        """
-        Returns the fast representation of the node.
+        """Returns the fast representation of the node.
 
         Returns:
             str: The fast representation of the node.
+
         """
         return self.tree_node.tag
 
     @property
     def branches_children(self) -> MutableMapping[BranchKey, Self | None]:
-        """
-        Returns the bidirectional dictionary of branches and their corresponding child nodes.
+        """Returns the bidirectional dictionary of branches and their corresponding child nodes.
 
         Returns:
             dict[BranchKey, ITreeNode | None]: The bidirectional dictionary of branches and their corresponding child nodes.
+
         """
         return self.tree_node.branches_children
 
     @property
     def parent_nodes(self) -> dict[Self, BranchKey]:
-        """
-        Returns the dictionary of parent nodes of the current tree node with associated branch.
+        """Returns the dictionary of parent nodes of the current tree node with associated branch.
 
         :return: A dictionary of parent nodes of the current tree node with associated branch.
         """
@@ -118,30 +116,30 @@ class AlgorithmNode[StateT: State = State]:
 
     @property
     def state(self) -> StateT:
-        """
-        Returns the state associated with this tree node.
+        """Returns the state associated with this tree node.
 
         Returns:
             StateWithTag: The state associated with this tree node.
+
         """
         return self.tree_node.state
 
     def is_over(self) -> bool:
-        """
-        Checks if the game is over.
+        """Check if the game is over.
 
         Returns:
             bool: True if the game is over, False otherwise.
+
         """
         return self.tree_evaluation.is_over()
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: Self) -> None:
-        """
-        Adds a parent node.
+        """Add a parent node.
 
         Args:
             branch_key (BranchKey): The branch key associated with the branch that led to the node from the new_parent_node.
             new_parent_node (ITreeNode): The new parent node to add.
+
         """
         self.tree_node.add_parent(
             branch_key=branch_key, new_parent_node=new_parent_node
@@ -149,50 +147,50 @@ class AlgorithmNode[StateT: State = State]:
 
     @property
     def all_branches_keys(self) -> BranchKeyGeneratorP[BranchKey]:
-        """
-        Returns a generator that yields the branch keys for the current state.
+        """Returns a generator that yields the branch keys for the current state.
 
         Returns:
             BranchKeyGenerator: A generator that yields the branch keys.
+
         """
         return self.tree_node.state_.branch_keys
 
     @property
     def all_branches_generated(self) -> bool:
-        """
-        Returns True if all branches have been generated, False otherwise.
+        """Returns True if all branches have been generated, False otherwise.
 
         Returns:
             bool: True if all branches have been generated, False otherwise.
+
         """
         return self.tree_node.all_branches_generated
 
     @all_branches_generated.setter
     def all_branches_generated(self, value: bool) -> None:
-        """
-        Sets the flag indicating if all branches have been generated.
+        """Set the flag indicating if all branches have been generated.
 
         Args:
             value (bool): The value to set.
+
         """
         self.tree_node.all_branches_generated = value
 
     @property
     def non_opened_branches(self) -> set[BranchKey]:
-        """
-        Returns the set of non-opened branches.
+        """Returns the set of non-opened branches.
 
         Returns:
             set[BranchKey]: The set of non-opened branches.
+
         """
         return self.tree_node.non_opened_branches
 
     def dot_description(self) -> str:
-        """
-        Returns the dot description of the node.
+        """Return the dot description of the node.
 
         Returns:
             str: The dot description of the node.
+
         """
         exploration_description: str = (
             self.exploration_index_data.dot_description()

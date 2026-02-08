@@ -1,15 +1,17 @@
+"""Small utility helpers used across the project."""
+
+from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import islice
 from math import exp
 from os import PathLike
-from typing import Annotated, List, Sequence
+from typing import Annotated
 
 path = Annotated[str | PathLike[str], "path"]
 
 
-def nth_key[_T, _V](dct: dict[_T, _V], n: int) -> _T:
-    """
-    Get the nth key from a dictionary.
+def nth_key[T, V](dct: dict[T, V], n: int) -> T:
+    """Get the nth key from a dictionary.
 
     Args:
         dct: The dictionary.
@@ -30,17 +32,14 @@ def nth_key[_T, _V](dct: dict[_T, _V], n: int) -> _T:
 
 @dataclass
 class Interval:
-    """
-    Represents an interval with a minimum and maximum value.
-    """
+    """Represents an interval with a minimum and maximum value."""
 
     min_value: float | None = None
     max_value: float | None = None
 
 
 def intersect_intervals(interval_1: Interval, interval_2: Interval) -> Interval | None:
-    """
-    Find the intersection of two intervals.
+    """Find the intersection of two intervals.
 
     Args:
         interval_1: The first interval.
@@ -59,14 +58,11 @@ def intersect_intervals(interval_1: Interval, interval_2: Interval) -> Interval 
     max_value: float = min(interval_1.max_value, interval_2.max_value)
     if max_value < min_value:
         return None
-    else:
-        interval_res = Interval(max_value=max_value, min_value=min_value)
-        return interval_res
+    return Interval(max_value=max_value, min_value=min_value)
 
 
 def distance_number_to_interval(value: float, interval: Interval) -> float:
-    """
-    Calculate the distance between a number and an interval.
+    """Calculate the distance between a number and an interval.
 
     Args:
         value: The number.
@@ -82,13 +78,12 @@ def distance_number_to_interval(value: float, interval: Interval) -> float:
     assert interval.max_value is not None and interval.min_value is not None
     if value < interval.min_value:
         return interval.min_value - value
-    elif value > interval.max_value:
+    if value > interval.max_value:
         return value - interval.max_value
-    else:
-        return 0
+    return 0
 
 
-def softmax(x: Sequence[float], temperature: float = 1.0) -> List[float]:
+def softmax(x: Sequence[float], temperature: float = 1.0) -> list[float]:
     """Compute a softmax distribution over input values."""
     if not x:
         return []
@@ -101,3 +96,6 @@ def softmax(x: Sequence[float], temperature: float = 1.0) -> List[float]:
     s = sum(exp_vals)
 
     return [v / s for v in exp_vals]
+
+
+"""Small utility helpers used across the project."""

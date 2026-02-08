@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterator, Self, Sequence
+from typing import TYPE_CHECKING, Any, Self
 
 from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
 
@@ -9,6 +9,9 @@ from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import
     MasterStateEvaluator,
     OverEventDetector,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 
 def build_yaml_maps(
@@ -37,8 +40,7 @@ def build_yaml_maps(
 
 
 class FakeBranchKeyGenerator:
-    """
-    Generates ordinal branch keys 0..n-1.
+    """Generates ordinal branch keys 0..n-1.
     This matches your OpeningInstruction(branch=0) usage.
     """
 
@@ -75,8 +77,7 @@ class FakeBranchKeyGenerator:
 
 @dataclass(slots=True)
 class FakeYamlState(State):
-    """
-    A minimal State that represents being at YAML node_id.
+    """A minimal State that represents being at YAML node_id.
 
     IMPORTANT: step() mutates self, to be compatible with ValangaStateTransition.
     """
@@ -113,8 +114,7 @@ class FakeYamlState(State):
         )
 
     def step(self, branch_key: BranchKey) -> StateModifications | None:
-        """
-        Mutate in place to satisfy ValangaStateTransition.
+        """Mutate in place to satisfy ValangaStateTransition.
         Branch key is ordinal 0..n-1 -> picks the corresponding child in YAML order.
         """
         child_id = self._child_id_from_branch(branch_key)
@@ -153,9 +153,7 @@ class NeverOverDetector(OverEventDetector):
 
 
 class MasterStateEvaluatorFromYaml(MasterStateEvaluator):
-    """
-    Returns the YAML value for the node id stored in state.tag.
-    """
+    """Returns the YAML value for the node id stored in state.tag."""
 
     over: OverEventDetector
 

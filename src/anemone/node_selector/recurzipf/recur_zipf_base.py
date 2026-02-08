@@ -1,5 +1,4 @@
-"""
-This module contains the implementation of the RecurZipfBase class, which is a node selector for a branch selector tree.
+"""Provide the implementation of the RecurZipfBase class for branch selector trees.
 
 The RecurZipfBase class is responsible for selecting the next node to explore in a branch selector tree based on the RecurZipf algorithm.
 
@@ -28,11 +27,11 @@ if TYPE_CHECKING:
 
 @dataclass
 class RecurZipfBaseArgs:
-    """
-    Arguments for the RecurZipfBase node selector.
+    """Arguments for the RecurZipfBase node selector.
 
     Attributes:
         branch_explorer_priority (SamplingPriorities): The priority for branch exploration.
+
     """
 
     type: Literal[NodeSelectorType.RECUR_ZIPF_BASE]
@@ -40,7 +39,7 @@ class RecurZipfBaseArgs:
 
 
 class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """The RecurZipfBase Node selector"""
+    """The RecurZipfBase Node selector."""
 
     opening_instructor: OpeningInstructor
 
@@ -50,13 +49,12 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         random_generator: Random,
         opening_instructor: OpeningInstructor,
     ) -> None:
-        """
-        Initializes a new instance of the RecurZipfBase class.
+        """Initialize a new instance of the RecurZipfBase class.
 
         Args:
-        - args (RecurZipfBaseArgs): The arguments for the RecurZipfBase node selector.
-        - random_generator (random.Random): The random number generator.
-        - opening_instructor (OpeningInstructor): The opening instructor.
+            args (RecurZipfBaseArgs): Arguments for the node selector.
+            random_generator (Random): Random number generator.
+            opening_instructor (OpeningInstructor): Opening instructor.
 
         """
         self.opening_instructor = opening_instructor
@@ -70,45 +68,20 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> OpeningInstructions[NodeT]:
-        """
-        Chooses the next node to explore and the branch to open.
+        """Choose the next node to explore and the branch to open.
 
         Args:
-        - tree (trees.Tree[AlgorithmNode]): The branch selector tree.
-        - latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
+            tree (trees.Tree[AlgorithmNode]): The branch selector tree.
+            latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
 
         Returns:
-        - OpeningInstructions: The instructions for opening the selected branch.
+            OpeningInstructions: Instructions for opening the selected branch.
 
         """
-        # todo maybe proportions and proportions can be valuesorted dict with smart updates
+        # TODO: maybe proportions and proportions can be valuesorted dict with smart updates
 
         _ = latest_tree_expansions  # not used here
         opening_instructions: OpeningInstructions[NodeT]
-        # TODO make sure this block is put in chipiron now with a wrapper
-        # best_node_sequence = best_node_sequence_from_node(tree.root_node)
-        # if best_node_sequence:
-        #     last_node_in_best_line = best_node_sequence[-1]
-        #     assert isinstance(last_node_in_best_line, AlgorithmNode)
-        #     if (
-        #         last_node_in_best_line.state.is_attacked(
-        #             not last_node_in_best_line.tree_node.player_to_move
-        #         )
-        #         and not last_node_in_best_line.minmax_evaluation.is_over()
-        #     ):
-        #         # print('best line is underattacked')
-        #         if self.random_generator.random() > 0.5:
-        #             # print('best line is underattacked and i do')
-        #             all_moves_to_open: list[BranchKey] = (
-        #                 self.opening_instructor.all_branches_to_open(
-        #                     node_to_open=last_node_in_best_line.tree_node
-        #                 )
-        #             )
-        #             opening_instructions = create_instructions_to_open_all_branches(
-        #                 branches_to_play=all_moves_to_open,
-        #                 node_to_open=last_node_in_best_line,
-        #             )
-        #             return opening_instructions
 
         wandering_node: NodeT = tree.root_node
 
@@ -131,8 +104,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return opening_instructions
 
     def __str__(self) -> str:
-        """
-        Returns a string representation of the RecurZipfBase node selector.
+        """Return a string representation of the RecurZipfBase node selector.
 
         Returns:
         - str: The string representation of the RecurZipfBase node selector.

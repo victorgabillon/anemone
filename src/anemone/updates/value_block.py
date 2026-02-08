@@ -1,5 +1,4 @@
-"""
-This module defines the ValueUpdateInstructionsBlock class and a helper function to create instances of it.
+"""Module defining the ValueUpdateInstructionsBlock class and helpers.
 
 The ValueUpdateInstructionsBlock class represents a block of update instructions for a tree value node in
  a branch selector algorithm. It contains sets of branches that have been updated with new values,
@@ -54,11 +53,12 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         update_from_one_child_node: ValueUpdateInstructionsFromOneNode,
         branch_from_parent_to_child: BranchKey,
     ) -> None:
-        """Adds an update from a child node to the parent node.
+        """Add an update from a child node to the parent node.
 
         Args:
             update_from_one_child_node (ValueUpdateInstructionsFromOneNode): The update instructions from the child node.
             branch_from_parent_to_child (BranchKey): The branch key representing the branch from the parent to the child.
+
         """
         if update_from_one_child_node.is_node_newly_over:
             self.branches_with_updated_over.add(branch_from_parent_to_child)
@@ -68,10 +68,11 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             self.branches_with_updated_best_branch.add(branch_from_parent_to_child)
 
     def add_update_toward_one_parent_node(self, another_update: Self) -> None:
-        """Adds an update towards one parent node.
+        """Add an update towards one parent node.
 
         Args:
             another_update (Self): The update instructions from another child node.
+
         """
         self.branches_with_updated_value = (
             self.branches_with_updated_value
@@ -86,11 +87,11 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         )
 
     def print_info(self) -> None:
-        """
-        Print information about the update instructions block.
+        """Print information about the update instructions block.
 
         Returns:
             None
+
         """
         print("upInstructions printing")
         print(
@@ -119,15 +120,14 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         print()
 
     def empty(self) -> bool:
-        """
-        Check if all the components of the update instructions block are empty.
+        """Check if all the components of the update instructions block are empty.
 
         Returns:
             bool: True if all components are empty, False otherwise.
+
         """
-        empty_bool = (
+        return (
             not bool(self.branches_with_updated_value)
             and not bool(self.branches_with_updated_best_branch)
             and not bool(self.branches_with_updated_over)
         )
-        return empty_bool

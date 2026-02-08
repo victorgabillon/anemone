@@ -1,10 +1,8 @@
-"""
-Factory to build node selectors
-"""
+"""Factory to build node selectors."""
 
 from dataclasses import dataclass
 from random import Random
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from .node_selector import NodeSelector
 from .node_selector_types import NodeSelectorType
@@ -16,15 +14,22 @@ from .uniform import Uniform
 
 @dataclass
 class UniformArgs:
-    """
-    Arguments for the Uniform node selector.
-
-    """
+    """Arguments for the Uniform node selector."""
 
     type: Literal[NodeSelectorType.UNIFORM]
 
 
-AllNodeSelectorArgs: TypeAlias = RecurZipfBaseArgs | SequoolArgs | UniformArgs
+type AllNodeSelectorArgs = RecurZipfBaseArgs | SequoolArgs | UniformArgs
+
+
+class UnknownNodeSelectorError(ValueError):
+    """Raised when a node selector type is not recognized."""
+
+    def __init__(self, args: AllNodeSelectorArgs) -> None:
+        """Initialize the error with the unsupported selector arguments."""
+        super().__init__(
+            f"node selector construction: can not find {args.type}  {args} in file {__name__}"
+        )
 
 
 def create(
@@ -32,10 +37,7 @@ def create(
     opening_instructor: OpeningInstructor,
     random_generator: Random,
 ) -> NodeSelector:
-    """
-    Creation of a node selector
-    """
-
+    """Creation of a node selector."""
     node_branch_opening_selector: NodeSelector
 
     match args.type:
@@ -60,8 +62,6 @@ def create(
             )
 
         case _:
-            raise ValueError(
-                f"node selector construction: can not find {args.type}  {args} in file {__name__}"
-            )
+            raise UnknownNodeSelectorError(args)
 
     return node_branch_opening_selector

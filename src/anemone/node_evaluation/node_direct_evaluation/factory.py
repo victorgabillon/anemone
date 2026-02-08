@@ -1,4 +1,4 @@
-"""This module provides a factory function for creating node evaluators."""
+"""Provide a factory function for creating node evaluators."""
 
 from valanga import State
 

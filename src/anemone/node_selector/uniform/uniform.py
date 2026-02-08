@@ -1,5 +1,4 @@
-"""
-This module contains the implementation of the Uniform Node selector.
+"""Provide the implementation of the Uniform node selector.
 
 The Uniform Node selector is responsible for selecting nodes to expand in a tree-based branch selector algorithm.
 It uses an opening instructor to determine the branches to open for each node and generates opening instructions accordingly.
@@ -25,24 +24,22 @@ if TYPE_CHECKING:
 
 
 class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """The Uniform Node selector"""
+    """The Uniform Node selector."""
 
     opening_instructor: OpeningInstructor
 
     def __init__(self, opening_instructor: OpeningInstructor) -> None:
-        """
-        Initializes a new instance of the Uniform class.
+        """Initialize a new instance of the Uniform class.
 
         Args:
-        - opening_instructor (OpeningInstructor): The opening instructor to be used for determining branches to open.
+            opening_instructor (OpeningInstructor): Opening instructor used for determining branches to open.
 
         """
         self.opening_instructor = opening_instructor
         self.current_depth_to_expand = 0
 
     def get_current_depth_to_expand(self) -> int:
-        """
-        Gets the current depth to expand.
+        """Get the current depth to expand.
 
         Returns:
         - int: The current depth to expand.
@@ -55,15 +52,14 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> OpeningInstructions[NodeT]:
-        """
-        Chooses a node to expand and determines the branches to open for that node.
+        """Choose a node to expand and determine the branches to open for that node.
 
         Args:
-        - tree (trees.Tree[AlgorithmNode]): The tree and value tree.
-        - latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
+            tree (trees.Tree[AlgorithmNode]): The tree and value tree.
+            latest_tree_expansions (tree_man.TreeExpansions): The latest tree expansions.
 
         Returns:
-        - OpeningInstructions: The opening instructions for the chosen node.
+            OpeningInstructions: Opening instructions for the chosen node.
 
         """
         _ = latest_tree_expansions  # not used here
@@ -75,7 +71,6 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             tree.tree_root_tree_depth + self.current_depth_to_expand
         )
 
-        # self.tree.descendants.print_info()
         nodes_to_consider = list(
             tree.descendants[current_tree_depth_to_expand].values()
         )
@@ -108,8 +103,5 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return opening_instructions_batch
 
     def print_info(self) -> None:
-        """
-        Prints information about the Uniform Node selector.
-
-        """
+        """Print information about the Uniform node selector."""
         print("Uniform")

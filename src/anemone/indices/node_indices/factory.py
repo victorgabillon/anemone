@@ -1,5 +1,4 @@
-"""
-This module provides functions for creating exploration index data for tree nodes.
+"""Provide functions for creating exploration index data for tree nodes.
 
 The main function in this module is `create_exploration_index_data`, which takes a tree node and optional parameters
 to create the exploration index data for that node.
@@ -13,8 +12,9 @@ Types:
 - ExplorationIndexDataFactory: A callable type for creating exploration index data.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from valanga import State
 
@@ -32,14 +32,22 @@ from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 
 
+class UnknownIndexComputationError(ValueError):
+    """Raised when an index computation type is not recognized."""
+
+    def __init__(self, index_computation: IndexComputationType) -> None:
+        """Initialize the error with the unsupported computation type."""
+        super().__init__(
+            f"not finding good case for {index_computation} in file {__name__}"
+        )
+
+
 @dataclass
 class DepthExtendedIntervalExplo[
     T: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ](IntervalExplo[T, StateT], MaxDepthDescendants[T, StateT]):
     """Depth extended interval exploration data."""
-
-    ...
 
 
 @dataclass
@@ -49,8 +57,6 @@ class DepthExtendedMinMaxPathValue[
 ](MinMaxPathValue[T, StateT], MaxDepthDescendants[T, StateT]):
     """Depth extended min-max path value exploration data."""
 
-    ...
-
 
 @dataclass
 class DepthExtendedRecurZipfQuoolExplorationData[
@@ -58,8 +64,6 @@ class DepthExtendedRecurZipfQuoolExplorationData[
     StateT: State = State,
 ](RecurZipfQuoolExplorationData[T, StateT], MaxDepthDescendants[T, StateT]):
     """Depth extended recur zipf quool exploration data."""
-
-    ...
 
 
 # Generic factory type that preserves the node type through the TreeNode parameter
@@ -77,8 +81,7 @@ def create_exploration_index_data[
     index_computation: IndexComputationType | None = None,
     depth_index: bool = False,
 ) -> NodeExplorationData[NodeT, NodeStateT] | None:
-    """
-    Creates exploration index data for a given tree node.
+    """Create exploration index data for a given tree node.
 
     Args:
         tree_node (TreeNode): The tree node for which to create the exploration index data.
@@ -90,6 +93,7 @@ def create_exploration_index_data[
 
     Raises:
         ValueError: If the index_computation value is not recognized.
+
     """
     index_dataclass_name: type[Any] | None
     match index_computation:
@@ -110,9 +114,7 @@ def create_exploration_index_data[
                 else RecurZipfQuoolExplorationData
             )
         case _:
-            raise ValueError(
-                f"not finding good case for {index_computation} in file {__name__}"
-            )
+            raise UnknownIndexComputationError(index_computation)
 
     exploration_index_data: NodeExplorationData[NodeT, NodeStateT] | None
     exploration_index_data = (

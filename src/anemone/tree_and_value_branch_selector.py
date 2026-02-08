@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from random import Random
 
 from valanga import TurnState
-from valanga.policy import Recommendation
+from valanga.policy import NotifyProgressCallable, Recommendation
 
 from anemone.basics import Seed
 from anemone.progress_monitor.progress_monitor import (
@@ -14,14 +14,16 @@ from anemone.search_factory import NodeSelectorFactory
 
 from . import recommender_rule
 from . import tree_manager as tree_man
-from .tree_exploration import NotifyProgressCallable, TreeExploration, create_tree_exploration
+from .tree_exploration import (
+    TreeExploration,
+    create_tree_exploration,
+)
 from .trees.factory import ValueTreeFactory
 
 
 @dataclass
 class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
-    """
-    The TreeAndValueBranchSelector class is responsible for selecting branches based on a tree and value strategy.
+    """The TreeAndValueBranchSelector class is responsible for selecting branches based on a tree and value strategy.
 
     Attributes:
     - tree_manager: The tree manager responsible for managing the algorithm nodes.
@@ -30,6 +32,7 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     - node_selector_create: The node selector factory used to create node selectors for tree exploration.
     - random_generator: The random generator used for randomization during tree exploration.
     - recommend_branch_after_exploration: The recommendation functions used to recommend a branch after tree exploration.
+
     """
 
     # pretty empty class but might be useful when dealing with multi round and time , no?
@@ -41,18 +44,26 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
     random_generator: Random
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
 
-    def recommend(self, state: StateT, seed: Seed, notify_progress: NotifyProgressCallable | None = None) -> Recommendation:
-        """
-        Selects the best branch based on the tree and value strategy.
+    def recommend(
+        self,
+        state: StateT,
+        seed: Seed,
+        notify_progress: NotifyProgressCallable | None = None,
+    ) -> Recommendation:
+        """Select the best branch based on the tree and value strategy.
 
         Args:
-        - state: The current state to explore.
-        - selection_seed: The seed used for randomization during branch selection.
+            state (StateT): The current state to explore.
+            seed (Seed): The seed used for randomization during branch selection.
+            notify_progress (NotifyProgressCallable | None): Optional progress callback.
 
         Returns:
-        - The recommended branch based on the tree and value strategy.
+            Recommendation: The recommended branch based on the tree and value strategy.
+
         """
-        tree_exploration: TreeExploration = self.create_tree_exploration(state=state, notify_progress=notify_progress)
+        tree_exploration: TreeExploration = self.create_tree_exploration(
+            state=state, notify_progress=notify_progress
+        )
         self.random_generator.seed(seed)
 
         branch_recommendation: Recommendation = tree_exploration.explore(
@@ -74,12 +85,10 @@ class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
             tree_factory=self.tree_factory,
             stopping_criterion_args=self.stopping_criterion_args,
             recommend_branch_after_exploration=self.recommend_branch_after_exploration,
-                        notify_percent_function=notify_progress
+            notify_percent_function=notify_progress,
         )
         return tree_exploration
 
     def print_info(self) -> None:
-        """
-        Prints information about the branch selector type.
-        """
+        """Print information about the branch selector type."""
         print("type: Tree and Value")

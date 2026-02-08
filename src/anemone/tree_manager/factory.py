@@ -1,5 +1,4 @@
-"""
-This module provides a factory function for creating an AlgorithmNodeTreeManager object.
+"""Provide a factory function for creating an AlgorithmNodeTreeManager object.
 
 The AlgorithmNodeTreeManager is responsible for managing the tree structure of algorithm nodes,
 performing updates on the nodes, and handling evaluation queries.
@@ -37,11 +36,10 @@ def create_algorithm_node_tree_manager(
     index_computation: IndexComputationType | None,
     index_updater: IndexUpdater | None,
 ) -> AlgorithmNodeTreeManager:
-    """
-    Create an AlgorithmNodeTreeManager object.
+    """Create an AlgorithmNodeTreeManager object.
 
     Args:
-        node_evaluator: The NodeEvaluator object used for evaluating nodes in the tree.
+        node_direct_evaluator: The NodeDirectEvaluator used for evaluating nodes in the tree.
         algorithm_node_factory: The AlgorithmNodeFactory object used for creating algorithm nodes.
         index_computation: The type of index computation to be used.
         index_updater: The IndexUpdater object used for updating the indices.
