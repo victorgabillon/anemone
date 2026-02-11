@@ -7,9 +7,9 @@ from .noop_args import NoPriorityCheckArgs
 from .priority_check import PriorityCheck
 
 __all__ = [
-    "create_priority_check",
     "NoPriorityCheck",
     "NoPriorityCheckArgs",
     "PriorityCheck",
     "PriorityCheckArgs",
+    "create_priority_check",
 ]

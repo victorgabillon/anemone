@@ -32,12 +32,12 @@ class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
         return NodeMinmaxEvaluation(tree_node=tree_node)
 
 
-class NodeTreeEvaluationFactory[StateT2: State = State](Protocol):
+class NodeTreeEvaluationFactory[T: State = State](Protocol):
     """The class creating Node Evaluations including children."""
 
     def create(
         self,
-        tree_node: TreeNode[Any, StateT2],
-    ) -> NodeTreeEvaluation[StateT2]:
+        tree_node: TreeNode[Any, T],
+    ) -> NodeTreeEvaluation[T]:
         """Create a NodeTreeEvaluation instance for the given node."""
         ...

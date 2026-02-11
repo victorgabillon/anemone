@@ -53,7 +53,7 @@ from anemone.trees.factory import ValueTreeFactory
 from anemone.trees.tree import (
     Tree,
 )
-from anemone.utils.small_tools import path
+from anemone.utils.small_tools import MyPath
 from tests.fake_yaml_game import (
     FakeYamlState,
     MasterStateEvaluatorFromYaml,
@@ -202,7 +202,7 @@ def build_tree_from_yaml_clean(
     return tree
 
 
-def check_from_file(file_path: path, tree: Tree[AlgorithmNode]) -> None:
+def check_from_file(file_path: MyPath, tree: Tree[AlgorithmNode]) -> None:
     """Check the values in the given file against the values in the tree.
 
     Args:
@@ -245,7 +245,9 @@ def check_from_file(file_path: path, tree: Tree[AlgorithmNode]) -> None:
                 )
 
 
-def check_index(index_computation: IndexComputationType, tree_file: path) -> TestResult:
+def check_index(
+    index_computation: IndexComputationType, tree_file: MyPath
+) -> TestResult:
     tree_path = f"tests/data/trees/{tree_file}/{tree_file}.yaml"
 
     tree = build_tree_from_yaml_clean(tree_path, index_computation)

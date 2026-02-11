@@ -13,6 +13,7 @@ class UnknownPriorityCheckError(ValueError):
     """Raised when a priority-check type is not recognized."""
 
     def __init__(self, args: PriorityCheckArgs) -> None:
+        """Initialize the error with a message indicating the unknown priority-check type."""
         super().__init__(
             f"priority check construction: can not find {args.type} {args} in file {__name__}"
         )

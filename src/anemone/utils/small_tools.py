@@ -7,7 +7,7 @@ from math import exp
 from os import PathLike
 from typing import Annotated
 
-path = Annotated[str | PathLike[str], "path"]
+MyPath = Annotated[str | PathLike[str], "path"]
 
 
 def nth_key[T, V](dct: dict[T, V], n: int) -> T:
@@ -96,6 +96,3 @@ def softmax(x: Sequence[float], temperature: float = 1.0) -> list[float]:
     s = sum(exp_vals)
 
     return [v / s for v in exp_vals]
-
-
-"""Small utility helpers used across the project."""

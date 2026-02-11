@@ -60,6 +60,36 @@ class NodeWithValue(ITreeNode[TurnState], Protocol):
     tree_node: TreeNode[Self, TurnState]
 
 
+def make_branch_sequence_factory() -> list[BranchKey]:
+    """Create a factory for generating branch sequences.
+
+    Returns:
+        list[BranchKey]: An empty list that can be used to store branch sequences.
+
+    """
+    return []
+
+
+def make_branches_sorted_by_value_factory() -> dict[BranchKey, BranchSortValue]:
+    """Create a factory for generating branches sorted by value.
+
+    Returns:
+        dict[BranchKey, BranchSortValue]: An empty dictionary that can be used to store branches sorted by their values.
+
+    """
+    return {}
+
+
+def make_branches_not_over_factory() -> list[BranchKey]:
+    """Create a factory for generating branches that are not over.
+
+    Returns:
+        list[BranchKey]: An empty list that can be used to store branches that are not over.
+
+    """
+    return []
+
+
 @dataclass(slots=True)
 class NodeMinmaxEvaluation[
     NodeWithValueT: NodeWithValue = NodeWithValue,
@@ -94,7 +124,7 @@ class NodeMinmaxEvaluation[
 
     # the sequence of best branches from this node
     best_branch_sequence: list[BranchKey] = field(
-        default_factory=lambda: list[BranchKey]()
+        default_factory=make_branch_sequence_factory
     )
 
     # the children of the tree node are kept in a dictionary that can be sorted by their evaluations ()
@@ -104,7 +134,7 @@ class NodeMinmaxEvaluation[
     # careful, I have hard coded in the self.best_child() function the descending order for
     # fast access to the best element, so please do not change!
     branches_sorted_by_value_: dict[BranchKey, BranchSortValue] = field(
-        default_factory=lambda: dict[BranchKey, BranchSortValue]()
+        default_factory=make_branches_sorted_by_value_factory
     )
 
     # convention of descending order, careful if changing read above!!
@@ -114,7 +144,7 @@ class NodeMinmaxEvaluation[
     # using atm a list instead of set as atm python set are not insertion ordered which adds randomness
     # and makes debug harder
     branches_not_over: list[BranchKey] = field(
-        default_factory=lambda: list[BranchKey]()
+        default_factory=make_branches_not_over_factory
     )
 
     # creating a base Over event that is set to None
@@ -344,7 +374,8 @@ class NodeMinmaxEvaluation[
         """
         branch_key: BranchKey
         anemone_logger.info(
-            f"here are the {len(self.branches_sorted_by_value)} branches sorted by value: "
+            "here are the %s branches sorted by value: ",
+            len(self.branches_sorted_by_value),
         )
         string_info: str = ""
         for branch_key, subjective_sort_value in self.branches_sorted_by_value.items():
@@ -793,6 +824,7 @@ class NodeMinmaxEvaluation[
             str: A string representation of the branch for the tree visualizer.
 
         """
+        _ = child  # to avoid unused variable warning, to be used when we want to print more info about the branch
         return ""
 
     def print_best_line(self) -> None:
@@ -848,28 +880,20 @@ class NodeMinmaxEvaluation[
         assert best_branch is not None
         best_value = self.branches_sorted_by_value[best_branch]
         branch_key: BranchKey
-        for branch_key in self.branches_sorted_by_value:
+        for branch_key, branch_value in self.branches_sorted_by_value.items():
             if how_equal == "equal":
-                if self.are_equal_values(
-                    self.branches_sorted_by_value[branch_key], best_value
-                ):
+                if self.are_equal_values(branch_value, best_value):
                     best_branches.append(branch_key)
                     assert len(best_branches) == 1
             elif how_equal == "considered_equal":
-                if self.are_considered_equal_values(
-                    self.branches_sorted_by_value[branch_key], best_value
-                ):
+                if self.are_considered_equal_values(branch_value, best_value):
                     best_branches.append(branch_key)
             elif how_equal == "almost_equal":
-                if self.are_almost_equal_values(
-                    self.branches_sorted_by_value[branch_key][0], best_value[0]
-                ):
+                if self.are_almost_equal_values(branch_value[0], best_value[0]):
                     best_branches.append(branch_key)
             elif how_equal == "almost_equal_logistic":
                 best_value_logit = self.my_logit(best_value[0] * 0.5 + 0.5)
-                child_value_logit = self.my_logit(
-                    self.branches_sorted_by_value[branch_key][0] * 0.5 + 0.5
-                )
+                child_value_logit = self.my_logit(branch_value[0] * 0.5 + 0.5)
                 if self.are_almost_equal_values(child_value_logit, best_value_logit):
                     best_branches.append(branch_key)
         return best_branches
@@ -879,6 +903,6 @@ class NodeMinmaxEvaluation[
         if self.over_event.is_over():
             return ForcedOutcome(
                 outcome=self.over_event,
-                line=[branch_key for branch_key in self.best_branch_sequence],
+                line=self.best_branch_sequence.copy(),
             )
         return FloatyStateEvaluation(value_white=self.value_white_minmax)

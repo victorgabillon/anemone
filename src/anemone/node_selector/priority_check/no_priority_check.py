@@ -18,6 +18,7 @@ class NoPriorityCheck[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
 ):
     """Priority check that never overrides base selection."""
 
+    # pylint: disable=useless-return
     def maybe_choose_opening(
         self,
         tree: trees.Tree[NodeT],
@@ -27,3 +28,5 @@ class NoPriorityCheck[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         _ = tree
         _ = latest_tree_expansions
         return None
+
+    # pylint: enable=useless-return

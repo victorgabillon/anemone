@@ -17,33 +17,33 @@ class HasTreeDepth(Protocol):
         ...
 
 
-class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
+class DictOfNumberedDictWithPointerOnMax[K: HasTreeDepth, V]:
     """A dictionary-like data structure that stores numbered dictionaries and keeps track of the maximum depth.
 
     Attributes:
-        tree_depths (dict[int, dict[T_Key, T_Value]]): A dictionary that stores numbered dictionaries.
+        tree_depths (dict[int, dict[K, V]]): A dictionary that stores numbered dictionaries.
         max_tree_depth (int | None): The maximum depth value.
 
     Methods:
-        __setitem__(self, node: T_Key, value: T_Value) -> None: Adds an item to the data structure.
-        __getitem__(self, node: T_Key) -> T_Value: Retrieves an item from the data structure.
+        __setitem__(self, node: K, value: V) -> None: Adds an item to the data structure.
+        __getitem__(self, node: K) -> V: Retrieves an item from the data structure.
         __bool__(self) -> bool: Checks if the data structure is non-empty.
-        __contains__(self, node: T_Key) -> bool: Checks if an item is present in the data structure.
-        popitem(self) -> tuple[T_Key, T_Value]: Removes and returns the item with the maximum depth value.
+        __contains__(self, node: K) -> bool: Checks if an item is present in the data structure.
+        popitem(self) -> tuple[K, V]: Removes and returns the item with the maximum depth value.
 
     """
 
     def __init__(self) -> None:
         """Initialize the depth-indexed mapping."""
-        self.tree_depths: dict[int, dict[T_Key, T_Value]] = {}
+        self.tree_depths: dict[int, dict[K, V]] = {}
         self.max_tree_depth: int | None = None
 
-    def __setitem__(self, node: T_Key, value: T_Value) -> None:
+    def __setitem__(self, node: K, value: V) -> None:
         """Add an item to the data structure.
 
         Args:
-            node (T_Key): The key of the item.
-            value (T_Value): The value of the item.
+            node (K): The key of the item.
+            value (V): The value of the item.
 
         Returns:
             None
@@ -61,7 +61,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
 
         assert self.max_tree_depth == max(self.tree_depths)
 
-    def __getitem__(self, node: T_Key) -> T_Value:
+    def __getitem__(self, node: K) -> V:
         """Retrieve an item from the data structure.
 
         Args:
@@ -85,7 +85,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
         """
         return bool(self.tree_depths)
 
-    def __contains__(self, node: T_Key) -> bool:
+    def __contains__(self, node: K) -> bool:
         """Check if an item is present in the data structure.
 
         Args:
@@ -99,7 +99,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
             return False
         return node in self.tree_depths[node.tree_depth]
 
-    def popitem(self) -> tuple[T_Key, T_Value]:
+    def popitem(self) -> tuple[K, V]:
         """Remove and return the item with the maximum depth value.
 
         Returns:
@@ -110,7 +110,7 @@ class DictOfNumberedDictWithPointerOnMax[T_Key: HasTreeDepth, T_Value]:
 
         """
         assert self.max_tree_depth is not None
-        popped: tuple[T_Key, T_Value] = self.tree_depths[self.max_tree_depth].popitem()
+        popped: tuple[K, V] = self.tree_depths[self.max_tree_depth].popitem()
         if not self.tree_depths[self.max_tree_depth]:
             del self.tree_depths[self.max_tree_depth]
             if self.tree_depths:

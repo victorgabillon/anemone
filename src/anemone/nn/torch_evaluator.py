@@ -44,7 +44,7 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
     def __post_init__(self) -> None:
         """Initialize the torch model and validate dependencies."""
         try:
-            import torch
+            import torch  # pylint: disable=import-outside-toplevel
         except ModuleNotFoundError as e:
             raise TorchDependencyError from e
 
