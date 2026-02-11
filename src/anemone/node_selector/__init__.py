@@ -14,6 +14,7 @@ To use this module, import it and use the provided classes and functions as need
 """
 
 from .factory import AllNodeSelectorArgs, create
+from .composed import ComposedNodeSelector, ComposedNodeSelectorArgs
 from .node_selector import NodeSelector
 from .node_selector_args import NodeSelectorArgs
 from .node_selector_types import NodeSelectorType
@@ -21,6 +22,8 @@ from .opening_instructions import OpeningInstruction, OpeningInstructions, Openi
 
 __all__ = [
     "AllNodeSelectorArgs",
+    "ComposedNodeSelector",
+    "ComposedNodeSelectorArgs",
     "NodeSelector",
     "NodeSelectorArgs",
     "NodeSelectorType",

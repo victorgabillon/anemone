@@ -30,6 +30,7 @@ from valanga import State
 
 from anemone import node_selector as node_selectors
 from anemone import nodes
+from anemone.hooks.search_hooks import SearchHooks
 from anemone.indices import node_indices
 from anemone.indices.node_indices.factory import (
     create_exploration_index_data,
@@ -104,6 +105,7 @@ class SearchFactory:
     opening_type: OpeningType | None
     random_generator: Random | None
     index_computation: node_indices.IndexComputationType | None
+    hooks: SearchHooks | None = None
     depth_index: bool = False
 
     def __post_init__(self) -> None:
@@ -151,6 +153,7 @@ class SearchFactory:
             args=self.node_selector_args,
             opening_instructor=opening_instructor,
             random_generator=self.random_generator,
+            hooks=self.hooks,
         )
         return node_selector_create
 
