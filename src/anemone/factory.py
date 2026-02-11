@@ -9,6 +9,7 @@ from valanga.evaluator_types import EvaluatorInput
 
 from anemone import node_factory
 from anemone import search_factory as search_factories
+from anemone.hooks.search_hooks import SearchHooks
 from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     MasterStateEvaluator,
@@ -55,6 +56,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
         StateT, EvaluatorInput, StateModifications
     ]
     | None,
+    hooks: SearchHooks | None = None,
 ) -> TreeAndValueBranchSelector[StateT]:
     """Create a branch selector using the default minmax tree evaluation.
 
@@ -72,6 +74,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
         master_state_evaluator=master_state_evaluator,
         state_representation_factory=state_representation_factory,
         node_tree_evaluation_factory=node_tree_evaluation_factory,
+        hooks=hooks,
     )
 
 
@@ -85,6 +88,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     ]
     | None,
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
+    hooks: SearchHooks | None = None,
 ) -> TreeAndValueBranchSelector[StateT]:
     """Create a TreeAndValueBranchSelector object with the given arguments.
 
@@ -115,6 +119,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
         opening_type=args.opening_type,
         random_generator=random_generator,
         index_computation=args.index_computation,
+        hooks=hooks,
     )
 
     algorithm_node_factory: node_factory.AlgorithmNodeFactory[StateT]

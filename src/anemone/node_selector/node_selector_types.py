@@ -9,3 +9,5 @@ class NodeSelectorType(StrEnum):
     RECUR_ZIPF_BASE = "RecurZipfBase"
     SEQUOOL = "Sequool"
     UNIFORM = "Uniform"
+    COMPOSED = "Composed"
+    PRIORITY_NOOP = "PriorityNoop"

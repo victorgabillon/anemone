@@ -4,9 +4,14 @@ from dataclasses import dataclass
 from random import Random
 from typing import Literal
 
+from anemone.hooks.search_hooks import SearchHooks
+
+from .composed.args import ComposedNodeSelectorArgs
+from .composed.composed_node_selector import ComposedNodeSelector
 from .node_selector import NodeSelector
 from .node_selector_types import NodeSelectorType
 from .opening_instructions import OpeningInstructor
+from .priority_check.factory import create_priority_check
 from .recurzipf.recur_zipf_base import RecurZipfBase, RecurZipfBaseArgs
 from .sequool import SequoolArgs, create_sequool
 from .uniform import Uniform
@@ -19,7 +24,7 @@ class UniformArgs:
     type: Literal[NodeSelectorType.UNIFORM]
 
 
-AllNodeSelectorArgs = RecurZipfBaseArgs | SequoolArgs | UniformArgs
+AllNodeSelectorArgs = RecurZipfBaseArgs | SequoolArgs | UniformArgs | ComposedNodeSelectorArgs
 
 
 class UnknownNodeSelectorError(ValueError):
@@ -36,6 +41,7 @@ def create(
     args: AllNodeSelectorArgs,
     opening_instructor: OpeningInstructor,
     random_generator: Random,
+    hooks: SearchHooks | None = None,
 ) -> NodeSelector:
     """Creation of a node selector."""
     node_branch_opening_selector: NodeSelector
@@ -59,6 +65,24 @@ def create(
                 opening_instructor=opening_instructor,
                 random_generator=random_generator,
                 args=args,
+            )
+
+        case NodeSelectorType.COMPOSED:
+            assert isinstance(args, ComposedNodeSelectorArgs)
+            priority_check = create_priority_check(
+                args=args.priority,
+                random_generator=random_generator,
+                hooks=hooks,
+            )
+            base_selector = create(
+                args=args.base,
+                opening_instructor=opening_instructor,
+                random_generator=random_generator,
+                hooks=hooks,
+            )
+            node_branch_opening_selector = ComposedNodeSelector(
+                priority_check=priority_check,
+                base=base_selector,
             )
 
         case _:
