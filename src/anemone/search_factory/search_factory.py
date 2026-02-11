@@ -35,6 +35,8 @@ from anemone.indices import node_indices
 from anemone.indices.node_indices.factory import (
     create_exploration_index_data,
 )
+from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
+from anemone.node_selector.factory import create_composed_node_selector
 from anemone.node_selector.opening_instructions import (
     OpeningInstructor,
     OpeningType,
@@ -101,7 +103,7 @@ class SearchFactory:
     These three classes need to operate on the same data, so they must be created coherently.
     """
 
-    node_selector_args: node_selectors.AllNodeSelectorArgs | None
+    node_selector_args: ComposedNodeSelectorArgs | None
     opening_type: OpeningType | None
     random_generator: Random | None
     index_computation: node_indices.IndexComputationType | None
@@ -149,7 +151,7 @@ class SearchFactory:
         assert opening_instructor is not None
 
         node_selector_create: NodeSelectorFactory = partial(
-            node_selectors.create,
+            create_composed_node_selector,
             args=self.node_selector_args,
             opening_instructor=opening_instructor,
             random_generator=self.random_generator,

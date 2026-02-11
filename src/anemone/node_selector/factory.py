@@ -24,8 +24,10 @@ class UniformArgs:
     type: Literal[NodeSelectorType.UNIFORM]
 
 
+
+
 AllNodeSelectorArgs = (
-    RecurZipfBaseArgs | SequoolArgs | UniformArgs | ComposedNodeSelectorArgs
+    RecurZipfBaseArgs | SequoolArgs | UniformArgs 
 )
 
 
@@ -37,6 +39,29 @@ class UnknownNodeSelectorError(ValueError):
         super().__init__(
             f"node selector construction: can not find {args.type}  {args} in file {__name__}"
         )
+
+def create_composed_node_selector(
+    args: ComposedNodeSelectorArgs,
+    opening_instructor: OpeningInstructor,
+    random_generator: Random,
+    hooks: SearchHooks | None = None,
+) -> ComposedNodeSelector:
+    """Create a composed node selector from the given arguments."""
+    priority_check = create_priority_check(
+        args=args.priority,
+        random_generator=random_generator,
+        hooks=hooks,
+    )
+    base_selector = create(
+        args=args.base,
+        opening_instructor=opening_instructor,
+        random_generator=random_generator,
+        hooks=hooks,
+    )
+    return ComposedNodeSelector(
+        priority_check=priority_check,
+        base=base_selector,
+    )
 
 
 def create(
@@ -69,23 +94,6 @@ def create(
                 args=args,
             )
 
-        case NodeSelectorType.COMPOSED:
-            assert isinstance(args, ComposedNodeSelectorArgs)
-            priority_check = create_priority_check(
-                args=args.priority,
-                random_generator=random_generator,
-                hooks=hooks,
-            )
-            base_selector = create(
-                args=args.base,
-                opening_instructor=opening_instructor,
-                random_generator=random_generator,
-                hooks=hooks,
-            )
-            node_branch_opening_selector = ComposedNodeSelector(
-                priority_check=priority_check,
-                base=base_selector,
-            )
 
         case _:
             raise UnknownNodeSelectorError(args)

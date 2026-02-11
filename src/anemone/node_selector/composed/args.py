@@ -1,13 +1,12 @@
 """Arguments for composed node selector."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.priority_check.args_union import PriorityCheckArgs
 
-if TYPE_CHECKING:
-    from anemone.node_selector.factory import AllNodeSelectorArgs
+from anemone.node_selector.factory import AllNodeSelectorArgs
 
 
 @dataclass
@@ -16,4 +15,4 @@ class ComposedNodeSelectorArgs:
 
     type: Literal[NodeSelectorType.COMPOSED]
     priority: PriorityCheckArgs
-    base: "AllNodeSelectorArgs"
+    base: AllNodeSelectorArgs

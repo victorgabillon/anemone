@@ -20,6 +20,7 @@ from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory i
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.node_factory.base import TreeNodeFactory
+from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
@@ -39,7 +40,7 @@ TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 class TreeAndValuePlayerArgs:
     """Dataclass for Tree and Value Player Arguments."""
 
-    node_selector: node_selector_m.AllNodeSelectorArgs
+    node_selector: ComposedNodeSelectorArgs
     opening_type: node_selector_m.OpeningType
     stopping_criterion: AllStoppingCriterionArgs
     recommender_rule: recommender_rule.AllRecommendFunctionsArgs
