@@ -8,10 +8,9 @@ Classes:
 
 """
 
-from typing import TYPE_CHECKING, Any
-
-from typing import Literal
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Literal
+
 from anemone import tree_manager as tree_man
 from anemone import trees
 from anemone.node_selector.node_selector_types import NodeSelectorType
@@ -24,6 +23,7 @@ from anemone.nodes.algorithm_node import AlgorithmNode
 
 if TYPE_CHECKING:
     from valanga import BranchKey
+
 
 @dataclass
 class UniformArgs:

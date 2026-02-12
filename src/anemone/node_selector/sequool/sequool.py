@@ -29,6 +29,10 @@ if TYPE_CHECKING:
     from anemone import tree_manager as tree_man
 
 
+class SequoolMissingIndexDataError(TypeError):
+    """Sequool requires MaxDepthDescendants exploration index data on nodes."""
+
+
 class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol):
     """Protocol defining the interface for a tree-depth selector."""
 
@@ -238,7 +242,9 @@ class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """
         tree_depth_picked: int
         # choose a depth based on zipf
-        assert isinstance(from_node.exploration_index_data, MaxDepthDescendants)
+        if not isinstance(from_node.exploration_index_data, MaxDepthDescendants):
+            raise SequoolMissingIndexDataError
+
         max_descendants_depth: int = (
             from_node.exploration_index_data.max_depth_descendants
         )

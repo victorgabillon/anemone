@@ -4,6 +4,7 @@ from random import Random
 
 from anemone.hooks.search_hooks import SearchHooks
 
+from .all_node_selector_args import AllNodeSelectorArgs
 from .composed.args import ComposedNodeSelectorArgs
 from .composed.composed_node_selector import ComposedNodeSelector
 from .node_selector import NodeSelector
@@ -13,9 +14,6 @@ from .priority_check.factory import create_priority_check
 from .recurzipf.recur_zipf_base import RecurZipfBase, RecurZipfBaseArgs
 from .sequool import SequoolArgs, create_sequool
 from .uniform import Uniform
-from .all_node_selector_args import AllNodeSelectorArgs
-
-
 
 
 class UnknownNodeSelectorError(ValueError):
@@ -26,6 +24,7 @@ class UnknownNodeSelectorError(ValueError):
         super().__init__(
             f"node selector construction: can not find {args.type}  {args} in file {__name__}"
         )
+
 
 def create_composed_node_selector(
     args: ComposedNodeSelectorArgs,
@@ -80,7 +79,6 @@ def create(
                 random_generator=random_generator,
                 args=args,
             )
-
 
         case _:
             raise UnknownNodeSelectorError(args)

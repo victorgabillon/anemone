@@ -24,7 +24,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 from random import Random
-from typing import Protocol
+from typing import Any, Protocol
 
 from valanga import State
 
@@ -93,6 +93,14 @@ class SearchFactoryP(Protocol):
         ...
 
 
+def _base_selector_args(args: Any) -> Any:
+    # args can be SequoolArgs / RecurZipfBaseArgs / UniformArgs / ComposedNodeSelectorArgs
+
+    if isinstance(args, ComposedNodeSelectorArgs):
+        return args.base
+    return args
+
+
 @dataclass
 class SearchFactory:
     """Create dependent factories for node selection and index updates.
@@ -120,11 +128,11 @@ class SearchFactory:
         is set to the value of `recursive_selection_on_all_nodes` attribute of `node_selector_args`.
         Otherwise, `depth_index` is set to False.
         """
-        if isinstance(self.node_selector_args, SequoolArgs):
-            a: SequoolArgs = self.node_selector_args
-            self.depth_index: bool = a.recursive_selection_on_all_nodes
+        base_args = _base_selector_args(self.node_selector_args)
+        if isinstance(base_args, SequoolArgs):
+            self.depth_index = base_args.recursive_selection_on_all_nodes
         else:
-            self.depth_index: bool = False
+            self.depth_index = False
 
     def create_node_selector_factory(self) -> NodeSelectorFactory:
         """Create the node selector factory.

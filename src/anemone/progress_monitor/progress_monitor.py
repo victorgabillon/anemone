@@ -19,6 +19,7 @@ from typing import Any, Literal, Protocol, runtime_checkable
 
 from anemone import node_selector as node_sel
 from anemone import trees
+from anemone.node_selector.composed.composed_node_selector import ComposedNodeSelector
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 
@@ -340,10 +341,11 @@ def create_stopping_criterion[NodeT: AlgorithmNode[Any]](
 
     match args.type:
         case StoppingCriterionTypes.DEPTH_LIMIT:
-            assert isinstance(node_selector, DepthToExpendP)
+            assert isinstance(node_selector, ComposedNodeSelector)
+            assert isinstance(node_selector.base, DepthToExpendP)
             assert isinstance(args, DepthLimitArgs)
             stopping_criterion = DepthLimit(
-                depth_limit=args.depth_limit, node_selector=node_selector
+                depth_limit=args.depth_limit, node_selector=node_selector.base
             )
         case StoppingCriterionTypes.TREE_BRANCH_LIMIT:
             assert isinstance(args, TreeBranchLimitArgs)
