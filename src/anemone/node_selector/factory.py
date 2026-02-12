@@ -37,6 +37,7 @@ def create_composed_node_selector(
         args=args.priority,
         random_generator=random_generator,
         hooks=hooks,
+        opening_instructor=opening_instructor,
     )
     base_selector = create(
         args=args.base,
