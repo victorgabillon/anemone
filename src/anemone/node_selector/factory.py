@@ -1,8 +1,6 @@
 """Factory to build node selectors."""
 
-from dataclasses import dataclass
 from random import Random
-from typing import Literal
 
 from anemone.hooks.search_hooks import SearchHooks
 
@@ -15,20 +13,9 @@ from .priority_check.factory import create_priority_check
 from .recurzipf.recur_zipf_base import RecurZipfBase, RecurZipfBaseArgs
 from .sequool import SequoolArgs, create_sequool
 from .uniform import Uniform
+from .all_node_selector_args import AllNodeSelectorArgs
 
 
-@dataclass
-class UniformArgs:
-    """Arguments for the Uniform node selector."""
-
-    type: Literal[NodeSelectorType.UNIFORM]
-
-
-
-
-AllNodeSelectorArgs = (
-    RecurZipfBaseArgs | SequoolArgs | UniformArgs 
-)
 
 
 class UnknownNodeSelectorError(ValueError):

@@ -10,8 +10,11 @@ Classes:
 
 from typing import TYPE_CHECKING, Any
 
+from typing import Literal
+from dataclasses import dataclass
 from anemone import tree_manager as tree_man
 from anemone import trees
+from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import (
     OpeningInstructions,
     OpeningInstructor,
@@ -21,6 +24,12 @@ from anemone.nodes.algorithm_node import AlgorithmNode
 
 if TYPE_CHECKING:
     from valanga import BranchKey
+
+@dataclass
+class UniformArgs:
+    """Arguments for the Uniform node selector."""
+
+    type: Literal[NodeSelectorType.UNIFORM]
 
 
 class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
