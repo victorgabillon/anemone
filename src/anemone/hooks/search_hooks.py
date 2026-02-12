@@ -26,11 +26,15 @@ class FeatureExtractor(Protocol):
         raise NotImplementedError
 
 
+def _empty_priority_registry() -> dict[str, PriorityCheckFactory]:
+    return {}
+
+
 @dataclass(frozen=True)
 class SearchHooks:
     """Container for optional search extension points."""
 
     feature_extractor: FeatureExtractor | None = None
     priority_check_registry: Mapping[str, PriorityCheckFactory] = field(
-        default_factory=dict
+        default_factory=_empty_priority_registry
     )

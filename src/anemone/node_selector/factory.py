@@ -43,7 +43,6 @@ def create_composed_node_selector(
         args=args.base,
         opening_instructor=opening_instructor,
         random_generator=random_generator,
-        hooks=hooks,
     )
     return ComposedNodeSelector(
         priority_check=priority_check,
@@ -55,7 +54,6 @@ def create(
     args: AllNodeSelectorArgs,
     opening_instructor: OpeningInstructor,
     random_generator: Random,
-    hooks: SearchHooks | None = None,
 ) -> NodeSelector:
     """Creation of a node selector."""
     node_branch_opening_selector: NodeSelector
