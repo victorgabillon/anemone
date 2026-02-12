@@ -5,4 +5,4 @@ from anemone.node_selector.priority_check.registered_args import (
     RegisteredPriorityCheckArgs,
 )
 
-type PriorityCheckArgs = NoPriorityCheckArgs | RegisteredPriorityCheckArgs
+PriorityCheckArgs = NoPriorityCheckArgs | RegisteredPriorityCheckArgs
