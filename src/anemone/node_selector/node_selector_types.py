@@ -11,3 +11,4 @@ class NodeSelectorType(StrEnum):
     UNIFORM = "Uniform"
     COMPOSED = "Composed"
     PRIORITY_NOOP = "PriorityNoop"
+    PRIORITY_REGISTERED = "PriorityRegistered"
