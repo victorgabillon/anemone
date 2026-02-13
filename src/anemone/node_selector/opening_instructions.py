@@ -9,6 +9,7 @@ from typing import Any, Self
 from valanga import BranchKey
 
 from anemone import nodes
+from anemone.dynamics import SearchDynamics
 from anemone.nodes.utils import (
     a_branch_key_sequence_from_root,
     a_branch_str_sequence_from_root,
@@ -24,12 +25,13 @@ class OpeningInstruction[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
     node_to_open: NodeT
     branch: BranchKey
 
-    def print_info(self) -> None:
+    def print_info(self, dynamics: SearchDynamics[Any]) -> None:
         """Print information about the opening instruction."""
         print(
             f"OpeningInstruction: node_to_open {self.node_to_open.id} at hm {self.node_to_open.tree_depth} {self.node_to_open.state}| "
-            f"a path from root to node_to_open is {a_branch_key_sequence_from_root(self.node_to_open)} {a_branch_str_sequence_from_root(self.node_to_open)}| "
-            f"self.branch {self.branch} {self.node_to_open.state.branch_name_from_key(self.branch)}"
+            f"a path from root to node_to_open is {a_branch_key_sequence_from_root(self.node_to_open)} "
+            f"{a_branch_str_sequence_from_root(self.node_to_open, dynamics=dynamics)}| "
+            f"self.branch {self.branch} {dynamics.action_name(self.node_to_open.state, self.branch)}"
         )
 
 
@@ -146,11 +148,11 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         """
         return self.batch.items()
 
-    def print_info(self) -> None:
+    def print_info(self, dynamics: SearchDynamics[Any]) -> None:
         """Print information about the opening instructions in the collection."""
         print("OpeningInstructionsBatch: batch contains", len(self.batch), "elements:")
         for opening_instructions in self.batch.values():
-            opening_instructions.print_info()
+            opening_instructions.print_info(dynamics=dynamics)
 
     def __len__(self) -> int:
         """Return the number of opening instructions in the collection.
@@ -196,7 +198,12 @@ class OpeningType(Enum):
 class OpeningInstructor:
     """Represents an opening instructor that provides opening instructions based on a specific opening type."""
 
-    def __init__(self, opening_type: OpeningType, random_generator: Random) -> None:
+    def __init__(
+        self,
+        opening_type: OpeningType,
+        random_generator: Random,
+        dynamics: SearchDynamics[Any],
+    ) -> None:
         """Initialize the OpeningInstructor object.
 
         Args:
@@ -206,6 +213,7 @@ class OpeningInstructor:
         """
         self.opening_type = opening_type
         self.random_generator = random_generator
+        self.dynamics = dynamics
 
     def all_branches_to_open(
         self, node_to_open: nodes.ITreeNode[Any]
@@ -221,7 +229,7 @@ class OpeningInstructor:
         """
         if self.opening_type == OpeningType.ALL_CHILDREN:
             node_to_open.all_branches_generated = True
-            branches_to_play: list[BranchKey] = node_to_open.state.branch_keys.get_all()
+            branches_to_play = self.dynamics.legal_actions(node_to_open.state).get_all()
 
         else:
             raise NotImplementedError("Hello-la")

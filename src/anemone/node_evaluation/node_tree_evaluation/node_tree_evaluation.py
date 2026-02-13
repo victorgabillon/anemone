@@ -1,6 +1,8 @@
 """Provide the NodeTreeEvaluation interface."""
 
-from typing import TYPE_CHECKING, Protocol, Self
+from typing import TYPE_CHECKING, Any, Protocol, Self
+
+from anemone.dynamics import SearchDynamics
 
 from valanga import (
     BranchKey,
@@ -117,11 +119,13 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Return the second-best branch key."""
         ...
 
-    def print_branches_sorted_by_value(self) -> None:
+    def print_branches_sorted_by_value(self, dynamics: SearchDynamics[Any]) -> None:
         """Print branches sorted by value."""
         ...
 
-    def print_branches_sorted_by_value_and_exploration(self) -> None:
+    def print_branches_sorted_by_value_and_exploration(
+        self, dynamics: SearchDynamics[Any]
+    ) -> None:
         """Print branches sorted by value and exploration metrics."""
         ...
 

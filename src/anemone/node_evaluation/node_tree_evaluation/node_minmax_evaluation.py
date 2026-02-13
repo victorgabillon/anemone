@@ -16,6 +16,8 @@ from math import log
 from random import choice
 from typing import Any, Protocol, Self, runtime_checkable
 
+from anemone.dynamics import SearchDynamics
+
 from valanga import (
     BranchKey,
     Color,
@@ -334,7 +336,7 @@ class NodeMinmaxEvaluation[
         """
         return self.over_event.is_winner(player)
 
-    def print_branches_sorted_by_value(self) -> None:
+    def print_branches_sorted_by_value(self, dynamics: SearchDynamics[Any]) -> None:
         """Print the branches sorted by their subjective sort value.
 
         The method iterates over the branch_sorted_by_value dictionary and prints each branch along with its
@@ -353,13 +355,15 @@ class NodeMinmaxEvaluation[
         branch_key: BranchKey
         for branch_key, subjective_sort_value in self.branches_sorted_by_value.items():
             print(
-                self.tree_node.state.branch_name_from_key(branch_key),
+                dynamics.action_name(self.tree_node.state, branch_key),
                 subjective_sort_value[0],
                 end=" $$ ",
             )
         print("")
 
-    def print_branches_sorted_by_value_and_exploration(self) -> None:
+    def print_branches_sorted_by_value_and_exploration(
+        self, dynamics: SearchDynamics[Any]
+    ) -> None:
         """Print the branch of the node sorted by their value and exploration.
 
         This method prints the branches of the node along with their subjective sort value.
@@ -379,7 +383,8 @@ class NodeMinmaxEvaluation[
         )
         string_info: str = ""
         for branch_key, subjective_sort_value in self.branches_sorted_by_value.items():
-            string_info += f" {self.tree_node.state.branch_name_from_key(branch_key)} {subjective_sort_value[0]} $$ "
+            branch_name = dynamics.action_name(self.tree_node.state, branch_key)
+            string_info += f" {branch_name} {subjective_sort_value[0]} $$ "
         anemone_logger.info(string_info)
 
     def print_branches_not_over(self) -> None:
@@ -399,7 +404,7 @@ class NodeMinmaxEvaluation[
             print(branch, end=" ")
         print(" ")
 
-    def print_info(self) -> None:
+    def print_info(self, dynamics: SearchDynamics[Any]) -> None:
         """Print information about the node.
 
         This method prints the ID of the node, the branches of its children, the children sorted by value,
@@ -407,7 +412,7 @@ class NodeMinmaxEvaluation[
         """
         print("Soy el Node", self.tree_node.id)
         self.tree_node.print_branches_children()
-        self.print_branches_sorted_by_value()
+        self.print_branches_sorted_by_value(dynamics=dynamics)
         self.print_branches_not_over()
         # TODO: probably more to print...
 

@@ -23,6 +23,7 @@ from valanga import BranchKey, State, StateEvaluation, TurnState
 from valanga.game import BranchName
 from valanga.policy import NotifyProgressCallable, Recommendation
 
+from anemone.dynamics import SearchDynamics
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
@@ -51,6 +52,7 @@ class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
 def compute_child_evals[StateT: State](
     root: AlgorithmNode[StateT],
+    dynamics: SearchDynamics[StateT],
 ) -> dict[BranchName, StateEvaluation]:
     """Compute evaluations for each existing child branch."""
     evals: dict[BranchName, StateEvaluation] = {}
@@ -59,7 +61,7 @@ def compute_child_evals[StateT: State](
             continue
 
         # Use whatever your canonical per-node evaluation is:
-        bk_name = root.state.branch_name_from_key(bk)
+        bk_name = dynamics.action_name(root.state, bk)
         evals[bk_name] = child.tree_evaluation.evaluate()
     return evals
 
@@ -120,7 +122,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             )
 
             # ,end='\r')
-            self.tree.root_node.tree_evaluation.print_branches_sorted_by_value_and_exploration()
+            self.tree.root_node.tree_evaluation.print_branches_sorted_by_value_and_exploration(
+                dynamics=self.tree_manager.dynamics
+            )
             self.tree_manager.print_best_line(tree=self.tree)
 
     def explore(self, random_generator: Random) -> TreeExplorationResult[NodeT]:
@@ -187,7 +191,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             policy, random_generator
         )
 
-        best_branch_name = self.tree.root_node.state.branch_name_from_key(best_branch)
+        best_branch_name = self.tree_manager.dynamics.action_name(
+            self.tree.root_node.state, best_branch
+        )
         self.tree_manager.print_best_line(
             tree=self.tree
         )  # TODO: maybe almost best chosen line no?
@@ -196,7 +202,10 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             recommended_name=best_branch_name,
             evaluation=self.tree.root_node.tree_evaluation.evaluate(),
             policy=policy,
-            branch_evals=compute_child_evals(self.tree.root_node),
+            branch_evals=compute_child_evals(
+                self.tree.root_node,
+                dynamics=self.tree_manager.dynamics,
+            ),
         )
 
         tree_exploration_result: TreeExplorationResult[NodeT] = TreeExplorationResult(

@@ -28,6 +28,8 @@ from typing import Any, Protocol
 
 from valanga import State
 
+from anemone.dynamics import SearchDynamics
+
 from anemone import node_selector as node_selectors
 from anemone import nodes
 from anemone.hooks.search_hooks import SearchHooks
@@ -114,6 +116,7 @@ class SearchFactory:
     node_selector_args: ComposedNodeSelectorArgs | None
     opening_type: OpeningType | None
     random_generator: Random | None
+    dynamics: SearchDynamics[Any]
     index_computation: node_indices.IndexComputationType | None
     hooks: SearchHooks | None = None
     depth_index: bool = False
@@ -149,7 +152,9 @@ class SearchFactory:
         assert self.random_generator is not None
         opening_instructor: OpeningInstructor | None = (
             OpeningInstructor(
-                opening_type=self.opening_type, random_generator=self.random_generator
+                opening_type=self.opening_type,
+                random_generator=self.random_generator,
+                dynamics=self.dynamics,
             )
             if self.opening_type is not None
             else None

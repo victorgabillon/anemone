@@ -2,6 +2,7 @@
 
 from valanga import BranchKey, Color, State
 
+from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
     NodeTreeEvaluation,
 )
@@ -50,7 +51,7 @@ def a_branch_key_sequence_from_root[StateT: State](
 
 
 def a_branch_str_sequence_from_root[StateT: State](
-    tree_node: ITreeNode[StateT],
+    tree_node: ITreeNode[StateT], dynamics: SearchDynamics[StateT]
 ) -> list[str]:
     """Return a list of branch sequences from the root node to a given tree node.
 
@@ -66,7 +67,7 @@ def a_branch_str_sequence_from_root[StateT: State](
     while child.parent_nodes:
         parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
         branch_key: BranchKey = child.parent_nodes[parent]
-        branch_str: str = parent.state.branch_name_from_key(branch_key)
+        branch_str: str = dynamics.action_name(parent.state, branch_key)
         branch_sequence_from_root.append(branch_str)
         child = parent
     branch_sequence_from_root.reverse()

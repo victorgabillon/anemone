@@ -9,6 +9,7 @@ from valanga.evaluator_types import EvaluatorInput
 
 from anemone import node_factory
 from anemone import search_factory as search_factories
+from anemone.dynamics import SearchDynamics
 from anemone.hooks.search_hooks import SearchHooks
 from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
@@ -48,8 +49,10 @@ class TreeAndValuePlayerArgs:
     type: Literal["TreeAndValue"] = TREE_AND_VALUE_LITERAL_STRING
 
 
+
 def create_tree_and_value_branch_selector[StateT: TurnState](
     state_type: type[StateT],
+    dynamics: SearchDynamics[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
@@ -70,6 +73,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
 
     return create_tree_and_value_branch_selector_with_tree_eval_factory(
         state_type=state_type,
+        dynamics=dynamics,
         args=args,
         random_generator=random_generator,
         master_state_evaluator=master_state_evaluator,
@@ -81,6 +85,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
 
 def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnState](
     state_type: type[StateT],
+    dynamics: SearchDynamics[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
@@ -120,6 +125,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
         node_selector_args=args.node_selector,
         opening_type=args.opening_type,
         random_generator=random_generator,
+        dynamics=dynamics,
         index_computation=args.index_computation,
         hooks=hooks,
     )
@@ -140,6 +146,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     tree_manager: tree_man.AlgorithmNodeTreeManager
     tree_manager = tree_man.create_algorithm_node_tree_manager(
         algorithm_node_factory=algorithm_node_factory,
+        dynamics=dynamics,
         node_direct_evaluator=node_evaluator,
         index_computation=args.index_computation,
         index_updater=search_factory.create_node_index_updater(),

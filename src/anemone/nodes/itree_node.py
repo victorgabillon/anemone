@@ -15,7 +15,7 @@ Note: This is an interface and should not be instantiated directly.
 from collections.abc import MutableMapping
 from typing import Protocol, Self
 
-from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
+from valanga import BranchKey, State, StateTag
 
 
 class ITreeNode[StateT: State = State](Protocol):
@@ -100,16 +100,6 @@ class ITreeNode[StateT: State = State](Protocol):
     @all_branches_generated.setter
     def all_branches_generated(self, value: bool) -> None:
         """Set the flag indicating that all branches have been generated."""
-
-    @property
-    def all_branches_keys(self) -> BranchKeyGeneratorP[BranchKey]:
-        """Get the available branch keys of the node.
-
-        Returns:
-            A generator for iterating over the branch keys.
-
-        """
-        ...
 
     @property
     def tag(self) -> StateTag:

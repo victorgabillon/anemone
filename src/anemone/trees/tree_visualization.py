@@ -23,6 +23,7 @@ from pickle import dump
 from graphviz import Digraph
 from valanga import BranchKey, State
 
+from anemone.dynamics import SearchDynamics
 from anemone.nodes import ITreeNode
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
@@ -31,7 +32,9 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 from .tree import Tree
 
 
-def add_dot[StateT: State](dot: Digraph, treenode: ITreeNode[StateT]) -> None:
+def add_dot[StateT: State](
+    dot: Digraph, treenode: ITreeNode[StateT], dynamics: SearchDynamics[StateT]
+) -> None:
     """Add a node and edges to the given Dot graph based on the provided tree node.
 
     Args:
@@ -53,15 +56,16 @@ def add_dot[StateT: State](dot: Digraph, treenode: ITreeNode[StateT]) -> None:
                 dot.edge(
                     str(treenode.id),
                     cdd,
-                    str(treenode.state.branch_name_from_key(key=branch)),
+                    str(dynamics.action_name(treenode.state, branch)),
                 )
-                add_dot(dot, child)
+                add_dot(dot, child, dynamics=dynamics)
 
 
 def display_special[StateT: State](
     node: AlgorithmNode[StateT],  # or AlgorithmNode if you prefer
     format_str: str,
     index: dict[BranchKey, str],
+    dynamics: SearchDynamics[StateT],
 ) -> Digraph:
     """Display a tree with custom edge labels for the given node."""
     dot = Digraph(format=format_str)
@@ -79,7 +83,7 @@ def display_special[StateT: State](
         edge_description: str = (
             index[branch_key]
             + "|"
-            + str(node.state.branch_name_from_key(key=branch_key))
+            + str(dynamics.action_name(node.state, branch_key))
             + "|"
             + node.tree_evaluation.description_tree_visualizer_branch(child)
         )
@@ -92,7 +96,9 @@ def display_special[StateT: State](
 
 
 def display[StateT: State](
-    tree: Tree[AlgorithmNode[StateT]], format_str: str
+    tree: Tree[AlgorithmNode[StateT]],
+    format_str: str,
+    dynamics: SearchDynamics[StateT],
 ) -> Digraph:
     """Display a tree using graph visualization.
 
@@ -105,11 +111,13 @@ def display[StateT: State](
 
     """
     dot = Digraph(format=format_str)
-    add_dot(dot, tree.root_node)
+    add_dot(dot, tree.root_node, dynamics=dynamics)
     return dot
 
 
-def save_pdf_to_file[StateT: State](tree: Tree[AlgorithmNode[StateT]]) -> None:
+def save_pdf_to_file[StateT: State](
+    tree: Tree[AlgorithmNode[StateT]], dynamics: SearchDynamics[StateT]
+) -> None:
     """Save the visualization of a tree as a PDF file.
 
     Args:
@@ -119,7 +127,7 @@ def save_pdf_to_file[StateT: State](tree: Tree[AlgorithmNode[StateT]]) -> None:
         None
 
     """
-    dot = display(tree=tree, format_str="pdf")
+    dot = display(tree=tree, format_str="pdf", dynamics=dynamics)
     tag_ = tree.root_node.state.tag
     dot.render("chipiron/runs/treedisplays/TreeVisual_" + str(tag_) + ".pdf")
 

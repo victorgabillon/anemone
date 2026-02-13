@@ -8,7 +8,6 @@ from typing import Self
 
 from valanga import (
     BranchKey,
-    BranchKeyGeneratorP,
     ContentRepresentation,
     State,
     StateTag,
@@ -144,16 +143,6 @@ class AlgorithmNode[StateT: State = State]:
         self.tree_node.add_parent(
             branch_key=branch_key, new_parent_node=new_parent_node
         )
-
-    @property
-    def all_branches_keys(self) -> BranchKeyGeneratorP[BranchKey]:
-        """Returns a generator that yields the branch keys for the current state.
-
-        Returns:
-            BranchKeyGenerator: A generator that yields the branch keys.
-
-        """
-        return self.tree_node.state_.branch_keys
 
     @property
     def all_branches_generated(self) -> bool:
