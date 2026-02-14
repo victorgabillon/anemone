@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from valanga import BranchKey
 
 from anemone import trees
+from anemone.dynamics import SearchDynamics
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
 )
@@ -49,6 +50,12 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     evaluation_queries: EvaluationQueries
     node_evaluator: NodeDirectEvaluator | None
     index_manager: NodeExplorationIndexManager
+
+
+    @property
+    def dynamics(self) -> SearchDynamics[Any]:
+        """Return the search dynamics used by the wrapped tree manager."""
+        return self.tree_manager.dynamics
 
     def open_tree_expansion_from_branch(
         self,

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from valanga import BranchKey, BranchKeyGeneratorP, State, StateTag
+from valanga import BranchKey, State, StateTag
 
 from .itree_node import ITreeNode
 
@@ -37,7 +37,6 @@ class TreeNode[
         branches_children(): Returns the dictionary mapping branches to child nodes.
         parent_nodes(): Returns the parent node mapping.
         is_root_node(): Checks if the node is a root node.
-        all_branches_keys(): Returns available branch keys.
         add_parent(new_parent_node: ITreeNode): Adds a parent node to the current node.
         is_over(): Checks if the state is terminal.
         print_branches_children(): Prints the branches-children links of the node.
@@ -151,16 +150,6 @@ class TreeNode[
 
         """
         return not self.parent_nodes
-
-    @property
-    def all_branches_keys(self) -> BranchKeyGeneratorP[BranchKey]:
-        """Returns a generator that yields the branch keys for the current state.
-
-        Returns:
-            BranchKeyGenerator: A generator that yields the branch keys.
-
-        """
-        return self.state_.branch_keys
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: FamilyT) -> None:
         """Add a new parent node to the current node.

@@ -6,6 +6,7 @@ from valanga import BranchKey, State, StateModifications, StateTag
 
 from anemone import nodes as node
 from anemone import trees
+from anemone.dynamics import SearchDynamics
 from anemone.node_factory.base import (
     NodeFactory,
 )
@@ -13,7 +14,6 @@ from anemone.node_selector.opening_instructions import (
     OpeningInstruction,
     OpeningInstructions,
 )
-from anemone.state_transition import StateTransition
 from anemone.tree_manager.tree_expander import (
     TreeExpansion,
     TreeExpansions,
@@ -34,16 +34,16 @@ class TreeManager[
     """
 
     node_factory: NodeFactory[FamilyT]
-    transition: StateTransition[State]
+    dynamics: SearchDynamics[Any]
 
     def __init__(
         self,
         node_factory: NodeFactory[FamilyT],
-        transition: StateTransition[State],
+        dynamics: SearchDynamics[Any],
     ) -> None:
-        """Initialize the tree manager with a node factory and transition."""
+        """Initialize the tree manager with a node factory and search dynamics."""
         self.node_factory = node_factory
-        self.transition = transition
+        self.dynamics = dynamics
 
     def open_tree_expansion_from_branch(
         self,
@@ -62,19 +62,10 @@ class TreeManager[
             The tree expansion object.
 
         """
-        # The parent state is copied; we only copy the stack (history of previous states) if the depth is smaller than 2.
-        # Having the stack information allows checking for draw by repetition.
-        # To limit computation we limit copying it all the time. The resulting policy will only be aware of immediate
-        # risk of draw by repetition
-        copy_stack: bool = tree.node_depth(parent_node) < 2
-        parent_state: State = parent_node.state
-        state: State = self.transition.copy_for_expansion(
-            parent_state,
-            copy_stack=copy_stack,
-        )
-
-        # The branch is applied. The state is now advanced.
-        state, modifications = self.transition.step(state, branch_key=branch)
+        tree_depth = tree.node_depth(parent_node)
+        transition = self.dynamics.step(parent_node.state, branch, depth=tree_depth)
+        state = transition.next_state
+        modifications = transition.modifications
 
         return self.open_tree_expansion_from_state(
             tree=tree,
