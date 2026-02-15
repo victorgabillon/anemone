@@ -3,6 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Self
 
+import valanga
+from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
+
+from anemone.dynamics import SearchDynamics
+
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Self
+
 from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
 
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
@@ -175,3 +184,82 @@ class MasterStateEvaluatorFromYaml(MasterStateEvaluator):
             st = getattr(it, "state", it)
             out.append(self.value_white(st))
         return out
+
+
+class FakeYamlDynamics(SearchDynamics[FakeYamlState]):
+    """Search-time dynamics for FakeYamlState.
+
+    BranchKey is an ordinal int 0..n-1 selecting the corresponding child in YAML order.
+    """
+
+    def legal_actions(
+        self, state: FakeYamlState
+    ) -> valanga.BranchKeyGeneratorP[BranchKey]:
+        # FakeYamlState.branch_keys already returns a BranchKey generator over ordinals.
+        return state.branch_keys
+
+    def step(
+        self, state: FakeYamlState, action: BranchKey, *, depth: int
+    ) -> valanga.Transition[FakeYamlState]:
+        # depth is intentionally ignored for this fake game
+        del depth
+
+        # Compute next state without mutating input state
+        child_id = state._child_id_from_branch(action)
+        next_turn = Color.BLACK if state.turn == Color.WHITE else Color.WHITE
+
+        next_state = FakeYamlState(
+            node_id=child_id,
+            children_by_id=state.children_by_id,
+            turn=next_turn,
+        )
+
+        # For tests, we don't model over_event; keep it None.
+        return valanga.Transition(
+            next_state=next_state,
+            modifications=None,
+            is_over=next_state.is_game_over(),
+            over_event=None,
+            info={},
+        )
+
+    def action_name(self, state: FakeYamlState, action: BranchKey) -> str:
+        # Reuse your existing naming logic (node_id->child_id)
+        return state.branch_name_from_key(action)
+
+    def action_from_name(self, state: FakeYamlState, name: str) -> BranchKey:
+        """Parse a name back into an ordinal branch key.
+
+        Accepts:
+        - "PARENT->CHILD" (canonical)
+        - "CHILD" (fallback)
+        """
+        text = name.strip()
+
+        # Accept "parent->child" or just "child"
+        if "->" in text:
+            left, right = text.split("->", 1)
+            left = left.strip()
+            right = right.strip()
+
+            # If left is present and doesn't match current node, be strict:
+            # This prevents confusing cross-state parsing.
+            if left and int(left) != int(state.node_id):
+                raise ValueError(
+                    f"Move name {name!r} does not apply to state node_id={state.node_id}"
+                )
+
+            child_id = int(right)
+        else:
+            child_id = int(text)
+
+        children = state.children_by_id.get(state.node_id, [])
+        try:
+            ordinal = children.index(child_id)
+        except ValueError as e:
+            raise ValueError(
+                f"State node_id={state.node_id} has no child_id={child_id} "
+                f"(children={children}); cannot parse action_from_name({name!r})."
+            ) from e
+
+        return ordinal

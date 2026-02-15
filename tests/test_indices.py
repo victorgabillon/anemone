@@ -16,6 +16,7 @@ import pytest
 import yaml
 from valanga import Color
 
+from anemone.dynamics.search_dynamics import SearchDynamics
 import anemone.node_factory as node_factory
 import anemone.search_factory as search_factories
 import anemone.trees as trees
@@ -56,6 +57,7 @@ from anemone.trees.tree import (
 from anemone.utils.small_tools import MyPath
 from tests.fake_yaml_game import (
     FakeYamlState,
+    FakeYamlDynamics,
     MasterStateEvaluatorFromYaml,
     build_yaml_maps,
 )
@@ -145,10 +147,14 @@ def build_tree_from_yaml_clean(
 
     # factories like prod
     tree_node_factory = node_factory.TreeNodeFactory[Any]()
+
+    dyn: SearchDynamics[FakeYamlState] = FakeYamlDynamics()
+
     search_factory = search_factories.SearchFactory(
         node_selector_args=None,
         opening_type=None,
         random_generator=Random(0),
+        dynamics=dyn,
         index_computation=index_computation,
     )
 
@@ -167,6 +173,7 @@ def build_tree_from_yaml_clean(
     tree_manager = create_algorithm_node_tree_manager(
         algorithm_node_factory=algo_factory,
         node_direct_evaluator=node_direct_eval,
+        dynamics=dyn,
         index_computation=index_computation,
         index_updater=search_factory.create_node_index_updater(),
     )

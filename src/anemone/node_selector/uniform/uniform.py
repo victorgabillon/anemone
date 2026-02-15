@@ -22,6 +22,8 @@ from anemone.node_selector.opening_instructions import (
 from anemone.nodes.algorithm_node import AlgorithmNode
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from valanga import BranchKey
 
 
@@ -98,7 +100,7 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )  # best last
 
         for node in nodes_to_consider_sorted_by_value:
-            all_branches_to_open: list[BranchKey] = (
+            all_branches_to_open: Sequence[BranchKey] = (
                 self.opening_instructor.all_branches_to_open(node_to_open=node)
             )
             opening_instructions: OpeningInstructions[NodeT] = (

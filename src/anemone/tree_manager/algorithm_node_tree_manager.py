@@ -51,7 +51,6 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     node_evaluator: NodeDirectEvaluator | None
     index_manager: NodeExplorationIndexManager
 
-
     @property
     def dynamics(self) -> SearchDynamics[Any]:
         """Return the search dynamics used by the wrapped tree manager."""

@@ -28,10 +28,9 @@ from typing import Any, Protocol
 
 from valanga import State
 
-from anemone.dynamics import SearchDynamics
-
 from anemone import node_selector as node_selectors
 from anemone import nodes
+from anemone.dynamics import SearchDynamics
 from anemone.hooks.search_hooks import SearchHooks
 from anemone.indices import node_indices
 from anemone.indices.node_indices.factory import (

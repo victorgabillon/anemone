@@ -2,14 +2,14 @@
 
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
-from anemone.dynamics import SearchDynamics
-
 from valanga import (
     BranchKey,
     OverEvent,
     State,
     StateEvaluation,
 )
+
+from anemone.dynamics import SearchDynamics
 
 type BranchSortValue = tuple[float, int, int]
 

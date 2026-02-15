@@ -40,6 +40,7 @@ def add_dot[StateT: State](
     Args:
         dot (Digraph): The Dot graph to add the node and edges to.
         treenode (ITreeNode): The tree node to visualize.
+        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
 
     Returns:
         None
@@ -105,6 +106,7 @@ def display[StateT: State](
     Args:
         tree (Tree): The tree to be displayed.
         format_str (str): The format of the output graph (e.g., 'png', 'pdf', 'svg').
+        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
 
     Returns:
         Digraph: The graph representation of the tree.
@@ -122,6 +124,7 @@ def save_pdf_to_file[StateT: State](
 
     Args:
         tree (Tree): The tree to be visualized and saved.
+        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
 
     Returns:
         None

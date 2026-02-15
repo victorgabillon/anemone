@@ -49,7 +49,6 @@ class TreeAndValuePlayerArgs:
     type: Literal["TreeAndValue"] = TREE_AND_VALUE_LITERAL_STRING
 
 
-
 def create_tree_and_value_branch_selector[StateT: TurnState](
     state_type: type[StateT],
     dynamics: SearchDynamics[StateT],
@@ -100,6 +99,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
 
     Args:
         state_type (type[StateT]): The state type for the search.
+        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
         args (TreeAndValuePlayerArgs): Arguments for creating the selector.
         random_generator (Random): The random number generator.
         master_state_evaluator (MasterStateEvaluator): Evaluator for state values.

@@ -7,8 +7,8 @@ performing updates on the nodes, and handling evaluation queries.
 
 from typing import Any
 
-from anemone.dynamics import SearchDynamics
 from anemone import updates as upda
+from anemone.dynamics import SearchDynamics
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
     create_exploration_index_manager,
@@ -44,6 +44,7 @@ def create_algorithm_node_tree_manager(
         algorithm_node_factory: The AlgorithmNodeFactory object used for creating algorithm nodes.
         index_computation: The type of index computation to be used.
         index_updater: The IndexUpdater object used for updating the indices.
+        dynamics: The SearchDynamics object used for labeling the edges in the visualization.
 
     Returns:
         An AlgorithmNodeTreeManager object.

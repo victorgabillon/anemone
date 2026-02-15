@@ -2,14 +2,12 @@
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import Any
 
 from valanga import BranchKey, StateModifications
 
 from anemone import nodes as node
 from anemone import trees
-
-NodeT = TypeVar("NodeT", bound=node.ITreeNode[Any])
 
 
 @dataclass(slots=True)
@@ -40,7 +38,7 @@ class TreeExpansion[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
         )
 
 
-def record_tree_expansion(
+def record_tree_expansion[NodeT: node.ITreeNode[Any]](
     *,
     tree: trees.Tree[NodeT],
     tree_expansions: "TreeExpansions[NodeT]",

@@ -57,6 +57,7 @@ def a_branch_str_sequence_from_root[StateT: State](
 
     Args:
         tree_node (ITreeNode): The tree node to get the branch sequence for.
+        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
 
     Returns:
         list[str]: A list of branch sequences from the root node to the given tree node.

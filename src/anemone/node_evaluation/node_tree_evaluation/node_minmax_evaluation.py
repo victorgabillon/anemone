@@ -16,8 +16,6 @@ from math import log
 from random import choice
 from typing import Any, Protocol, Self, runtime_checkable
 
-from anemone.dynamics import SearchDynamics
-
 from valanga import (
     BranchKey,
     Color,
@@ -28,6 +26,7 @@ from valanga import (
     TurnState,
 )
 
+from anemone.dynamics import SearchDynamics
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.utils.logger import anemone_logger
@@ -370,7 +369,7 @@ class NodeMinmaxEvaluation[
         The branches are sorted based on their value and exploration.
 
         Args:
-            None
+            dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
 
         Returns:
             None

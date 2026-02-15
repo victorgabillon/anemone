@@ -1,6 +1,6 @@
 """Provide classes and functions related to opening instructions in a game tree."""
 
-from collections.abc import ItemsView, Iterator, ValuesView
+from collections.abc import ItemsView, Iterator, Sequence, ValuesView
 from dataclasses import dataclass
 from enum import Enum
 from random import Random
@@ -165,7 +165,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
 
 
 def create_instructions_to_open_all_branches[NodeT: nodes.ITreeNode[Any]](
-    branches_to_play: list[BranchKey], node_to_open: NodeT
+    branches_to_play: Sequence[BranchKey], node_to_open: NodeT
 ) -> OpeningInstructions[NodeT]:
     """Create opening instructions for all possible branches from a given node.
 
@@ -209,6 +209,7 @@ class OpeningInstructor:
         Args:
             opening_type: The type of opening to use.
             random_generator: A random number generator.
+            dynamics: The SearchDynamics object used for labeling the edges in the visualization.
 
         """
         self.opening_type = opening_type
@@ -217,7 +218,7 @@ class OpeningInstructor:
 
     def all_branches_to_open(
         self, node_to_open: nodes.ITreeNode[Any]
-    ) -> list[BranchKey]:
+    ) -> Sequence[BranchKey]:
         """Return a list of all possible branches to open from a given node.
 
         Args:

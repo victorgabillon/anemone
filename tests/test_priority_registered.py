@@ -21,6 +21,24 @@ class DummyPriorityCheck:
     """Minimal priority-check object for identity assertions in tests."""
 
 
+from anemone.dynamics import SearchDynamics
+import valanga
+
+
+class DummyDynamics(SearchDynamics[Any]):
+    def legal_actions(self, state: Any):
+        raise RuntimeError("Not used in this test")
+
+    def step(self, state: Any, action: valanga.BranchKey, *, depth: int):
+        raise RuntimeError("Not used in this test")
+
+    def action_name(self, state: Any, action: valanga.BranchKey) -> str:
+        return str(action)
+
+    def action_from_name(self, state: Any, name: str):
+        return name
+
+
 def test_registered_priority_requires_hooks() -> None:
     """Registered checks should fail when no hooks are provided."""
     args = RegisteredPriorityCheckArgs(
@@ -33,7 +51,11 @@ def test_registered_priority_requires_hooks() -> None:
             args=args,
             random_generator=Random(0),
             hooks=None,
-            opening_instructor=OpeningInstructor(OpeningType.ALL_CHILDREN, Random(0)),
+            opening_instructor=OpeningInstructor(
+                OpeningType.ALL_CHILDREN,
+                Random(0),
+                dynamics=DummyDynamics(),
+            ),
         )
 
 
@@ -49,7 +71,11 @@ def test_registered_priority_unknown_name() -> None:
             args=args,
             random_generator=Random(0),
             hooks=SearchHooks(priority_check_registry={}),
-            opening_instructor=OpeningInstructor(OpeningType.ALL_CHILDREN, Random(0)),
+            opening_instructor=OpeningInstructor(
+                OpeningType.ALL_CHILDREN,
+                Random(0),
+                dynamics=DummyDynamics(),
+            ),
         )
 
 
@@ -76,7 +102,9 @@ def test_registered_priority_factory_called() -> None:
         params={"alpha": 1},
     )
     random_generator = Random(42)
-    opening_instructor = OpeningInstructor(OpeningType.ALL_CHILDREN, Random(3))
+    opening_instructor = OpeningInstructor(
+        OpeningType.ALL_CHILDREN, Random(3), dynamics=DummyDynamics()
+    )
     registry: dict[str, PriorityCheckFactory] = {"x": factory}
     hooks = SearchHooks(priority_check_registry=registry)
 
