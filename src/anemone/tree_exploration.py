@@ -52,7 +52,7 @@ class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
 def compute_child_evals[StateT: State](
     root: AlgorithmNode[StateT],
-    dynamics: SearchDynamics[StateT],
+    dynamics: SearchDynamics[StateT, Any],
 ) -> dict[BranchName, StateEvaluation]:
     """Compute evaluations for each existing child branch."""
     evals: dict[BranchName, StateEvaluation] = {}

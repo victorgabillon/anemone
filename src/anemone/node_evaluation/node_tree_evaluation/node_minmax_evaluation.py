@@ -335,7 +335,7 @@ class NodeMinmaxEvaluation[
         """
         return self.over_event.is_winner(player)
 
-    def print_branches_sorted_by_value(self, dynamics: SearchDynamics[Any]) -> None:
+    def print_branches_sorted_by_value(self, dynamics: SearchDynamics[Any, Any]) -> None:
         """Print the branches sorted by their subjective sort value.
 
         The method iterates over the branch_sorted_by_value dictionary and prints each branch along with its
@@ -361,7 +361,7 @@ class NodeMinmaxEvaluation[
         print("")
 
     def print_branches_sorted_by_value_and_exploration(
-        self, dynamics: SearchDynamics[Any]
+        self, dynamics: SearchDynamics[Any, Any]
     ) -> None:
         """Print the branch of the node sorted by their value and exploration.
 
@@ -403,7 +403,7 @@ class NodeMinmaxEvaluation[
             print(branch, end=" ")
         print(" ")
 
-    def print_info(self, dynamics: SearchDynamics[Any]) -> None:
+    def print_info(self, dynamics: SearchDynamics[Any, Any]) -> None:
         """Print information about the node.
 
         This method prints the ID of the node, the branches of its children, the children sorted by value,

@@ -34,12 +34,12 @@ class TreeManager[
     """
 
     node_factory: NodeFactory[FamilyT]
-    dynamics: SearchDynamics[Any]
+    dynamics: SearchDynamics[Any, Any]
 
     def __init__(
         self,
         node_factory: NodeFactory[FamilyT],
-        dynamics: SearchDynamics[Any],
+        dynamics: SearchDynamics[Any, Any],
     ) -> None:
         """Initialize the tree manager with a node factory and search dynamics."""
         self.node_factory = node_factory

@@ -1,14 +1,11 @@
 """Search-time dynamics abstractions."""
 
-from .search_dynamics import (
-    DynamicsLike,
-    SearchDynamics,
-    StatelessDynamicsAdapter,
-    normalize_search_dynamics,
-)
+from .normalize import DynamicsOrSearch, normalize_search_dynamics
+from .search_dynamics import SearchDynamics
+from .stateless_adapter import StatelessDynamicsAdapter
 
 __all__ = [
-    "DynamicsLike",
+    "DynamicsOrSearch",
     "SearchDynamics",
     "StatelessDynamicsAdapter",
     "normalize_search_dynamics",

@@ -26,7 +26,9 @@ import valanga
 from anemone.dynamics import SearchDynamics
 
 
-class DummyDynamics(SearchDynamics[Any]):
+class DummyDynamics(SearchDynamics[Any, Any]):
+    __anemone_search_dynamics__ = True
+
     def legal_actions(self, state: Any) -> Never:
         raise RuntimeError("Not used in this test")
 

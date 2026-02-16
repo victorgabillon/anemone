@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import valanga
 
@@ -67,8 +68,10 @@ class PlainDynamics:
         return int(name)
 
 
-class DepthDynamics(SearchDynamics[DummyState]):
+class DepthDynamics(SearchDynamics[DummyState, Any]):
     """Search dynamics that already supports depth."""
+
+    __anemone_search_dynamics__ = True
 
     def legal_actions(
         self, state: DummyState

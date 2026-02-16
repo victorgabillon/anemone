@@ -179,11 +179,13 @@ class MasterStateEvaluatorFromYaml(MasterStateEvaluator):
         return out
 
 
-class FakeYamlDynamics(SearchDynamics[FakeYamlState]):
+class FakeYamlDynamics(SearchDynamics[FakeYamlState, Any]):
     """Search-time dynamics for FakeYamlState.
 
     BranchKey is an ordinal int 0..n-1 selecting the corresponding child in YAML order.
     """
+
+    __anemone_search_dynamics__ = True
 
     def legal_actions(
         self, state: FakeYamlState

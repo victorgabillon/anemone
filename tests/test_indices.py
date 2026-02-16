@@ -148,7 +148,7 @@ def build_tree_from_yaml_clean(
     # factories like prod
     tree_node_factory = node_factory.TreeNodeFactory[Any]()
 
-    dyn: SearchDynamics[FakeYamlState] = FakeYamlDynamics()
+    dyn: SearchDynamics[FakeYamlState, Any] = FakeYamlDynamics()
 
     search_factory = search_factories.SearchFactory(
         node_selector_args=None,
