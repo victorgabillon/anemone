@@ -1,78 +1,33 @@
 """Search-time dynamics interfaces for tree exploration."""
 
-from typing import Literal, Protocol, TypeVar, runtime_checkable
+from collections.abc import Hashable
+from typing import Literal, Protocol, TypeVar
 
 import valanga
 
 StateT = TypeVar("StateT")
+ActionT = TypeVar("ActionT", bound=Hashable)
 
 
-@runtime_checkable
-class SearchDynamics(Protocol[StateT]):
+class SearchDynamics(Protocol[StateT, ActionT]):
     """Protocol for search-time rules and transitions."""
 
-    __anemone_search_dynamics__: Literal[True] = True  # marker for isinstance checks
+    __anemone_search_dynamics__: Literal[True]
 
-    def legal_actions(
-        self, state: StateT
-    ) -> valanga.BranchKeyGeneratorP[valanga.BranchKey]:
+    def legal_actions(self, state: StateT) -> valanga.BranchKeyGeneratorP[ActionT]:
         """Return the legal actions for the given state."""
         ...
 
     def step(
-        self, state: StateT, action: valanga.BranchKey, *, depth: int
+        self, state: StateT, action: ActionT, *, depth: int
     ) -> valanga.Transition[StateT]:
         """Perform a step in the dynamics, returning the resulting transition. The depth parameter can be used to implement depth-dependent dynamics, such as opening instructions or late-game heuristics."""
         ...
 
-    def action_name(self, state: StateT, action: valanga.BranchKey) -> str:
+    def action_name(self, state: StateT, action: ActionT) -> str:
         """Return the name of the action in the given state."""
         ...
 
-    def action_from_name(self, state: StateT, name: str) -> valanga.BranchKey:
+    def action_from_name(self, state: StateT, name: str) -> ActionT:
         """Return the action corresponding to the given name in the given state."""
         ...
-
-
-class StatelessDynamicsAdapter(SearchDynamics[StateT]):
-    """Adapter turning plain :class:`valanga.Dynamics` into SearchDynamics."""
-
-    def __init__(self, dyn: valanga.Dynamics[StateT]) -> None:
-        """Initialize the adapter with the given dynamics."""
-        self._dyn = dyn
-
-    def legal_actions(
-        self, state: StateT
-    ) -> valanga.BranchKeyGeneratorP[valanga.BranchKey]:
-        """Return the legal actions for the given state."""
-        return self._dyn.legal_actions(state)
-
-    def step(
-        self, state: StateT, action: valanga.BranchKey, *, depth: int
-    ) -> valanga.Transition[StateT]:
-        """Perform a step in the dynamics, returning the resulting transition. The depth parameter is ignored in this adapter."""
-        return self._dyn.step(state, action)
-
-    def action_name(self, state: StateT, action: valanga.BranchKey) -> str:
-        """Return the name of the action in the given state."""
-        return self._dyn.action_name(state, action)
-
-    def action_from_name(self, state: StateT, name: str) -> valanga.BranchKey:
-        """Return the action corresponding to the given name in the given state."""
-        return self._dyn.action_from_name(state, name)
-
-
-type DynamicsLike[K] = valanga.Dynamics[K] | SearchDynamics[K]
-
-
-def normalize_search_dynamics[T](
-    dynamics: DynamicsLike[T],
-) -> SearchDynamics[T]:
-    """Normalize search dynamics to ``SearchDynamics``.
-
-    ``valanga.Dynamics`` instances are wrapped in :class:`StatelessDynamicsAdapter`.
-    ``SearchDynamics`` instances are returned as-is.
-    """
-    if isinstance(dynamics, SearchDynamics):
-        return dynamics
-    return StatelessDynamicsAdapter(dynamics)

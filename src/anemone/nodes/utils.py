@@ -1,5 +1,7 @@
 """Utility functions for tree nodes."""
 
+from typing import Any
+
 from valanga import BranchKey, Color, State
 
 from anemone.dynamics import SearchDynamics
@@ -51,7 +53,7 @@ def a_branch_key_sequence_from_root[StateT: State](
 
 
 def a_branch_str_sequence_from_root[StateT: State](
-    tree_node: ITreeNode[StateT], dynamics: SearchDynamics[StateT]
+    tree_node: ITreeNode[StateT], dynamics: SearchDynamics[StateT, Any]
 ) -> list[str]:
     """Return a list of branch sequences from the root node to a given tree node.
 

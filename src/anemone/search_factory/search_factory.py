@@ -115,7 +115,7 @@ class SearchFactory:
     node_selector_args: ComposedNodeSelectorArgs | None
     opening_type: OpeningType | None
     random_generator: Random | None
-    dynamics: SearchDynamics[Any]
+    dynamics: SearchDynamics[Any, Any]
     index_computation: node_indices.IndexComputationType | None
     hooks: SearchHooks | None = None
     depth_index: bool = False

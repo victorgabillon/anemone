@@ -33,7 +33,7 @@ from .tree_manager import TreeManager
 def create_algorithm_node_tree_manager(
     node_direct_evaluator: NodeDirectEvaluator[Any] | None,
     algorithm_node_factory: AlgorithmNodeFactory[Any],
-    dynamics: SearchDynamics[Any],
+    dynamics: SearchDynamics[Any, Any],
     index_computation: IndexComputationType | None,
     index_updater: IndexUpdater | None,
 ) -> AlgorithmNodeTreeManager:

@@ -25,7 +25,7 @@ class OpeningInstruction[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
     node_to_open: NodeT
     branch: BranchKey
 
-    def print_info(self, dynamics: SearchDynamics[Any]) -> None:
+    def print_info(self, dynamics: SearchDynamics[Any, Any]) -> None:
         """Print information about the opening instruction."""
         print(
             f"OpeningInstruction: node_to_open {self.node_to_open.id} at hm {self.node_to_open.tree_depth} {self.node_to_open.state}| "
@@ -148,7 +148,7 @@ class OpeningInstructions[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         """
         return self.batch.items()
 
-    def print_info(self, dynamics: SearchDynamics[Any]) -> None:
+    def print_info(self, dynamics: SearchDynamics[Any, Any]) -> None:
         """Print information about the opening instructions in the collection."""
         print("OpeningInstructionsBatch: batch contains", len(self.batch), "elements:")
         for opening_instructions in self.batch.values():
@@ -202,7 +202,7 @@ class OpeningInstructor:
         self,
         opening_type: OpeningType,
         random_generator: Random,
-        dynamics: SearchDynamics[Any],
+        dynamics: SearchDynamics[Any, Any],
     ) -> None:
         """Initialize the OpeningInstructor object.
 

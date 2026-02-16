@@ -119,12 +119,12 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Return the second-best branch key."""
         ...
 
-    def print_branches_sorted_by_value(self, dynamics: SearchDynamics[Any]) -> None:
+    def print_branches_sorted_by_value(self, dynamics: SearchDynamics[Any, Any]) -> None:
         """Print branches sorted by value."""
         ...
 
     def print_branches_sorted_by_value_and_exploration(
-        self, dynamics: SearchDynamics[Any]
+        self, dynamics: SearchDynamics[Any, Any]
     ) -> None:
         """Print branches sorted by value and exploration metrics."""
         ...
