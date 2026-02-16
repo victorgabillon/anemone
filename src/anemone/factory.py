@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from random import Random
 from typing import Literal
 
-from valanga import RepresentationFactory, StateModifications, TurnState
+from valanga import Dynamics, RepresentationFactory, StateModifications, TurnState
 from valanga.evaluator_types import EvaluatorInput
 
 from anemone import node_factory
 from anemone import search_factory as search_factories
-from anemone.dynamics import SearchDynamics
+from anemone.dynamics import SearchDynamics, normalize_search_dynamics
 from anemone.hooks.search_hooks import SearchHooks
 from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
@@ -51,7 +51,7 @@ class TreeAndValuePlayerArgs:
 
 def create_tree_and_value_branch_selector[StateT: TurnState](
     state_type: type[StateT],
-    dynamics: SearchDynamics[StateT],
+    dynamics: SearchDynamics[StateT] | Dynamics[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
@@ -84,7 +84,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState](
 
 def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnState](
     state_type: type[StateT],
-    dynamics: SearchDynamics[StateT],
+    dynamics: SearchDynamics[StateT] | Dynamics[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
     master_state_evaluator: MasterStateEvaluator,
@@ -99,7 +99,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
 
     Args:
         state_type (type[StateT]): The state type for the search.
-        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
+        dynamics (SearchDynamics | Dynamics): The dynamics used for labeling the edges in the visualization.
         args (TreeAndValuePlayerArgs): Arguments for creating the selector.
         random_generator (Random): The random number generator.
         master_state_evaluator (MasterStateEvaluator): Evaluator for state values.
@@ -113,6 +113,8 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     """
     _ = state_type  # not used here
 
+    search_dynamics: SearchDynamics[StateT] = normalize_search_dynamics(dynamics)
+
     node_evaluator: NodeDirectEvaluator[StateT] = create_node_evaluator(
         master_state_evaluator=master_state_evaluator,
     )
@@ -125,7 +127,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
         node_selector_args=args.node_selector,
         opening_type=args.opening_type,
         random_generator=random_generator,
-        dynamics=dynamics,
+        dynamics=search_dynamics,
         index_computation=args.index_computation,
         hooks=hooks,
     )
@@ -146,7 +148,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     tree_manager: tree_man.AlgorithmNodeTreeManager
     tree_manager = tree_man.create_algorithm_node_tree_manager(
         algorithm_node_factory=algorithm_node_factory,
-        dynamics=dynamics,
+        dynamics=search_dynamics,
         node_direct_evaluator=node_evaluator,
         index_computation=args.index_computation,
         index_updater=search_factory.create_node_index_updater(),
