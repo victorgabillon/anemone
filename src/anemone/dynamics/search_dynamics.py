@@ -1,6 +1,6 @@
 """Search-time dynamics interfaces for tree exploration."""
 
-from typing import Protocol, TypeVar, runtime_checkable
+from typing import Literal, Protocol, TypeVar, runtime_checkable
 
 import valanga
 
@@ -10,6 +10,8 @@ StateT = TypeVar("StateT")
 @runtime_checkable
 class SearchDynamics(Protocol[StateT]):
     """Protocol for search-time rules and transitions."""
+
+    __anemone_search_dynamics__: Literal[True] = True  # marker for isinstance checks
 
     def legal_actions(
         self, state: StateT
@@ -60,12 +62,12 @@ class StatelessDynamicsAdapter(SearchDynamics[StateT]):
         return self._dyn.action_from_name(state, name)
 
 
-type DynamicsLike[StateT] = valanga.Dynamics[StateT] | SearchDynamics[StateT]
+type DynamicsLike[K] = valanga.Dynamics[K] | SearchDynamics[K]
 
 
-def normalize_search_dynamics[StateT](
-    dynamics: DynamicsLike[StateT],
-) -> SearchDynamics[StateT]:
+def normalize_search_dynamics[T](
+    dynamics: DynamicsLike[T],
+) -> SearchDynamics[T]:
     """Normalize search dynamics to ``SearchDynamics``.
 
     ``valanga.Dynamics`` instances are wrapped in :class:`StatelessDynamicsAdapter`.

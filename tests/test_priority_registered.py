@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from random import Random
-from typing import Any
+from typing import Any, Never
 
 import pytest
 
@@ -21,15 +21,16 @@ class DummyPriorityCheck:
     """Minimal priority-check object for identity assertions in tests."""
 
 
-from anemone.dynamics import SearchDynamics
 import valanga
+
+from anemone.dynamics import SearchDynamics
 
 
 class DummyDynamics(SearchDynamics[Any]):
-    def legal_actions(self, state: Any):
+    def legal_actions(self, state: Any) -> Never:
         raise RuntimeError("Not used in this test")
 
-    def step(self, state: Any, action: valanga.BranchKey, *, depth: int):
+    def step(self, state: Any, action: valanga.BranchKey, *, depth: int) -> Never:
         raise RuntimeError("Not used in this test")
 
     def action_name(self, state: Any, action: valanga.BranchKey) -> str:

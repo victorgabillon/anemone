@@ -7,13 +7,6 @@ import valanga
 from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
 
 from anemone.dynamics import SearchDynamics
-
-
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self
-
-from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
-
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     MasterStateEvaluator,
     OverEventDetector,

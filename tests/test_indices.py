@@ -16,7 +16,6 @@ import pytest
 import yaml
 from valanga import Color
 
-from anemone.dynamics.search_dynamics import SearchDynamics
 import anemone.node_factory as node_factory
 import anemone.search_factory as search_factories
 import anemone.trees as trees
@@ -56,18 +55,19 @@ from anemone.trees.tree import (
 )
 from anemone.utils.small_tools import MyPath
 from tests.fake_yaml_game import (
-    FakeYamlState,
     FakeYamlDynamics,
+    FakeYamlState,
     MasterStateEvaluatorFromYaml,
     build_yaml_maps,
 )
 
 if TYPE_CHECKING:
+    from anemone.dynamics.search_dynamics import SearchDynamics
     from anemone.nodes.itree_node import ITreeNode
 
 
 class StopWhenTreeHasAllYamlNodes(ProgressMonitor[AlgorithmNode[FakeYamlState]]):
-    def __init__(self, expected_node_count: int):
+    def __init__(self, expected_node_count: int) -> None:
         self.expected_node_count = expected_node_count
 
     def should_we_continue(self, tree) -> bool:
@@ -81,7 +81,7 @@ class StopWhenTreeHasAllYamlNodes(ProgressMonitor[AlgorithmNode[FakeYamlState]])
         n = sum(len(tree.descendants[d]) for d in tree.descendants)
         return f"{n}/{self.expected_node_count} nodes"
 
-    def notify_percent_progress(self, tree, notify_percent_function):
+    def notify_percent_progress(self, tree, notify_percent_function) -> None:
         return
 
 
