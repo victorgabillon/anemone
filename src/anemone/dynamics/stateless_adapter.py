@@ -29,11 +29,11 @@ class StatelessDynamicsAdapter(SearchDynamics[StateT, ActionT]):
     ) -> valanga.Transition[StateT]:
         """Apply one action. The depth argument is accepted for protocol parity."""
         _ = depth
-        return self.dynamics.step(state, action)  # type: ignore[arg-type]
+        return self.dynamics.step(state, action)
 
     def action_name(self, state: StateT, action: ActionT) -> str:
         """Return a human-readable action name."""
-        return self.dynamics.action_name(state, action)  # type: ignore[arg-type]
+        return self.dynamics.action_name(state, action)
 
     def action_from_name(self, state: StateT, name: str) -> ActionT:
         """Parse an action from its name."""

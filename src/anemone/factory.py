@@ -83,7 +83,10 @@ def create_tree_and_value_branch_selector[StateT: TurnState, ActionT: Hashable](
     )
 
 
-def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnState, ActionT: Hashable](
+def create_tree_and_value_branch_selector_with_tree_eval_factory[
+    StateT: TurnState,
+    ActionT: Hashable,
+](
     state_type: type[StateT],
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
     args: TreeAndValuePlayerArgs,
@@ -114,7 +117,9 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[StateT: TurnSta
     """
     _ = state_type  # not used here
 
-    search_dynamics: SearchDynamics[StateT, ActionT] = normalize_search_dynamics(dynamics)
+    search_dynamics: SearchDynamics[StateT, ActionT] = normalize_search_dynamics(
+        dynamics
+    )
 
     node_evaluator: NodeDirectEvaluator[StateT] = create_node_evaluator(
         master_state_evaluator=master_state_evaluator,

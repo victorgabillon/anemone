@@ -13,10 +13,10 @@ type DynamicsOrSearch[StateT: valanga.State, ActionT: Hashable] = (
 )
 
 
-def normalize_search_dynamics[StateT: valanga.State, ActionT: Hashable](
-    dynamics: DynamicsOrSearch[StateT, ActionT],
-) -> SearchDynamics[StateT, ActionT]:
+def normalize_search_dynamics[S: valanga.State, A: Hashable](
+    dynamics: DynamicsOrSearch[S, A],
+) -> SearchDynamics[S, A]:
     """Return a SearchDynamics regardless of the provided dynamics type."""
     if getattr(dynamics, "__anemone_search_dynamics__", False):
-        return cast(SearchDynamics[StateT, ActionT], dynamics)
-    return StatelessDynamicsAdapter(cast(valanga.Dynamics[StateT], dynamics))
+        return cast("SearchDynamics[S, A]", dynamics)
+    return StatelessDynamicsAdapter(cast("valanga.Dynamics[S]", dynamics))

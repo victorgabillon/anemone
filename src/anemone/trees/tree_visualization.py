@@ -19,9 +19,9 @@ structure to a file.
 
 import sys
 from pickle import dump
+from typing import Any
 
 from graphviz import Digraph
-from typing import Any
 from valanga import BranchKey, State
 
 from anemone.dynamics import SearchDynamics
