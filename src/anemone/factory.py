@@ -117,9 +117,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[
     """
     _ = state_type  # not used here
 
-    search_dynamics: SearchDynamics[StateT, ActionT] = normalize_search_dynamics(
-        dynamics
-    )
+    search_dynamics = normalize_search_dynamics(dynamics)
 
     node_evaluator: NodeDirectEvaluator[StateT] = create_node_evaluator(
         master_state_evaluator=master_state_evaluator,
