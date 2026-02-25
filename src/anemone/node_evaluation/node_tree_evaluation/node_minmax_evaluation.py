@@ -517,16 +517,63 @@ class NodeMinmaxEvaluation[
         for branch_key in self.tree_node.branches_children:
             self.record_sort_value_of_child(branch_key=branch_key)
 
-        # fast way to access first key with the highest subjective value
-        best_branch_key: BranchKey | None = self.best_branch()
-        assert best_branch_key is not None
-        best_child = self.tree_node.branches_children[best_branch_key]
+        best_over_branch_key = self._pick_over_child_branch()
+        best_child = self.tree_node.branches_children[best_over_branch_key]
         assert best_child is not None
         self.over_event.becomes_over(
             how_over=best_child.tree_evaluation.over_event.how_over,
             who_is_winner=best_child.tree_evaluation.over_event.who_is_winner,
             termination=best_child.tree_evaluation.over_event.termination,
         )
+
+    def _pick_over_child_branch(self) -> BranchKey:
+        """Pick the terminal child branch that determines this node over event.
+
+        Preference order is: winning over child for the current player, then draw,
+        then any remaining terminal child. If search-order metadata is unavailable,
+        fallback order is deterministic by branch key.
+
+        Returns:
+            BranchKey: The selected branch key.
+
+        Raises:
+            AssertionError: If no child is terminal while this method is called.
+
+        """
+        over_branches: list[BranchKey] = [
+            branch_key
+            for branch_key in self.branches_sorted_by_value
+            if (
+                (child := self.tree_node.branches_children[branch_key]) is not None
+                and child.is_over()
+            )
+        ]
+        if not over_branches:
+            over_branches = sorted(
+                [
+                    branch_key
+                    for branch_key, child in self.tree_node.branches_children.items()
+                    if child is not None and child.is_over()
+                ],
+                key=str,
+            )
+
+        assert over_branches, "becoming_over_from_children called with no over child"
+
+        branch_key: BranchKey
+        for branch_key in over_branches:
+            child = self.tree_node.branches_children[branch_key]
+            assert child is not None
+            if child.tree_evaluation.is_winner(self.tree_node.state.turn):
+                return branch_key
+
+        for branch_key in over_branches:
+            child = self.tree_node.branches_children[branch_key]
+            assert child is not None
+            if child.tree_evaluation.is_draw():
+                return branch_key
+
+        return over_branches[0]
 
     def update_over(self, branches_with_updated_over: set[BranchKey]) -> bool:
         """Update the over_event of the node based on notification of change of over_event in children.
@@ -560,9 +607,19 @@ class NodeMinmaxEvaluation[
                 is_newly_over = True
 
         # Check if all children are over but not winning for self.tree_node.player_to_branch.
-        if not self.is_over() and not self.branches_not_over:
+        has_non_over_child = any(
+            child is not None and not child.is_over()
+            for child in self.tree_node.branches_children.values()
+        )
+        if not has_non_over_child:
+            self.branches_not_over.clear()
+
+        if not self.is_over() and not has_non_over_child:
             self.becoming_over_from_children()
             is_newly_over = True
+
+        if is_newly_over:
+            assert self.over_event.is_over()
 
         return is_newly_over
 
