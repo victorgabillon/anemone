@@ -19,12 +19,12 @@ class NodeEvaluatorTypes(StrEnum):
 
 
 class NodeBatchValueEvaluator(Protocol):
-    """Return value_white for each node, can use node.state_representation for speed."""
+    """Return objective-frame values for each node."""
 
-    def value_white_batch_from_nodes(
+    def evaluate_batch_from_nodes(
         self, nodes: Sequence[AlgorithmNode]
     ) -> list[float]:
-        """Return value_white evaluations for a batch of nodes."""
+        """Return objective-frame evaluations for a batch of nodes."""
         ...
 
 
@@ -62,21 +62,21 @@ class OverEventDetector(Protocol):
 
 
 class MasterStateEvaluator(Protocol):
-    """Protocol for evaluating the value of a state."""
+    """Protocol for evaluating a state in the objective reference frame."""
 
     over: OverEventDetector
 
-    def value_white(self, state: State) -> float:
-        """Evaluate a single state from white's perspective."""
+    def evaluate(self, state: State) -> float:
+        """Evaluate a single state in the objective reference frame."""
         ...
 
     # the one method NodeEvaluator uses
-    def value_white_batch_items[ItemStateT: State](
+    def evaluate_batch_items[ItemStateT: State](
         self, items: Sequence[EvalItem[ItemStateT]]
     ) -> list[float]:
         """Evaluate a batch of items, defaulting to single-state calls."""
         # default fallback: single loop, state-only
-        return [self.value_white(it.state) for it in items]
+        return [self.evaluate(it.state) for it in items]
 
 
 class NodeDirectEvaluator[StateT: State = State]:
@@ -136,7 +136,7 @@ class NodeDirectEvaluator[StateT: State = State]:
         self, not_over_nodes: list[AlgorithmNode[StateT]]
     ) -> None:
         """Evaluate all non-terminal nodes and store their evaluations."""
-        values = self.master_state_evaluator.value_white_batch_items(not_over_nodes)
+        values = self.master_state_evaluator.evaluate_batch_items(not_over_nodes)
         for node, v in zip(not_over_nodes, values, strict=True):
             node.tree_evaluation.set_evaluation(
                 self.process_evalution_not_over(v, node)

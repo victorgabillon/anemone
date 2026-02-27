@@ -1,0 +1,25 @@
+name: Create objective branch
+
+on:
+  push:
+    branches:
+      - "copilot/create-objective-branch"
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create objective branch if it does not exist
+        run: |
+          if git ls-remote --heads origin objective | grep -q objective; then
+            echo "Branch 'objective' already exists, skipping."
+          else
+            git switch -c objective origin/main
+            git push origin objective
+          fi

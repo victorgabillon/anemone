@@ -54,15 +54,15 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
         self._model = torch.jit.script(model) if self.script else model
         self._model.eval()
 
-    def value_white(self, state: State) -> float:
+    def evaluate(self, state: State) -> float:
         """Evaluate a single state by delegating to the batch path."""
         # Slow path: evaluate a single state by wrapping it as an EvalItem.
-        return self.value_white_batch_items([_SingleEvalItem(state)])[0]
+        return self.evaluate_batch_items([_SingleEvalItem(state)])[0]
 
-    def value_white_batch_items[ItemStateT: State](
+    def evaluate_batch_items[ItemStateT: State](
         self, items: Sequence[EvalItem[ItemStateT]]
     ) -> list[float]:
-        """Evaluate a batch of items with torch and return white values."""
+        """Evaluate a batch of items with torch and return objective-frame values."""
         torch = self._torch
 
         xs: list[Tensor] = []
@@ -90,15 +90,15 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
         values: list[float] = []
         for i, st in enumerate(states):
             state_eval = converter.to_content_evaluation(output_nn=out[i], state=st)
-            vw = state_eval.value_white
-            assert vw is not None
-            values.append(float(vw))
+            value = state_eval.value
+            assert value is not None
+            values.append(float(value))
 
         return values
 
 
 class _SingleEvalItem:
-    """Small adapter so we can call batch method from value_white."""
+    """Small adapter so we can call batch method from evaluate."""
 
     def __init__(self, state: State) -> None:
         """Initialize the EvalItem with the given state."""
