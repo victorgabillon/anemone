@@ -1,0 +1,115 @@
+"""Tests for value backup invariants in ``NodeMinmaxEvaluation``."""
+
+from dataclasses import dataclass, field
+from types import SimpleNamespace
+from typing import Any
+
+from valanga import Color
+
+from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+    NodeMinmaxEvaluation,
+)
+
+
+@dataclass
+class _FakeOverEvent:
+    def is_over(self) -> bool:
+        return False
+
+    def is_winner(self, player: Color) -> bool:
+        del player
+        return False
+
+    def is_draw(self) -> bool:
+        return False
+
+
+@dataclass
+class _FakeChildEvaluation:
+    value_white: float
+    best_branch_sequence: list[int] = field(default_factory=list)
+    over_event: _FakeOverEvent = field(default_factory=_FakeOverEvent)
+
+    def get_value_white(self) -> float:
+        return self.value_white
+
+
+@dataclass
+class _FakeChildNode:
+    node_id: int
+    tree_evaluation: _FakeChildEvaluation
+
+    @property
+    def tree_node(self) -> Any:
+        return SimpleNamespace(id=self.node_id, state=SimpleNamespace(turn=Color.BLACK))
+
+
+def _build_parent_eval(
+    *,
+    turn: Color,
+    children: dict[int, _FakeChildNode],
+    parent_eval_value: float = 0.0,
+) -> NodeMinmaxEvaluation[Any, Any]:
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=SimpleNamespace(turn=turn),
+        branches_children=children,
+        all_branches_generated=True,
+    )
+    evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
+    evaluation.set_evaluation(parent_eval_value)
+    return evaluation
+
+
+def test_backup_value_equals_a_child_value_and_pv_starts_with_best_branch() -> None:
+    children = {
+        0: _FakeChildNode(
+            10,
+            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[1]),
+        ),
+        1: _FakeChildNode(
+            11,
+            _FakeChildEvaluation(value_white=0.7, best_branch_sequence=[2]),
+        ),
+    }
+    parent_eval = _build_parent_eval(turn=Color.WHITE, children=children)
+
+    parent_eval.minmax_value_update_from_children(branches_with_updated_value={0, 1})
+
+    child_values = {c.tree_evaluation.value_white for c in children.values()}
+    assert parent_eval.value_white_minmax in child_values
+    assert parent_eval.value_white_minmax == 0.7
+    assert parent_eval.best_branch_sequence[:1] == [1]
+
+
+def test_backup_respects_turn_white_max_black_min() -> None:
+    children = {
+        0: _FakeChildNode(10, _FakeChildEvaluation(value_white=0.1)),
+        1: _FakeChildNode(11, _FakeChildEvaluation(value_white=0.9)),
+    }
+
+    white_parent_eval = _build_parent_eval(turn=Color.WHITE, children=children)
+    white_parent_eval.minmax_value_update_from_children(branches_with_updated_value={0, 1})
+    assert white_parent_eval.value_white_minmax == 0.9
+    assert white_parent_eval.best_branch_sequence[:1] == [1]
+
+    black_parent_eval = _build_parent_eval(turn=Color.BLACK, children=children)
+    black_parent_eval.minmax_value_update_from_children(branches_with_updated_value={0, 1})
+    assert black_parent_eval.value_white_minmax == 0.1
+    assert black_parent_eval.best_branch_sequence[:1] == [0]
+
+
+def test_backup_tie_break_is_deterministic() -> None:
+    children = {
+        1: _FakeChildNode(20, _FakeChildEvaluation(value_white=0.1)),
+        0: _FakeChildNode(10, _FakeChildEvaluation(value_white=0.1)),
+    }
+    parent_eval = _build_parent_eval(turn=Color.WHITE, children=children)
+
+    parent_eval.minmax_value_update_from_children(branches_with_updated_value={0, 1})
+    first_choice = parent_eval.best_branch_sequence[:1]
+
+    parent_eval.minmax_value_update_from_children(branches_with_updated_value={0, 1})
+    second_choice = parent_eval.best_branch_sequence[:1]
+
+    assert first_choice == second_choice == [0]
