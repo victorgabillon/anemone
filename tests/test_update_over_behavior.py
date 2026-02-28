@@ -66,7 +66,9 @@ def test_update_over_single_terminal_win_forces_parent_over() -> None:
     assert parent.over_event.termination == "mate"
 
 
-def test_update_over_single_terminal_draw_does_not_force_over_if_other_live_children() -> None:
+def test_update_over_single_terminal_draw_does_not_force_over_if_other_live_children() -> (
+    None
+):
     draw = _terminal_child(node_id=1, winner=None, term="stalemate")
     live = _non_terminal_child(node_id=2, value_white=0.2)
 
@@ -100,7 +102,9 @@ def test_update_over_all_children_terminal_forces_parent_over() -> None:
     assert parent.over_event.termination == "stalemate"
 
 
-def test_update_over_single_terminal_loss_does_not_force_over_if_other_live_children() -> None:
+def test_update_over_single_terminal_loss_does_not_force_over_if_other_live_children() -> (
+    None
+):
     loss = _terminal_child(node_id=1, winner=Color.BLACK, term="mate")
     live = _non_terminal_child(node_id=2, value_white=0.2)
 
