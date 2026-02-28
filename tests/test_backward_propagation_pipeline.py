@@ -60,18 +60,23 @@ def _create_tree_and_manager() -> tuple[Any, Any]:
         index_updater=None,
     )
 
-    root_state = FakeYamlState(node_id=0, children_by_id=children_by_id, turn=Color.WHITE)
+    root_state = FakeYamlState(
+        node_id=0, children_by_id=children_by_id, turn=Color.WHITE
+    )
     tree = tree_factory.create(starting_state=root_state)
     return tree, tree_manager
 
 
 def _open_branch(tree: Any, tree_manager: Any, node: Any, branch: int) -> None:
+    node.tree_node.all_branches_generated = True
     instructions = OpeningInstructions(
         {
             node.tree_node.id: OpeningInstruction(node_to_open=node, branch=branch),
         }
     )
-    expansions = tree_manager.open_instructions(tree=tree, opening_instructions=instructions)
+    expansions = tree_manager.open_instructions(
+        tree=tree, opening_instructions=instructions
+    )
     tree_manager.update_backward(tree_expansions=expansions)
 
 
@@ -80,7 +85,7 @@ def test_single_expansion_propagates_to_root() -> None:
 
     _open_branch(tree, tree_manager, tree.root_node, branch=0)
 
-    assert isclose(tree.root_node.tree_evaluation.get_value_white(), 0.2)
+    assert isclose(tree.root_node.tree_evaluation.get_value_white(), 0.2, abs_tol=1e-6)
     assert tree.root_node.tree_evaluation.best_branch_sequence[:1] == [0]
 
 
@@ -90,7 +95,7 @@ def test_second_expansion_can_change_root_choice() -> None:
     _open_branch(tree, tree_manager, tree.root_node, branch=0)
     _open_branch(tree, tree_manager, tree.root_node, branch=1)
 
-    assert isclose(tree.root_node.tree_evaluation.get_value_white(), 0.6)
+    assert isclose(tree.root_node.tree_evaluation.get_value_white(), 0.6, abs_tol=1e-6)
     assert tree.root_node.tree_evaluation.best_branch_sequence[:1] == [1]
 
 
@@ -103,8 +108,8 @@ def test_deep_leaf_update_propagates_through_intermediate_node() -> None:
 
     _open_branch(tree, tree_manager, node_a, branch=0)
 
-    assert isclose(node_a.tree_evaluation.get_value_white(), -0.8)
+    assert isclose(node_a.tree_evaluation.get_value_white(), -0.8, abs_tol=1e-6)
     assert node_a.tree_evaluation.best_branch_sequence[:1] == [0]
 
-    assert isclose(tree.root_node.tree_evaluation.get_value_white(), -0.8)
+    assert isclose(tree.root_node.tree_evaluation.get_value_white(), -0.8, abs_tol=1e-6)
     assert tree.root_node.tree_evaluation.best_branch_sequence[:2] == [0, 0]

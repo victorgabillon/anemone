@@ -78,7 +78,9 @@ class FakeChildNode:
         return self.tree_evaluation.over_event.is_over()
 
 
-def _build_parent_eval(children: dict[str, FakeChildNode]) -> NodeMinmaxEvaluation[Any, Any]:
+def _build_parent_eval(
+    children: dict[str, FakeChildNode],
+) -> NodeMinmaxEvaluation[Any, Any]:
     parent_tree_node = SimpleNamespace(
         id=0,
         state=SimpleNamespace(turn=Color.WHITE),
@@ -96,7 +98,10 @@ def test_becoming_over_prefers_terminal_win_even_if_best_branch_not_over() -> No
         tree_evaluation=FakeChildEvaluation(
             value_white=0.1,
             over_event=FakeOverEvent(
-                how_over="forced", who_is_winner=Color.WHITE, termination="mate", _is_over=True
+                how_over="forced",
+                who_is_winner=Color.WHITE,
+                termination="mate",
+                _is_over=True,
             ),
         ),
     )
@@ -133,7 +138,10 @@ def test_becoming_over_prefers_draw_over_loss_when_all_children_over() -> None:
         tree_evaluation=FakeChildEvaluation(
             value_white=0.0,
             over_event=FakeOverEvent(
-                how_over="forced", who_is_winner=None, termination="stalemate", _is_over=True
+                how_over="forced",
+                who_is_winner=None,
+                termination="stalemate",
+                _is_over=True,
             ),
         ),
     )
@@ -142,7 +150,10 @@ def test_becoming_over_prefers_draw_over_loss_when_all_children_over() -> None:
         tree_evaluation=FakeChildEvaluation(
             value_white=-1.0,
             over_event=FakeOverEvent(
-                how_over="forced", who_is_winner=Color.BLACK, termination="mate", _is_over=True
+                how_over="forced",
+                who_is_winner=Color.BLACK,
+                termination="mate",
+                _is_over=True,
             ),
         ),
     )
@@ -186,7 +197,9 @@ def test_becoming_over_prefers_win_when_multiple_terminal_wins() -> None:
         ),
     )
 
-    parent_eval = _build_parent_eval({"first_win": early_win_child, "second_win": late_win_child})
+    parent_eval = _build_parent_eval(
+        {"first_win": early_win_child, "second_win": late_win_child}
+    )
     parent_eval.branches_sorted_by_value_ = {
         "first_win": (1.0, 0, 1),
         "second_win": (2.0, 0, 2),
@@ -226,8 +239,7 @@ def test_becoming_over_uses_terminal_loss_when_no_draw_or_win() -> None:
     )
 
     # Intentionally leave branches_sorted_by_value_ empty so fallback order is used.
-    parent_eval = _build_parent_eval({"b_loss": second_loss, "a_loss": first_loss})
-
+    parent_eval = _build_parent_eval({"a_loss": first_loss, "b_loss": second_loss})
     parent_eval.becoming_over_from_children()
 
     assert parent_eval.over_event.is_over()

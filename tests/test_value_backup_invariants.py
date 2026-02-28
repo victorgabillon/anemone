@@ -89,12 +89,16 @@ def test_backup_respects_turn_white_max_black_min() -> None:
     }
 
     white_parent_eval = _build_parent_eval(turn=Color.WHITE, children=children)
-    white_parent_eval.minmax_value_update_from_children(branches_with_updated_value={0, 1})
+    white_parent_eval.minmax_value_update_from_children(
+        branches_with_updated_value={0, 1}
+    )
     assert white_parent_eval.value_white_minmax == 0.9
     assert white_parent_eval.best_branch_sequence[:1] == [1]
 
     black_parent_eval = _build_parent_eval(turn=Color.BLACK, children=children)
-    black_parent_eval.minmax_value_update_from_children(branches_with_updated_value={0, 1})
+    black_parent_eval.minmax_value_update_from_children(
+        branches_with_updated_value={0, 1}
+    )
     assert black_parent_eval.value_white_minmax == 0.1
     assert black_parent_eval.best_branch_sequence[:1] == [0]
 
