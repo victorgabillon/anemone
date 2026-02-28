@@ -5,11 +5,11 @@ from enum import StrEnum
 from typing import Protocol
 
 from valanga import OverEvent, State
-from valanga.evaluations import EvalItem
 
 from anemone.nodes.algorithm_node import AlgorithmNode
 from anemone.values import Certainty, Value
 
+from .protocols import MasterStateEvaluator, MasterStateValueEvaluator
 from .value_wrappers import FloatToValueEvaluator
 
 DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
@@ -54,50 +54,6 @@ class EvaluationQueries[StateT: State = State]:
         self.not_over_nodes = []
 
 
-class OverEventDetector(Protocol):
-    """Protocol for detecting over events in a game state."""
-
-    def check_obvious_over_events(
-        self, state: State
-    ) -> tuple[OverEvent | None, float | None]:
-        """Return an over event and evaluation if the state is terminal."""
-        ...
-
-
-class MasterStateEvaluator(Protocol):
-    """Protocol for evaluating the value of a state."""
-
-    over: OverEventDetector
-
-    def value_white(self, state: State) -> float:
-        """Evaluate a single state from white's perspective."""
-        ...
-
-    # the one method NodeEvaluator uses
-    def value_white_batch_items[ItemStateT: State](
-        self, items: Sequence[EvalItem[ItemStateT]]
-    ) -> list[float]:
-        """Evaluate a batch of items, defaulting to single-state calls."""
-        # default fallback: single loop, state-only
-        return [self.value_white(it.state) for it in items]
-
-
-class MasterStateValueEvaluator(Protocol):
-    """Protocol for evaluating the value of a state into a Value object."""
-
-    over: OverEventDetector
-
-    def evaluate(self, state: State) -> Value:
-        """Evaluate one state and return a Value object."""
-        ...
-
-    def evaluate_batch_items[ItemStateT: State](
-        self, items: Sequence[EvalItem[ItemStateT]]
-    ) -> list[Value]:
-        """Evaluate a batch of items, defaulting to single-state calls."""
-        return [self.evaluate(it.state) for it in items]
-
-
 class NodeDirectEvaluator[StateT: State = State]:
     """Evaluate the value of nodes in a tree structure.
 
@@ -120,9 +76,9 @@ class NodeDirectEvaluator[StateT: State = State]:
         evaluator: MasterStateEvaluator | MasterStateValueEvaluator,
     ) -> MasterStateValueEvaluator:
         """Normalize legacy float evaluators into Value evaluators."""
-        if hasattr(evaluator, "evaluate"):
+        if isinstance(evaluator, MasterStateValueEvaluator):
             return evaluator
-        return FloatToValueEvaluator(inner=evaluator, over=evaluator.over)
+        return FloatToValueEvaluator(inner=evaluator, _over=evaluator.over)
 
     def check_obvious_over_events(self, node: AlgorithmNode[StateT]) -> None:
         """Update the node.over object if the game is obviously over."""

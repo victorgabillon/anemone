@@ -2,11 +2,8 @@
 
 from valanga import State
 
-from .node_direct_evaluator import (
-    MasterStateEvaluator,
-    MasterStateValueEvaluator,
-    NodeDirectEvaluator,
-)
+from .node_direct_evaluator import NodeDirectEvaluator
+from .protocols import MasterStateEvaluator, MasterStateValueEvaluator
 
 
 def create_node_evaluator[StateT: State = State](

@@ -3,7 +3,7 @@
 from collections.abc import Hashable
 from dataclasses import dataclass
 from random import Random
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from valanga import Dynamics, RepresentationFactory, StateModifications, TurnState
 from valanga.evaluator_types import EvaluatorInput
@@ -13,9 +13,8 @@ from anemone import search_factory as search_factories
 from anemone.dynamics import SearchDynamics, normalize_search_dynamics
 from anemone.hooks.search_hooks import SearchHooks
 from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
-from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
+from anemone.node_evaluation.node_direct_evaluation.protocols import (
     MasterStateEvaluator,
-    NodeDirectEvaluator,
 )
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
     NodeTreeEvaluationFactory,
@@ -34,6 +33,11 @@ from . import tree_manager as tree_man
 from .indices.node_indices.index_types import IndexComputationType
 from .tree_and_value_branch_selector import TreeAndValueBranchSelector
 from .trees.factory import ValueTreeFactory
+
+if TYPE_CHECKING:
+    from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
+        NodeDirectEvaluator,
+    )
 
 TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 

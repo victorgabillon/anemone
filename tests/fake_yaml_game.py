@@ -9,8 +9,8 @@ from valanga import BranchKey, Color, OverEvent, State, StateModifications, Stat
 from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     MasterStateEvaluator,
-    OverEventDetector,
 )
+from anemone.node_evaluation.node_direct_evaluation.protocols import OverEventDetector
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence

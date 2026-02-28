@@ -1,6 +1,6 @@
 """Tests for incremental terminal propagation via NodeMinmaxEvaluation.update_over()."""
 
-from typing import Hashable
+from collections.abc import Hashable
 
 from valanga import Color
 

@@ -2,4 +2,4 @@
 
 from .value import Certainty, Value
 
-__all__ = ["Value", "Certainty"]
+__all__ = ["Certainty", "Value"]

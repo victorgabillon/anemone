@@ -30,9 +30,9 @@ from anemone.dynamics import SearchDynamics
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.utils.logger import anemone_logger
-from anemone.values import Value
 from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.utils.small_tools import nth_key
+from anemone.values import Value
 
 type BranchSortValue = tuple[float, int, int]
 

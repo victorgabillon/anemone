@@ -2,20 +2,44 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
-from valanga import OverEvent, State
+from valanga import State
 
 from anemone.values import Certainty, Value
 
+from .protocols import (
+    MasterStateEvaluator,
+    OverEventDetector,
+)
 
-class OverEventDetector(Protocol):
-    """Protocol for detecting over events in a game state."""
 
-    def check_obvious_over_events(
-        self, state: State
-    ) -> tuple[OverEvent | None, float | None]:
-        """Return an over event and evaluation if the state is terminal."""
+@runtime_checkable
+class _SupportsEvaluate(Protocol):
+    """Evaluator exposing a generic per-state scalar evaluation."""
+
+    over: OverEventDetector
+
+    def evaluate(self, state: State) -> float:
+        """Return a scalar for one state."""
+        ...
+
+
+@runtime_checkable
+class _SupportsEvaluateBatchItems(Protocol):
+    """Evaluator exposing batched generic scores."""
+
+    def evaluate_batch_items(self, items: Sequence[Any]) -> list[float]:
+        """Return scalar evaluations for a batch of items."""
+        ...
+
+
+@runtime_checkable
+class _SupportsValueWhiteBatchItems(Protocol):
+    """Evaluator exposing batched white-relative scores."""
+
+    def value_white_batch_items(self, items: Sequence[Any]) -> list[float]:
+        """Return white-relative scalars for a batch of items."""
         ...
 
 
@@ -23,42 +47,38 @@ class OverEventDetector(Protocol):
 class FloatToValueEvaluator:
     """Wrap a float-returning evaluator to return Value objects."""
 
-    inner: object
-    over: OverEventDetector | None = None
+    inner: MasterStateEvaluator | _SupportsEvaluate
+    _over: OverEventDetector | None = None
 
     def __post_init__(self) -> None:
-        """Default the over detector from the wrapped evaluator when available."""
-        if self.over is None and hasattr(self.inner, "over"):
-            self.over = getattr(self.inner, "over")
-        assert self.over is not None
+        """Default over detector from the wrapped evaluator when omitted."""
+        if self._over is None:
+            self._over = self.inner.over
+
+    @property
+    def over(self) -> OverEventDetector:
+        """Over-event detector associated with this evaluator."""
+        assert self._over is not None
+        return self._over
 
     def evaluate(self, state: State) -> Value:
         """Evaluate one state into a Value estimate."""
-        if hasattr(self.inner, "evaluate"):
-            score_raw = getattr(self.inner, "evaluate")(state)
+        if isinstance(self.inner, _SupportsEvaluate):
+            score = float(self.inner.evaluate(state))
         else:
-            score_raw = getattr(self.inner, "value_white")(state)
-        score = float(score_raw)
+            score = float(self.inner.value_white(state))
         return Value(score=score, certainty=Certainty.ESTIMATE, over_event=None)
 
     def evaluate_batch_items(self, items: Sequence[Any]) -> list[Value]:
         """Evaluate a sequence of items/nodes into Value estimates."""
-        if hasattr(self.inner, "evaluate_batch_items"):
-            batch_values = getattr(self.inner, "evaluate_batch_items")(items)
-            return [
-                Value(score=float(score), certainty=Certainty.ESTIMATE, over_event=None)
-                for score in batch_values
-            ]
+        if isinstance(self.inner, _SupportsEvaluateBatchItems):
+            scores = self.inner.evaluate_batch_items(items)
+        elif isinstance(self.inner, _SupportsValueWhiteBatchItems):
+            scores = self.inner.value_white_batch_items(items)
+        else:
+            return [self.evaluate(getattr(item, "state", item)) for item in items]
 
-        if hasattr(self.inner, "value_white_batch_items"):
-            batch_values = getattr(self.inner, "value_white_batch_items")(items)
-            return [
-                Value(score=float(score), certainty=Certainty.ESTIMATE, over_event=None)
-                for score in batch_values
-            ]
-
-        values: list[Value] = []
-        for item in items:
-            state = getattr(item, "state", item)
-            values.append(self.evaluate(state))
-        return values
+        return [
+            Value(score=float(score), certainty=Certainty.ESTIMATE, over_event=None)
+            for score in scores
+        ]
