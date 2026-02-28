@@ -30,6 +30,7 @@ from anemone.dynamics import SearchDynamics
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.utils.logger import anemone_logger
+from anemone.values import Value
 from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.utils.small_tools import nth_key
 
@@ -118,6 +119,7 @@ class NodeMinmaxEvaluation[
 
     # absolute value wrt to white player as estimated by a state evaluator
     value_white_direct_evaluation: float | None = None
+    direct_value: Value | None = None
 
     # absolute value wrt to white player as computed from the value_white_* of the descendants
     # of this node (self) by a minmax procedure.

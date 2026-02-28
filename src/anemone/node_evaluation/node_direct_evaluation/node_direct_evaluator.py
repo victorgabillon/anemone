@@ -8,6 +8,9 @@ from valanga import OverEvent, State
 from valanga.evaluations import EvalItem
 
 from anemone.nodes.algorithm_node import AlgorithmNode
+from anemone.values import Certainty, Value
+
+from .value_wrappers import FloatToValueEvaluator
 
 DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
 
@@ -79,27 +82,54 @@ class MasterStateEvaluator(Protocol):
         return [self.value_white(it.state) for it in items]
 
 
+class MasterStateValueEvaluator(Protocol):
+    """Protocol for evaluating the value of a state into a Value object."""
+
+    over: OverEventDetector
+
+    def evaluate(self, state: State) -> Value:
+        """Evaluate one state and return a Value object."""
+        ...
+
+    def evaluate_batch_items[ItemStateT: State](
+        self, items: Sequence[EvalItem[ItemStateT]]
+    ) -> list[Value]:
+        """Evaluate a batch of items, defaulting to single-state calls."""
+        return [self.evaluate(it.state) for it in items]
+
+
 class NodeDirectEvaluator[StateT: State = State]:
     """Evaluate the value of nodes in a tree structure.
 
     The evaluator uses a master state evaluator to calculate node values.
     """
 
-    master_state_evaluator: MasterStateEvaluator
+    master_state_value_evaluator: MasterStateValueEvaluator
 
     def __init__(
         self,
-        master_state_evaluator: MasterStateEvaluator,
+        master_state_evaluator: MasterStateEvaluator | MasterStateValueEvaluator,
     ) -> None:
         """Initialize a new instance of the NodeDirectEvaluator class."""
-        self.master_state_evaluator = master_state_evaluator
+        self.master_state_value_evaluator = self._as_value_evaluator(
+            master_state_evaluator
+        )
+
+    def _as_value_evaluator(
+        self,
+        evaluator: MasterStateEvaluator | MasterStateValueEvaluator,
+    ) -> MasterStateValueEvaluator:
+        """Normalize legacy float evaluators into Value evaluators."""
+        if hasattr(evaluator, "evaluate"):
+            return evaluator
+        return FloatToValueEvaluator(inner=evaluator, over=evaluator.over)
 
     def check_obvious_over_events(self, node: AlgorithmNode[StateT]) -> None:
         """Update the node.over object if the game is obviously over."""
         over_event: OverEvent | None
         evaluation: float | None
         over_event, evaluation = (
-            self.master_state_evaluator.over.check_obvious_over_events(node.state)
+            self.master_state_value_evaluator.over.check_obvious_over_events(node.state)
         )
         if over_event is not None:
             node.tree_evaluation.over_event.becomes_over(
@@ -110,6 +140,12 @@ class NodeDirectEvaluator[StateT: State = State]:
             assert evaluation is not None, (
                 "Evaluation should not be None for over nodes"
             )
+            value = Value(
+                score=evaluation,
+                certainty=Certainty.TERMINAL,
+                over_event=over_event,
+            )
+            node.tree_evaluation.direct_value = value
             node.tree_evaluation.set_evaluation(evaluation=evaluation)
 
     def evaluate_all_queried_nodes(
@@ -136,11 +172,15 @@ class NodeDirectEvaluator[StateT: State = State]:
         self, not_over_nodes: list[AlgorithmNode[StateT]]
     ) -> None:
         """Evaluate all non-terminal nodes and store their evaluations."""
-        values = self.master_state_evaluator.value_white_batch_items(not_over_nodes)
-        for node, v in zip(not_over_nodes, values, strict=True):
-            node.tree_evaluation.set_evaluation(
-                self.process_evalution_not_over(v, node)
+        values = self.master_state_value_evaluator.evaluate_batch_items(not_over_nodes)
+        for node, value in zip(not_over_nodes, values, strict=True):
+            processed_value = Value(
+                score=self.process_evalution_not_over(value.score, node),
+                certainty=value.certainty,
+                over_event=value.over_event,
             )
+            node.tree_evaluation.direct_value = processed_value
+            node.tree_evaluation.set_evaluation(processed_value.score)
 
     def process_evalution_not_over(
         self, evaluation: float, node: AlgorithmNode[StateT]
