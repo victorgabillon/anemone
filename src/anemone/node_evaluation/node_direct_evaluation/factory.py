@@ -2,11 +2,15 @@
 
 from valanga import State
 
-from .node_direct_evaluator import MasterStateEvaluator, NodeDirectEvaluator
+from .node_direct_evaluator import (
+    MasterStateEvaluator,
+    MasterStateValueEvaluator,
+    NodeDirectEvaluator,
+)
 
 
 def create_node_evaluator[StateT: State = State](
-    master_state_evaluator: MasterStateEvaluator,
+    master_state_evaluator: MasterStateEvaluator | MasterStateValueEvaluator,
 ) -> NodeDirectEvaluator[StateT]:
     """Create a NodeDirectEvaluator backed by a master state evaluator."""
     return NodeDirectEvaluator(master_state_evaluator=master_state_evaluator)

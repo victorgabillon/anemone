@@ -10,6 +10,7 @@ from valanga import (
 )
 
 from anemone.dynamics import SearchDynamics
+from anemone.values import Value
 
 type BranchSortValue = tuple[float, int, int]
 
@@ -29,6 +30,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
 
     # absolute value wrt to white player as estimated by a state evaluator
     value_white_direct_evaluation: float | None = None
+    direct_value: Value | None = None
 
     # creating a base Over event that is set to None
     over_event: OverEvent
