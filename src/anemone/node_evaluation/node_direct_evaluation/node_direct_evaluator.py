@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from enum import StrEnum
+from itertools import chain
 from typing import Protocol
 
 from valanga import OverEvent, State
@@ -111,6 +112,13 @@ class NodeDirectEvaluator[StateT: State = State]:
         if evaluation_queries.not_over_nodes:
             self.evaluate_all_not_over(evaluation_queries.not_over_nodes)
 
+        for node in chain(
+            evaluation_queries.over_nodes, evaluation_queries.not_over_nodes
+        ):
+            assert node.tree_evaluation.direct_value is not None, (
+                f"direct_value must be set after evaluation for node {node.tree_node.id}"
+            )
+
         evaluation_queries.clear_queries()
 
     def add_evaluation_query(
@@ -120,6 +128,9 @@ class NodeDirectEvaluator[StateT: State = State]:
         assert node.tree_evaluation.value_white_direct_evaluation is None
         self.check_obvious_over_events(node)
         if node.is_over():
+            assert node.tree_evaluation.direct_value is not None, (
+                f"direct_value must be set for terminal node {node.tree_node.id}"
+            )
             evaluation_queries.over_nodes.append(node)
         else:
             evaluation_queries.not_over_nodes.append(node)
@@ -137,6 +148,9 @@ class NodeDirectEvaluator[StateT: State = State]:
             )
             node.tree_evaluation.direct_value = processed_value
             node.tree_evaluation.set_evaluation(processed_value.score)
+            assert node.tree_evaluation.direct_value is not None, (
+                f"direct_value must be set for non-terminal node {node.tree_node.id}"
+            )
 
     def process_evalution_not_over(
         self, evaluation: float, node: AlgorithmNode[StateT]
