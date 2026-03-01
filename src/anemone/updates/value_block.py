@@ -44,7 +44,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
     branches_with_updated_value: set[BranchKey] = field(
         default_factory=_new_branchkey_set
     )
-    branches_with_updated_best_branch: set[BranchKey] = field(
+    branches_with_updated_best_branch_seq: set[BranchKey] = field(
         default_factory=_new_branchkey_set
     )
 
@@ -65,7 +65,7 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         if update_from_one_child_node.new_value_for_node:
             self.branches_with_updated_value.add(branch_from_parent_to_child)
         if update_from_one_child_node.new_best_branch_for_node:
-            self.branches_with_updated_best_branch.add(branch_from_parent_to_child)
+            self.branches_with_updated_best_branch_seq.add(branch_from_parent_to_child)
 
     def add_update_toward_one_parent_node(self, another_update: Self) -> None:
         """Add an update towards one parent node.
@@ -81,9 +81,9 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         self.branches_with_updated_over = (
             self.branches_with_updated_over | another_update.branches_with_updated_over
         )
-        self.branches_with_updated_best_branch = (
-            self.branches_with_updated_best_branch
-            | another_update.branches_with_updated_best_branch
+        self.branches_with_updated_best_branch_seq = (
+            self.branches_with_updated_best_branch_seq
+            | another_update.branches_with_updated_best_branch_seq
         )
 
     def print_info(self) -> None:
@@ -103,11 +103,11 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             print(branch, end=" ")
         print(
             "\n",
-            len(self.branches_with_updated_best_branch),
-            "branches_with_updated_best_branch:",
+            len(self.branches_with_updated_best_branch_seq),
+            "branches_with_updated_best_branch_seq:",
             end=" ",
         )
-        for branch in self.branches_with_updated_best_branch:
+        for branch in self.branches_with_updated_best_branch_seq:
             print(branch, end=" ")
         print(
             "\n",
@@ -128,6 +128,6 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         """
         return (
             not bool(self.branches_with_updated_value)
-            and not bool(self.branches_with_updated_best_branch)
+            and not bool(self.branches_with_updated_best_branch_seq)
             and not bool(self.branches_with_updated_over)
         )
