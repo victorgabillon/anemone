@@ -32,7 +32,7 @@ from anemone.nodes.tree_node import TreeNode
 from anemone.utils.logger import anemone_logger
 from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.utils.small_tools import nth_key
-from anemone.values import Value
+from anemone.values import Certainty, Value
 
 type BranchSortValue = tuple[float, int, int]
 
@@ -124,6 +124,7 @@ class NodeMinmaxEvaluation[
     # absolute value wrt to white player as computed from the value_white_* of the descendants
     # of this node (self) by a minmax procedure.
     value_white_minmax: float | None = None
+    minmax_value: Value | None = None
 
     # the sequence of best branches from this node
     best_branch_sequence: list[BranchKey] = field(
@@ -164,6 +165,22 @@ class NodeMinmaxEvaluation[
         """
         return self.branches_sorted_by_value_
 
+    def get_value(self) -> Value:
+        """Return the canonical value for this node.
+
+        Returns:
+            Value: The minmax value when available, otherwise direct value.
+
+        """
+        if self.minmax_value is not None:
+            return self.minmax_value
+        assert self.direct_value is not None
+        return self.direct_value
+
+    def get_score(self) -> float:
+        """Return the canonical scalar score for this node."""
+        return self.get_value().score
+
     def get_value_white(self) -> float:
         """Return the best estimation of the value for white in this node.
 
@@ -171,8 +188,8 @@ class NodeMinmaxEvaluation[
             float: The best estimation of the value for white in this node.
 
         """
-        assert self.value_white_minmax is not None
-        return self.value_white_minmax
+        # TODO: Step 7: remove float bridge API once all callers consume Value.
+        return self.get_score()
 
     def set_evaluation(self, evaluation: float) -> None:
         """Set the evaluation from the state evaluator.
@@ -188,6 +205,29 @@ class NodeMinmaxEvaluation[
         self.value_white_minmax = (
             evaluation  # base value before knowing values of the children
         )
+
+    def _child_value_candidate(self, branch_key: BranchKey) -> Value | None:
+        """Return the best available Value candidate for a child branch."""
+        child = self.tree_node.branches_children[branch_key]
+        if child is None:
+            return None
+
+        child_eval = child.tree_evaluation
+        if child_eval.minmax_value is not None:
+            return child_eval.minmax_value
+
+        if child_eval.direct_value is not None:
+            return child_eval.direct_value
+
+        child_value_white_minmax = child_eval.value_white_minmax
+        if child_value_white_minmax is not None:
+            # TODO: Step 7: remove float-to-Value fallback after full Value migration.
+            return Value(
+                score=child_value_white_minmax,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
+        return None
 
     def subjective_value_(self, value_white: float) -> float:
         """Return the subjective value of `value_white` from the point of view of the `self.tree_node.player_to_branch`.
@@ -671,20 +711,56 @@ class NodeMinmaxEvaluation[
         assert best_branch_key is not None
         best_child = self.tree_node.branches_children[best_branch_key]
         assert best_child is not None
+        best_child_value = self._child_value_candidate(best_branch_key)
+        if best_child_value is None:
+            # TODO: Step 7: remove this debug fallback once Value is guaranteed everywhere.
+            anemone_logger.debug("No Value candidate for child branch %s", best_branch_key)
         if self.tree_node.all_branches_generated:
             self.value_white_minmax = best_child.tree_evaluation.get_value_white()
+            self.minmax_value = best_child_value
         elif self.tree_node.state.turn is Color.WHITE:
             assert self.value_white_direct_evaluation is not None
             self.value_white_minmax = max(
                 best_child.tree_evaluation.get_value_white(),
                 self.value_white_direct_evaluation,
             )
+            if (
+                best_child.tree_evaluation.get_value_white()
+                >= self.value_white_direct_evaluation
+            ):
+                self.minmax_value = best_child_value
+            else:
+                assert self.direct_value is not None, (
+                    "direct_value must be set before partial backup fallback"
+                )
+                self.minmax_value = self.direct_value
         else:
             assert self.value_white_direct_evaluation is not None
             self.value_white_minmax = min(
                 best_child.tree_evaluation.get_value_white(),
                 self.value_white_direct_evaluation,
             )
+            if (
+                best_child.tree_evaluation.get_value_white()
+                <= self.value_white_direct_evaluation
+            ):
+                self.minmax_value = best_child_value
+            else:
+                assert self.direct_value is not None, (
+                    "direct_value must be set before partial backup fallback"
+                )
+                self.minmax_value = self.direct_value
+
+        if self.minmax_value is None and self.value_white_minmax is not None:
+            # TODO: Step 7: remove float-to-Value fallback after full Value migration.
+            self.minmax_value = Value(
+                score=self.value_white_minmax,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
+
+        if self.minmax_value is not None:
+            self.value_white_minmax = self.minmax_value.score
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
