@@ -176,7 +176,7 @@ class UpdateInstructionsTowardsMultipleNodes[NodeT: AlgorithmNode = AlgorithmNod
                         if update_from_child_node.value_block.is_node_newly_over
                         else set()
                     ),
-                    branches_with_updated_best_branch=(
+                    branches_with_updated_best_branch_seq=(
                         {branch_from_parent}
                         if update_from_child_node.value_block.new_best_branch_for_node
                         else set()

@@ -14,7 +14,7 @@ node is over, and printing information about the node.
 from dataclasses import dataclass, field
 from math import log
 from random import choice
-from typing import Any, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 
 from valanga import (
     BranchKey,
@@ -33,6 +33,10 @@ from anemone.utils.logger import anemone_logger
 from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.utils.small_tools import nth_key
 from anemone.values import Certainty, Value
+
+if TYPE_CHECKING:
+    from anemone.backup_policies.protocols import BackupPolicy
+    from anemone.backup_policies.types import BackupResult
 
 type BranchSortValue = tuple[float, int, int]
 
@@ -153,6 +157,9 @@ class NodeMinmaxEvaluation[
 
     # creating a base Over event that is set to None
     over_event: OverEvent = field(default_factory=OverEvent)
+
+    # policy used to orchestrate backup behavior from updated children
+    backup_policy: "BackupPolicy | None" = None
 
     @property
     def branches_sorted_by_value(self) -> dict[BranchKey, BranchSortValue]:
@@ -849,7 +856,7 @@ class NodeMinmaxEvaluation[
         assert self.value_white_direct_evaluation is not None
         return subjective_value >= self.value_white_direct_evaluation
 
-    def minmax_value_update_from_children(
+    def minmax_value_update_from_children_legacy(
         self, branches_with_updated_value: set[BranchKey]
     ) -> tuple[bool, bool]:
         """Update the value and best branch of the node based on updated child values.
@@ -920,6 +927,38 @@ class NodeMinmaxEvaluation[
         )
 
         return has_value_changed, has_best_node_seq_changed
+
+    def backup_from_children(
+        self,
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> "BackupResult":
+        """Delegate backup orchestration to the configured backup policy."""
+        if self.backup_policy is None:
+            from anemone.backup_policies.legacy_minimax import (
+                LegacyMinimaxBackupPolicy,
+            )
+
+            self.backup_policy = LegacyMinimaxBackupPolicy()
+        return self.backup_policy.backup_from_children(
+            node_eval=self,
+            branches_with_updated_value=branches_with_updated_value,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+        )
+
+    def minmax_value_update_from_children(
+        self, branches_with_updated_value: set[BranchKey]
+    ) -> tuple[bool, bool]:
+        """Temporary legacy API wrapper around policy-driven backup.
+
+        Note: This path only reflects value-driven PV changes. Sequence-only
+        PV updates must use `backup_from_children(...)`.
+        """
+        backup_result = self.backup_from_children(
+            branches_with_updated_value=branches_with_updated_value,
+            branches_with_updated_best_branch_seq=set(),
+        )
+        return backup_result.value_changed, backup_result.pv_changed
 
     def dot_description(self) -> str:
         """Return a string representation of the node's description in DOT format.

@@ -4,6 +4,8 @@ from typing import Any, Protocol
 
 from valanga import State, TurnState
 
+from anemone.backup_policies import LegacyMinimaxBackupPolicy
+from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -15,6 +17,10 @@ from anemone.nodes.tree_node import TreeNode
 
 class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
     """The class creating Node Evaluations including children."""
+
+    def __init__(self, backup_policy: BackupPolicy | None = None) -> None:
+        """Initialize the factory with an explicit backup policy."""
+        self.backup_policy = backup_policy or LegacyMinimaxBackupPolicy()
 
     def create(
         self,
@@ -29,7 +35,10 @@ class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
             NodeEvaluationIncludingChildren: The newly created NodeEvaluationIncludingChildren object.
 
         """
-        return NodeMinmaxEvaluation(tree_node=tree_node)
+        return NodeMinmaxEvaluation(
+            tree_node=tree_node,
+            backup_policy=self.backup_policy,
+        )
 
 
 class NodeTreeEvaluationFactory[T: State = State](Protocol):

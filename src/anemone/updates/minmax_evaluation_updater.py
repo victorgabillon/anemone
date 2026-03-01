@@ -61,28 +61,13 @@ class MinMaxEvaluationUpdater:
         )
         assert updates_instructions_block is not None
 
-        # UPDATE VALUE
-        has_value_changed: bool
-        has_best_node_seq_changed_1: bool
-        has_value_changed, has_best_node_seq_changed_1 = (
-            node_to_update.tree_evaluation.minmax_value_update_from_children(
-                branches_with_updated_value=updates_instructions_block.branches_with_updated_value
-            )
+        # UPDATE VALUE / PV via backup policy
+        backup_result = node_to_update.tree_evaluation.backup_from_children(
+            branches_with_updated_value=updates_instructions_block.branches_with_updated_value,
+            branches_with_updated_best_branch_seq=updates_instructions_block.branches_with_updated_best_branch_seq,
         )
-
-        # UPDATE BEST BRANCH SEQUENCE
-        has_best_node_seq_changed_2: bool
-        if updates_instructions_block.branches_with_updated_best_branch:
-            has_best_node_seq_changed_2 = (
-                node_to_update.tree_evaluation.update_best_branch_sequence(
-                    updates_instructions_block.branches_with_updated_best_branch
-                )
-            )
-        else:
-            has_best_node_seq_changed_2 = False
-        has_best_node_seq_changed: bool = (
-            has_best_node_seq_changed_1 or has_best_node_seq_changed_2
-        )
+        has_value_changed = backup_result.value_changed
+        has_best_node_seq_changed: bool = backup_result.pv_changed
 
         # UPDATE OVER
         is_newly_over = node_to_update.tree_evaluation.update_over(

@@ -9,6 +9,7 @@ from valanga import (
     StateEvaluation,
 )
 
+from anemone.backup_policies.types import BackupResult
 from anemone.dynamics import SearchDynamics
 from anemone.values import Value
 
@@ -91,6 +92,14 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         self, branches_with_updated_value: set[BranchKey]
     ) -> tuple[bool, bool]:
         """Update minmax value from children and return update flags."""
+        ...
+
+    def backup_from_children(
+        self,
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> BackupResult:
+        """Run backup policy from updated children and return changed-state flags."""
         ...
 
     def update_over(self, branches_with_updated_over: set[BranchKey]) -> bool:
