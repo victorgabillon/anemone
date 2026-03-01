@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from anemone.backup_policies.types import BackupResult
 
@@ -19,7 +19,7 @@ class LegacyMinimaxBackupPolicy:
 
     def backup_from_children(
         self,
-        node_eval: NodeMinmaxEvaluation,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from valanga import BranchKey
@@ -12,13 +12,17 @@ if TYPE_CHECKING:
         NodeMinmaxEvaluation,
     )
 
+    NodeEval = NodeMinmaxEvaluation[Any, Any]
+else:
+    NodeEval = object  # runtime placeholder to avoid import cycles
+
 
 class BackupPolicy(Protocol):
     """Protocol for orchestrating node backups from updated children."""
 
     def backup_from_children(
         self,
-        node_eval: NodeMinmaxEvaluation,
+        node_eval: NodeEval,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:

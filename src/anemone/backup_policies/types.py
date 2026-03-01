@@ -10,4 +10,3 @@ class BackupResult:
     value_changed: bool
     pv_changed: bool
     over_changed: bool
-

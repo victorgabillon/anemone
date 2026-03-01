@@ -935,12 +935,14 @@ class NodeMinmaxEvaluation[
     ) -> "BackupResult":
         """Delegate backup orchestration to the configured backup policy."""
         if self.backup_policy is None:
-            from anemone.backup_policies.legacy_minimax import (
+            from anemone.backup_policies.legacy_minimax import (  # pylint: disable=import-outside-toplevel
                 LegacyMinimaxBackupPolicy,
             )
 
             self.backup_policy = LegacyMinimaxBackupPolicy()
-        return self.backup_policy.backup_from_children(
+        assert self.backup_policy is not None
+        policy: BackupPolicy = self.backup_policy
+        return policy.backup_from_children(
             node_eval=self,
             branches_with_updated_value=branches_with_updated_value,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
