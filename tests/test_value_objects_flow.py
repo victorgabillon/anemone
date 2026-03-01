@@ -68,7 +68,9 @@ class _BatchValueEvaluator:
         ]
 
 
-def _make_node(*, node_id: int, turn: Color, base_score: float, is_terminal: bool) -> Any:
+def _make_node(
+    *, node_id: int, turn: Color, base_score: float, is_terminal: bool
+) -> Any:
     state = SimpleNamespace(turn=turn, base_score=base_score, is_terminal=is_terminal)
     tree_node = SimpleNamespace(
         id=node_id,
@@ -128,7 +130,9 @@ def test_minmax_value_is_populated_after_child_backup_and_bridge_holds() -> None
 
     parent.tree_evaluation.direct_value = Value(score=0.1, certainty=Certainty.ESTIMATE)
     parent.tree_evaluation.set_evaluation(0.1)
-    parent.tree_evaluation.minmax_value_update_from_children(branches_with_updated_value={0})
+    parent.tree_evaluation.minmax_value_update_from_children(
+        branches_with_updated_value={0}
+    )
 
     assert parent.tree_evaluation.minmax_value is not None
     assert (

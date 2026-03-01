@@ -9,6 +9,7 @@ from valanga import Color
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
+from anemone.values import Value
 
 
 @dataclass
@@ -51,7 +52,13 @@ class FakeChildEvaluation:
 
     value_white: float
     over_event: FakeOverEvent
+    value_white_minmax: float | None = None
+    direct_value: Value | None = None
+    minmax_value: Value | None = None
     best_branch_sequence: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.value_white_minmax = self.value_white
 
     def get_value_white(self) -> float:
         return self.value_white

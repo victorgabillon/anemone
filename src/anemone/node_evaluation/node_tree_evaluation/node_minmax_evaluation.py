@@ -182,14 +182,15 @@ class NodeMinmaxEvaluation[
         return self.get_value().score
 
     def get_value_white(self) -> float:
-        """Return the best estimation of the value for white in this node.
+        """Return the best estimation of the value for white in this node (float bridge).
 
         Returns:
             float: The best estimation of the value for white in this node.
 
         """
         # TODO: Step 7: remove float bridge API once all callers consume Value.
-        return self.get_score()
+        assert self.value_white_minmax is not None
+        return self.value_white_minmax
 
     def set_evaluation(self, evaluation: float) -> None:
         """Set the evaluation from the state evaluator.
@@ -714,7 +715,9 @@ class NodeMinmaxEvaluation[
         best_child_value = self._child_value_candidate(best_branch_key)
         if best_child_value is None:
             # TODO: Step 7: remove this debug fallback once Value is guaranteed everywhere.
-            anemone_logger.debug("No Value candidate for child branch %s", best_branch_key)
+            anemone_logger.debug(
+                "No Value candidate for child branch %s", best_branch_key
+            )
         if self.tree_node.all_branches_generated:
             self.value_white_minmax = best_child.tree_evaluation.get_value_white()
             self.minmax_value = best_child_value
@@ -730,10 +733,15 @@ class NodeMinmaxEvaluation[
             ):
                 self.minmax_value = best_child_value
             else:
-                assert self.direct_value is not None, (
-                    "direct_value must be set before partial backup fallback"
-                )
-                self.minmax_value = self.direct_value
+                if self.direct_value is not None:
+                    self.minmax_value = self.direct_value
+                else:
+                    # TODO: Step 7: remove float-to-Value fallback after full Value migration.
+                    self.minmax_value = Value(
+                        score=self.value_white_direct_evaluation,
+                        certainty=Certainty.ESTIMATE,
+                        over_event=None,
+                    )
         else:
             assert self.value_white_direct_evaluation is not None
             self.value_white_minmax = min(
@@ -746,21 +754,26 @@ class NodeMinmaxEvaluation[
             ):
                 self.minmax_value = best_child_value
             else:
-                assert self.direct_value is not None, (
-                    "direct_value must be set before partial backup fallback"
-                )
-                self.minmax_value = self.direct_value
+                if self.direct_value is not None:
+                    self.minmax_value = self.direct_value
+                else:
+                    # TODO: Step 7: remove float-to-Value fallback after full Value migration.
+                    self.minmax_value = Value(
+                        score=self.value_white_direct_evaluation,
+                        certainty=Certainty.ESTIMATE,
+                        over_event=None,
+                    )
 
-        if self.minmax_value is None and self.value_white_minmax is not None:
+        if self.minmax_value is None:
             # TODO: Step 7: remove float-to-Value fallback after full Value migration.
+            assert self.value_white_minmax is not None
             self.minmax_value = Value(
                 score=self.value_white_minmax,
                 certainty=Certainty.ESTIMATE,
                 over_event=None,
             )
 
-        if self.minmax_value is not None:
-            self.value_white_minmax = self.minmax_value.score
+        self.value_white_minmax = self.minmax_value.score
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]

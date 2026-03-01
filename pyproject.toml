@@ -19,6 +19,7 @@ dependencies = [
     "rich",
     "sortedcollections>=2.1.0",
     "graphviz",
+      "PyYAML>=6.0",
 ]
 
 license = "GPL-3.0-only"
@@ -198,6 +199,8 @@ max-line-length = 88
 #[tool.pylint.messages_control]
 disable = [
     "C0301",
+      "C0302",
+
     "unnecessary-ellipsis",
     "W0511","R0913","R0917","R0903","R0914","R0912","R0915","R0904","R0902",
     ]
