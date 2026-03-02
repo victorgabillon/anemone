@@ -12,19 +12,15 @@ if TYPE_CHECKING:
         NodeMinmaxEvaluation,
     )
 
-    NodeEval = NodeMinmaxEvaluation[Any, Any]
-else:
-    NodeEval = object  # runtime placeholder to avoid import cycles
-
 
 class BackupPolicy(Protocol):
     """Protocol for orchestrating node backups from updated children."""
 
     def backup_from_children(
         self,
-        node_eval: NodeEval,
-        branches_with_updated_value: set[BranchKey],
-        branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> BackupResult:
+        node_eval: "NodeMinmaxEvaluation[Any, Any]",
+        branches_with_updated_value: set["BranchKey"],
+        branches_with_updated_best_branch_seq: set["BranchKey"],
+    ) -> "BackupResult":
         """Perform backup operations and return changed-state flags."""
         ...
