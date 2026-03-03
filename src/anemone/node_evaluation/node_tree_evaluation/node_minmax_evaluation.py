@@ -32,7 +32,12 @@ from anemone.nodes.tree_node import TreeNode
 from anemone.utils.logger import anemone_logger
 from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.utils.small_tools import nth_key
-from anemone.values import Certainty, Value
+from anemone.values import (
+    DEFAULT_EVALUATION_ORDERING,
+    Certainty,
+    EvaluationOrdering,
+    Value,
+)
 
 if TYPE_CHECKING:
     from anemone.backup_policies.protocols import BackupPolicy
@@ -166,6 +171,9 @@ class NodeMinmaxEvaluation[
 
     # policy used to orchestrate backup behavior from updated children
     backup_policy: "BackupPolicy | None" = None
+
+    # ordering policy for comparing/projecting Value objects
+    evaluation_ordering: EvaluationOrdering = DEFAULT_EVALUATION_ORDERING
 
     @property
     def branches_sorted_by_value(self) -> dict[BranchKey, BranchSortValue]:
