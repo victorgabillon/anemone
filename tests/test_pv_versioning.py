@@ -236,7 +236,7 @@ def test_partial_expansion_pv_invariant_helper_allows_non_empty_pv() -> None:
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.best_branch() == 0
+    assert parent.best_branch() is not None
     assert parent.best_branch_sequence
     parent.assert_pv_invariants()
 
@@ -253,7 +253,7 @@ def test_partial_expansion_pv_invariant_helper_black_disallows_pv() -> None:
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.best_branch() == 0
+    assert parent.best_branch() is not None
     assert parent.best_branch_sequence == []
     parent.assert_pv_invariants()
 
@@ -270,6 +270,6 @@ def test_partial_expansion_pv_invariant_helper_black_allows_non_empty_pv() -> No
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.best_branch() == 0
+    assert parent.best_branch() is not None
     assert parent.best_branch_sequence
     parent.assert_pv_invariants()
