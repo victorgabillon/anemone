@@ -169,3 +169,107 @@ def test_parent_pv_rebuilds_on_best_child_pv_update_notification_without_version
 
     assert result.pv_changed
     assert parent.best_branch_sequence == [0, 123]
+
+
+def test_update_best_branch_sequence_does_not_fix_corrupted_head() -> None:
+    parent, _ = _make_parent_eval()
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    parent.set_best_branch_sequence([1, 5])
+    version_before = parent.pv_version
+    pv_before = parent.best_branch_sequence.copy()
+
+    changed = parent.update_best_branch_sequence({0})
+
+    assert not changed
+    assert parent.best_branch_sequence == pv_before
+    assert parent.pv_version == version_before
+
+
+def test_update_best_branch_sequence_requires_notification() -> None:
+    parent, children = _make_parent_eval()
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    version_before = parent.pv_version
+    pv_before = parent.best_branch_sequence.copy()
+
+    children[0].tree_evaluation.set_best_branch_sequence([42])
+    changed = parent.update_best_branch_sequence(set())
+
+    assert not changed
+    assert parent.best_branch_sequence == pv_before
+    assert parent.pv_version == version_before
+
+
+def test_partial_expansion_pv_invariant_helper() -> None:
+    parent, _ = _make_parent_eval()
+    parent.tree_node.all_branches_generated = False
+    parent.tree_node.state.turn = Color.WHITE
+    parent.set_evaluation(1e9)
+    parent.update_branches_values(branches_to_consider={0, 1})
+
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.best_branch() == 0
+    assert parent.best_branch_sequence == []
+    parent.assert_pv_invariants()
+
+
+def test_partial_expansion_pv_invariant_helper_allows_non_empty_pv() -> None:
+    parent, _ = _make_parent_eval()
+    parent.tree_node.all_branches_generated = False
+    parent.tree_node.state.turn = Color.WHITE
+    parent.set_evaluation(-1e9)
+    parent.update_branches_values(branches_to_consider={0, 1})
+
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.best_branch() == 0
+    assert parent.best_branch_sequence
+    parent.assert_pv_invariants()
+
+
+def test_partial_expansion_pv_invariant_helper_black_disallows_pv() -> None:
+    parent, _ = _make_parent_eval()
+    parent.tree_node.all_branches_generated = False
+    parent.tree_node.state.turn = Color.BLACK
+    parent.set_evaluation(-1e9)
+    parent.update_branches_values(branches_to_consider={0, 1})
+
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.best_branch() == 0
+    assert parent.best_branch_sequence == []
+    parent.assert_pv_invariants()
+
+
+def test_partial_expansion_pv_invariant_helper_black_allows_non_empty_pv() -> None:
+    parent, _ = _make_parent_eval()
+    parent.tree_node.all_branches_generated = False
+    parent.tree_node.state.turn = Color.BLACK
+    parent.set_evaluation(1e9)
+    parent.update_branches_values(branches_to_consider={0, 1})
+
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.best_branch() == 0
+    assert parent.best_branch_sequence
+    parent.assert_pv_invariants()
