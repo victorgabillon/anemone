@@ -1,5 +1,5 @@
 # ruff: noqa: D103
-"""Equivalence tests between legacy and explicit minimax backup policies."""
+"""Value-equivalence tests and explicit PV invariants for minimax backup policies."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def _make_leaf_eval(
     )
     ev = NodeMinmaxEvaluation(tree_node=leaf_tree_node, backup_policy=None)
     ev.set_evaluation(value_white)
-    ev.best_branch_sequence = pv_tail[:]
+    ev._set_best_branch_sequence(pv_tail[:])
     return ev
 
 
@@ -100,7 +100,33 @@ def _run_backup_or_exc(
         return True, type(exc)
 
 
-def _assert_equivalent(
+def _assert_explicit_pv_invariants(explicit: NodeMinmaxEvaluation[Any, Any]) -> None:
+    best_branch = explicit.best_branch()
+    if best_branch is None:
+        assert explicit.best_branch_sequence == []
+        return
+
+    if explicit.tree_node.all_branches_generated:
+        assert explicit.best_branch_sequence
+        assert explicit.best_branch_sequence[0] == best_branch
+        return
+
+    if explicit.value_white_direct_evaluation is None:
+        assert explicit.best_branch_sequence == []
+        return
+
+    best_child = explicit.tree_node.branches_children[best_branch]
+    assert best_child is not None
+    if explicit.is_value_subjectively_better_than_evaluation(
+        best_child.tree_evaluation.get_value_white()
+    ):
+        assert explicit.best_branch_sequence
+        assert explicit.best_branch_sequence[0] == best_branch
+    else:
+        assert explicit.best_branch_sequence == []
+
+
+def _assert_value_equivalent(
     legacy: NodeMinmaxEvaluation[Any, Any],
     explicit: NodeMinmaxEvaluation[Any, Any],
     *,
@@ -124,17 +150,16 @@ def _assert_equivalent(
         assert legacy_outcome == explicit_outcome
         return
 
-    legacy_value, legacy_pv, legacy_result = legacy_outcome
-    explicit_value, explicit_pv, explicit_result = explicit_outcome
+    legacy_value, _, legacy_result = legacy_outcome
+    explicit_value, _, explicit_result = explicit_outcome
     assert legacy_value == explicit_value
-    assert legacy_pv == explicit_pv
     assert legacy_result.value_changed == explicit_result.value_changed
-    assert legacy_result.pv_changed == explicit_result.pv_changed
     assert legacy_result.over_changed == explicit_result.over_changed
+    _assert_explicit_pv_invariants(explicit)
 
 
 @pytest.mark.parametrize(
-    "turn, all_generated, parent_eval, child0, child1, expected_value, expected_pv_head",
+    "turn, all_generated, parent_eval, child0, child1, expected_value, expected_best_branch",
     [
         (Color.WHITE, True, 0.0, 0.1, 0.9, 0.9, 1),
         (Color.BLACK, True, 0.0, 0.1, 0.9, 0.1, 0),
@@ -147,7 +172,7 @@ def test_equivalence_full_generation_value_and_pv_head(
     child0: float,
     child1: float,
     expected_value: float,
-    expected_pv_head: int,
+    expected_best_branch: int,
 ) -> None:
     children_legacy = {
         0: _FakeChildNode(
@@ -193,7 +218,7 @@ def test_equivalence_full_generation_value_and_pv_head(
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -201,7 +226,8 @@ def test_equivalence_full_generation_value_and_pv_head(
     )
 
     assert legacy.value_white_minmax == expected_value
-    assert legacy.best_branch_sequence[:1] == [expected_pv_head]
+    assert explicit.value_white_minmax == expected_value
+    assert explicit.best_branch_sequence[:1] == [expected_best_branch]
 
 
 def test_equivalence_partial_expansion_direct_dominates_clears_pv() -> None:
@@ -241,7 +267,7 @@ def test_equivalence_partial_expansion_direct_dominates_clears_pv() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -249,7 +275,7 @@ def test_equivalence_partial_expansion_direct_dominates_clears_pv() -> None:
     )
 
     assert legacy.value_white_minmax == 0.5
-    assert legacy.best_branch_sequence == []
+    assert explicit.best_branch_sequence == []
 
 
 def test_equivalence_partial_expansion_direct_dominates_clears_pv_black() -> None:
@@ -289,7 +315,7 @@ def test_equivalence_partial_expansion_direct_dominates_clears_pv_black() -> Non
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -297,7 +323,7 @@ def test_equivalence_partial_expansion_direct_dominates_clears_pv_black() -> Non
     )
 
     assert legacy.value_white_minmax == 0.5
-    assert legacy.best_branch_sequence == []
+    assert explicit.best_branch_sequence == []
 
 
 def test_equivalence_partial_expansion_child_dominates_sets_pv() -> None:
@@ -337,7 +363,7 @@ def test_equivalence_partial_expansion_child_dominates_sets_pv() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -345,7 +371,7 @@ def test_equivalence_partial_expansion_child_dominates_sets_pv() -> None:
     )
 
     assert legacy.value_white_minmax == 0.8
-    assert legacy.best_branch_sequence[:1] == [0]
+    assert explicit.best_branch_sequence[:1] == [0]
 
 
 def test_equivalence_partial_expansion_child_dominates_sets_pv_black() -> None:
@@ -385,7 +411,7 @@ def test_equivalence_partial_expansion_child_dominates_sets_pv_black() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -393,7 +419,7 @@ def test_equivalence_partial_expansion_child_dominates_sets_pv_black() -> None:
     )
 
     assert legacy.value_white_minmax == 0.1
-    assert legacy.best_branch_sequence[:1] == [0]
+    assert explicit.best_branch_sequence[:1] == [0]
 
 
 def test_equivalence_pv_only_propagation_when_child_best_line_changes() -> None:
@@ -433,25 +459,25 @@ def test_equivalence_pv_only_propagation_when_child_best_line_changes() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
         updated_best_seq=set(),
     )
-    assert legacy.best_branch_sequence[:1] == [0]
+    assert explicit.best_branch_sequence[:1] == [0]
 
-    children_legacy[0].tree_evaluation.best_branch_sequence = [99]
-    children_explicit[0].tree_evaluation.best_branch_sequence = [99]
+    children_legacy[0].tree_evaluation._set_best_branch_sequence([99])
+    children_explicit[0].tree_evaluation._set_best_branch_sequence([99])
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values=set(),
         updated_best_seq={0},
     )
 
-    assert legacy.best_branch_sequence == [0, 99]
+    assert explicit.best_branch_sequence == [0, 99]
 
 
 def test_equivalence_pv_only_propagation_when_child_best_line_changes_black() -> None:
@@ -491,25 +517,25 @@ def test_equivalence_pv_only_propagation_when_child_best_line_changes_black() ->
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
         updated_best_seq=set(),
     )
-    assert legacy.best_branch_sequence[:1] == [0]
+    assert explicit.best_branch_sequence[:1] == [0]
 
-    children_legacy[0].tree_evaluation.best_branch_sequence = [99]
-    children_explicit[0].tree_evaluation.best_branch_sequence = [99]
+    children_legacy[0].tree_evaluation._set_best_branch_sequence([99])
+    children_explicit[0].tree_evaluation._set_best_branch_sequence([99])
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values=set(),
         updated_best_seq={0},
     )
 
-    assert legacy.best_branch_sequence == [0, 99]
+    assert explicit.best_branch_sequence == [0, 99]
 
 
 def test_equivalence_pv_update_on_non_best_branch_is_noop() -> None:
@@ -549,7 +575,7 @@ def test_equivalence_pv_update_on_non_best_branch_is_noop() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -559,7 +585,7 @@ def test_equivalence_pv_update_on_non_best_branch_is_noop() -> None:
     legacy_before = legacy.best_branch_sequence.copy()
     explicit_before = explicit.best_branch_sequence.copy()
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values=set(),
@@ -607,7 +633,7 @@ def test_equivalence_equal_child_values_is_stable() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -617,7 +643,7 @@ def test_equivalence_equal_child_values_is_stable() -> None:
     legacy_first = legacy.best_branch_sequence.copy()
     explicit_first = explicit.best_branch_sequence.copy()
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -665,7 +691,7 @@ def test_equivalence_value_and_best_pv_change_in_same_backup_call() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -674,10 +700,10 @@ def test_equivalence_value_and_best_pv_change_in_same_backup_call() -> None:
 
     children_legacy[1].tree_evaluation.set_evaluation(0.95)
     children_explicit[1].tree_evaluation.set_evaluation(0.95)
-    children_legacy[1].tree_evaluation.best_branch_sequence = [99]
-    children_explicit[1].tree_evaluation.best_branch_sequence = [99]
+    children_legacy[1].tree_evaluation._set_best_branch_sequence([99])
+    children_explicit[1].tree_evaluation._set_best_branch_sequence([99])
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -685,7 +711,7 @@ def test_equivalence_value_and_best_pv_change_in_same_backup_call() -> None:
     )
 
     assert legacy.value_white_minmax == 0.95
-    assert legacy.best_branch_sequence == [1, 99]
+    assert explicit.best_branch_sequence == [1, 99]
 
 
 def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
@@ -725,7 +751,7 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(legacy, explicit, updated_values={0, 1}, updated_best_seq=set())
+    _assert_value_equivalent(legacy, explicit, updated_values={0, 1}, updated_best_seq=set())
 
     legacy_before = (legacy.value_white_minmax, legacy.best_branch_sequence.copy())
     explicit_before = (
@@ -733,7 +759,7 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
         explicit.best_branch_sequence.copy(),
     )
 
-    _assert_equivalent(legacy, explicit, updated_values=set(), updated_best_seq=set())
+    _assert_value_equivalent(legacy, explicit, updated_values=set(), updated_best_seq=set())
 
     assert (legacy.value_white_minmax, legacy.best_branch_sequence) == legacy_before
     assert (
@@ -782,7 +808,7 @@ def test_equivalence_partial_expansion_without_direct_eval() -> None:
     legacy.value_white_direct_evaluation = None
     explicit.value_white_direct_evaluation = None
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values={0, 1},
@@ -806,7 +832,7 @@ def test_equivalence_no_children_raises_assertion_full_generated() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values=set(),
@@ -830,7 +856,7 @@ def test_equivalence_no_children_raises_assertion_partial_generated() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_equivalent(
+    _assert_value_equivalent(
         legacy,
         explicit,
         updated_values=set(),
