@@ -117,9 +117,15 @@ def _assert_explicit_pv_invariants(explicit: NodeMinmaxEvaluation[Any, Any]) -> 
 
     best_child = explicit.tree_node.branches_children[best_branch]
     assert best_child is not None
-    if explicit.is_value_subjectively_better_than_evaluation(
-        best_child.tree_evaluation.get_value_white()
-    ):
+    child_value_white = best_child.tree_evaluation.get_value_white()
+    direct_eval = explicit.value_white_direct_evaluation
+    assert direct_eval is not None
+    if explicit.tree_node.state.turn is Color.WHITE:
+        child_dominates = child_value_white >= direct_eval
+    else:
+        child_dominates = child_value_white <= direct_eval
+
+    if child_dominates:
         assert explicit.best_branch_sequence
         assert explicit.best_branch_sequence[0] == best_branch
     else:

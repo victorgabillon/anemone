@@ -83,8 +83,9 @@ class ExplicitMinimaxBackupPolicy:
                             best_branch_after_update
                         ]
                         assert best_child is not None
-                    if node_eval.is_value_subjectively_better_than_evaluation(
-                        best_child.tree_evaluation.get_value_white()
+                    if self._is_child_better_than_direct_evaluation(
+                        node_eval=node_eval,
+                        child_value_white=best_child.tree_evaluation.get_value_white(),
                     ):
                         if should_rebuild:
                             did_rebuild = (
@@ -134,3 +135,16 @@ class ExplicitMinimaxBackupPolicy:
                 value_after_update = min(best_child_value_white, direct_evaluation)
 
         node_eval.value_white_minmax = value_after_update
+
+    def _is_child_better_than_direct_evaluation(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        child_value_white: float,
+    ) -> bool:
+        """Return whether child value dominates direct eval for the side to move."""
+        direct_evaluation = node_eval.value_white_direct_evaluation
+        assert direct_evaluation is not None
+        if node_eval.tree_node.state.turn is Color.WHITE:
+            return child_value_white >= direct_evaluation
+        return child_value_white <= direct_evaluation
