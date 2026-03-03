@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
@@ -18,39 +18,32 @@ from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import 
 
 
 @dataclass
-class _FakeOverEvent:
-    def is_over(self) -> bool:
-        return False
-
-    def is_winner(self, player: Color) -> bool:
-        del player
-        return False
-
-    def is_draw(self) -> bool:
-        return False
-
-
-@dataclass
-class _FakeChildEvaluation:
-    value_white: float
-    best_branch_sequence: list[int] = field(default_factory=list)
-    over_event: _FakeOverEvent = field(default_factory=_FakeOverEvent)
-
-    def get_value_white(self) -> float:
-        return self.value_white
-
-
-@dataclass
 class _FakeChildNode:
     node_id: int
-    tree_evaluation: _FakeChildEvaluation
+    tree_evaluation: NodeMinmaxEvaluation[Any, Any]
 
     @property
     def tree_node(self) -> Any:
-        return SimpleNamespace(
-            id=self.node_id,
-            state=SimpleNamespace(turn=Color.WHITE),
-        )
+        return self.tree_evaluation.tree_node
+
+
+def _make_leaf_eval(
+    *,
+    turn: Color,
+    value_white: float,
+    pv_tail: list[int],
+    node_id: int,
+) -> NodeMinmaxEvaluation[Any, Any]:
+    leaf_tree_node = SimpleNamespace(
+        id=node_id,
+        state=SimpleNamespace(turn=turn),
+        branches_children={},
+        all_branches_generated=True,
+    )
+    ev = NodeMinmaxEvaluation(tree_node=leaf_tree_node, backup_policy=None)
+    ev.set_evaluation(value_white)
+    ev.best_branch_sequence = pv_tail[:]
+    return ev
 
 
 def _build_parent_eval(
@@ -69,14 +62,6 @@ def _build_parent_eval(
     )
     ev = NodeMinmaxEvaluation(tree_node=parent_tree_node, backup_policy=policy)
     ev.set_evaluation(parent_eval_value)
-
-    all_branches = set(children.keys())
-    if all_branches:
-        ev.update_branches_values(branches_to_consider=all_branches)
-        ev.update_value_minmax()
-        if all_generated and ev.best_branch() is not None:
-            ev.one_of_best_children_becomes_best_next_node()
-
     return ev
 
 
@@ -161,21 +146,29 @@ def test_equivalence_full_generation_value_and_pv_head(
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=child0, best_branch_sequence=[7]),
+            _make_leaf_eval(
+                turn=Color.WHITE, value_white=child0, pv_tail=[7], node_id=10
+            ),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=child1, best_branch_sequence=[8]),
+            _make_leaf_eval(
+                turn=Color.WHITE, value_white=child1, pv_tail=[8], node_id=11
+            ),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=child0, best_branch_sequence=[7]),
+            _make_leaf_eval(
+                turn=Color.WHITE, value_white=child0, pv_tail=[7], node_id=10
+            ),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=child1, best_branch_sequence=[8]),
+            _make_leaf_eval(
+                turn=Color.WHITE, value_white=child1, pv_tail=[8], node_id=11
+            ),
         ),
     }
 
@@ -209,21 +202,21 @@ def test_equivalence_partial_expansion_direct_dominates_clears_pv() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.4, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.4, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.3, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.3, pv_tail=[8], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.4, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.4, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.3, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.3, pv_tail=[8], node_id=11),
         ),
     }
 
@@ -257,21 +250,21 @@ def test_equivalence_partial_expansion_direct_dominates_clears_pv_black() -> Non
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.6, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.6, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.7, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.7, pv_tail=[8], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.6, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.6, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.7, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.7, pv_tail=[8], node_id=11),
         ),
     }
 
@@ -305,21 +298,21 @@ def test_equivalence_partial_expansion_child_dominates_sets_pv() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.8, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.8, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[8], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.8, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.8, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[8], node_id=11),
         ),
     }
 
@@ -353,21 +346,21 @@ def test_equivalence_partial_expansion_child_dominates_sets_pv_black() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.1, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.1, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[8], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.1, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.1, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[8], node_id=11),
         ),
     }
 
@@ -401,21 +394,21 @@ def test_equivalence_pv_only_propagation_when_child_best_line_changes() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
 
@@ -459,21 +452,21 @@ def test_equivalence_pv_only_propagation_when_child_best_line_changes_black() ->
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.1, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.1, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[5], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.1, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.1, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[5], node_id=11),
         ),
     }
 
@@ -517,21 +510,21 @@ def test_equivalence_pv_update_on_non_best_branch_is_noop() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
 
@@ -575,21 +568,21 @@ def test_equivalence_equal_child_values_is_stable() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.5, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.5, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.5, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.5, pv_tail=[5], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.5, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.5, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.5, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.5, pv_tail=[5], node_id=11),
         ),
     }
 
@@ -633,21 +626,21 @@ def test_equivalence_value_and_best_pv_change_in_same_backup_call() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
 
@@ -673,8 +666,8 @@ def test_equivalence_value_and_best_pv_change_in_same_backup_call() -> None:
         updated_best_seq=set(),
     )
 
-    children_legacy[1].tree_evaluation.value_white = 0.95
-    children_explicit[1].tree_evaluation.value_white = 0.95
+    children_legacy[1].tree_evaluation.set_evaluation(0.95)
+    children_explicit[1].tree_evaluation.set_evaluation(0.95)
     children_legacy[1].tree_evaluation.best_branch_sequence = [99]
     children_explicit[1].tree_evaluation.best_branch_sequence = [99]
 
@@ -693,21 +686,21 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.9, best_branch_sequence=[4]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.9, pv_tail=[4], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[5]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
 
@@ -747,21 +740,21 @@ def test_equivalence_partial_expansion_without_direct_eval() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.8, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.8, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[8], node_id=11),
         ),
     }
     children_explicit = {
         0: _FakeChildNode(
             10,
-            _FakeChildEvaluation(value_white=0.8, best_branch_sequence=[7]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.8, pv_tail=[7], node_id=10),
         ),
         1: _FakeChildNode(
             11,
-            _FakeChildEvaluation(value_white=0.2, best_branch_sequence=[8]),
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[8], node_id=11),
         ),
     }
 
