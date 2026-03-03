@@ -31,8 +31,8 @@ class ExplicitMinimaxBackupPolicy:
 
         Partial-expansion PV invariant (authoritative rule):
         - If there is no best branch, PV must be empty.
-        - When ``all_branches_generated`` is ``False``, PV exists iff direct evaluation
-          exists and the best child is at least as good as direct evaluation for side to move.
+        - When ``all_branches_generated`` is ``False``, PV exists iff direct value
+          exists and the best child is at least as good as direct value for side to move.
         - If the rule allows PV, its head must match ``best_branch()`` (rebuild when needed).
         """
         value_before_update = node_eval.minmax_value
