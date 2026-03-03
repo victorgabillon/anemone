@@ -8,6 +8,6 @@ from anemone.backup_policies.types import BackupResult
 __all__ = [
     "BackupPolicy",
     "BackupResult",
-    "LegacyMinimaxBackupPolicy",
     "ExplicitMinimaxBackupPolicy",
+    "LegacyMinimaxBackupPolicy",
 ]

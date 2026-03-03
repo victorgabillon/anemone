@@ -42,7 +42,9 @@ def _make_leaf_eval(
     return ev
 
 
-def _make_parent_eval() -> tuple[NodeMinmaxEvaluation[Any, Any], dict[int, _FakeChildNode]]:
+def _make_parent_eval() -> tuple[
+    NodeMinmaxEvaluation[Any, Any], dict[int, _FakeChildNode]
+]:
     children = {
         0: _FakeChildNode(
             10,
@@ -129,7 +131,9 @@ def test_no_pv_rebuild_for_non_best_child_pv_changes() -> None:
     assert parent.pv_version == version_before
 
 
-def test_parent_pv_rebuilds_on_best_child_pv_update_notification_without_version_bump() -> None:
+def test_parent_pv_rebuilds_on_best_child_pv_update_notification_without_version_bump() -> (
+    None
+):
     parent, children = _make_parent_eval()
     parent.backup_from_children(
         branches_with_updated_value={0, 1},

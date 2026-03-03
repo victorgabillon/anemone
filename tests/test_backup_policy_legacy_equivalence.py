@@ -757,7 +757,9 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    _assert_value_equivalent(legacy, explicit, updated_values={0, 1}, updated_best_seq=set())
+    _assert_value_equivalent(
+        legacy, explicit, updated_values={0, 1}, updated_best_seq=set()
+    )
 
     legacy_before = (legacy.value_white_minmax, legacy.best_branch_sequence.copy())
     explicit_before = (
@@ -765,7 +767,9 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
         explicit.best_branch_sequence.copy(),
     )
 
-    _assert_value_equivalent(legacy, explicit, updated_values=set(), updated_best_seq=set())
+    _assert_value_equivalent(
+        legacy, explicit, updated_values=set(), updated_best_seq=set()
+    )
 
     assert (legacy.value_white_minmax, legacy.best_branch_sequence) == legacy_before
     assert (

@@ -39,7 +39,7 @@ class ExplicitMinimaxBackupPolicy:
         best_branch_after_update = node_eval.best_branch()
 
         if best_branch_after_update is None:
-            node_eval._set_best_branch_sequence([])
+            node_eval.clear_best_branch_sequence()
         else:
             pv_head_mismatch = (
                 not node_eval.best_branch_sequence
@@ -53,13 +53,15 @@ class ExplicitMinimaxBackupPolicy:
             best_child = None
             best_child_version_changed = False
             if not pv_head_mismatch:
-                best_child = node_eval.tree_node.branches_children[best_branch_after_update]
+                best_child = node_eval.tree_node.branches_children[
+                    best_branch_after_update
+                ]
                 assert best_child is not None
                 best_child_version = int(
                     getattr(best_child.tree_evaluation, "pv_version", 0)
                 )
                 best_child_version_changed = (
-                    node_eval._pv_cached_best_child_version != best_child_version
+                    node_eval.pv_cached_best_child_version != best_child_version
                 )
 
             should_rebuild = (
@@ -72,11 +74,13 @@ class ExplicitMinimaxBackupPolicy:
             did_rebuild = False
             if node_eval.tree_node.all_branches_generated:
                 if should_rebuild:
-                    did_rebuild = node_eval.one_of_best_children_becomes_best_next_node()
+                    did_rebuild = (
+                        node_eval.one_of_best_children_becomes_best_next_node()
+                    )
             else:
                 direct_evaluation = node_eval.value_white_direct_evaluation
                 if direct_evaluation is None:
-                    node_eval._set_best_branch_sequence([])
+                    node_eval.clear_best_branch_sequence()
                 else:
                     if best_child is None:
                         best_child = node_eval.tree_node.branches_children[
@@ -92,7 +96,7 @@ class ExplicitMinimaxBackupPolicy:
                                 node_eval.one_of_best_children_becomes_best_next_node()
                             )
                     else:
-                        node_eval._set_best_branch_sequence([])
+                        node_eval.clear_best_branch_sequence()
 
             if (
                 node_eval.best_branch_sequence

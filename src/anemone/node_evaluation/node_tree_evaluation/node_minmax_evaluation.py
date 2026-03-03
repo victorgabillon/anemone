@@ -134,8 +134,11 @@ class NodeMinmaxEvaluation[
     best_branch_sequence: list[BranchKey] = field(
         default_factory=make_branch_sequence_factory
     )
+
+    # version of principal variation content for change detection
     pv_version: int = 0
-    _pv_cached_best_branch: BranchKey | None = None
+
+    # cached pv_version of the current best child at last PV materialization
     _pv_cached_best_child_version: int | None = None
 
     # the children of the tree node are kept in a dictionary that can be sorted by their evaluations ()
@@ -785,64 +788,92 @@ class NodeMinmaxEvaluation[
 
         self.value_white_minmax = self.minmax_value.score
 
-    def _set_best_branch_sequence(self, new_seq: list[BranchKey]) -> bool:
-        """Set PV sequence and bump ``pv_version`` only when content changes."""
-        if new_seq == self.best_branch_sequence:
-            return False
-
-        self.best_branch_sequence = list(new_seq)
-        self.pv_version += 1
-
-        if not new_seq:
-            self._pv_cached_best_branch = None
-            self._pv_cached_best_child_version = None
-            return True
-
-        best_branch = new_seq[0]
-        self._pv_cached_best_branch = best_branch
-        best_child = self.tree_node.branches_children.get(best_branch)
-        if best_child is None:
-            self._pv_cached_best_child_version = None
-        else:
-            self._pv_cached_best_child_version = int(
-                getattr(best_child.tree_evaluation, "pv_version", 0)
-            )
-        return True
-
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
     ) -> bool:
-        """Update parent PV when the current best child published a newer PV version."""
-        if not self.best_branch_sequence:
-            return False
+        """Update the best branch sequence based on notifications from children nodes.
 
-        best_branch_key = self.best_branch()
-        if best_branch_key is None:
-            return self._set_best_branch_sequence([])
+        This uses the branch keys that identify children which updated their best-branch sequence.
 
-        if self.best_branch_sequence[0] != best_branch_key:
-            return False
-
-        if best_branch_key not in branches_with_updated_best_branch_seq:
-            return False
-
-        best_node = self.tree_node.branches_children[best_branch_key]
-        if best_node is None:
-            return False
-
-        best_child_version = int(getattr(best_node.tree_evaluation, "pv_version", 0))
-        if self._pv_cached_best_child_version == best_child_version:
-            return False
-
-        return self._set_best_branch_sequence(
-            [best_branch_key, *best_node.tree_evaluation.best_branch_sequence]
-        )
-
-    def one_of_best_children_becomes_best_next_node(self) -> bool:
-        """Materialize PV from one of the current best children.
+        Args:
+            branches_with_updated_best_branch_seq (set[Ibranch]): A set of branch that have
+                notified an updated best-branch sequence.
 
         Returns:
-            bool: True when the PV content changed.
+            bool: True if self.best_branch_sequence is modified, False otherwise.
+
+        """
+        has_best_branch_seq_changed: bool = False
+        best_branch_key: BranchKey = self.best_branch_sequence[0]
+        best_node: NodeWithValue | None = self.tree_node.branches_children[
+            best_branch_key
+        ]
+
+        if (
+            best_branch_key in branches_with_updated_best_branch_seq
+            and best_node is not None
+        ):
+            has_best_branch_seq_changed = self._set_best_branch_sequence(
+                [
+                    best_branch_key,
+                    *best_node.tree_evaluation.best_branch_sequence,
+                ]
+            )
+
+        return has_best_branch_seq_changed
+
+    def _set_best_branch_sequence(self, new_seq: list[BranchKey]) -> bool:
+        """Set PV content and update cached child version.
+
+        Returns:
+            bool: True iff the PV content changed.
+
+        """
+        if self.best_branch_sequence == new_seq:
+            return False
+
+        self.best_branch_sequence = new_seq.copy()
+        self.pv_version += 1
+
+        if not self.best_branch_sequence:
+            self._pv_cached_best_child_version = None
+            return True
+
+        best_branch_key = self.best_branch_sequence[0]
+        best_child = self.tree_node.branches_children.get(best_branch_key)
+        if best_child is None:
+            self._pv_cached_best_child_version = None
+            return True
+
+        self._pv_cached_best_child_version = int(
+            getattr(best_child.tree_evaluation, "pv_version", 0)
+        )
+        return True
+
+    def set_best_branch_sequence(self, new_seq: list[BranchKey]) -> bool:
+        """Public PV setter for backup policies/tests. Bumps pv_version only on content change."""
+        return self._set_best_branch_sequence(new_seq)
+
+    def clear_best_branch_sequence(self) -> bool:
+        """Public PV clearer for backup policies/tests."""
+        return self._set_best_branch_sequence([])
+
+    @property
+    def pv_cached_best_child_version(self) -> int | None:
+        """Cached pv_version of the best child when PV was last materialized."""
+        return self._pv_cached_best_child_version
+
+    def one_of_best_children_becomes_best_next_node(self) -> bool:
+        """Triggered when the value of the current best branch does not match the best value.
+
+        This method selects one of the best children nodes as the next best node based on a specific condition.
+        It updates the `best_branch_sequence` attribute with the selected child node and its corresponding best branch sequence.
+
+        Raises:
+            AssertionError: If the number of best children is not equal to 1 when `how_equal_` is set to 'equal'.
+            AssertionError: If the selected best child is not an instance of `NodeWithValue`.
+            AssertionError: If the `best_node_sequence` attribute is empty after updating.
+
         """
         how_equal_: str = "equal"
         best_branches: list[BranchKey] = self.get_all_of_the_best_branches(
@@ -853,11 +884,14 @@ class NodeMinmaxEvaluation[
         best_branch_key = choice(best_branches)
         best_child = self.tree_node.branches_children[best_branch_key]
         assert best_child is not None
-        has_changed = self._set_best_branch_sequence(
-            [best_branch_key, *best_child.tree_evaluation.best_branch_sequence]
+        has_best_branch_seq_changed = self._set_best_branch_sequence(
+            [
+                best_branch_key,
+                *best_child.tree_evaluation.best_branch_sequence,
+            ]
         )
         assert self.best_branch_sequence
-        return has_changed
+        return has_best_branch_seq_changed
 
     def is_value_subjectively_better_than_evaluation(self, value_white: float) -> bool:
         """Check if the given value_white is subjectively better than the value_white_evaluator.
@@ -937,7 +971,7 @@ class NodeMinmaxEvaluation[
             ):
                 self.one_of_best_children_becomes_best_next_node()
             else:
-                self._set_best_branch_sequence([])
+                self.clear_best_branch_sequence()
         best_branch_seq_after_update = self.best_branch_sequence
         has_best_node_seq_changed = (
             best_branch_seq_before_update != best_branch_seq_after_update
