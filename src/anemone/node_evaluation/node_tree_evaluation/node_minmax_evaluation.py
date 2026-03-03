@@ -794,6 +794,8 @@ class NodeMinmaxEvaluation[
         """Update the best branch sequence based on notifications from children nodes.
 
         This uses the branch keys that identify children which updated their best-branch sequence.
+        It only propagates a tail update when the current PV head already matches
+        ``best_branch()``; otherwise this method is a no-op.
 
         Args:
             branches_with_updated_best_branch_seq (set[Ibranch]): A set of branch that have
@@ -814,10 +816,10 @@ class NodeMinmaxEvaluation[
         if best_node is None:
             return False
 
-        if (
-            self.best_branch_sequence
-            and self.best_branch_sequence[0] == best_branch_key
-        ):
+        if self.best_branch_sequence:
+            if self.best_branch_sequence[0] != best_branch_key:
+                return False
+
             best_child_version = int(
                 getattr(best_node.tree_evaluation, "pv_version", 0)
             )
@@ -871,6 +873,58 @@ class NodeMinmaxEvaluation[
     def pv_cached_best_child_version(self) -> int | None:
         """Cached pv_version of the best child when PV was last materialized."""
         return self._pv_cached_best_child_version
+
+    def assert_pv_invariants(self) -> None:
+        """Assert core principal-variation invariants.
+
+        Intended for tests and debugging guardrails.
+        """
+        best_branch_key = self.best_branch()
+
+        if best_branch_key is None:
+            assert not self.best_branch_sequence, (
+                "PV must be empty when no best branch exists."
+            )
+            return
+
+        if self.best_branch_sequence:
+            assert self.best_branch_sequence[0] == best_branch_key, (
+                "PV head must match best_branch()."
+            )
+            best_child = self.tree_node.branches_children.get(best_branch_key)
+            assert best_child is not None, (
+                "PV is non-empty but best child is missing from branches_children."
+            )
+
+        if self.tree_node.all_branches_generated:
+            return
+
+        direct_evaluation = self.value_white_direct_evaluation
+        if direct_evaluation is None:
+            assert not self.best_branch_sequence, (
+                "PV must be empty for partial expansion when direct evaluation is missing."
+            )
+            return
+
+        best_child = self.tree_node.branches_children.get(best_branch_key)
+        assert best_child is not None, (
+            "Best branch exists but best child is missing from branches_children."
+        )
+        best_child_value = best_child.tree_evaluation.value_white_minmax
+        assert best_child_value is not None, "Best child value is missing."
+        child_is_good_enough = (
+            best_child_value >= direct_evaluation
+            if self.tree_node.state.turn == Color.WHITE
+            else best_child_value <= direct_evaluation
+        )
+        if not child_is_good_enough:
+            assert not self.best_branch_sequence, (
+                "PV must be empty when partial-expansion rule disallows it."
+            )
+        else:
+            assert self.best_branch_sequence, (
+                "PV must be non-empty when partial-expansion rule allows it."
+            )
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Triggered when the value of the current best branch does not match the best value.

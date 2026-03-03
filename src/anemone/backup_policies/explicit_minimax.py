@@ -25,7 +25,14 @@ class ExplicitMinimaxBackupPolicy:
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
-        """Recompute value/PV from updated children and return change flags."""
+        """Recompute value/PV from updated children and return change flags.
+
+        Partial-expansion PV invariant (authoritative rule):
+        - If there is no best branch, PV must be empty.
+        - When ``all_branches_generated`` is ``False``, PV exists iff direct evaluation
+          exists and the best child is at least as good as direct evaluation for side to move.
+        - If the rule allows PV, its head must match ``best_branch()`` (rebuild when needed).
+        """
         value_before_update = node_eval.get_value_white()
         pv_before_update = node_eval.best_branch_sequence.copy()
         best_branch_before_update = node_eval.best_branch()
