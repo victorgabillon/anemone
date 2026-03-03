@@ -62,6 +62,12 @@ def _build_parent_eval(
     )
     ev = NodeMinmaxEvaluation(tree_node=parent_tree_node, backup_policy=policy)
     ev.set_evaluation(parent_eval_value)
+
+    # Minimal init: populate branch ordering so `best_branch()` is defined.
+    all_branches = set(children.keys())
+    if all_branches:
+        ev.update_branches_values(branches_to_consider=all_branches)
+
     return ev
 
 
