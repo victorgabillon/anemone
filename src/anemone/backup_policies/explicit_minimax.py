@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 from valanga import Color
 
 from anemone.backup_policies.types import BackupResult
+from anemone.utils.my_value_sorted_dict import sort_dic
+from anemone.values import Certainty, Value
 
 if TYPE_CHECKING:
     from valanga import BranchKey
@@ -29,20 +31,21 @@ class ExplicitMinimaxBackupPolicy:
 
         Partial-expansion PV invariant (authoritative rule):
         - If there is no best branch, PV must be empty.
-        - When ``all_branches_generated`` is ``False``, PV exists iff direct evaluation
-          exists and the best child is at least as good as direct evaluation for side to move.
+        - When ``all_branches_generated`` is ``False``, PV exists iff direct value
+          exists and the best child is at least as good as direct value for side to move.
         - If the rule allows PV, its head must match ``best_branch()`` (rebuild when needed).
         """
-        value_before_update = node_eval.get_value_white()
+        value_before_update = node_eval.minmax_value
         pv_before_update = node_eval.best_branch_sequence.copy()
         best_branch_before_update = node_eval.best_branch()
 
         if branches_with_updated_value:
-            node_eval.update_branches_values(
+            self._update_branches_values_value_only(
+                node_eval=node_eval,
                 branches_to_consider=branches_with_updated_value,
             )
 
-        self._update_value_float_only(node_eval=node_eval)
+        self._update_value_value_only(node_eval=node_eval)
         best_branch_after_update = node_eval.best_branch()
 
         if best_branch_after_update is None:
@@ -85,8 +88,8 @@ class ExplicitMinimaxBackupPolicy:
                         node_eval.one_of_best_children_becomes_best_next_node()
                     )
             else:
-                direct_evaluation = node_eval.value_white_direct_evaluation
-                if direct_evaluation is None:
+                direct_value = self._direct_value_candidate(node_eval)
+                if direct_value is None:
                     node_eval.clear_best_branch_sequence()
                 else:
                     if best_child is None:
@@ -94,9 +97,9 @@ class ExplicitMinimaxBackupPolicy:
                             best_branch_after_update
                         ]
                         assert best_child is not None
-                    if self._is_child_better_than_direct_evaluation(
+                    if self._is_child_value_better_than_direct_value(
                         node_eval=node_eval,
-                        child_value_white=best_child.tree_evaluation.get_value_white(),
+                        child_value=self._child_value_candidate(node_eval, best_child),
                     ):
                         if should_rebuild:
                             did_rebuild = (
@@ -114,7 +117,10 @@ class ExplicitMinimaxBackupPolicy:
                     branches_with_updated_best_branch_seq
                 )
 
-        value_changed = value_before_update != node_eval.get_value_white()
+        value_changed = has_value_changed(
+            value_before=value_before_update,
+            value_after=node_eval.minmax_value,
+        )
         pv_changed = pv_before_update != node_eval.best_branch_sequence
 
         return BackupResult(
@@ -123,39 +129,147 @@ class ExplicitMinimaxBackupPolicy:
             over_changed=False,
         )
 
-    def _update_value_float_only(
+    def _update_value_value_only(
         self,
         node_eval: NodeMinmaxEvaluation[Any, Any],
     ) -> None:
-        """Update ``value_white_minmax`` using only float bridge values."""
+        """Update ``minmax_value`` and keep ``value_white_minmax`` as float bridge."""
         best_branch_key = node_eval.best_branch()
+        if best_branch_key is None and node_eval.tree_node.branches_children:
+            self._update_branches_values_value_only(
+                node_eval=node_eval,
+                branches_to_consider=set(node_eval.tree_node.branches_children),
+            )
+            best_branch_key = node_eval.best_branch()
         assert best_branch_key is not None
 
         best_child = node_eval.tree_node.branches_children[best_branch_key]
         assert best_child is not None
-        best_child_value_white = best_child.tree_evaluation.get_value_white()
+        best_child_value = self._child_value_candidate(node_eval, best_child)
+        assert best_child_value is not None
 
         if node_eval.tree_node.all_branches_generated:
-            value_after_update = best_child_value_white
+            value_after_update = best_child_value
         else:
-            direct_evaluation = node_eval.value_white_direct_evaluation
-            assert direct_evaluation is not None
-            if node_eval.tree_node.state.turn is Color.WHITE:
-                value_after_update = max(best_child_value_white, direct_evaluation)
+            direct_value = self._direct_value_candidate(node_eval)
+            assert direct_value is not None
+            if (
+                node_eval.evaluation_ordering.semantic_compare(
+                    best_child_value,
+                    direct_value,
+                    side_to_move=node_eval.tree_node.state.turn,
+                )
+                >= 0
+            ):
+                value_after_update = best_child_value
             else:
-                value_after_update = min(best_child_value_white, direct_evaluation)
+                value_after_update = direct_value
 
-        node_eval.value_white_minmax = value_after_update
+        node_eval.minmax_value = value_after_update
+        node_eval.value_white_minmax = node_eval.minmax_value.score
 
-    def _is_child_better_than_direct_evaluation(
+    def _update_branches_values_value_only(
         self,
         *,
         node_eval: NodeMinmaxEvaluation[Any, Any],
-        child_value_white: float,
+        branches_to_consider: set[BranchKey],
+    ) -> None:
+        """Update branch ordering keys using Value semantics instead of float-only keys."""
+        for branch_key in branches_to_consider:
+            child = node_eval.tree_node.branches_children[branch_key]
+            assert child is not None
+            child_value = self._child_value_candidate(node_eval, child)
+            if child_value is None:
+                continue
+
+            subjective_sort_value = node_eval.evaluation_ordering.search_sort_key(
+                child_value,
+                side_to_move=node_eval.tree_node.state.turn,
+            )
+
+            if node_eval.is_over():
+                node_eval.branches_sorted_by_value_[branch_key] = (
+                    subjective_sort_value,
+                    -len(child.tree_evaluation.best_branch_sequence),
+                    child.tree_node.id,
+                )
+            else:
+                node_eval.branches_sorted_by_value_[branch_key] = (
+                    subjective_sort_value,
+                    len(child.tree_evaluation.best_branch_sequence),
+                    child.tree_node.id,
+                )
+
+        node_eval.branches_sorted_by_value_ = sort_dic(node_eval.branches_sorted_by_value_)
+
+    def _child_value_candidate(
+        self,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        child: Any,
+    ) -> Value | None:
+        child_eval = child.tree_evaluation
+        if child_eval.minmax_value is not None:
+            return child_eval.minmax_value
+        if child_eval.direct_value is not None:
+            return child_eval.direct_value
+        if child_eval.value_white_minmax is not None:
+            # TODO: Step 7 remove fallback after full migration.
+            return Value(
+                score=child_eval.value_white_minmax,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
+        if child_eval.value_white_direct_evaluation is not None:
+            # TODO: Step 7 remove fallback after full migration.
+            return Value(
+                score=child_eval.value_white_direct_evaluation,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
+        return None
+
+    def _direct_value_candidate(
+        self,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+    ) -> Value | None:
+        if node_eval.direct_value is not None:
+            return node_eval.direct_value
+        if node_eval.value_white_direct_evaluation is not None:
+            # TODO: Step 7 remove fallback after full migration.
+            return Value(
+                score=node_eval.value_white_direct_evaluation,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
+        return None
+
+    def _is_child_value_better_than_direct_value(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        child_value: Value | None,
     ) -> bool:
         """Return whether child value dominates direct eval for the side to move."""
-        direct_evaluation = node_eval.value_white_direct_evaluation
-        assert direct_evaluation is not None
-        if node_eval.tree_node.state.turn is Color.WHITE:
-            return child_value_white >= direct_evaluation
-        return child_value_white <= direct_evaluation
+        assert child_value is not None
+        direct_value = self._direct_value_candidate(node_eval)
+        assert direct_value is not None
+        return (
+            node_eval.evaluation_ordering.semantic_compare(
+                child_value,
+                direct_value,
+                side_to_move=node_eval.tree_node.state.turn,
+            )
+            >= 0
+        )
+
+
+
+def has_value_changed(*, value_before: Value | None, value_after: Value | None) -> bool:
+    """Return whether score/certainty/over metadata changed between two values."""
+    if value_before is None or value_after is None:
+        return value_before != value_after
+    return (
+        value_before.score != value_after.score
+        or value_before.certainty != value_after.certainty
+        or value_before.over_event != value_after.over_event
+    )
