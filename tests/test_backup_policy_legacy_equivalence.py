@@ -69,6 +69,14 @@ def _build_parent_eval(
     )
     ev = NodeMinmaxEvaluation(tree_node=parent_tree_node, backup_policy=policy)
     ev.set_evaluation(parent_eval_value)
+
+    all_branches = set(children.keys())
+    if all_branches:
+        ev.update_branches_values(branches_to_consider=all_branches)
+        ev.update_value_minmax()
+        if all_generated and ev.best_branch() is not None:
+            ev.one_of_best_children_becomes_best_next_node()
+
     return ev
 
 
