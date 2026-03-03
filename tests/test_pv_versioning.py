@@ -38,7 +38,7 @@ def _make_leaf_eval(
     )
     ev = NodeMinmaxEvaluation(tree_node=leaf_tree_node, backup_policy=None)
     ev.set_evaluation(value_white)
-    ev._set_best_branch_sequence(pv_tail[:])
+    ev.set_best_branch_sequence(pv_tail[:])
     return ev
 
 
@@ -99,7 +99,7 @@ def test_parent_pv_rebuilds_when_best_child_pv_version_changes() -> None:
     )
 
     version_before = parent.pv_version
-    children[0].tree_evaluation._set_best_branch_sequence([99])
+    children[0].tree_evaluation.set_best_branch_sequence([99])
 
     result = parent.backup_from_children(
         branches_with_updated_value=set(),
@@ -120,7 +120,7 @@ def test_no_pv_rebuild_for_non_best_child_pv_changes() -> None:
     version_before = parent.pv_version
     pv_before = parent.best_branch_sequence.copy()
 
-    children[1].tree_evaluation._set_best_branch_sequence([77])
+    children[1].tree_evaluation.set_best_branch_sequence([77])
     result = parent.backup_from_children(
         branches_with_updated_value=set(),
         branches_with_updated_best_branch_seq={1},
@@ -129,6 +129,25 @@ def test_no_pv_rebuild_for_non_best_child_pv_changes() -> None:
     assert not result.pv_changed
     assert parent.best_branch_sequence == pv_before
     assert parent.pv_version == version_before
+
+
+def test_parent_pv_rebuilds_from_empty_parent_pv_on_best_child_notification() -> None:
+    parent, children = _make_parent_eval()
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    parent.clear_best_branch_sequence()
+    children[0].tree_evaluation.set_best_branch_sequence([88])
+
+    result = parent.backup_from_children(
+        branches_with_updated_value=set(),
+        branches_with_updated_best_branch_seq={0},
+    )
+
+    assert result.pv_changed
+    assert parent.best_branch_sequence == [0, 88]
 
 
 def test_parent_pv_rebuilds_on_best_child_pv_update_notification_without_version_bump() -> (
@@ -140,7 +159,7 @@ def test_parent_pv_rebuilds_on_best_child_pv_update_notification_without_version
         branches_with_updated_best_branch_seq=set(),
     )
 
-    # Simulate legacy/direct assignment path that bypasses _set_best_branch_sequence.
+    # Simulate legacy/direct assignment path that bypasses set_best_branch_sequence.
     children[0].tree_evaluation.best_branch_sequence = [123]
 
     result = parent.backup_from_children(

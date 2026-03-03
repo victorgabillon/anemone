@@ -42,7 +42,7 @@ def _make_leaf_eval(
     )
     ev = NodeMinmaxEvaluation(tree_node=leaf_tree_node, backup_policy=None)
     ev.set_evaluation(value_white)
-    ev._set_best_branch_sequence(pv_tail[:])
+    ev.set_best_branch_sequence(pv_tail[:])
     return ev
 
 
@@ -473,8 +473,8 @@ def test_equivalence_pv_only_propagation_when_child_best_line_changes() -> None:
     )
     assert explicit.best_branch_sequence[:1] == [0]
 
-    children_legacy[0].tree_evaluation._set_best_branch_sequence([99])
-    children_explicit[0].tree_evaluation._set_best_branch_sequence([99])
+    children_legacy[0].tree_evaluation.set_best_branch_sequence([99])
+    children_explicit[0].tree_evaluation.set_best_branch_sequence([99])
 
     _assert_value_equivalent(
         legacy,
@@ -531,8 +531,8 @@ def test_equivalence_pv_only_propagation_when_child_best_line_changes_black() ->
     )
     assert explicit.best_branch_sequence[:1] == [0]
 
-    children_legacy[0].tree_evaluation._set_best_branch_sequence([99])
-    children_explicit[0].tree_evaluation._set_best_branch_sequence([99])
+    children_legacy[0].tree_evaluation.set_best_branch_sequence([99])
+    children_explicit[0].tree_evaluation.set_best_branch_sequence([99])
 
     _assert_value_equivalent(
         legacy,
@@ -706,8 +706,8 @@ def test_equivalence_value_and_best_pv_change_in_same_backup_call() -> None:
 
     children_legacy[1].tree_evaluation.set_evaluation(0.95)
     children_explicit[1].tree_evaluation.set_evaluation(0.95)
-    children_legacy[1].tree_evaluation._set_best_branch_sequence([99])
-    children_explicit[1].tree_evaluation._set_best_branch_sequence([99])
+    children_legacy[1].tree_evaluation.set_best_branch_sequence([99])
+    children_explicit[1].tree_evaluation.set_best_branch_sequence([99])
 
     _assert_value_equivalent(
         legacy,
