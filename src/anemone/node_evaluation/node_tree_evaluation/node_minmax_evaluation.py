@@ -224,14 +224,21 @@ class NodeMinmaxEvaluation[
 
         """
         self.value_white_direct_evaluation = evaluation
-        self.direct_value = Value(
-            score=evaluation,
-            certainty=Certainty.ESTIMATE,
-            over_event=None,
-        )
+        if (
+            self.direct_value is None
+            or self.direct_value.certainty is not Certainty.TERMINAL
+        ):
+            self.direct_value = Value(
+                score=evaluation,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
+
         self.value_white_minmax = (
             evaluation  # base value before knowing values of the children
         )
+        if self.minmax_value is None:
+            self.minmax_value = self.direct_value
 
     def _child_value_candidate(self, branch_key: BranchKey) -> Value | None:
         """Return the best available Value candidate for a child branch.

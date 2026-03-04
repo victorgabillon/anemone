@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any
 
 from anemone.backup_policies.types import BackupResult
 from anemone.utils.my_value_sorted_dict import sort_dic
@@ -42,6 +42,12 @@ class ExplicitMinimaxBackupPolicy:
           exists and the best child is at least as good as direct value for side to move.
         - If the rule allows PV, its head must match ``best_branch()`` (rebuild when needed).
         """
+        if (
+            node_eval.tree_node.all_branches_generated
+            and not node_eval.tree_node.branches_children
+        ):
+            raise AssertionError("Cannot compute minimax value: no children.")
+
         value_before_update = node_eval.minmax_value
         pv_before_update = node_eval.best_branch_sequence.copy()
         best_branch_before_update = node_eval.best_branch()
@@ -111,7 +117,23 @@ class ExplicitMinimaxBackupPolicy:
                             node_eval.one_of_best_children_becomes_best_next_node()
                         )
                 else:
-                    node_eval.clear_best_branch_sequence()
+                    if best_child is None:
+                        best_child = node_eval.tree_node.branches_children[
+                            best_branch_after_update
+                        ]
+                        assert best_child is not None
+                    if self._is_child_value_better_than_direct_value(
+                        node_eval=node_eval,
+                        child_value=node_eval._child_value_candidate(
+                            best_branch_after_update
+                        ),
+                    ):
+                        if should_rebuild:
+                            did_rebuild = (
+                                node_eval.one_of_best_children_becomes_best_next_node()
+                            )
+                    else:
+                        node_eval.clear_best_branch_sequence()
 
             if (
                 node_eval.best_branch_sequence
@@ -148,6 +170,9 @@ class ExplicitMinimaxBackupPolicy:
             best_branch_key = node_eval.best_branch()
 
         if best_branch_key is None:
+            assert (
+                node_eval.tree_node.branches_children
+            ), "Cannot compute minimax value: no children."
             direct_value = self._direct_value_candidate(node_eval)
             assert direct_value is not None
             node_eval.minmax_value = direct_value
