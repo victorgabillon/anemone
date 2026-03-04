@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from anemone.backup_policies.types import BackupResult
 from anemone.utils.my_value_sorted_dict import sort_dic
@@ -14,6 +14,15 @@ if TYPE_CHECKING:
     from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
+
+
+class _TreeEvaluationWithValues(Protocol):
+    direct_value: Value | None
+    minmax_value: Value | None
+
+
+class _NodeWithValueTreeEvaluation(Protocol):
+    tree_evaluation: _TreeEvaluationWithValues
 
 
 class ExplicitMinimaxBackupPolicy:
