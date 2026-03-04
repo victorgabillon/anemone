@@ -103,7 +103,7 @@ class NodeDirectEvaluator[StateT: State = State]:
                 over_event=over_event,
             )
             node.tree_evaluation.direct_value = value
-            node.tree_evaluation.set_evaluation(evaluation=evaluation)
+            node.tree_evaluation.sync_float_views_from_values()
 
     def evaluate_all_queried_nodes(
         self, evaluation_queries: EvaluationQueries[StateT]
@@ -125,7 +125,7 @@ class NodeDirectEvaluator[StateT: State = State]:
         self, node: AlgorithmNode[StateT], evaluation_queries: EvaluationQueries[StateT]
     ) -> None:
         """Add an evaluation query for a node."""
-        assert node.tree_evaluation.value_white_direct_evaluation is None
+        assert node.tree_evaluation.direct_value is None
         self.check_obvious_over_events(node)
         if node.is_over():
             assert node.tree_evaluation.direct_value is not None, (
@@ -147,7 +147,7 @@ class NodeDirectEvaluator[StateT: State = State]:
                 over_event=value.over_event,
             )
             node.tree_evaluation.direct_value = processed_value
-            node.tree_evaluation.set_evaluation(processed_value.score)
+            node.tree_evaluation.sync_float_views_from_values()
             assert node.tree_evaluation.direct_value is not None, (
                 f"direct_value must be set for non-terminal node {node.tree_node.id}"
             )

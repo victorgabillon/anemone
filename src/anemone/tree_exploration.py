@@ -118,7 +118,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 "%s | current best branch: %s | current white value: %s",
                 str_progress,
                 current_best_branch,
-                self.tree.root_node.tree_evaluation.value_white_minmax,
+                self.tree.root_node.tree_evaluation.get_score(),
             )
 
             # ,end='\r')
