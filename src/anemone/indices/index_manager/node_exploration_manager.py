@@ -11,9 +11,6 @@ from anemone.indices.node_indices.index_data import (
     NodeExplorationData,
     RecurZipfQuoolExplorationData,
 )
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
-    NodeTreeEvaluation,
-)
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
@@ -26,6 +23,9 @@ from anemone.utils.small_tools import (
 
 if TYPE_CHECKING:
     from anemone.basics import TreeDepth
+    from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
+        NodeTreeEvaluation,
+    )
     from anemone.trees.descendants import RangedDescendants
 
 
@@ -401,14 +401,10 @@ class UpdateIndexLocalMinChange:
                     if child_node == best_child:
                         assert isinstance(second_best_child, AlgorithmNode)
                         local_interval.max_value = inf
-                        local_interval.min_value = (
-                            _score(second_best_child)
-                        )
+                        local_interval.min_value = _score(second_best_child)
                     else:
                         local_interval.max_value = inf
-                        local_interval.min_value = (
-                            _score(best_child)
-                        )
+                        local_interval.min_value = _score(best_child)
 
                     inter_level_interval = intersect_intervals(
                         local_interval, parent_node_exploration_index_data.interval
@@ -437,14 +433,10 @@ class UpdateIndexLocalMinChange:
                     assert isinstance(best_child, AlgorithmNode)
                     if child_node == best_child:
                         assert isinstance(second_best_child, AlgorithmNode)
-                        local_interval.max_value = (
-                            _score(second_best_child)
-                        )
+                        local_interval.max_value = _score(second_best_child)
                         local_interval.min_value = -inf
                     else:
-                        local_interval.max_value = (
-                            _score(best_child)
-                        )
+                        local_interval.max_value = _score(best_child)
                         local_interval.min_value = -inf
 
                     inter_level_interval = intersect_intervals(
