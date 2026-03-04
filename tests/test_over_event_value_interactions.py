@@ -219,7 +219,6 @@ def test_terminal_selection_and_minmax_best_branch_remain_consistent() -> None:
     parent_eval.minmax_value_update_from_children({"draw", "win"})
 
     assert parent_eval.over_event.is_winner(Color.WHITE)
-    # Current behavior: terminal over-event can be selected independently from
-    # minmax PV tracking, so PV may fail to point to the terminal winning child.
-    assert parent_eval.best_branch_sequence[:1] != ["win"]
+    # Now: terminal over-event selection and PV tracking are consistent.
+    assert parent_eval.best_branch_sequence[:1] == ["win"]
     assert parent_eval.over_event.termination == "mate"

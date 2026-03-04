@@ -795,7 +795,10 @@ class NodeMinmaxEvaluation[
         if self.tree_node.all_branches_generated:
             self.minmax_value = best_child_value
         else:
-            assert self.direct_value is not None
+            if self.direct_value is None:
+                self.minmax_value = best_child_value
+                self._sync_float_views_from_values()
+                return
             if (
                 self.evaluation_ordering.semantic_compare(
                     best_child_value,
@@ -935,7 +938,7 @@ class NodeMinmaxEvaluation[
         assert best_child is not None, (
             "Best branch exists but best child is missing from branches_children."
         )
-        best_child_value = best_child.tree_evaluation.get_value_candidate()
+        best_child_value = self.child_value_candidate(best_branch_key)
         assert best_child_value is not None, "Best child value is missing."
         child_is_good_enough = (
             self.evaluation_ordering.semantic_compare(
@@ -1063,7 +1066,7 @@ class NodeMinmaxEvaluation[
                 best_branch_key_before_update
             ]
             assert best_child_before_update is not None
-            best_child_value = best_child_before_update.tree_evaluation.get_value_candidate()
+            best_child_value = self.child_value_candidate(best_branch_key_before_update)
             if (
                 best_child_value is not None
                 and self.is_value_subjectively_better_than_evaluation(best_child_value)
