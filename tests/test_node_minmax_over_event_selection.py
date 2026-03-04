@@ -61,9 +61,7 @@ class FakeChildEvaluation:
         canonical_value = Value(
             score=self.value_white,
             certainty=(
-                Certainty.FORCED
-                if self.over_event.is_over()
-                else Certainty.ESTIMATE
+                Certainty.FORCED if self.over_event.is_over() else Certainty.ESTIMATE
             ),
             over_event=self.over_event if self.over_event.is_over() else None,
         )

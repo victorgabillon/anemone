@@ -133,11 +133,7 @@ def is_winning(node_tree_evaluation: NodeTreeEvaluation, color: Color) -> bool:
 
     """
     value = node_tree_evaluation.get_score()
-    winning_if_color_white: bool = (
-        value > 0.98 and color is Color.WHITE
-    )
-    winning_if_color_black: bool = (
-        value < -0.98 and color is Color.BLACK
-    )
+    winning_if_color_white: bool = value > 0.98 and color is Color.WHITE
+    winning_if_color_black: bool = value < -0.98 and color is Color.BLACK
 
     return winning_if_color_white or winning_if_color_black

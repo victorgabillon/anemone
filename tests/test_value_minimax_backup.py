@@ -130,8 +130,6 @@ def test_partial_expansion_prefers_direct_when_better_for_side_to_move() -> None
     assert parent.value_white_minmax == 0.5
 
 
-
-
 def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> None:
     parent = _make_parent(
         turn=Color.BLACK,
@@ -164,6 +162,7 @@ def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> N
 
     assert parent.minmax_value == Value(score=0.5)
     assert parent.value_white_minmax == 0.5
+
 
 def test_semantic_compare_terminal_vs_estimate_is_exposed() -> None:
     forced_win = Value(

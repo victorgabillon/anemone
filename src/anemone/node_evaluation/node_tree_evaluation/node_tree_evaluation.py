@@ -122,6 +122,10 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Return the current white evaluation value."""
         ...
 
+    def get_score(self) -> float:
+        """Return the canonical scalar score for this node evaluation."""
+        ...
+
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch key."""
         ...
