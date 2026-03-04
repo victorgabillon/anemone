@@ -153,6 +153,6 @@ def test_get_value_prefers_minmax_else_direct() -> None:
 
     minmax = Value(score=0.6, certainty=Certainty.FORCED)
     node.tree_evaluation.minmax_value = minmax
-    node.tree_evaluation.value_white_minmax = minmax.score
+    node.tree_evaluation.sync_float_views_from_values()
 
     assert node.tree_evaluation.get_value() == minmax

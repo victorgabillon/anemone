@@ -145,7 +145,7 @@ class UpdateIndexGlobalMinChange:
             root_node_exploration_index_data (NodeExplorationData | None): Exploration index data for the root node.
 
         """
-        root_value: float = root_node.tree_evaluation.get_value_white()
+        root_value: float = root_node.tree_evaluation.get_score()
 
         assert isinstance(root_node_exploration_index_data, MinMaxPathValue)
 
@@ -185,7 +185,7 @@ class UpdateIndexGlobalMinChange:
         assert parent_node_exploration_index_data.max_path_value is not None
         assert isinstance(child_node_exploration_index_data, MinMaxPathValue)
 
-        child_value: float = child_node.tree_evaluation.get_value_white()
+        child_value: float = child_node.tree_evaluation.get_score()
 
         child_node_min_path_value = min(
             child_value, parent_node_exploration_index_data.min_path_value
@@ -388,18 +388,18 @@ class UpdateIndexLocalMinChange:
                     second_best_child = parent_node.branches_children[
                         second_best_branch
                     ]
-                    child_white_value = child_node.tree_evaluation.get_value_white()
+                    child_white_value = child_node.tree_evaluation.get_score()
                     local_interval = Interval()
                     if child_node == best_child:
                         assert isinstance(second_best_child, AlgorithmNode)
                         local_interval.max_value = inf
                         local_interval.min_value = (
-                            second_best_child.tree_evaluation.get_value_white()
+                            second_best_child.tree_evaluation.get_score()
                         )
                     else:
                         local_interval.max_value = inf
                         local_interval.min_value = (
-                            best_child.tree_evaluation.get_value_white()
+                            best_child.tree_evaluation.get_score()
                         )
 
                     inter_level_interval = intersect_intervals(
@@ -424,18 +424,18 @@ class UpdateIndexLocalMinChange:
                     second_best_child = parent_node.branches_children[
                         second_best_branch_black
                     ]
-                    child_white_value = child_node.tree_evaluation.get_value_white()
+                    child_white_value = child_node.tree_evaluation.get_score()
                     local_interval = Interval()
                     assert isinstance(best_child, AlgorithmNode)
                     if child_node == best_child:
                         assert isinstance(second_best_child, AlgorithmNode)
                         local_interval.max_value = (
-                            second_best_child.tree_evaluation.get_value_white()
+                            second_best_child.tree_evaluation.get_score()
                         )
                         local_interval.min_value = -inf
                     else:
                         local_interval.max_value = (
-                            best_child.tree_evaluation.get_value_white()
+                            best_child.tree_evaluation.get_score()
                         )
                         local_interval.min_value = -inf
 
