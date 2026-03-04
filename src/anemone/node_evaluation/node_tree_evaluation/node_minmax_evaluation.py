@@ -238,13 +238,10 @@ class NodeMinmaxEvaluation[
             evaluation  # base value before knowing values of the children
         )
         # Keep leaf minimax aligned with the latest direct evaluation.
-        if not self.tree_node.branches_children:
-            self.minmax_value = self.direct_value
-        # For non-leaf nodes, initialize minimax baseline once from direct evaluation.
-        elif self.minmax_value is None:
+        if not self.tree_node.branches_children or self.minmax_value is None:
             self.minmax_value = self.direct_value
 
-    def _child_value_candidate(self, branch_key: BranchKey) -> Value | None:
+    def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
         """Return the best available Value candidate for a child branch.
 
         Internal helper shared with backup policies during Step 7 migration.
@@ -260,6 +257,13 @@ class NodeMinmaxEvaluation[
         if child_eval.direct_value is not None:
             return child_eval.direct_value
         return None
+
+    def _child_value_candidate(self, branch_key: BranchKey) -> Value | None:
+        """Backward-compat shim for older tests/callers.
+
+        TODO: remove in Step 9 once all callers use ``child_value_candidate``.
+        """
+        return self.child_value_candidate(branch_key)
 
     def subjective_value_(self, value_white: float) -> float:
         """Return the subjective value of `value_white` from the point of view of the `self.tree_node.player_to_branch`.
@@ -743,7 +747,7 @@ class NodeMinmaxEvaluation[
         assert best_branch_key is not None
         best_child = self.tree_node.branches_children[best_branch_key]
         assert best_child is not None
-        best_child_value = self._child_value_candidate(best_branch_key)
+        best_child_value = self.child_value_candidate(best_branch_key)
         if best_child_value is None:
             # TODO: Step 7: remove this debug fallback once Value is guaranteed everywhere.
             anemone_logger.debug(

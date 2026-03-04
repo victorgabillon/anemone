@@ -54,13 +54,21 @@ def test_semantic_compare_draw_vs_estimate_uses_draw_score_for_both_sides() -> N
 
     white_below_draw = Value(score=-0.1)
     white_above_draw = Value(score=0.1)
-    assert ordering.semantic_compare(draw, white_below_draw, side_to_move=Color.WHITE) > 0
-    assert ordering.semantic_compare(draw, white_above_draw, side_to_move=Color.WHITE) < 0
+    assert (
+        ordering.semantic_compare(draw, white_below_draw, side_to_move=Color.WHITE) > 0
+    )
+    assert (
+        ordering.semantic_compare(draw, white_above_draw, side_to_move=Color.WHITE) < 0
+    )
 
     black_below_draw = Value(score=-0.1)
     black_above_draw = Value(score=0.1)
-    assert ordering.semantic_compare(draw, black_below_draw, side_to_move=Color.BLACK) < 0
-    assert ordering.semantic_compare(draw, black_above_draw, side_to_move=Color.BLACK) > 0
+    assert (
+        ordering.semantic_compare(draw, black_below_draw, side_to_move=Color.BLACK) < 0
+    )
+    assert (
+        ordering.semantic_compare(draw, black_above_draw, side_to_move=Color.BLACK) > 0
+    )
 
 
 def test_search_sort_key_is_projection_based_bish() -> None:

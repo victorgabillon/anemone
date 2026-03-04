@@ -4,8 +4,8 @@ from .evaluation_ordering import DEFAULT_EVALUATION_ORDERING, EvaluationOrdering
 from .value import Certainty, Value
 
 __all__ = [
-    "Certainty",
     "DEFAULT_EVALUATION_ORDERING",
+    "Certainty",
     "EvaluationOrdering",
     "Value",
 ]

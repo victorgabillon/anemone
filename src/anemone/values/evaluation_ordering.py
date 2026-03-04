@@ -120,7 +120,9 @@ class EvaluationOrdering:
         if terminal_outcome is TerminalOutcome.LOSS:
             return -1
         draw_value = Value(score=self.draw_score)
-        return _compare_scores(draw_value.score, estimate.score, side_to_move=side_to_move)
+        return _compare_scores(
+            draw_value.score, estimate.score, side_to_move=side_to_move
+        )
 
 
 def _compare_scores(a_score: float, b_score: float, *, side_to_move: Color) -> int:

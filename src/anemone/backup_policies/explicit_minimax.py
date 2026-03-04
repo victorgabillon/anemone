@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 
 from anemone.backup_policies.types import BackupResult
 from anemone.utils.my_value_sorted_dict import sort_dic
-from anemone.values import Value
 
 if TYPE_CHECKING:
     from valanga import BranchKey
@@ -14,15 +13,7 @@ if TYPE_CHECKING:
     from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
-
-
-class _TreeEvaluationWithValues(Protocol):
-    direct_value: Value | None
-    minmax_value: Value | None
-
-
-class _NodeWithValueTreeEvaluation(Protocol):
-    tree_evaluation: _TreeEvaluationWithValues
+    from anemone.values import Value
 
 
 class ExplicitMinimaxBackupPolicy:
@@ -42,11 +33,10 @@ class ExplicitMinimaxBackupPolicy:
           exists and the best child is at least as good as direct value for side to move.
         - If the rule allows PV, its head must match ``best_branch()`` (rebuild when needed).
         """
-        if (
-            node_eval.tree_node.all_branches_generated
-            and not node_eval.tree_node.branches_children
-        ):
-            raise AssertionError("Cannot compute minimax value: no children.")
+        assert (
+            not node_eval.tree_node.all_branches_generated
+            or node_eval.tree_node.branches_children
+        ), "Cannot compute minimax value: no children."
 
         value_before_update = node_eval.minmax_value
         pv_before_update = node_eval.best_branch_sequence.copy()
@@ -110,7 +100,9 @@ class ExplicitMinimaxBackupPolicy:
                     assert best_child is not None
                 if self._is_child_value_better_than_direct_value(
                     node_eval=node_eval,
-                    child_value=node_eval._child_value_candidate(best_branch_after_update),
+                    child_value=node_eval.child_value_candidate(
+                        best_branch_after_update
+                    ),
                 ):
                     if should_rebuild:
                         did_rebuild = (
@@ -124,7 +116,7 @@ class ExplicitMinimaxBackupPolicy:
                         assert best_child is not None
                     if self._is_child_value_better_than_direct_value(
                         node_eval=node_eval,
-                        child_value=node_eval._child_value_candidate(
+                        child_value=node_eval.child_value_candidate(
                             best_branch_after_update
                         ),
                     ):
@@ -170,16 +162,16 @@ class ExplicitMinimaxBackupPolicy:
             best_branch_key = node_eval.best_branch()
 
         if best_branch_key is None:
-            assert (
-                node_eval.tree_node.branches_children
-            ), "Cannot compute minimax value: no children."
+            assert node_eval.tree_node.branches_children, (
+                "Cannot compute minimax value: no children."
+            )
             direct_value = self._direct_value_candidate(node_eval)
             assert direct_value is not None
             node_eval.minmax_value = direct_value
             node_eval.value_white_minmax = direct_value.score
             return
 
-        best_child_value = node_eval._child_value_candidate(best_branch_key)
+        best_child_value = node_eval.child_value_candidate(best_branch_key)
         assert best_child_value is not None
 
         if node_eval.tree_node.all_branches_generated:
@@ -212,7 +204,7 @@ class ExplicitMinimaxBackupPolicy:
         for branch_key in branches_to_consider:
             child = node_eval.tree_node.branches_children[branch_key]
             assert child is not None
-            child_value = node_eval._child_value_candidate(branch_key)
+            child_value = node_eval.child_value_candidate(branch_key)
             if child_value is None:
                 continue
 
@@ -234,7 +226,9 @@ class ExplicitMinimaxBackupPolicy:
                     child.tree_node.id,
                 )
 
-        node_eval.branches_sorted_by_value_ = sort_dic(node_eval.branches_sorted_by_value_)
+        node_eval.branches_sorted_by_value_ = sort_dic(
+            node_eval.branches_sorted_by_value_
+        )
 
     def _direct_value_candidate(
         self,
@@ -261,7 +255,6 @@ class ExplicitMinimaxBackupPolicy:
             )
             >= 0
         )
-
 
 
 def has_value_changed(*, value_before: Value | None, value_after: Value | None) -> bool:

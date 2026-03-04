@@ -168,7 +168,9 @@ def test_search_ordering_remains_projection_based_for_large_estimate() -> None:
 
     assert parent.best_branch() == 1
     assert parent.minmax_value == very_high_estimate
-    assert parent.branches_sorted_by_value_[1][0] < parent.branches_sorted_by_value_[0][0]
+    assert (
+        parent.branches_sorted_by_value_[1][0] < parent.branches_sorted_by_value_[0][0]
+    )
 
 
 def test_backup_result_value_changed_tracks_score_certainty_and_over_event() -> None:
