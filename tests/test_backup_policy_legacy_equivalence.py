@@ -820,6 +820,9 @@ def test_equivalence_partial_expansion_without_float_direct_eval() -> None:
 
     # Step-7 explicit is Value-first: float bridge may be absent while canonical Value remains.
     explicit.value_white_direct_evaluation = None
+    # Explicit policy is Value-first in Step 7; clear Value fields to model "no direct evaluation".
+    explicit.direct_value = None
+    explicit.minmax_value = None
 
     _assert_value_equivalent(
         legacy,

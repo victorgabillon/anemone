@@ -16,6 +16,15 @@ if TYPE_CHECKING:
     )
 
 
+class _TreeEvaluationWithValues(Protocol):
+    direct_value: Value | None
+    minmax_value: Value | None
+
+
+class _NodeWithValueTreeEvaluation(Protocol):
+    tree_evaluation: _TreeEvaluationWithValues
+
+
 class ExplicitMinimaxBackupPolicy:
     """Backup policy that computes float minimax value and PV with explicit invariants."""
 
@@ -93,8 +102,20 @@ class ExplicitMinimaxBackupPolicy:
                     )
             else:
                 direct_value = self._direct_value_candidate(node_eval)
-                if direct_value is None:
-                    node_eval.clear_best_branch_sequence()
+                assert direct_value is not None
+                if best_child is None:
+                    best_child = node_eval.tree_node.branches_children[
+                        best_branch_after_update
+                    ]
+                    assert best_child is not None
+                if self._is_child_value_better_than_direct_value(
+                    node_eval=node_eval,
+                    child_value=node_eval._child_value_candidate(best_branch_after_update),
+                ):
+                    if should_rebuild:
+                        did_rebuild = (
+                            node_eval.one_of_best_children_becomes_best_next_node()
+                        )
                 else:
                     if best_child is None:
                         best_child = node_eval.tree_node.branches_children[
