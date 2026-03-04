@@ -224,12 +224,31 @@ class NodeMinmaxEvaluation[
 
         """
         self.value_white_direct_evaluation = evaluation
+        if (
+            self.direct_value is None
+            or self.direct_value.certainty is not Certainty.TERMINAL
+        ):
+            self.direct_value = Value(
+                score=evaluation,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
+
         self.value_white_minmax = (
             evaluation  # base value before knowing values of the children
         )
+        # Keep leaf minimax aligned with the latest direct evaluation.
+        if not self.tree_node.branches_children:
+            self.minmax_value = self.direct_value
+        # For non-leaf nodes, initialize minimax baseline once from direct evaluation.
+        elif self.minmax_value is None:
+            self.minmax_value = self.direct_value
 
     def _child_value_candidate(self, branch_key: BranchKey) -> Value | None:
-        """Return the best available Value candidate for a child branch."""
+        """Return the best available Value candidate for a child branch.
+
+        Internal helper shared with backup policies during Step 7 migration.
+        """
         child = self.tree_node.branches_children[branch_key]
         if child is None:
             return None
@@ -240,15 +259,6 @@ class NodeMinmaxEvaluation[
 
         if child_eval.direct_value is not None:
             return child_eval.direct_value
-
-        child_value_white_minmax = child_eval.value_white_minmax
-        if child_value_white_minmax is not None:
-            # TODO: Step 7: remove float-to-Value fallback after full Value migration.
-            return Value(
-                score=child_value_white_minmax,
-                certainty=Certainty.ESTIMATE,
-                over_event=None,
-            )
         return None
 
     def subjective_value_(self, value_white: float) -> float:

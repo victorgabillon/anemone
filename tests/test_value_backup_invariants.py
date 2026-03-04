@@ -9,7 +9,7 @@ from valanga import Color
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.values import Value
+from anemone.values import Certainty, Value
 
 
 @dataclass
@@ -124,3 +124,38 @@ def test_backup_tie_break_is_deterministic() -> None:
     second_choice = parent_eval.best_branch_sequence[:1]
 
     assert first_choice == second_choice == [0]
+
+
+def test_set_evaluation_populates_direct_value_guardrail() -> None:
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=SimpleNamespace(turn=Color.WHITE),
+        branches_children={},
+        all_branches_generated=True,
+    )
+    evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
+
+    evaluation.set_evaluation(0.123)
+
+    assert evaluation.direct_value is not None
+    assert evaluation.direct_value.score == 0.123
+    assert evaluation.direct_value.over_event is None
+    assert evaluation.direct_value.certainty is Certainty.ESTIMATE
+
+
+def test_set_evaluation_keeps_leaf_minmax_in_sync_with_direct_value() -> None:
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=SimpleNamespace(turn=Color.WHITE),
+        branches_children={},
+        all_branches_generated=True,
+    )
+    evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
+
+    evaluation.set_evaluation(0.2)
+    evaluation.set_evaluation(0.95)
+
+    assert evaluation.direct_value is not None
+    assert evaluation.minmax_value is not None
+    assert evaluation.direct_value.score == 0.95
+    assert evaluation.minmax_value.score == 0.95

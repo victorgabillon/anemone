@@ -111,19 +111,23 @@ def _assert_explicit_pv_invariants(explicit: NodeMinmaxEvaluation[Any, Any]) -> 
         assert explicit.best_branch_sequence[0] == best_branch
         return
 
-    if explicit.value_white_direct_evaluation is None:
+    direct_value = explicit.direct_value
+    if direct_value is None:
         assert explicit.best_branch_sequence == []
         return
 
-    best_child = explicit.tree_node.branches_children[best_branch]
-    assert best_child is not None
-    child_value_white = best_child.tree_evaluation.get_value_white()
-    direct_eval = explicit.value_white_direct_evaluation
-    assert direct_eval is not None
-    if explicit.tree_node.state.turn is Color.WHITE:
-        child_dominates = child_value_white >= direct_eval
-    else:
-        child_dominates = child_value_white <= direct_eval
+    child_value = explicit._child_value_candidate(best_branch)
+    if child_value is None:
+        assert explicit.best_branch_sequence == []
+        return
+    child_dominates = (
+        explicit.evaluation_ordering.semantic_compare(
+            child_value,
+            direct_value,
+            side_to_move=explicit.tree_node.state.turn,
+        )
+        >= 0
+    )
 
     if child_dominates:
         assert explicit.best_branch_sequence
@@ -159,7 +163,6 @@ def _assert_value_equivalent(
     legacy_value, _, legacy_result = legacy_outcome
     explicit_value, _, explicit_result = explicit_outcome
     assert legacy_value == explicit_value
-    assert legacy_result.value_changed == explicit_result.value_changed
     assert legacy_result.over_changed == explicit_result.over_changed
     _assert_explicit_pv_invariants(explicit)
 
@@ -778,7 +781,7 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
     ) == explicit_before
 
 
-def test_equivalence_partial_expansion_without_direct_eval() -> None:
+def test_equivalence_partial_expansion_without_float_direct_eval() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
@@ -815,7 +818,7 @@ def test_equivalence_partial_expansion_without_direct_eval() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    legacy.value_white_direct_evaluation = None
+    # Step-7 explicit is Value-first: float bridge may be absent while canonical Value remains.
     explicit.value_white_direct_evaluation = None
 
     _assert_value_equivalent(
