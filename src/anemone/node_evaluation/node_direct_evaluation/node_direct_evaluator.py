@@ -16,6 +16,14 @@ from .value_wrappers import FloatToValueEvaluator
 DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
 
 
+class DirectValueInvariantError(AssertionError):
+    """Custom error for invariant violations related to direct_value in NodeDirectEvaluator."""
+
+    def __init__(self, *, node_id: int, reason: str) -> None:
+        """Initialize the DirectValueInvariantError with a specific message."""
+        super().__init__(f"direct_value invariant failed for node {node_id}: {reason}")
+
+
 class NodeEvaluatorTypes(StrEnum):
     """Enum class representing different types of node evaluators."""
 
@@ -126,23 +134,25 @@ class NodeDirectEvaluator[StateT: State = State]:
     ) -> None:
         """Add an evaluation query for a node."""
         if node.tree_evaluation.direct_value is not None:
-            raise AssertionError(
-                "direct_value must be None before add_evaluation_query"
+            raise DirectValueInvariantError(
+                node_id=node.tree_node.id,
+                reason="direct_value must be None before add_evaluation_query",
             )
 
         self.check_obvious_over_events(node)
 
+        # Re-read into a local after the call: this breaks mypy's earlier narrowing.
+        direct_value: Value | None = node.tree_evaluation.direct_value
+
         if node.is_over():
-            # check_obvious_over_events() must set direct_value for terminal nodes
-            if node.tree_evaluation.direct_value is None:
-                raise AssertionError(
-                    f"direct_value must be set for terminal node {node.tree_node.id}"
+            if direct_value is None:
+                raise DirectValueInvariantError(
+                    node_id=node.tree_node.id,
+                    reason="direct_value must be set for terminal nodes after check_obvious_over_events",
                 )
             evaluation_queries.over_nodes.append(node)
             return
 
-        # Non-terminal nodes should still be unevaluated at query time.
-        # The precondition at function entry enforces this for re-queue prevention.
         evaluation_queries.not_over_nodes.append(node)
 
     def evaluate_all_not_over(

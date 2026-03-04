@@ -152,7 +152,9 @@ def test_minmax_value_is_populated_after_child_backup_and_bridge_holds() -> None
     )
 
     assert parent.tree_evaluation.minmax_value is not None
-    assert parent.tree_evaluation.get_score() == parent.tree_evaluation.minmax_value.score
+    assert (
+        parent.tree_evaluation.get_score() == parent.tree_evaluation.minmax_value.score
+    )
 
 
 def test_get_value_prefers_minmax_else_direct() -> None:
