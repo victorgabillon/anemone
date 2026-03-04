@@ -125,14 +125,17 @@ class NodeDirectEvaluator[StateT: State = State]:
         self, node: AlgorithmNode[StateT], evaluation_queries: EvaluationQueries[StateT]
     ) -> None:
         """Add an evaluation query for a node."""
-        assert node.tree_evaluation.direct_value is None
         self.check_obvious_over_events(node)
         if node.is_over():
+            # check_obvious_over_events() must set direct_value for terminal nodes
             assert node.tree_evaluation.direct_value is not None, (
                 f"direct_value must be set for terminal node {node.tree_node.id}"
             )
             evaluation_queries.over_nodes.append(node)
         else:
+            # For non-terminal nodes, direct_value should still be unset at query time.
+            # (If it isn't, the node was already evaluated and should not be re-queued.)
+            assert node.tree_evaluation.direct_value is None
             evaluation_queries.not_over_nodes.append(node)
 
     def evaluate_all_not_over(
