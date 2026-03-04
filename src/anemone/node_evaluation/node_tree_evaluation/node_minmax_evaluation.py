@@ -224,6 +224,12 @@ class NodeMinmaxEvaluation[
 
         """
         self.value_white_direct_evaluation = evaluation
+        if self.direct_value is None:
+            self.direct_value = Value(
+                score=evaluation,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
         self.value_white_minmax = (
             evaluation  # base value before knowing values of the children
         )
@@ -240,15 +246,6 @@ class NodeMinmaxEvaluation[
 
         if child_eval.direct_value is not None:
             return child_eval.direct_value
-
-        child_value_white_minmax = child_eval.value_white_minmax
-        if child_value_white_minmax is not None:
-            # TODO: Step 7: remove float-to-Value fallback after full Value migration.
-            return Value(
-                score=child_value_white_minmax,
-                certainty=Certainty.ESTIMATE,
-                over_event=None,
-            )
         return None
 
     def subjective_value_(self, value_white: float) -> float:
