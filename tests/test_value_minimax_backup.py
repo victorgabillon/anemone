@@ -44,6 +44,17 @@ def _make_leaf(node_id: int, value: Value) -> Any:
     return SimpleNamespace(tree_node=tree_node, tree_evaluation=ev)
 
 
+def _make_unvalued_leaf(node_id: int) -> Any:
+    tree_node = SimpleNamespace(
+        id=node_id,
+        state=SimpleNamespace(turn=Color.WHITE),
+        branches_children={},
+        all_branches_generated=True,
+    )
+    ev = NodeMinmaxEvaluation(tree_node=tree_node)
+    return SimpleNamespace(tree_node=tree_node, tree_evaluation=ev)
+
+
 def _make_parent(
     *,
     turn: Color,
@@ -219,3 +230,21 @@ def test_partial_expansion_pv_does_not_depend_on_float_field() -> None:
     assert parent.minmax_value == child_value
     assert parent.best_branch_sequence
     assert parent.best_branch_sequence[0] == 0
+
+
+def test_partial_expansion_unvalued_best_child_clears_pv() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: _make_unvalued_leaf(1)},
+        all_generated=False,
+        direct_value=Value(score=0.8),
+    )
+    parent.set_best_branch_sequence([0])
+
+    parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.minmax_value == parent.direct_value
+    assert parent.best_branch_sequence == []
