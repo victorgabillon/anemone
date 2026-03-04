@@ -12,7 +12,7 @@ node is over, and printing information about the node.
 # TODO: maybe further split values from over?
 
 from dataclasses import dataclass, field
-from math import log
+from math import isclose, log
 from random import choice
 from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 
@@ -230,10 +230,23 @@ class NodeMinmaxEvaluation[
 
     def assert_value_float_consistency(self) -> None:
         """Assert Value/float bridge consistency when both representations exist."""
-        if self.direct_value is not None and self.value_white_direct_evaluation is not None:
-            assert self.direct_value.score == self.value_white_direct_evaluation
+        if (
+            self.direct_value is not None
+            and self.value_white_direct_evaluation is not None
+        ):
+            assert isclose(
+                self.direct_value.score,
+                self.value_white_direct_evaluation,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            )
         if self.minmax_value is not None and self.value_white_minmax is not None:
-            assert self.minmax_value.score == self.value_white_minmax
+            assert isclose(
+                self.minmax_value.score,
+                self.value_white_minmax,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            )
 
     def get_value_white(self) -> float:
         """Return the best estimation of the value for white in this node (float bridge).

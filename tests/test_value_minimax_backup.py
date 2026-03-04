@@ -130,6 +130,41 @@ def test_partial_expansion_prefers_direct_when_better_for_side_to_move() -> None
     assert parent.value_white_minmax == 0.5
 
 
+
+
+def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> None:
+    parent = _make_parent(
+        turn=Color.BLACK,
+        children={0: _make_leaf(1, Value(score=0.2))},
+        all_generated=False,
+        direct_value=Value(score=0.5),
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.minmax_value == Value(score=0.2)
+    assert parent.value_white_minmax == 0.2
+
+
+def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> None:
+    parent = _make_parent(
+        turn=Color.BLACK,
+        children={0: _make_leaf(1, Value(score=0.7))},
+        all_generated=False,
+        direct_value=Value(score=0.5),
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.minmax_value == Value(score=0.5)
+    assert parent.value_white_minmax == 0.5
+
 def test_semantic_compare_terminal_vs_estimate_is_exposed() -> None:
     forced_win = Value(
         score=-10.0,
