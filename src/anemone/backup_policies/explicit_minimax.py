@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from valanga import Color
-
 from anemone.backup_policies.types import BackupResult
 from anemone.utils.my_value_sorted_dict import sort_dic
-from anemone.values import Certainty, Value
+from anemone.values import Value
 
 if TYPE_CHECKING:
     from valanga import BranchKey
@@ -89,24 +87,22 @@ class ExplicitMinimaxBackupPolicy:
                     )
             else:
                 direct_value = self._direct_value_candidate(node_eval)
-                if direct_value is None:
-                    node_eval.clear_best_branch_sequence()
+                assert direct_value is not None
+                if best_child is None:
+                    best_child = node_eval.tree_node.branches_children[
+                        best_branch_after_update
+                    ]
+                    assert best_child is not None
+                if self._is_child_value_better_than_direct_value(
+                    node_eval=node_eval,
+                    child_value=node_eval._child_value_candidate(best_branch_after_update),
+                ):
+                    if should_rebuild:
+                        did_rebuild = (
+                            node_eval.one_of_best_children_becomes_best_next_node()
+                        )
                 else:
-                    if best_child is None:
-                        best_child = node_eval.tree_node.branches_children[
-                            best_branch_after_update
-                        ]
-                        assert best_child is not None
-                    if self._is_child_value_better_than_direct_value(
-                        node_eval=node_eval,
-                        child_value=self._child_value_candidate(node_eval, best_child),
-                    ):
-                        if should_rebuild:
-                            did_rebuild = (
-                                node_eval.one_of_best_children_becomes_best_next_node()
-                            )
-                    else:
-                        node_eval.clear_best_branch_sequence()
+                    node_eval.clear_best_branch_sequence()
 
             if (
                 node_eval.best_branch_sequence
@@ -141,11 +137,15 @@ class ExplicitMinimaxBackupPolicy:
                 branches_to_consider=set(node_eval.tree_node.branches_children),
             )
             best_branch_key = node_eval.best_branch()
-        assert best_branch_key is not None
 
-        best_child = node_eval.tree_node.branches_children[best_branch_key]
-        assert best_child is not None
-        best_child_value = self._child_value_candidate(node_eval, best_child)
+        if best_branch_key is None:
+            direct_value = self._direct_value_candidate(node_eval)
+            assert direct_value is not None
+            node_eval.minmax_value = direct_value
+            node_eval.value_white_minmax = direct_value.score
+            return
+
+        best_child_value = node_eval._child_value_candidate(best_branch_key)
         assert best_child_value is not None
 
         if node_eval.tree_node.all_branches_generated:
@@ -178,7 +178,7 @@ class ExplicitMinimaxBackupPolicy:
         for branch_key in branches_to_consider:
             child = node_eval.tree_node.branches_children[branch_key]
             assert child is not None
-            child_value = self._child_value_candidate(node_eval, child)
+            child_value = node_eval._child_value_candidate(branch_key)
             if child_value is None:
                 continue
 
@@ -202,46 +202,11 @@ class ExplicitMinimaxBackupPolicy:
 
         node_eval.branches_sorted_by_value_ = sort_dic(node_eval.branches_sorted_by_value_)
 
-    def _child_value_candidate(
-        self,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-        child: Any,
-    ) -> Value | None:
-        child_eval = child.tree_evaluation
-        if child_eval.minmax_value is not None:
-            return child_eval.minmax_value
-        if child_eval.direct_value is not None:
-            return child_eval.direct_value
-        if child_eval.value_white_minmax is not None:
-            # TODO: Step 7 remove fallback after full migration.
-            return Value(
-                score=child_eval.value_white_minmax,
-                certainty=Certainty.ESTIMATE,
-                over_event=None,
-            )
-        if child_eval.value_white_direct_evaluation is not None:
-            # TODO: Step 7 remove fallback after full migration.
-            return Value(
-                score=child_eval.value_white_direct_evaluation,
-                certainty=Certainty.ESTIMATE,
-                over_event=None,
-            )
-        return None
-
     def _direct_value_candidate(
         self,
         node_eval: NodeMinmaxEvaluation[Any, Any],
     ) -> Value | None:
-        if node_eval.direct_value is not None:
-            return node_eval.direct_value
-        if node_eval.value_white_direct_evaluation is not None:
-            # TODO: Step 7 remove fallback after full migration.
-            return Value(
-                score=node_eval.value_white_direct_evaluation,
-                certainty=Certainty.ESTIMATE,
-                over_event=None,
-            )
-        return None
+        return node_eval.direct_value
 
     def _is_child_value_better_than_direct_value(
         self,
@@ -250,7 +215,8 @@ class ExplicitMinimaxBackupPolicy:
         child_value: Value | None,
     ) -> bool:
         """Return whether child value dominates direct eval for the side to move."""
-        assert child_value is not None
+        if child_value is None:
+            return False
         direct_value = self._direct_value_candidate(node_eval)
         assert direct_value is not None
         return (
