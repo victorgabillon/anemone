@@ -778,7 +778,7 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
     ) == explicit_before
 
 
-def test_equivalence_partial_expansion_without_direct_eval() -> None:
+def test_equivalence_partial_expansion_without_direct_value() -> None:
     children_legacy = {
         0: _FakeChildNode(
             10,
@@ -817,6 +817,9 @@ def test_equivalence_partial_expansion_without_direct_eval() -> None:
 
     legacy.value_white_direct_evaluation = None
     explicit.value_white_direct_evaluation = None
+    # Explicit policy is Value-first in Step 7; clear Value fields to model "no direct evaluation".
+    explicit.direct_value = None
+    explicit.minmax_value = None
 
     _assert_value_equivalent(
         legacy,
