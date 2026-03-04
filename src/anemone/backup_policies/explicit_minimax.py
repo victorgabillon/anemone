@@ -168,7 +168,7 @@ class ExplicitMinimaxBackupPolicy:
             direct_value = self._direct_value_candidate(node_eval)
             assert direct_value is not None
             node_eval.minmax_value = direct_value
-            node_eval.value_white_minmax = direct_value.score
+            node_eval.sync_float_views_from_values()
             return
 
         best_child_value = node_eval.child_value_candidate(best_branch_key)
@@ -192,7 +192,7 @@ class ExplicitMinimaxBackupPolicy:
                 value_after_update = direct_value
 
         node_eval.minmax_value = value_after_update
-        node_eval.value_white_minmax = node_eval.minmax_value.score
+        node_eval.sync_float_views_from_values()
 
     def _update_branches_values_value_only(
         self,

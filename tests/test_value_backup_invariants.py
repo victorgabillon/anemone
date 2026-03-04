@@ -35,10 +35,38 @@ class _FakeChildEvaluation:
     over_event: _FakeOverEvent = field(default_factory=_FakeOverEvent)
 
     def __post_init__(self) -> None:
-        self.value_white_minmax = self.value_white
+        canonical_value = Value(
+            score=self.value_white,
+            certainty=(
+                Certainty.FORCED if self.over_event.is_over() else Certainty.ESTIMATE
+            ),
+            over_event=self.over_event if self.over_event.is_over() else None,
+        )
+        if self.direct_value is None:
+            self.direct_value = canonical_value
+        if self.minmax_value is None:
+            self.minmax_value = self.direct_value
+        self.value_white_minmax = self.minmax_value.score
+
+    def set_value(self, score: float) -> None:
+        """Keep float bridge and canonical Values aligned in test mutations."""
+        self.value_white = score
+        canonical_value = Value(
+            score=score,
+            certainty=(
+                Certainty.FORCED if self.over_event.is_over() else Certainty.ESTIMATE
+            ),
+            over_event=self.over_event if self.over_event.is_over() else None,
+        )
+        self.direct_value = canonical_value
+        self.minmax_value = canonical_value
+        self.value_white_minmax = canonical_value.score
 
     def get_value_white(self) -> float:
-        return self.value_white
+        if self.minmax_value is not None:
+            return self.minmax_value.score
+        assert self.direct_value is not None
+        return self.direct_value.score
 
 
 @dataclass
