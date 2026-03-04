@@ -39,8 +39,9 @@ def _make_leaf(node_id: int, value: Value) -> Any:
         all_branches_generated=True,
     )
     ev = NodeMinmaxEvaluation(tree_node=tree_node)
+    ev.direct_value = value
     ev.minmax_value = value
-    ev.value_white_minmax = value.score
+    ev.sync_float_views_from_values()
     return SimpleNamespace(tree_node=tree_node, tree_evaluation=ev)
 
 
@@ -73,9 +74,8 @@ def _make_parent(
         backup_policy=ExplicitMinimaxBackupPolicy(),
     )
     parent.direct_value = direct_value
-    parent.value_white_direct_evaluation = direct_value.score
-    parent.value_white_minmax = direct_value.score
     parent.minmax_value = direct_value
+    parent.sync_float_views_from_values()
     return parent
 
 
@@ -202,7 +202,7 @@ def test_direct_eval_change_without_minmax_change_reports_no_value_change() -> N
         branches_with_updated_best_branch_seq=set(),
     )
     parent.direct_value = Value(score=0.6)
-    parent.value_white_direct_evaluation = 0.6
+    parent.sync_float_views_from_values()
 
     result = parent.backup_from_children(
         branches_with_updated_value={0},
@@ -221,7 +221,6 @@ def test_partial_expansion_pv_does_not_depend_on_float_field() -> None:
         all_generated=False,
         direct_value=Value(score=0.8),
     )
-    parent.value_white_direct_evaluation = None
     parent.set_best_branch_sequence([0])
 
     parent.backup_from_children(
