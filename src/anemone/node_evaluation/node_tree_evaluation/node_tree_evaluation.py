@@ -29,9 +29,10 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
 
     """
 
-    # absolute value wrt to white player as estimated by a state evaluator
-    value_white_direct_evaluation: float | None = None
-    direct_value: Value | None = None
+    # canonical direct evaluation value (Value-first API)
+    direct_value: Value | None
+    # canonical minmax value (Value-first API)
+    minmax_value: Value | None
 
     # creating a base Over event that is set to None
     over_event: OverEvent
@@ -44,10 +45,6 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
     branches_sorted_by_value_: dict[BranchKey, BranchSortValue]
 
     best_branch_sequence: list[BranchKey]
-
-    # absolute value wrt to white player as computed from the value_white_* of the descendants
-    # of this node (self) by a minmax procedure.
-    value_white_minmax: float | None = None
 
     def set_evaluation(self, evaluation: float) -> None:
         """Set the evaluation from the state evaluator.
@@ -73,7 +70,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
     def dot_description(self) -> str:
         """Return a string representation of the node's description in DOT format.
 
-        The description includes the values of `value_white_minmax` and `value_white_evaluator`,
+        The description includes canonical evaluation information,
         as well as the best branch sequence and the over event tag.
 
         Returns:
@@ -119,7 +116,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         ...
 
     def get_value_white(self) -> float:
-        """Return the current white evaluation value."""
+        """Return the current white evaluation value (legacy compatibility)."""
         ...
 
     def get_score(self) -> float:
