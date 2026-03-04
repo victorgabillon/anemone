@@ -126,6 +126,18 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Return the canonical scalar score for this node evaluation."""
         ...
 
+    def get_value_candidate(self) -> Value | None:
+        """Return the best available canonical value when present."""
+        ...
+
+    def get_value(self) -> Value:
+        """Return the canonical Value used by minimax and ordering logic."""
+        ...
+
+    def sync_float_views_from_values(self) -> None:
+        """Synchronize legacy float bridge fields from canonical Value fields."""
+        ...
+
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch key."""
         ...

@@ -818,9 +818,6 @@ def test_equivalence_partial_expansion_without_float_direct_eval() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    # Step-7 explicit is Value-first: float bridge may be absent while canonical Value remains.
-    explicit.value_white_direct_evaluation = None
-
     _assert_value_equivalent(
         legacy,
         explicit,
@@ -870,9 +867,9 @@ def test_explicit_rejects_partial_expansion_without_direct_baseline() -> None:
         policy=ExplicitMinimaxBackupPolicy(),
     )
 
-    explicit.value_white_direct_evaluation = None
     explicit.direct_value = None
     explicit.minmax_value = None
+    explicit.sync_float_views_from_values()
 
     legacy_is_exc, _ = _run_backup_or_exc(
         legacy,
