@@ -820,9 +820,6 @@ def test_equivalence_partial_expansion_without_float_direct_eval() -> None:
 
     # Step-7 explicit is Value-first: float bridge may be absent while canonical Value remains.
     explicit.value_white_direct_evaluation = None
-    # Explicit policy is Value-first in Step 7; clear Value fields to model "no direct evaluation".
-    explicit.direct_value = None
-    explicit.minmax_value = None
 
     _assert_value_equivalent(
         legacy,
@@ -830,6 +827,70 @@ def test_equivalence_partial_expansion_without_float_direct_eval() -> None:
         updated_values={0, 1},
         updated_best_seq=set(),
     )
+
+# ---------------------------------------------------------------------------
+# Intentional semantic divergences between LegacyMinimaxBackupPolicy and
+# ExplicitMinimaxBackupPolicy (Step-7+ Value-first invariants).
+# ---------------------------------------------------------------------------
+def test_explicit_rejects_partial_expansion_without_direct_baseline() -> None:
+    children_legacy = {
+        0: _FakeChildNode(
+            10,
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.8, pv_tail=[7], node_id=10),
+        ),
+        1: _FakeChildNode(
+            11,
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[8], node_id=11),
+        ),
+    }
+    children_explicit = {
+        0: _FakeChildNode(
+            10,
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.8, pv_tail=[7], node_id=10),
+        ),
+        1: _FakeChildNode(
+            11,
+            _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[8], node_id=11),
+        ),
+    }
+
+    legacy = _build_parent_eval(
+        turn=Color.WHITE,
+        children=children_legacy,
+        all_generated=False,
+        parent_eval_value=0.1,
+        policy=LegacyMinimaxBackupPolicy(),
+    )
+    explicit = _build_parent_eval(
+        turn=Color.WHITE,
+        children=children_explicit,
+        all_generated=False,
+        parent_eval_value=0.1,
+        policy=ExplicitMinimaxBackupPolicy(),
+    )
+
+    explicit.value_white_direct_evaluation = None
+    explicit.direct_value = None
+    explicit.minmax_value = None
+
+    legacy_is_exc, _ = _run_backup_or_exc(
+        legacy,
+        updated_values={0, 1},
+        updated_best_seq=set(),
+    )
+    explicit_is_exc, explicit_outcome = _run_backup_or_exc(
+        explicit,
+        updated_values={0, 1},
+        updated_best_seq=set(),
+    )
+
+    assert not legacy_is_exc
+    assert explicit_is_exc
+    # _run_backup_or_exc may return an exception instance or an exception type.
+    if isinstance(explicit_outcome, BaseException):
+        assert isinstance(explicit_outcome, AssertionError)
+    else:
+        assert explicit_outcome is AssertionError
 
 
 def test_equivalence_no_children_raises_assertion_full_generated() -> None:
