@@ -237,7 +237,8 @@ class NodeMinmaxEvaluation[
         self.value_white_minmax = (
             evaluation  # base value before knowing values of the children
         )
-        if self.minmax_value is None:
+        # Keep leaf minimax aligned with the latest direct evaluation.
+        if not self.tree_node.branches_children:
             self.minmax_value = self.direct_value
 
     def _child_value_candidate(self, branch_key: BranchKey) -> Value | None:

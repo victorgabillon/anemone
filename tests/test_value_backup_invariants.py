@@ -141,3 +141,21 @@ def test_set_evaluation_populates_direct_value_guardrail() -> None:
     assert evaluation.direct_value.score == 0.123
     assert evaluation.direct_value.over_event is None
     assert evaluation.direct_value.certainty is Certainty.ESTIMATE
+
+
+def test_set_evaluation_keeps_leaf_minmax_in_sync_with_direct_value() -> None:
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=SimpleNamespace(turn=Color.WHITE),
+        branches_children={},
+        all_branches_generated=True,
+    )
+    evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
+
+    evaluation.set_evaluation(0.2)
+    evaluation.set_evaluation(0.95)
+
+    assert evaluation.direct_value is not None
+    assert evaluation.minmax_value is not None
+    assert evaluation.direct_value.score == 0.95
+    assert evaluation.minmax_value.score == 0.95
