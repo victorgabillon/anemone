@@ -33,6 +33,15 @@ def sample_from_policy(policy: BranchPolicy, rng: Random) -> BranchKey:
     return rng.choices(branches, weights=weights, k=1)[0]
 
 
+def _state_turn[StateT: State](node: AlgorithmNode[StateT]) -> Color:
+    """Return node.state.turn with runtime validation for strict typing."""
+    turn_obj: object = getattr(node.state, "turn", None)
+    assert isinstance(turn_obj, Color), (
+        f"state.turn must be a valanga.Color, got {type(turn_obj)}"
+    )
+    return turn_obj
+
+
 class RecommenderRule(Protocol):
     """Protocol for recommender rules."""
 
@@ -101,7 +110,7 @@ class SoftmaxRule:
         branches: list[BranchKey] = []
         scores: list[float] = []
 
-        root_turn = root_node.state.turn
+        root_turn = _state_turn(root_node)
         for bk, child in root_node.branches_children.items():
             if child is None:
                 continue

@@ -770,7 +770,8 @@ class NodeMinmaxEvaluation[
                 [
                     branch_key
                     for branch_key, child in self.tree_node.branches_children.items()
-                    if child is not None and child.tree_evaluation.is_terminal_candidate()
+                    if child is not None
+                    and child.tree_evaluation.is_terminal_candidate()
                 ],
                 key=str,
             )

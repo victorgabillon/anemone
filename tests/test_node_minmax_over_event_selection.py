@@ -91,11 +91,32 @@ class FakeChildEvaluation:
         assert self.direct_value is not None
         return self.direct_value.score
 
+    def get_value_candidate(self) -> Value | None:
+        if self.minmax_value is not None:
+            return self.minmax_value
+        return self.direct_value
+
+    def is_terminal_candidate(self) -> bool:
+        value = self.get_value_candidate()
+        return (
+            value is not None
+            and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
+            and value.over_event is not None
+        )
+
+    def _effective_over_event(self) -> FakeOverEvent | None:
+        candidate = self.get_value_candidate()
+        if candidate is not None and candidate.over_event is not None:
+            return candidate.over_event
+        return self.over_event
+
     def is_winner(self, player: Color) -> bool:
-        return self.over_event.is_winner(player)
+        over = self._effective_over_event()
+        return over is not None and over.is_winner(player)
 
     def is_draw(self) -> bool:
-        return self.over_event.is_draw()
+        over = self._effective_over_event()
+        return over is not None and over.is_draw()
 
 
 @dataclass
