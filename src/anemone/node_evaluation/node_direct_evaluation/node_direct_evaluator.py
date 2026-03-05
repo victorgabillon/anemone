@@ -6,6 +6,7 @@ from itertools import chain
 from typing import Protocol
 
 from valanga import Color, OverEvent, State
+from valanga.over_event import HowOver, Termination
 
 from anemone.nodes.algorithm_node import AlgorithmNode
 from anemone.values import Certainty, Value
@@ -182,59 +183,94 @@ class NodeDirectEvaluator[StateT: State = State]:
         terminal_outcome: TerminalOutcome,
         winner: Color | None,
     ) -> OverEvent:
-        template = OverEvent()
-        how_over_candidates = self._ordered_enum_candidates(
-            enum_type=type(template.how_over),
-            preferred_names=("DRAW",) if terminal_outcome is TerminalOutcome.DRAW else ("WIN", "MATE", "CHECKMATE"),
-            fallback=template.how_over,
-        )
-        termination_candidates = self._ordered_enum_candidates(
-            enum_type=type(template.termination),
-            preferred_names=(
-                ("STALEMATE", "DRAW", "UNKNOWN", "UNDEFINED")
-                if terminal_outcome is TerminalOutcome.DRAW
-                else ("MATE", "CHECKMATE", "UNKNOWN", "UNDEFINED")
-            ),
-            fallback=template.termination,
-        )
+        how_over_default = next(iter(HowOver.__members__.values()))
+        termination_default = next(iter(Termination.__members__.values()))
 
-        for how_over in how_over_candidates:
-            for termination in termination_candidates:
-                candidate = OverEvent()
-                candidate.becomes_over(
-                    how_over=how_over,
-                    who_is_winner=winner,
-                    termination=termination,
-                )
+        if terminal_outcome is TerminalOutcome.DRAW:
+            how_over = self._enum_member(
+                HowOver,
+                "DRAW",
+                "STALEMATE",
+                default=how_over_default,
+            )
+            termination = self._enum_member(
+                Termination,
+                "STALEMATE",
+                "DRAW",
+                "UNKNOWN",
+                "UNDEFINED",
+                default=termination_default,
+            )
+        else:
+            how_over = self._enum_member(
+                HowOver,
+                "WIN",
+                "CHECKMATE",
+                "MATE",
+                default=how_over_default,
+            )
+            termination = self._enum_member(
+                Termination,
+                "CHECKMATE",
+                "MATE",
+                "UNKNOWN",
+                "UNDEFINED",
+                default=termination_default,
+            )
+
+        def _make_event(how_over_member: object, termination_member: object) -> OverEvent:
+            candidate = OverEvent()
+            candidate.becomes_over(
+                how_over=how_over_member,
+                who_is_winner=winner,
+                termination=termination_member,
+            )
+            return candidate
+
+        canonical = _make_event(how_over, termination)
+        if canonical.is_over():
+            return canonical
+
+        how_over_candidates = [how_over, how_over_default]
+        termination_candidates = [termination, termination_default]
+
+        for how_over_candidate in how_over_candidates:
+            for termination_candidate in termination_candidates:
+                candidate = _make_event(how_over_candidate, termination_candidate)
                 if candidate.is_over():
                     return candidate
 
         raise AssertionError(
-            "Unable to construct a terminal OverEvent from available how_over/termination values"
+            "constructed OverEvent must be over: "
+            f"how_over={how_over} termination={termination} winner={winner} "
+            f"(defaults: {how_over_default}, {termination_default})"
         )
 
-    def _ordered_enum_candidates(
+    def _enum_member(
         self,
-        *,
         enum_type: type[object],
-        preferred_names: tuple[str, ...],
-        fallback: object,
-    ) -> list[object]:
+        *names: str,
+        default: object | None = None,
+    ) -> object:
         members = getattr(enum_type, "__members__", None)
-        if not isinstance(members, dict):
-            return [fallback]
+        if isinstance(members, dict):
+            for name in names:
+                member = members.get(name)
+                if member is not None:
+                    return member
 
-        ordered: list[object] = []
-        for name in preferred_names:
-            value = members.get(name)
-            if value is not None and value not in ordered:
-                ordered.append(value)
-        for value in members.values():
-            if value not in ordered:
-                ordered.append(value)
-        if fallback not in ordered:
-            ordered.append(fallback)
-        return ordered
+        for name in names:
+            member = getattr(enum_type, name, None)
+            if member is not None:
+                return member
+
+        if default is not None:
+            return default
+
+        available = tuple(getattr(enum_type, "__members__", {}).keys())
+        raise AssertionError(
+            f"Could not find enum member in {enum_type} for names {names}. Available: {available}"
+        )
 
     def _terminal_score(
         self,
