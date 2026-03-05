@@ -464,7 +464,10 @@ class NodeMinmaxEvaluation[
             bool: True if the game is over, False otherwise.
 
         """
-        return self.over_event.is_over()
+        over_event = self.over_event
+        if hasattr(over_event, "is_over"):
+            return bool(over_event.is_over())
+        return bool(getattr(over_event, "_is_over", False))
 
     def is_win(self) -> bool:
         """Check if the current game state is a win.

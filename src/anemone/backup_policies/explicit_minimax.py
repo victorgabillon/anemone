@@ -135,7 +135,9 @@ class ExplicitMinimaxBackupPolicy:
             value_after_update = best_child_value
         else:
             direct_value = self._direct_value_candidate(node_eval)
-            assert direct_value is not None
+            assert direct_value is not None, (
+                "Explicit minimax requires direct_value for partially expanded nodes."
+            )
             if node_eval.child_is_better_than_direct(
                 best_child_value,
                 direct_value,
@@ -199,7 +201,9 @@ class ExplicitMinimaxBackupPolicy:
         if child_value is None:
             return False
         direct_value = self._direct_value_candidate(node_eval)
-        assert direct_value is not None
+        assert direct_value is not None, (
+            "Explicit minimax requires direct_value for partially expanded nodes."
+        )
         return node_eval.child_is_better_than_direct(
             child_value,
             direct_value,
