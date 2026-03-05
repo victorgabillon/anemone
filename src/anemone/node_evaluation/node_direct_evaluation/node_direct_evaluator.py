@@ -6,7 +6,7 @@ from itertools import chain
 from typing import Protocol
 
 from valanga import Color, OverEvent, State
-from valanga.over_event import HowOver, Termination
+from valanga.over_event import HowOver, Winner
 
 from anemone.nodes.algorithm_node import AlgorithmNode
 from anemone.values import Certainty, Value
@@ -170,107 +170,37 @@ class NodeDirectEvaluator[StateT: State = State]:
         *,
         node: AlgorithmNode[StateT],
         outcome: TerminalOutcome,
-    ) -> Color | None:
+    ) -> Winner:
         if outcome is TerminalOutcome.DRAW:
-            return None
+            return Winner.NO_KNOWN_WINNER
         if outcome is TerminalOutcome.WIN:
-            return node.state.turn
-        return Color.BLACK if node.state.turn == Color.WHITE else Color.WHITE
+            return self._winner_from_color(node.state.turn)
+        winner_color = Color.BLACK if node.state.turn == Color.WHITE else Color.WHITE
+        return self._winner_from_color(winner_color)
 
     def _build_terminal_over_event(
         self,
         *,
         terminal_outcome: TerminalOutcome,
-        winner: Color | None,
+        winner: Winner,
     ) -> OverEvent:
-        how_over_default = next(iter(HowOver.__members__.values()))
-        termination_default = next(iter(Termination.__members__.values()))
-
-        if terminal_outcome is TerminalOutcome.DRAW:
-            how_over = self._enum_member(
-                HowOver,
-                "DRAW",
-                "STALEMATE",
-                default=how_over_default,
-            )
-            termination = self._enum_member(
-                Termination,
-                "STALEMATE",
-                "DRAW",
-                "UNKNOWN",
-                "UNDEFINED",
-                default=termination_default,
-            )
-        else:
-            how_over = self._enum_member(
-                HowOver,
-                "WIN",
-                "CHECKMATE",
-                "MATE",
-                default=how_over_default,
-            )
-            termination = self._enum_member(
-                Termination,
-                "CHECKMATE",
-                "MATE",
-                "UNKNOWN",
-                "UNDEFINED",
-                default=termination_default,
-            )
-
-        def _make_event(how_over_member: object, termination_member: object) -> OverEvent:
-            candidate = OverEvent()
-            candidate.becomes_over(
-                how_over=how_over_member,
-                who_is_winner=winner,
-                termination=termination_member,
-            )
-            return candidate
-
-        canonical = _make_event(how_over, termination)
-        if canonical.is_over():
-            return canonical
-
-        how_over_candidates = [how_over, how_over_default]
-        termination_candidates = [termination, termination_default]
-
-        for how_over_candidate in how_over_candidates:
-            for termination_candidate in termination_candidates:
-                candidate = _make_event(how_over_candidate, termination_candidate)
-                if candidate.is_over():
-                    return candidate
-
-        raise AssertionError(
+        how_over = HowOver.DRAW if terminal_outcome is TerminalOutcome.DRAW else HowOver.WIN
+        canonical = OverEvent()
+        canonical.becomes_over(
+            how_over=how_over,
+            who_is_winner=winner,
+            termination=None,
+        )
+        assert canonical.is_over(), (
             "constructed OverEvent must be over: "
-            f"how_over={how_over} termination={termination} winner={winner} "
-            f"(defaults: {how_over_default}, {termination_default})"
+            f"how_over={how_over} winner={winner}"
         )
+        return canonical
 
-    def _enum_member(
-        self,
-        enum_type: type[object],
-        *names: str,
-        default: object | None = None,
-    ) -> object:
-        members = getattr(enum_type, "__members__", None)
-        if isinstance(members, dict):
-            for name in names:
-                member = members.get(name)
-                if member is not None:
-                    return member
-
-        for name in names:
-            member = getattr(enum_type, name, None)
-            if member is not None:
-                return member
-
-        if default is not None:
-            return default
-
-        available = tuple(getattr(enum_type, "__members__", {}).keys())
-        raise AssertionError(
-            f"Could not find enum member in {enum_type} for names {names}. Available: {available}"
-        )
+    def _winner_from_color(self, color: Color) -> Winner:
+        if color == Color.WHITE:
+            return Winner.WHITE
+        return Winner.BLACK
 
     def _terminal_score(
         self,
