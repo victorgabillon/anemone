@@ -39,6 +39,7 @@ class _FakePolicy:
 class _FakeTreeEvaluation:
     backup_policy: _FakePolicy
     over_event: _FakeOverEvent = field(default_factory=_FakeOverEvent)
+    terminal_candidate: bool = False
 
     def backup_from_children(
         self,
@@ -54,6 +55,9 @@ class _FakeTreeEvaluation:
     def update_over(self, branches_with_updated_over: set[int]) -> bool:
         del branches_with_updated_over
         return False
+
+    def is_terminal_candidate(self) -> bool:
+        return self.terminal_candidate
 
 
 @dataclass(slots=True)
@@ -85,3 +89,45 @@ def test_updater_calls_injected_backup_policy() -> None:
     assert fake_policy.calls == [({0, 1}, {1})]
     assert result.new_value_for_node is True
     assert result.new_best_branch_for_node is True
+
+
+def test_create_update_instructions_uses_terminal_candidate_predicate() -> None:
+    """Birth updates should consume the terminal-from-Value predicate."""
+    fake_policy = _FakePolicy(
+        calls=[],
+        result=BackupResult(value_changed=False, pv_changed=False, over_changed=False),
+    )
+    node = _FakeNode(
+        tree_evaluation=_FakeTreeEvaluation(
+            backup_policy=fake_policy,
+            terminal_candidate=True,
+        )
+    )
+
+    updater = MinMaxEvaluationUpdater()
+    result = updater.create_update_instructions_after_node_birth(
+        new_node=cast("AlgorithmNode", node),
+    )
+
+    assert result.is_node_newly_over is True
+
+
+def test_create_update_instructions_terminal_candidate_false() -> None:
+    """Birth updates should report non-over when terminal candidate is false."""
+    fake_policy = _FakePolicy(
+        calls=[],
+        result=BackupResult(value_changed=False, pv_changed=False, over_changed=False),
+    )
+    node = _FakeNode(
+        tree_evaluation=_FakeTreeEvaluation(
+            backup_policy=fake_policy,
+            terminal_candidate=False,
+        )
+    )
+
+    updater = MinMaxEvaluationUpdater()
+    result = updater.create_update_instructions_after_node_birth(
+        new_node=cast("AlgorithmNode", node),
+    )
+
+    assert result.is_node_newly_over is False
