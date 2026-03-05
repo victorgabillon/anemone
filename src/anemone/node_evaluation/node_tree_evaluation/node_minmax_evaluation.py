@@ -237,18 +237,18 @@ class NodeMinmaxEvaluation[
         self._assert_float_views_consistent()
 
     def _sync_over_from_values(self) -> None:
-        """Keep ``over_event`` aligned with terminal/forced Value metadata."""
+        """Keep ``over_event`` aligned with terminal/forced Value metadata.
+
+        Non-terminal values do not clear existing over state; this keeps legacy
+        ``update_over`` behavior stable when Value metadata is not terminal.
+        """
         value = self.get_value_candidate()
         if (
-            value is None
-            or value.certainty not in {Certainty.TERMINAL, Certainty.FORCED}
-            or value.over_event is None
-            or not value.over_event.is_over()
+            value is not None
+            and value.certainty in {Certainty.TERMINAL, Certainty.FORCED}
+            and value.over_event is not None
         ):
-            self.over_event = OverEvent()
-            return
-
-        self.over_event = value.over_event
+            self.over_event = value.over_event
 
     def sync_float_views_from_values(self) -> None:
         """Public bridge wrapper to sync legacy float views from Value fields."""

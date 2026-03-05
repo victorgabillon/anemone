@@ -33,7 +33,7 @@ class ExplicitMinimaxBackupPolicy:
 
         value_before_update = node_eval.minmax_value
         pv_before_update = node_eval.best_branch_sequence.copy()
-        over_before_update_tag = node_eval.over_event.get_over_tag()
+        over_before_update = node_eval.over_event
         best_branch_before_update = node_eval.best_branch()
 
         if branches_with_updated_value:
@@ -96,7 +96,7 @@ class ExplicitMinimaxBackupPolicy:
             value_after=node_eval.minmax_value,
         )
         pv_changed = pv_before_update != node_eval.best_branch_sequence
-        over_changed = over_before_update_tag != node_eval.over_event.get_over_tag()
+        over_changed = over_before_update != node_eval.over_event
 
         return BackupResult(
             value_changed=value_changed,
@@ -122,7 +122,9 @@ class ExplicitMinimaxBackupPolicy:
                 "Cannot compute minimax value: no children."
             )
             direct_value = self._direct_value_candidate(node_eval)
-            assert direct_value is not None
+            assert direct_value is not None, (
+                "Explicit minimax requires direct_value for partially expanded nodes."
+            )
             node_eval.minmax_value = direct_value
             return
 
