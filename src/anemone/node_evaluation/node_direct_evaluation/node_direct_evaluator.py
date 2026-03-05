@@ -5,10 +5,11 @@ from enum import StrEnum
 from itertools import chain
 from typing import Protocol
 
-from valanga import OverEvent, State
+from valanga import Color, OverEvent, State
 
 from anemone.nodes.algorithm_node import AlgorithmNode
 from anemone.values import Certainty, Value
+from anemone.values.evaluation_ordering import TerminalOutcome
 
 from .protocols import MasterStateEvaluator, MasterStateValueEvaluator
 from .value_wrappers import FloatToValueEvaluator
@@ -96,22 +97,160 @@ class NodeDirectEvaluator[StateT: State = State]:
         over_event, evaluation = (
             self.master_state_value_evaluator.over.check_obvious_over_events(node.state)
         )
-        if over_event is not None:
-            node.tree_evaluation.over_event.becomes_over(
-                how_over=over_event.how_over,
-                who_is_winner=over_event.who_is_winner,
-                termination=over_event.termination,
+        is_terminal = bool(getattr(node.state, "is_terminal", False))
+        if over_event is None and not is_terminal:
+            return
+
+        canonical_over_event = self._canonical_terminal_over_event(
+            raw_over_event=over_event,
+            node=node,
+        )
+        terminal_score = self._terminal_score(
+            node=node,
+            evaluation=evaluation,
+            canonical_over_event=canonical_over_event,
+        )
+        node.tree_evaluation.over_event = canonical_over_event
+        node.tree_evaluation.direct_value = Value(
+            score=terminal_score,
+            certainty=Certainty.TERMINAL,
+            over_event=canonical_over_event,
+        )
+        node.tree_evaluation.sync_float_views_from_values()
+        assert node.tree_evaluation.direct_value is not None
+        assert node.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
+        assert node.tree_evaluation.direct_value.over_event is not None
+        assert node.tree_evaluation.direct_value.over_event.is_over()
+        assert node.tree_evaluation.is_over()
+
+    def _canonical_terminal_over_event(
+        self,
+        *,
+        raw_over_event: OverEvent | None,
+        node: AlgorithmNode[StateT],
+    ) -> OverEvent:
+        canonical = OverEvent()
+
+        if self._is_usable_over_event(raw_over_event):
+            canonical.becomes_over(
+                how_over=raw_over_event.how_over,
+                who_is_winner=raw_over_event.who_is_winner,
+                termination=raw_over_event.termination,
             )
-            assert evaluation is not None, (
-                "Evaluation should not be None for over nodes"
-            )
-            value = Value(
-                score=evaluation,
-                certainty=Certainty.TERMINAL,
-                over_event=over_event,
-            )
-            node.tree_evaluation.direct_value = value
-            node.tree_evaluation.sync_float_views_from_values()
+            if canonical.is_over():
+                return canonical
+
+        terminal_outcome = (
+            node.tree_evaluation.evaluation_ordering.terminal_without_over_event
+        )
+        winner = self._winner_for_terminal_outcome(node=node, outcome=terminal_outcome)
+        canonical = self._build_terminal_over_event(
+            terminal_outcome=terminal_outcome,
+            winner=winner,
+        )
+        assert canonical.is_over(), "Canonical terminal over_event must be over"
+        return canonical
+
+    def _is_usable_over_event(self, over_event: OverEvent | None) -> bool:
+        if over_event is None:
+            return False
+        if not all(
+            hasattr(over_event, attr)
+            for attr in ("how_over", "who_is_winner", "termination")
+        ):
+            return False
+        is_over_fn = getattr(over_event, "is_over", None)
+        if callable(is_over_fn):
+            return bool(is_over_fn())
+        return True
+
+    def _winner_for_terminal_outcome(
+        self,
+        *,
+        node: AlgorithmNode[StateT],
+        outcome: TerminalOutcome,
+    ) -> Color | None:
+        if outcome is TerminalOutcome.DRAW:
+            return None
+        if outcome is TerminalOutcome.WIN:
+            return node.state.turn
+        return Color.BLACK if node.state.turn == Color.WHITE else Color.WHITE
+
+    def _build_terminal_over_event(
+        self,
+        *,
+        terminal_outcome: TerminalOutcome,
+        winner: Color | None,
+    ) -> OverEvent:
+        template = OverEvent()
+        how_over_candidates = self._ordered_enum_candidates(
+            enum_type=type(template.how_over),
+            preferred_names=("DRAW",) if terminal_outcome is TerminalOutcome.DRAW else ("WIN", "MATE", "CHECKMATE"),
+            fallback=template.how_over,
+        )
+        termination_candidates = self._ordered_enum_candidates(
+            enum_type=type(template.termination),
+            preferred_names=(
+                ("STALEMATE", "DRAW", "UNKNOWN", "UNDEFINED")
+                if terminal_outcome is TerminalOutcome.DRAW
+                else ("MATE", "CHECKMATE", "UNKNOWN", "UNDEFINED")
+            ),
+            fallback=template.termination,
+        )
+
+        for how_over in how_over_candidates:
+            for termination in termination_candidates:
+                candidate = OverEvent()
+                candidate.becomes_over(
+                    how_over=how_over,
+                    who_is_winner=winner,
+                    termination=termination,
+                )
+                if candidate.is_over():
+                    return candidate
+
+        raise AssertionError(
+            "Unable to construct a terminal OverEvent from available how_over/termination values"
+        )
+
+    def _ordered_enum_candidates(
+        self,
+        *,
+        enum_type: type[object],
+        preferred_names: tuple[str, ...],
+        fallback: object,
+    ) -> list[object]:
+        members = getattr(enum_type, "__members__", None)
+        if not isinstance(members, dict):
+            return [fallback]
+
+        ordered: list[object] = []
+        for name in preferred_names:
+            value = members.get(name)
+            if value is not None and value not in ordered:
+                ordered.append(value)
+        for value in members.values():
+            if value not in ordered:
+                ordered.append(value)
+        if fallback not in ordered:
+            ordered.append(fallback)
+        return ordered
+
+    def _terminal_score(
+        self,
+        *,
+        node: AlgorithmNode[StateT],
+        evaluation: float | None,
+        canonical_over_event: OverEvent,
+    ) -> float:
+        if evaluation is not None:
+            return evaluation
+        if hasattr(node.state, "base_score"):
+            return float(node.state.base_score)
+        return node.tree_evaluation.evaluation_ordering.terminal_score(
+            canonical_over_event,
+            perspective=node.state.turn,
+        )
 
     def evaluate_all_queried_nodes(
         self, evaluation_queries: EvaluationQueries[StateT]
