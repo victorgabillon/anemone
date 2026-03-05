@@ -116,7 +116,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         ...
 
     def get_value_white(self) -> float:
-        """Return the current white evaluation value (legacy compatibility)."""
+        """Return a legacy float view of the white evaluation (do not use for decisions)."""
         ...
 
     def get_score(self) -> float:

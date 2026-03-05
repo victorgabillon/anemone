@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
 from valanga import Color
 
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
@@ -134,7 +135,7 @@ def test_backup_respects_turn_white_max_black_min() -> None:
     black_parent_eval.minmax_value_update_from_children(
         branches_with_updated_value={0, 1}
     )
-    assert black_parent_eval.value_white_minmax == 0.1
+    assert black_parent_eval.get_score() == 0.1
     assert black_parent_eval.best_branch_sequence[:1] == [0]
 
 
@@ -152,6 +153,23 @@ def test_backup_tie_break_is_deterministic() -> None:
     second_choice = parent_eval.best_branch_sequence[:1]
 
     assert first_choice == second_choice == [0]
+
+
+def test_float_bridge_properties_are_read_only_views() -> None:
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=SimpleNamespace(turn=Color.WHITE),
+        branches_children={},
+        all_branches_generated=True,
+    )
+    evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
+
+    evaluation.set_evaluation(0.33)
+
+    assert evaluation.value_white_direct_evaluation == 0.33
+    assert evaluation.value_white_minmax == 0.33
+    with pytest.raises(AttributeError):
+        evaluation.value_white_minmax = 0.99
 
 
 def test_set_evaluation_populates_direct_value_guardrail() -> None:
