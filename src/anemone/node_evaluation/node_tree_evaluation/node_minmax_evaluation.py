@@ -303,6 +303,7 @@ class NodeMinmaxEvaluation[
     def child_is_better_than_direct(
         self, child: Value, direct: Value, *, side_to_move: Color
     ) -> bool:
+        """Determine if a child's value is better than the direct evaluation for the current node."""
         return (
             self.evaluation_ordering.semantic_compare(
                 child,
