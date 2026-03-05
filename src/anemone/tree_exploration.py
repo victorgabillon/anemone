@@ -152,7 +152,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         loop: int = 0
         while self.stopping_criterion.should_we_continue(tree=self.tree):
             loop = loop + 1
-            assert not self.tree.root_node.is_over()
+            assert not self.tree.root_node.tree_evaluation.is_terminal_candidate()
             # print info
             self.print_info_during_branch_computation(random_generator=random_generator)
 
