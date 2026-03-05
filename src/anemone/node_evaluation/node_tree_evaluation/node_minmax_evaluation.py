@@ -12,6 +12,7 @@ node is over, and printing information about the node.
 # TODO: maybe further split values from over?
 
 from dataclasses import dataclass, field
+from functools import cmp_to_key
 from math import isclose, log
 from random import choice
 from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
@@ -31,7 +32,6 @@ from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.utils.logger import anemone_logger
 from anemone.utils.my_value_sorted_dict import sort_dic
-from anemone.utils.small_tools import nth_key
 from anemone.values import (
     DEFAULT_EVALUATION_ORDERING,
     Certainty,
@@ -225,6 +225,14 @@ class NodeMinmaxEvaluation[
             return self.minmax_value
         return self.direct_value
 
+    def require_value_candidate(self) -> Value:
+        """Return best candidate Value, raising when no Value exists yet."""
+        value = self.get_value_candidate()
+        assert value is not None, (
+            "Node has no candidate Value: both minmax_value and direct_value are None."
+        )
+        return value
+
     def is_terminal_candidate(self) -> bool:
         """Return True when candidate Value is TERMINAL/FORCED and has ``over_event``."""
         value = self.get_value_candidate()
@@ -416,12 +424,10 @@ class NodeMinmaxEvaluation[
             The best branch based on the subjective value, or None if there are no branch open.
 
         """
-        best_branch: BranchKey | None
-        if self.branches_sorted_by_value:
-            best_branch = next(iter(self.branches_sorted_by_value))
-        else:
-            best_branch = None
-        return best_branch
+        ordered = self._decision_ordered_branches()
+        if not ordered:
+            return None
+        return ordered[0]
 
     def best_branch_not_over(self) -> BranchKey:
         """Return the best branch that is not leading to a game-over.
@@ -466,10 +472,39 @@ class NodeMinmaxEvaluation[
             The second-best branch.
 
         """
-        assert len(self.branches_sorted_by_value) >= 2
-        # fast way to access second key with the highest subjective value
-        second_best_branch: BranchKey = nth_key(self.branches_sorted_by_value, 1)
-        return second_best_branch
+        ordered = self._decision_ordered_branches()
+        assert len(ordered) >= 2
+        return ordered[1]
+
+    def _decision_ordered_branches(self) -> list[BranchKey]:
+        """Return branches ordered for best-choice decisions.
+
+        Uses semantic_compare on Value for correctness, with previous search-order
+        tuple as deterministic tie-breaker.
+        """
+        candidates: list[tuple[BranchKey, Value, BranchSortValue]] = []
+        for branch_key, sort_value in self.branches_sorted_by_value.items():
+            child_value = self.child_value_candidate(branch_key)
+            if child_value is None:
+                continue
+            candidates.append((branch_key, child_value, sort_value))
+
+        def _cmp(
+            a: tuple[BranchKey, Value, BranchSortValue],
+            b: tuple[BranchKey, Value, BranchSortValue],
+        ) -> int:
+            sem = self.evaluation_ordering.semantic_compare(
+                a[1], b[1], side_to_move=self.tree_node.state.turn
+            )
+            if sem != 0:
+                return -sem
+            if a[2] < b[2]:
+                return -1
+            if a[2] > b[2]:
+                return 1
+            return -1 if str(a[0]) < str(b[0]) else (1 if str(a[0]) > str(b[0]) else 0)
+
+        return [item[0] for item in sorted(candidates, key=cmp_to_key(_cmp))]
 
     def is_over(self) -> bool:
         """Check if the game is over.
@@ -622,7 +657,7 @@ class NodeMinmaxEvaluation[
             child_value,
             side_to_move=self.tree_node.state.turn,
         )
-        if self.is_over():
+        if self.is_terminal_candidate():
             # the shorter the check the better now
             self.branches_sorted_by_value_[branch_key] = (
                 subjective_value_of_child,
@@ -1269,9 +1304,11 @@ class NodeMinmaxEvaluation[
 
     def evaluate(self) -> StateEvaluation:
         """Build a StateEvaluation from current minmax state."""
-        if self.over_event.is_over():
+        if self.is_terminal_candidate():
+            value = self.require_value_candidate()
+            assert value.over_event is not None
             return ForcedOutcome(
-                outcome=self.over_event,
+                outcome=value.over_event,
                 line=self.best_branch_sequence.copy(),
             )
         return FloatyStateEvaluation(value_white=self.get_score())

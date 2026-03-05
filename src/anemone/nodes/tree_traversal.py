@@ -49,7 +49,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
         list[AlgorithmNode]: A list of descendants that are not over.
 
     """
-    if not from_tree_node.all_branches_generated and not from_tree_node.is_over():
+    if not from_tree_node.all_branches_generated and not from_tree_node.tree_evaluation.is_terminal_candidate():
         # should use are_all_branches_and_children_opened() but its messy!
         # also using is_over is  messy as over_events are defined in a child class!!!
         des = {from_tree_node: None}  # include itself maybe
@@ -63,7 +63,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
     while generation and depth <= max_depth:
         next_depth_generation: set[NodeT] = set()
         for node in generation:
-            if not node.all_branches_generated and not node.is_over():
+            if not node.all_branches_generated and not node.tree_evaluation.is_terminal_candidate():
                 des[node] = None
             for next_generation_child in node.branches_children.values():
                 if next_generation_child is not None:
@@ -85,7 +85,7 @@ def get_descendants_candidate_not_over[NodeT: AlgorithmNode[Any]](
         list[ITreeNode]: A list of descendants that are not over.
 
     """
-    assert not from_tree_node.is_over()
+    assert not from_tree_node.tree_evaluation.is_terminal_candidate()
     if not from_tree_node.branches_children:
         return [from_tree_node]
     des: dict[NodeT, None] = {}
@@ -98,7 +98,7 @@ def get_descendants_candidate_not_over[NodeT: AlgorithmNode[Any]](
     while generation and depth <= max_depth:
         next_depth_generation: set[NodeT] = set()
         for node in generation:
-            if not node.is_over():
+            if not node.tree_evaluation.is_terminal_candidate():
                 des[node] = None
             for next_generation_child in node.branches_children.values():
                 if next_generation_child is not None:

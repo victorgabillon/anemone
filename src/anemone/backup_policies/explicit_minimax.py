@@ -166,7 +166,7 @@ class ExplicitMinimaxBackupPolicy:
                 side_to_move=node_eval.tree_node.state.turn,
             )
 
-            if node_eval.is_over():
+            if node_eval.is_terminal_candidate():
                 node_eval.branches_sorted_by_value_[branch_key] = (
                     subjective_sort_value,
                     -len(child.tree_evaluation.best_branch_sequence),
