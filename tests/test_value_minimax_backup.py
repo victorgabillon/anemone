@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
-from valanga import Color
+from valanga import Color, FloatyStateEvaluation
 
 from anemone.backup_policies.explicit_minimax import (
     ExplicitMinimaxBackupPolicy,
@@ -357,3 +357,63 @@ def test_best_branch_tail_update_propagates_without_head_rebuild() -> None:
 
     assert parent.best_branch_sequence == [0, 8, 7]
     assert result.pv_changed
+
+
+def test_best_branch_selection_uses_semantic_compare_terminal_over_estimate() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={
+            0: _make_leaf(1, Value(score=100.0, certainty=Certainty.ESTIMATE)),
+            1: _make_leaf(2, Value(
+                score=0.0,
+                certainty=Certainty.TERMINAL,
+                over_event=_FakeOverEvent(winner=Color.WHITE),
+            )),
+        },
+        all_generated=True,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.best_branch() == 1
+
+
+def test_branch_ordering_for_search_uses_projection_and_stable_tie_breakers() -> None:
+    child_a = _make_leaf(1, Value(score=0.5, certainty=Certainty.ESTIMATE))
+    child_b = _make_leaf(2, Value(score=0.5, certainty=Certainty.ESTIMATE))
+
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: child_a, 1: child_b},
+        all_generated=True,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert list(parent.branches_sorted_by_value.keys()) == [0, 1]
+
+
+def test_evaluate_does_not_emit_forced_outcome_for_non_terminal_estimate_with_over_event() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={},
+        all_generated=True,
+        direct_value=Value(
+            score=0.25,
+            certainty=Certainty.ESTIMATE,
+            over_event=_FakeOverEvent(winner=Color.WHITE),
+        ),
+    )
+
+    result = parent.evaluate()
+
+    assert isinstance(result, FloatyStateEvaluation)
+    assert result.value_white == 0.25

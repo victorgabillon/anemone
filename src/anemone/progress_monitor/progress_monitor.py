@@ -129,7 +129,7 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             boolean of should we continue
 
         """
-        return not tree.root_node.is_over()
+        return not tree.root_node.tree_evaluation.is_terminal_candidate()
 
     def respectful_opening_instructions(
         self,

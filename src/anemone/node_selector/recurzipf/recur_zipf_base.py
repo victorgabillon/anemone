@@ -86,7 +86,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         wandering_node: NodeT = tree.root_node
 
         while wandering_node.tree_evaluation.branches_not_over:
-            assert not wandering_node.is_over()
+            assert not wandering_node.tree_evaluation.is_terminal_candidate()
             branch = self.branch_explorer.sample_branch_to_explore(
                 tree_node_to_sample_from=wandering_node
             )
