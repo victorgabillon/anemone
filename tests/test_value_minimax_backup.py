@@ -218,7 +218,11 @@ def test_backup_result_value_changed_tracks_score_certainty_and_over_event() -> 
     )
     assert has_value_changed(
         value_before=Value(score=0.1, certainty=Certainty.ESTIMATE, over_event=None),
-        value_after=Value(score=0.1, certainty=Certainty.ESTIMATE, over_event=_FakeOverEvent(draw=True)),
+        value_after=Value(
+            score=0.1,
+            certainty=Certainty.ESTIMATE,
+            over_event=_FakeOverEvent(draw=True),
+        ),
     )
 
 
@@ -283,6 +287,7 @@ def test_partial_expansion_unvalued_best_child_clears_pv() -> None:
 
     assert parent.minmax_value == parent.direct_value
     assert parent.best_branch_sequence == []
+
 
 def test_partial_expansion_requires_direct_value() -> None:
     parent = _make_parent(

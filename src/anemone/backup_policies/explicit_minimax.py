@@ -85,9 +85,7 @@ class ExplicitMinimaxBackupPolicy:
             and node_eval.best_branch_sequence[0] == best_branch_after_update
             and branches_with_updated_best_branch_seq
         ):
-            node_eval.update_best_branch_sequence(
-                branches_with_updated_best_branch_seq
-            )
+            node_eval.update_best_branch_sequence(branches_with_updated_best_branch_seq)
 
         node_eval.sync_float_views_from_values()
 
