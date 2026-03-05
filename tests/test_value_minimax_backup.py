@@ -94,7 +94,7 @@ def test_estimate_children_respect_side_to_move_ordering() -> None:
         branches_with_updated_best_branch_seq=set(),
     )
     assert white_parent.minmax_value == Value(score=0.7)
-    assert white_parent.value_white_minmax == 0.7
+    assert white_parent.get_score() == 0.7
 
     black_parent = _make_parent(
         turn=Color.BLACK,
@@ -110,7 +110,7 @@ def test_estimate_children_respect_side_to_move_ordering() -> None:
         branches_with_updated_best_branch_seq=set(),
     )
     assert black_parent.minmax_value == Value(score=0.2)
-    assert black_parent.value_white_minmax == 0.2
+    assert black_parent.get_score() == 0.2
 
 
 def test_partial_expansion_prefers_direct_when_better_for_side_to_move() -> None:
@@ -127,7 +127,7 @@ def test_partial_expansion_prefers_direct_when_better_for_side_to_move() -> None
     )
 
     assert parent.minmax_value == Value(score=0.5)
-    assert parent.value_white_minmax == 0.5
+    assert parent.get_score() == 0.5
 
 
 def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> None:
@@ -144,7 +144,7 @@ def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> Non
     )
 
     assert parent.minmax_value == Value(score=0.2)
-    assert parent.value_white_minmax == 0.2
+    assert parent.get_score() == 0.2
 
 
 def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> None:
@@ -161,7 +161,7 @@ def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> N
     )
 
     assert parent.minmax_value == Value(score=0.5)
-    assert parent.value_white_minmax == 0.5
+    assert parent.get_score() == 0.5
 
 
 def test_semantic_compare_terminal_vs_estimate_is_exposed() -> None:

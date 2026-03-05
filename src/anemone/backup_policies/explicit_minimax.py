@@ -152,7 +152,7 @@ class ExplicitMinimaxBackupPolicy:
         self,
         node_eval: NodeMinmaxEvaluation[Any, Any],
     ) -> None:
-        """Update ``minmax_value`` and keep ``value_white_minmax`` as float bridge."""
+        """Update ``minmax_value`` from Value-first branch ordering semantics."""
         best_branch_key = node_eval.best_branch()
         if best_branch_key is None and node_eval.tree_node.branches_children:
             self._update_branches_values_value_only(
@@ -179,13 +179,10 @@ class ExplicitMinimaxBackupPolicy:
         else:
             direct_value = self._direct_value_candidate(node_eval)
             assert direct_value is not None
-            if (
-                node_eval.evaluation_ordering.semantic_compare(
-                    best_child_value,
-                    direct_value,
-                    side_to_move=node_eval.tree_node.state.turn,
-                )
-                >= 0
+            if node_eval.child_is_better_than_direct(
+                best_child_value,
+                direct_value,
+                side_to_move=node_eval.tree_node.state.turn,
             ):
                 value_after_update = best_child_value
             else:
@@ -247,13 +244,10 @@ class ExplicitMinimaxBackupPolicy:
             return False
         direct_value = self._direct_value_candidate(node_eval)
         assert direct_value is not None
-        return (
-            node_eval.evaluation_ordering.semantic_compare(
-                child_value,
-                direct_value,
-                side_to_move=node_eval.tree_node.state.turn,
-            )
-            >= 0
+        return node_eval.child_is_better_than_direct(
+            child_value,
+            direct_value,
+            side_to_move=node_eval.tree_node.state.turn,
         )
 
 

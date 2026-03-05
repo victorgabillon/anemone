@@ -127,12 +127,12 @@ class NodeMinmaxEvaluation[
     tree_node: TreeNode[NodeWithValueT, StateT]
 
     # absolute value wrt to white player as estimated by a state evaluator
-    value_white_direct_evaluation: float | None = None
+    _value_white_direct_evaluation: float | None = None
     direct_value: Value | None = None
 
     # absolute value wrt to white player as computed from the value_white_* of the descendants
     # of this node (self) by a minmax procedure.
-    value_white_minmax: float | None = None
+    _value_white_minmax: float | None = None
     minmax_value: Value | None = None
 
     # the sequence of best branches from this node
@@ -186,6 +186,16 @@ class NodeMinmaxEvaluation[
         """
         return self.branches_sorted_by_value_
 
+    @property
+    def value_white_direct_evaluation(self) -> float | None:
+        """Legacy float view (derived). Do not use for decisions."""
+        return self._value_white_direct_evaluation
+
+    @property
+    def value_white_minmax(self) -> float | None:
+        """Legacy float view (derived). Do not use for decisions."""
+        return self._value_white_minmax
+
     def get_value(self) -> Value:
         """Return the canonical value for this node.
 
@@ -217,36 +227,43 @@ class NodeMinmaxEvaluation[
         Float fields are compatibility views only. They are set to ``None`` when
         the corresponding canonical Value is missing.
         """
-        self.value_white_direct_evaluation = (
+        self._value_white_direct_evaluation = (
             self.direct_value.score if self.direct_value is not None else None
         )
-        self.value_white_minmax = (
+        self._value_white_minmax = (
             self.minmax_value.score if self.minmax_value is not None else None
         )
+        self._assert_float_views_consistent()
 
     def sync_float_views_from_values(self) -> None:
         """Public bridge wrapper to sync legacy float views from Value fields."""
         self._sync_float_views_from_values()
 
+    def _assert_float_views_consistent(self) -> None:
+        if self.direct_value is None:
+            assert self._value_white_direct_evaluation is None
+        else:
+            assert self._value_white_direct_evaluation is not None
+            assert isclose(
+                self._value_white_direct_evaluation,
+                self.direct_value.score,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            )
+        if self.minmax_value is None:
+            assert self._value_white_minmax is None
+        else:
+            assert self._value_white_minmax is not None
+            assert isclose(
+                self._value_white_minmax,
+                self.minmax_value.score,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            )
+
     def assert_value_float_consistency(self) -> None:
         """Assert Value/float bridge consistency when both representations exist."""
-        if (
-            self.direct_value is not None
-            and self.value_white_direct_evaluation is not None
-        ):
-            assert isclose(
-                self.direct_value.score,
-                self.value_white_direct_evaluation,
-                rel_tol=0.0,
-                abs_tol=1e-12,
-            )
-        if self.minmax_value is not None and self.value_white_minmax is not None:
-            assert isclose(
-                self.minmax_value.score,
-                self.value_white_minmax,
-                rel_tol=0.0,
-                abs_tol=1e-12,
-            )
+        self._assert_float_views_consistent()
 
     def get_value_white(self) -> float:
         """Return the best estimation of the value for white in this node (float bridge).
@@ -267,6 +284,7 @@ class NodeMinmaxEvaluation[
             None
 
         """
+        # legacy API: convert float into Value representation.
         if (
             self.direct_value is None
             or self.direct_value.certainty is not Certainty.TERMINAL
@@ -281,6 +299,18 @@ class NodeMinmaxEvaluation[
         if not self.tree_node.branches_children or self.minmax_value is None:
             self.minmax_value = self.direct_value
         self._sync_float_views_from_values()
+
+    def child_is_better_than_direct(
+        self, child: Value, direct: Value, *, side_to_move: Color
+    ) -> bool:
+        return (
+            self.evaluation_ordering.semantic_compare(
+                child,
+                direct,
+                side_to_move=side_to_move,
+            )
+            >= 0
+        )
 
     def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
         """Return the best available Value candidate for a child branch.
@@ -324,8 +354,8 @@ class NodeMinmaxEvaluation[
     def subjective_value(self) -> float:
         """Return the subjective value of self.value_white from the point of view of the self.tree_node.player_to_branch.
 
-        If the player to branch is Color.WHITE, the subjective value is self.get_value_white().
-        If the player to branch is not Color.WHITE, the subjective value is -self.get_value_white().
+        If the player to branch is Color.WHITE, the subjective value is the canonical score.
+        If the player to branch is not Color.WHITE, the subjective value is the negated canonical score.
 
         Returns:
             float: The subjective value of self.value_white.
@@ -799,13 +829,10 @@ class NodeMinmaxEvaluation[
                 self.minmax_value = best_child_value
                 self._sync_float_views_from_values()
                 return
-            if (
-                self.evaluation_ordering.semantic_compare(
-                    best_child_value,
-                    self.direct_value,
-                    side_to_move=self.tree_node.state.turn,
-                )
-                >= 0
+            if self.child_is_better_than_direct(
+                best_child_value,
+                self.direct_value,
+                side_to_move=self.tree_node.state.turn,
             ):
                 self.minmax_value = best_child_value
             else:
@@ -940,13 +967,10 @@ class NodeMinmaxEvaluation[
         )
         best_child_value = self.child_value_candidate(best_branch_key)
         assert best_child_value is not None, "Best child value is missing."
-        child_is_good_enough = (
-            self.evaluation_ordering.semantic_compare(
-                best_child_value,
-                direct_value,
-                side_to_move=self.tree_node.state.turn,
-            )
-            >= 0
+        child_is_good_enough = self.child_is_better_than_direct(
+            best_child_value,
+            direct_value,
+            side_to_move=self.tree_node.state.turn,
         )
         if not child_is_good_enough:
             assert not self.best_branch_sequence, (
@@ -998,13 +1022,10 @@ class NodeMinmaxEvaluation[
 
         """
         assert self.direct_value is not None
-        return (
-            self.evaluation_ordering.semantic_compare(
-                value,
-                self.direct_value,
-                side_to_move=self.tree_node.state.turn,
-            )
-            >= 0
+        return self.child_is_better_than_direct(
+            value,
+            self.direct_value,
+            side_to_move=self.tree_node.state.turn,
         )
 
     def minmax_value_update_from_children_legacy(
@@ -1125,11 +1146,13 @@ class NodeMinmaxEvaluation[
             A string representation of the node's description in DOT format.
 
         """
+        # legacy float view only; do not use for decisions
         value_mm = (
             f"{self.value_white_minmax:.3f}"
             if self.value_white_minmax is not None
             else "None"
         )
+        # legacy float view only; do not use for decisions
         value_eval = (
             f"{self.value_white_direct_evaluation:.3f}"
             if self.value_white_direct_evaluation is not None
