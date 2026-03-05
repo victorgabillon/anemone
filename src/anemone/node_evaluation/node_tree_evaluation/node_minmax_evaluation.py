@@ -247,6 +247,7 @@ class NodeMinmaxEvaluation[
             value is not None
             and value.certainty in {Certainty.TERMINAL, Certainty.FORCED}
             and value.over_event is not None
+            and hasattr(value.over_event, "is_over")
         ):
             self.over_event = value.over_event
 
