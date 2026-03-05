@@ -1,6 +1,5 @@
 """Edge-case tests documenting current value backup semantics."""
 
-from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any
 
@@ -9,80 +8,13 @@ from valanga import Color
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.values import Certainty, Value
-
-
-@dataclass
-class _FakeOverEvent:
-    def is_over(self) -> bool:
-        return False
-
-    def is_winner(self, player: Color) -> bool:
-        del player
-        return False
-
-    def is_draw(self) -> bool:
-        return False
-
-
-@dataclass
-class _FakeChildEvaluation:
-    value_white: float
-    value_white_minmax: float | None = None
-    direct_value: Value | None = None
-    minmax_value: Value | None = None
-    best_branch_sequence: list[int] = field(default_factory=list)
-    over_event: _FakeOverEvent = field(default_factory=_FakeOverEvent)
-
-    def __post_init__(self) -> None:
-        canonical_value = Value(
-            score=self.value_white,
-            certainty=(
-                Certainty.FORCED if self.over_event.is_over() else Certainty.ESTIMATE
-            ),
-            over_event=self.over_event if self.over_event.is_over() else None,
-        )
-        if self.direct_value is None:
-            self.direct_value = canonical_value
-        if self.minmax_value is None:
-            self.minmax_value = self.direct_value
-        self.value_white_minmax = self.minmax_value.score
-
-    def set_value(self, score: float) -> None:
-        """Keep float bridge and canonical Values aligned in test mutations."""
-        self.value_white = score
-        canonical_value = Value(
-            score=score,
-            certainty=(
-                Certainty.FORCED if self.over_event.is_over() else Certainty.ESTIMATE
-            ),
-            over_event=self.over_event if self.over_event.is_over() else None,
-        )
-        self.direct_value = canonical_value
-        self.minmax_value = canonical_value
-        self.value_white_minmax = canonical_value.score
-
-    def get_value_white(self) -> float:
-        if self.minmax_value is not None:
-            return self.minmax_value.score
-        assert self.direct_value is not None
-        return self.direct_value.score
-
-
-@dataclass
-class _FakeChildNode:
-    node_id: int
-    tree_evaluation: _FakeChildEvaluation
-
-    @property
-    def tree_node(self) -> Any:
-        return SimpleNamespace(id=self.node_id, state=SimpleNamespace(turn=Color.WHITE))
+from tests.fakes_tree_evaluation import FakeChildEvaluation, FakeChildNode
 
 
 def _build_parent_eval(
     *,
     turn: Color,
-    children: dict[int, _FakeChildNode],
+    children: dict[int, FakeChildNode],
     all_generated: bool,
     parent_eval_value: float,
 ) -> NodeMinmaxEvaluation[Any, Any]:
@@ -114,8 +46,8 @@ def test_no_children_values_keeps_direct_value_and_empty_pv() -> None:
 # compares children against the node's direct evaluator value.
 def test_partial_expansion_does_not_switch_to_child_worse_than_direct() -> None:
     children = {
-        0: _FakeChildNode(10, _FakeChildEvaluation(value_white=0.2)),
-        1: _FakeChildNode(11, _FakeChildEvaluation(value_white=0.1)),
+        0: FakeChildNode(10, FakeChildEvaluation(value_white=0.2)),
+        1: FakeChildNode(11, FakeChildEvaluation(value_white=0.1)),
     }
     parent_eval = _build_parent_eval(
         turn=Color.WHITE,
@@ -142,8 +74,8 @@ def test_partial_expansion_does_not_switch_to_child_worse_than_direct() -> None:
 
 def test_partial_expansion_switches_to_child_better_than_direct() -> None:
     children = {
-        0: _FakeChildNode(10, _FakeChildEvaluation(value_white=0.2)),
-        1: _FakeChildNode(11, _FakeChildEvaluation(value_white=0.1)),
+        0: FakeChildNode(10, FakeChildEvaluation(value_white=0.2)),
+        1: FakeChildNode(11, FakeChildEvaluation(value_white=0.1)),
     }
     parent_eval = _build_parent_eval(
         turn=Color.WHITE,
