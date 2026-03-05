@@ -88,7 +88,9 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         # filter the game-over ones and the ones with values
         nodes_to_consider_not_over: list[NodeT] = [
-            node for node in nodes_to_consider if not node.tree_evaluation.is_terminal_candidate()
+            node
+            for node in nodes_to_consider
+            if not node.tree_evaluation.is_terminal_candidate()
         ]
 
         # sort them by order of importance for the player

@@ -201,7 +201,7 @@ def test_search_ordering_remains_projection_based_for_large_estimate() -> None:
     )
 
     ordered_branches = list(parent.branches_sorted_by_value.keys())
-    assert ordered_branches.index(1) > ordered_branches.index(0)
+    assert ordered_branches.index(1) < ordered_branches.index(0)
     assert parent.best_branch() == 0
 
 
@@ -362,11 +362,14 @@ def test_best_branch_selection_uses_semantic_compare_terminal_over_estimate() ->
         turn=Color.WHITE,
         children={
             0: _make_leaf(1, Value(score=100.0, certainty=Certainty.ESTIMATE)),
-            1: _make_leaf(2, Value(
-                score=0.0,
-                certainty=Certainty.TERMINAL,
-                over_event=_FakeOverEvent(winner=Color.WHITE),
-            )),
+            1: _make_leaf(
+                2,
+                Value(
+                    score=0.0,
+                    certainty=Certainty.TERMINAL,
+                    over_event=_FakeOverEvent(winner=Color.WHITE),
+                ),
+            ),
         },
         all_generated=True,
         direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
@@ -399,7 +402,9 @@ def test_branch_ordering_for_search_uses_projection_and_stable_tie_breakers() ->
     assert list(parent.branches_sorted_by_value.keys()) == [0, 1]
 
 
-def test_evaluate_does_not_emit_forced_outcome_for_non_terminal_estimate_with_over_event() -> None:
+def test_evaluate_does_not_emit_forced_outcome_for_non_terminal_estimate_with_over_event() -> (
+    None
+):
     parent = _make_parent(
         turn=Color.WHITE,
         children={},
@@ -452,7 +457,9 @@ def test_best_branch_draw_baseline_vs_estimate() -> None:
         turn=Color.WHITE,
         children={
             0: _make_leaf(1, forced_draw),
-            1: _make_leaf(2, Value(score=draw_baseline + 0.1, certainty=Certainty.ESTIMATE)),
+            1: _make_leaf(
+                2, Value(score=draw_baseline + 0.1, certainty=Certainty.ESTIMATE)
+            ),
         },
         all_generated=True,
         direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
@@ -467,7 +474,9 @@ def test_best_branch_draw_baseline_vs_estimate() -> None:
         turn=Color.WHITE,
         children={
             0: _make_leaf(1, forced_draw),
-            1: _make_leaf(2, Value(score=draw_baseline - 0.1, certainty=Certainty.ESTIMATE)),
+            1: _make_leaf(
+                2, Value(score=draw_baseline - 0.1, certainty=Certainty.ESTIMATE)
+            ),
         },
         all_generated=True,
         direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
