@@ -4,7 +4,10 @@ from typing import Any, Protocol
 
 from valanga import State, TurnState
 
-from anemone.backup_policies import LegacyMinimaxBackupPolicy
+from anemone.backup_policies import (
+    ExplicitMinimaxBackupPolicy,
+    LegacyMinimaxBackupPolicy,
+)
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
@@ -18,9 +21,22 @@ from anemone.nodes.tree_node import TreeNode
 class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
     """The class creating Node Evaluations including children."""
 
-    def __init__(self, backup_policy: BackupPolicy | None = None) -> None:
-        """Initialize the factory with an explicit backup policy."""
-        self.backup_policy = backup_policy or LegacyMinimaxBackupPolicy()
+    def __init__(
+        self,
+        backup_policy: BackupPolicy | None = None,
+        *,
+        use_legacy_backup_policy: bool = False,
+    ) -> None:
+        """Initialize the factory with an explicit backup policy.
+
+        ExplicitMinimax is the default unless `use_legacy_backup_policy` is enabled.
+        """
+        if backup_policy is not None:
+            self.backup_policy = backup_policy
+        elif use_legacy_backup_policy:
+            self.backup_policy = LegacyMinimaxBackupPolicy()
+        else:
+            self.backup_policy = ExplicitMinimaxBackupPolicy()
 
     def create(
         self,

@@ -24,11 +24,13 @@ class LegacyMinimaxBackupPolicy:
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Run legacy backup sequence and return behavior flags."""
+        over_before_update = node_eval.over_event
         value_changed, pv_changed_from_values = (
             node_eval.minmax_value_update_from_children_legacy(
                 branches_with_updated_value=branches_with_updated_value
             )
         )
+        node_eval.sync_float_views_from_values()
 
         pv_changed_from_sequence = False
         if branches_with_updated_best_branch_seq:
@@ -39,5 +41,5 @@ class LegacyMinimaxBackupPolicy:
         return BackupResult(
             value_changed=value_changed,
             pv_changed=pv_changed_from_values or pv_changed_from_sequence,
-            over_changed=False,
+            over_changed=over_before_update != node_eval.over_event,
         )
