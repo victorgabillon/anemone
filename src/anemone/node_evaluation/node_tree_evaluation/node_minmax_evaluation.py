@@ -443,7 +443,7 @@ class NodeMinmaxEvaluation[
         for branch_key in self.branches_sorted_by_value:
             child = self.tree_node.branches_children[branch_key]
             assert child is not None
-            if not child.is_over():
+            if not child.tree_evaluation.is_terminal_candidate():
                 return branch_key
         raise NoAvailableBranchError
 
@@ -762,7 +762,7 @@ class NodeMinmaxEvaluation[
             for branch_key in self.branches_sorted_by_value
             if (
                 (child := self.tree_node.branches_children[branch_key]) is not None
-                and child.is_over()
+                and child.tree_evaluation.is_terminal_candidate()
             )
         ]
         if not over_branches:
@@ -770,7 +770,7 @@ class NodeMinmaxEvaluation[
                 [
                     branch_key
                     for branch_key, child in self.tree_node.branches_children.items()
-                    if child is not None and child.is_over()
+                    if child is not None and child.tree_evaluation.is_terminal_candidate()
                 ],
                 key=str,
             )
@@ -812,7 +812,7 @@ class NodeMinmaxEvaluation[
         for branch in branches_with_updated_over:
             child = self.tree_node.branches_children[branch]
             assert child is not None
-            assert child.is_over()
+            assert child.tree_evaluation.is_terminal_candidate()
             if branch in self.branches_not_over:
                 self.branches_not_over.remove(branch)
 
@@ -825,7 +825,7 @@ class NodeMinmaxEvaluation[
 
         # Check if all children are over but not winning for self.tree_node.player_to_branch.
         has_non_over_child = any(
-            child is not None and not child.is_over()
+            child is not None and not child.tree_evaluation.is_terminal_candidate()
             for child in self.tree_node.branches_children.values()
         )
         if not has_non_over_child:
@@ -836,7 +836,7 @@ class NodeMinmaxEvaluation[
             is_newly_over = True
 
         if is_newly_over:
-            assert self.over_event.is_over()
+            assert self.is_over()
 
         return is_newly_over
 
