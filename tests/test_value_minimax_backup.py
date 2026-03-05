@@ -83,42 +83,42 @@ def test_estimate_children_respect_side_to_move_ordering() -> None:
     white_parent = _make_parent(
         turn=Color.WHITE,
         children={
-            0: _make_leaf(1, Value(score=0.2)),
-            1: _make_leaf(2, Value(score=0.7)),
+            0: _make_leaf(1, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+            1: _make_leaf(2, Value(score=0.7, certainty=Certainty.ESTIMATE)),
         },
         all_generated=True,
-        direct_value=Value(score=0.0),
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
     )
     white_parent.backup_from_children(
         branches_with_updated_value={0, 1},
         branches_with_updated_best_branch_seq=set(),
     )
-    assert white_parent.minmax_value == Value(score=0.7)
+    assert white_parent.minmax_value == Value(score=0.7, certainty=Certainty.ESTIMATE)
     assert white_parent.get_score() == 0.7
 
     black_parent = _make_parent(
         turn=Color.BLACK,
         children={
-            0: _make_leaf(1, Value(score=0.2)),
-            1: _make_leaf(2, Value(score=0.7)),
+            0: _make_leaf(1, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+            1: _make_leaf(2, Value(score=0.7, certainty=Certainty.ESTIMATE)),
         },
         all_generated=True,
-        direct_value=Value(score=0.0),
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
     )
     black_parent.backup_from_children(
         branches_with_updated_value={0, 1},
         branches_with_updated_best_branch_seq=set(),
     )
-    assert black_parent.minmax_value == Value(score=0.2)
+    assert black_parent.minmax_value == Value(score=0.2, certainty=Certainty.ESTIMATE)
     assert black_parent.get_score() == 0.2
 
 
 def test_partial_expansion_prefers_direct_when_better_for_side_to_move() -> None:
     parent = _make_parent(
         turn=Color.WHITE,
-        children={0: _make_leaf(1, Value(score=0.2))},
+        children={0: _make_leaf(1, Value(score=0.2, certainty=Certainty.ESTIMATE))},
         all_generated=False,
-        direct_value=Value(score=0.5),
+        direct_value=Value(score=0.5, certainty=Certainty.ESTIMATE),
     )
 
     parent.backup_from_children(
@@ -126,16 +126,16 @@ def test_partial_expansion_prefers_direct_when_better_for_side_to_move() -> None
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.minmax_value == Value(score=0.5)
+    assert parent.minmax_value == Value(score=0.5, certainty=Certainty.ESTIMATE)
     assert parent.get_score() == 0.5
 
 
 def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> None:
     parent = _make_parent(
         turn=Color.BLACK,
-        children={0: _make_leaf(1, Value(score=0.2))},
+        children={0: _make_leaf(1, Value(score=0.2, certainty=Certainty.ESTIMATE))},
         all_generated=False,
-        direct_value=Value(score=0.5),
+        direct_value=Value(score=0.5, certainty=Certainty.ESTIMATE),
     )
 
     parent.backup_from_children(
@@ -143,16 +143,16 @@ def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> Non
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.minmax_value == Value(score=0.2)
+    assert parent.minmax_value == Value(score=0.2, certainty=Certainty.ESTIMATE)
     assert parent.get_score() == 0.2
 
 
 def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> None:
     parent = _make_parent(
         turn=Color.BLACK,
-        children={0: _make_leaf(1, Value(score=0.7))},
+        children={0: _make_leaf(1, Value(score=0.7, certainty=Certainty.ESTIMATE))},
         all_generated=False,
-        direct_value=Value(score=0.5),
+        direct_value=Value(score=0.5, certainty=Certainty.ESTIMATE),
     )
 
     parent.backup_from_children(
@@ -160,7 +160,7 @@ def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> N
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.minmax_value == Value(score=0.5)
+    assert parent.minmax_value == Value(score=0.5, certainty=Certainty.ESTIMATE)
     assert parent.get_score() == 0.5
 
 
@@ -170,7 +170,7 @@ def test_semantic_compare_terminal_vs_estimate_is_exposed() -> None:
         certainty=Certainty.FORCED,
         over_event=_FakeOverEvent(winner=Color.WHITE),
     )
-    estimate = Value(score=999.0)
+    estimate = Value(score=999.0, certainty=Certainty.ESTIMATE)
     assert (
         DEFAULT_EVALUATION_ORDERING.semantic_compare(
             forced_win,
@@ -187,13 +187,13 @@ def test_search_ordering_remains_projection_based_for_large_estimate() -> None:
         certainty=Certainty.FORCED,
         over_event=_FakeOverEvent(winner=Color.WHITE),
     )
-    very_high_estimate = Value(score=10.0)
+    very_high_estimate = Value(score=10.0, certainty=Certainty.ESTIMATE)
 
     parent = _make_parent(
         turn=Color.WHITE,
         children={0: _make_leaf(1, forced_win), 1: _make_leaf(2, very_high_estimate)},
         all_generated=True,
-        direct_value=Value(score=0.0),
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
     )
     parent.backup_from_children(
         branches_with_updated_value={0, 1},
@@ -209,33 +209,33 @@ def test_search_ordering_remains_projection_based_for_large_estimate() -> None:
 
 def test_backup_result_value_changed_tracks_score_certainty_and_over_event() -> None:
     assert has_value_changed(
-        value_before=Value(score=0.1),
-        value_after=Value(score=0.2),
+        value_before=Value(score=0.1, certainty=Certainty.ESTIMATE),
+        value_after=Value(score=0.2, certainty=Certainty.ESTIMATE),
     )
     assert has_value_changed(
         value_before=Value(score=0.1, certainty=Certainty.ESTIMATE),
         value_after=Value(score=0.1, certainty=Certainty.FORCED),
     )
     assert has_value_changed(
-        value_before=Value(score=0.1, over_event=None),
-        value_after=Value(score=0.1, over_event=_FakeOverEvent(draw=True)),
+        value_before=Value(score=0.1, certainty=Certainty.ESTIMATE, over_event=None),
+        value_after=Value(score=0.1, certainty=Certainty.ESTIMATE, over_event=_FakeOverEvent(draw=True)),
     )
 
 
 def test_direct_eval_change_without_minmax_change_reports_no_value_change() -> None:
-    child_value = Value(score=0.7)
+    child_value = Value(score=0.7, certainty=Certainty.ESTIMATE)
     parent = _make_parent(
         turn=Color.WHITE,
         children={0: _make_leaf(1, child_value)},
         all_generated=False,
-        direct_value=Value(score=0.5),
+        direct_value=Value(score=0.5, certainty=Certainty.ESTIMATE),
     )
 
     parent.backup_from_children(
         branches_with_updated_value={0},
         branches_with_updated_best_branch_seq=set(),
     )
-    parent.direct_value = Value(score=0.6)
+    parent.direct_value = Value(score=0.6, certainty=Certainty.ESTIMATE)
     parent.sync_float_views_from_values()
 
     result = parent.backup_from_children(
@@ -248,12 +248,12 @@ def test_direct_eval_change_without_minmax_change_reports_no_value_change() -> N
 
 
 def test_partial_expansion_pv_does_not_depend_on_float_field() -> None:
-    child_value = Value(score=0.9)
+    child_value = Value(score=0.9, certainty=Certainty.ESTIMATE)
     parent = _make_parent(
         turn=Color.WHITE,
         children={0: _make_leaf(1, child_value)},
         all_generated=False,
-        direct_value=Value(score=0.8),
+        direct_value=Value(score=0.8, certainty=Certainty.ESTIMATE),
     )
     parent.set_best_branch_sequence([0])
 
@@ -272,7 +272,7 @@ def test_partial_expansion_unvalued_best_child_clears_pv() -> None:
         turn=Color.WHITE,
         children={0: _make_unvalued_leaf(1)},
         all_generated=False,
-        direct_value=Value(score=0.8),
+        direct_value=Value(score=0.8, certainty=Certainty.ESTIMATE),
     )
     parent.set_best_branch_sequence([0])
 
@@ -283,3 +283,72 @@ def test_partial_expansion_unvalued_best_child_clears_pv() -> None:
 
     assert parent.minmax_value == parent.direct_value
     assert parent.best_branch_sequence == []
+
+def test_partial_expansion_requires_direct_value() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: _make_leaf(1, Value(score=0.4, certainty=Certainty.ESTIMATE))},
+        all_generated=False,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+    )
+    parent.direct_value = None
+
+    try:
+        parent.backup_from_children(
+            branches_with_updated_value={0},
+            branches_with_updated_best_branch_seq=set(),
+        )
+    except AssertionError as exc:
+        assert "direct_value" in str(exc)
+    else:
+        raise AssertionError
+
+
+def test_terminal_value_syncs_parent_over_event_and_reports_over_changed() -> None:
+    terminal = Value(
+        score=0.2,
+        certainty=Certainty.TERMINAL,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: _make_leaf(1, terminal)},
+        all_generated=True,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    result = parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.minmax_value == terminal
+    assert parent.over_event == terminal.over_event
+    assert result.over_changed
+
+
+def test_best_branch_tail_update_propagates_without_head_rebuild() -> None:
+    child = _make_leaf(1, Value(score=0.8, certainty=Certainty.ESTIMATE))
+    child.tree_evaluation.set_best_branch_sequence([9])
+
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: child},
+        all_generated=True,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq={0},
+    )
+    assert parent.best_branch_sequence == [0, 9]
+
+    child.tree_evaluation.set_best_branch_sequence([8, 7])
+    result = parent.backup_from_children(
+        branches_with_updated_value=set(),
+        branches_with_updated_best_branch_seq={0},
+    )
+
+    assert parent.best_branch_sequence == [0, 8, 7]
+    assert result.pv_changed

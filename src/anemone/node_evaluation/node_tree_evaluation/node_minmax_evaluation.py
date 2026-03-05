@@ -233,7 +233,23 @@ class NodeMinmaxEvaluation[
         self._value_white_minmax = (
             self.minmax_value.score if self.minmax_value is not None else None
         )
+        self._sync_over_from_values()
         self._assert_float_views_consistent()
+
+    def _sync_over_from_values(self) -> None:
+        """Keep ``over_event`` aligned with terminal/forced Value metadata.
+
+        Non-terminal values do not clear existing over state; this keeps legacy
+        ``update_over`` behavior stable when Value metadata is not terminal.
+        """
+        value = self.get_value_candidate()
+        if (
+            value is not None
+            and value.certainty in {Certainty.TERMINAL, Certainty.FORCED}
+            and value.over_event is not None
+            and hasattr(value.over_event, "is_over")
+        ):
+            self.over_event = value.over_event
 
     def sync_float_views_from_values(self) -> None:
         """Public bridge wrapper to sync legacy float views from Value fields."""
@@ -449,7 +465,10 @@ class NodeMinmaxEvaluation[
             bool: True if the game is over, False otherwise.
 
         """
-        return self.over_event.is_over()
+        over_event = self.over_event
+        if hasattr(over_event, "is_over"):
+            return bool(over_event.is_over())
+        return bool(getattr(over_event, "_is_over", False))
 
     def is_win(self) -> bool:
         """Check if the current game state is a win.
@@ -803,17 +822,10 @@ class NodeMinmaxEvaluation[
         ]  # TODO: is this a fast way to do it?
 
     def update_value_minmax(self) -> None:
-        """Update the minmax value for the current node based on the best child node's evaluation.
+        """Legacy minimax update helper.
 
-        If all the children of the current node have been evaluated, the minmax value is set to the best child's
-        evaluation value. Otherwise, if not all children have been evaluated, the minmax value is determined by
-        comparing the best child's evaluation value with the current node's own evaluation value.
-
-        Note: The evaluation values are specific to the white player.
-
-        Returns:
-            None
-
+        Policy-driven production code should use ``backup_from_children``.
+        Updates the minmax value for the current node based on the best child.
         """
         best_branch_key: BranchKey | None = self.best_branch()
         assert best_branch_key is not None
@@ -952,35 +964,7 @@ class NodeMinmaxEvaluation[
                 "PV is non-empty but best child is missing from branches_children."
             )
 
-        if self.tree_node.all_branches_generated:
-            return
-
-        direct_value = self.direct_value
-        if direct_value is None:
-            assert not self.best_branch_sequence, (
-                "PV must be empty for partial expansion when direct evaluation is missing."
-            )
-            return
-
-        best_child = self.tree_node.branches_children.get(best_branch_key)
-        assert best_child is not None, (
-            "Best branch exists but best child is missing from branches_children."
-        )
-        best_child_value = self.child_value_candidate(best_branch_key)
-        assert best_child_value is not None, "Best child value is missing."
-        child_is_good_enough = self.child_is_better_than_direct(
-            best_child_value,
-            direct_value,
-            side_to_move=self.tree_node.state.turn,
-        )
-        if not child_is_good_enough:
-            assert not self.best_branch_sequence, (
-                "PV must be empty when partial-expansion rule disallows it."
-            )
-        else:
-            assert self.best_branch_sequence, (
-                "PV must be non-empty when partial-expansion rule allows it."
-            )
+        # NOTE: partial-expansion PV/value policy is owned by backup policies.
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Triggered when the value of the current best branch does not match the best value.
@@ -1110,11 +1094,11 @@ class NodeMinmaxEvaluation[
     ) -> "BackupResult":
         """Delegate backup orchestration to the configured backup policy."""
         if self.backup_policy is None:
-            from anemone.backup_policies.legacy_minimax import (  # pylint: disable=import-outside-toplevel
-                LegacyMinimaxBackupPolicy,
+            from anemone.backup_policies.explicit_minimax import (  # pylint: disable=import-outside-toplevel
+                ExplicitMinimaxBackupPolicy,
             )
 
-            self.backup_policy = LegacyMinimaxBackupPolicy()
+            self.backup_policy = ExplicitMinimaxBackupPolicy()
         assert self.backup_policy is not None
         policy: BackupPolicy = self.backup_policy
         return policy.backup_from_children(
