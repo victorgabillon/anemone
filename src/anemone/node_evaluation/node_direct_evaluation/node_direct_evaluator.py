@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from enum import StrEnum
 from itertools import chain
-from typing import Protocol
+from typing import TYPE_CHECKING, Any, Protocol, TypeGuard, cast
 
 from valanga import Color, OverEvent, State
 from valanga.over_event import HowOver, Winner
@@ -14,6 +14,11 @@ from anemone.values.evaluation_ordering import TerminalOutcome
 
 from .protocols import MasterStateEvaluator, MasterStateValueEvaluator
 from .value_wrappers import FloatToValueEvaluator
+
+if TYPE_CHECKING:
+    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+        NodeMinmaxEvaluation,
+    )
 
 DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
 
@@ -98,7 +103,7 @@ class NodeDirectEvaluator[StateT: State = State]:
         over_event, evaluation = (
             self.master_state_value_evaluator.over.check_obvious_over_events(node.state)
         )
-        is_terminal = bool(getattr(node.state, "is_terminal", False))
+        is_terminal = self._state_is_terminal(node)
         if over_event is None and not is_terminal:
             return
 
@@ -141,8 +146,9 @@ class NodeDirectEvaluator[StateT: State = State]:
             if canonical.is_over():
                 return canonical
 
-        terminal_outcome = (
-            node.tree_evaluation.evaluation_ordering.terminal_without_over_event
+        tree_eval: NodeMinmaxEvaluation[Any, Any] = cast("Any", node.tree_evaluation)
+        terminal_outcome: TerminalOutcome = (
+            tree_eval.evaluation_ordering.terminal_without_over_event
         )
         winner = self._winner_for_terminal_outcome(node=node, outcome=terminal_outcome)
         canonical = self._build_terminal_over_event(
@@ -152,7 +158,9 @@ class NodeDirectEvaluator[StateT: State = State]:
         assert canonical.is_over(), "Canonical terminal over_event must be over"
         return canonical
 
-    def _is_usable_over_event(self, over_event: OverEvent | None) -> bool:
+    def _is_usable_over_event(
+        self, over_event: OverEvent | None
+    ) -> TypeGuard[OverEvent]:
         if over_event is None:
             return False
         if not all(
@@ -171,12 +179,31 @@ class NodeDirectEvaluator[StateT: State = State]:
         node: AlgorithmNode[StateT],
         outcome: TerminalOutcome,
     ) -> Winner:
+        turn = self._state_turn(node)
         if outcome is TerminalOutcome.DRAW:
             return Winner.NO_KNOWN_WINNER
         if outcome is TerminalOutcome.WIN:
-            return self._winner_from_color(node.state.turn)
-        winner_color = Color.BLACK if node.state.turn == Color.WHITE else Color.WHITE
+            return self._winner_from_color(turn)
+        winner_color = Color.BLACK if turn == Color.WHITE else Color.WHITE
         return self._winner_from_color(winner_color)
+
+    def _state_turn(self, node: AlgorithmNode[StateT]) -> Color:
+        turn_obj: object = getattr(node.state, "turn", None)
+        assert isinstance(turn_obj, Color), (
+            f"state.turn must be a valanga.Color, got {type(turn_obj)}"
+        )
+        return turn_obj
+
+    def _state_base_score(self, node: AlgorithmNode[StateT]) -> float | None:
+        if not hasattr(node.state, "base_score"):
+            return None
+        base: object = getattr(node.state, "base_score", None)
+        if isinstance(base, (int, float)):
+            return float(base)
+        return None
+
+    def _state_is_terminal(self, node: AlgorithmNode[StateT]) -> bool:
+        return bool(getattr(node.state, "is_terminal", False))
 
     def _build_terminal_over_event(
         self,
@@ -184,7 +211,9 @@ class NodeDirectEvaluator[StateT: State = State]:
         terminal_outcome: TerminalOutcome,
         winner: Winner,
     ) -> OverEvent:
-        how_over = HowOver.DRAW if terminal_outcome is TerminalOutcome.DRAW else HowOver.WIN
+        how_over = (
+            HowOver.DRAW if terminal_outcome is TerminalOutcome.DRAW else HowOver.WIN
+        )
         canonical = OverEvent()
         canonical.becomes_over(
             how_over=how_over,
@@ -192,8 +221,7 @@ class NodeDirectEvaluator[StateT: State = State]:
             termination=None,
         )
         assert canonical.is_over(), (
-            "constructed OverEvent must be over: "
-            f"how_over={how_over} winner={winner}"
+            f"constructed OverEvent must be over: how_over={how_over} winner={winner}"
         )
         return canonical
 
@@ -211,11 +239,15 @@ class NodeDirectEvaluator[StateT: State = State]:
     ) -> float:
         if evaluation is not None:
             return evaluation
-        if hasattr(node.state, "base_score"):
-            return float(node.state.base_score)
-        return node.tree_evaluation.evaluation_ordering.terminal_score(
-            canonical_over_event,
-            perspective=node.state.turn,
+        base = self._state_base_score(node)
+        if base is not None:
+            return base
+        tree_eval: NodeMinmaxEvaluation[Any, Any] = cast("Any", node.tree_evaluation)
+        return float(
+            tree_eval.evaluation_ordering.terminal_score(
+                canonical_over_event,
+                perspective=self._state_turn(node),
+            )
         )
 
     def evaluate_all_queried_nodes(
