@@ -67,6 +67,10 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """
         ...
 
+    def is_terminal_candidate(self) -> bool:
+        """Return whether the canonical Value candidate is terminal/forced with over metadata."""
+        ...
+
     def dot_description(self) -> str:
         """Return a string representation of the node's description in DOT format.
 
@@ -124,7 +128,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         ...
 
     def get_value_candidate(self) -> Value | None:
-        """Return the best available canonical value when present."""
+        """Return minmax when available, else direct Value, or ``None``."""
         ...
 
     def get_value(self) -> Value:

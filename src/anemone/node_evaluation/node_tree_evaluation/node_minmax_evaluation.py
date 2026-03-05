@@ -212,14 +212,27 @@ class NodeMinmaxEvaluation[
         return self.direct_value
 
     def get_score(self) -> float:
-        """Return the canonical scalar score for this node."""
+        """Return the canonical scalar score for this node.
+
+        Consumer code should use this and ``get_value_candidate``/``get_value``.
+        Legacy float fields are compatibility views only.
+        """
         return self.get_value().score
 
     def get_value_candidate(self) -> Value | None:
-        """Return the best available canonical Value for decision logic."""
+        """Return minmax when available, else direct Value, or ``None``."""
         if self.minmax_value is not None:
             return self.minmax_value
         return self.direct_value
+
+    def is_terminal_candidate(self) -> bool:
+        """Return True when candidate Value is TERMINAL/FORCED and has ``over_event``."""
+        value = self.get_value_candidate()
+        return (
+            value is not None
+            and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
+            and value.over_event is not None
+        )
 
     def _sync_float_views_from_values(self) -> None:
         """Synchronize legacy float fields from canonical Value fields.

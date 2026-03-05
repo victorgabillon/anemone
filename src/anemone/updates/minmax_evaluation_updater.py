@@ -32,7 +32,7 @@ class MinMaxEvaluationUpdater:
         base_update_instructions: ValueUpdateInstructionsFromOneNode = (
             ValueUpdateInstructionsFromOneNode(
                 node_sending_update=new_node,
-                is_node_newly_over=new_node.tree_evaluation.over_event.is_over(),
+                is_node_newly_over=new_node.tree_evaluation.is_terminal_candidate(),
                 new_value_for_node=True,
                 new_best_branch_for_node=False,
             )
