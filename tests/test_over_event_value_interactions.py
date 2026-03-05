@@ -2,12 +2,8 @@
 
 from valanga import Color
 
-from tests.test_node_minmax_over_event_selection import (
-    FakeChildEvaluation,
-    FakeChildNode,
-    FakeOverEvent,
-    _build_parent_eval,
-)
+from tests.fakes_tree_evaluation import FakeChildEvaluation, FakeChildNode, FakeOverEvent
+from tests.test_node_minmax_over_event_selection import _build_parent_eval
 
 
 def test_terminal_win_dominates_terminal_draw_even_if_heuristic_is_lower() -> None:

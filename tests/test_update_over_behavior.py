@@ -4,12 +4,8 @@ from collections.abc import Hashable
 
 from valanga import Color
 
-from tests.test_node_minmax_over_event_selection import (
-    FakeChildEvaluation,
-    FakeChildNode,
-    FakeOverEvent,
-    _build_parent_eval,
-)
+from tests.fakes_tree_evaluation import FakeChildEvaluation, FakeChildNode, FakeOverEvent
+from tests.test_node_minmax_over_event_selection import _build_parent_eval
 
 
 def _terminal_child(*, node_id: int, winner: Color | None, term: str) -> FakeChildNode:
