@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class ExplicitMinimaxBackupPolicy:
-    """Backup policy that computes float minimax value and PV with explicit invariants."""
+    """Backup policy that computes minimax value/PV/over explicitly from Value."""
 
     def backup_from_children(
         self,
@@ -25,14 +25,7 @@ class ExplicitMinimaxBackupPolicy:
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
-        """Recompute value/PV from updated children and return change flags.
-
-        Partial-expansion PV invariant (authoritative rule):
-        - If there is no best branch, PV must be empty.
-        - When ``all_branches_generated`` is ``False``, PV exists iff direct value
-          exists and the best child is at least as good as direct value for side to move.
-        - If the rule allows PV, its head must match ``best_branch()`` (rebuild when needed).
-        """
+        """Recompute value/PV/over from updated children and return change flags."""
         assert (
             not node_eval.tree_node.all_branches_generated
             or node_eval.tree_node.branches_children
@@ -40,6 +33,7 @@ class ExplicitMinimaxBackupPolicy:
 
         value_before_update = node_eval.minmax_value
         pv_before_update = node_eval.best_branch_sequence.copy()
+        over_before_update_tag = node_eval.over_event.get_over_tag()
         best_branch_before_update = node_eval.best_branch()
 
         if branches_with_updated_value:
@@ -53,99 +47,61 @@ class ExplicitMinimaxBackupPolicy:
 
         if best_branch_after_update is None:
             node_eval.clear_best_branch_sequence()
-        else:
-            pv_head_mismatch = (
-                not node_eval.best_branch_sequence
-                or node_eval.best_branch_sequence[0] != best_branch_after_update
-            )
-            best_branch_changed = best_branch_before_update != best_branch_after_update
-            best_child_pv_updated = (
-                best_branch_after_update in branches_with_updated_best_branch_seq
-            )
-
-            best_child = None
-            best_child_version_changed = False
-            if not pv_head_mismatch:
-                best_child = node_eval.tree_node.branches_children[
-                    best_branch_after_update
-                ]
-                assert best_child is not None
-                best_child_version = int(
-                    getattr(best_child.tree_evaluation, "pv_version", 0)
-                )
-                best_child_version_changed = (
-                    node_eval.pv_cached_best_child_version != best_child_version
-                )
-
+        elif node_eval.tree_node.all_branches_generated:
             should_rebuild = (
-                best_branch_changed
-                or pv_head_mismatch
-                or best_child_version_changed
-                or best_child_pv_updated
+                best_branch_before_update != best_branch_after_update
+                or not node_eval.best_branch_sequence
+                or node_eval.best_branch_sequence[0] != best_branch_after_update
+                or best_branch_after_update in branches_with_updated_best_branch_seq
+            )
+            if should_rebuild:
+                node_eval.one_of_best_children_becomes_best_next_node()
+        else:
+            direct_value = self._direct_value_candidate(node_eval)
+            assert direct_value is not None, (
+                "Explicit minimax requires direct_value for partially expanded nodes."
+            )
+            best_child_value = node_eval.child_value_candidate(best_branch_after_update)
+            assert best_child_value is not None
+            if node_eval.child_is_better_than_direct(
+                best_child_value,
+                direct_value,
+                side_to_move=node_eval.tree_node.state.turn,
+            ):
+                should_rebuild = (
+                    best_branch_before_update != best_branch_after_update
+                    or not node_eval.best_branch_sequence
+                    or node_eval.best_branch_sequence[0] != best_branch_after_update
+                    or best_branch_after_update in branches_with_updated_best_branch_seq
+                )
+                if should_rebuild:
+                    node_eval.one_of_best_children_becomes_best_next_node()
+            else:
+                node_eval.clear_best_branch_sequence()
+
+        if (
+            best_branch_after_update is not None
+            and node_eval.best_branch_sequence
+            and node_eval.best_branch_sequence[0] == best_branch_after_update
+            and branches_with_updated_best_branch_seq
+        ):
+            node_eval.update_best_branch_sequence(
+                branches_with_updated_best_branch_seq
             )
 
-            did_rebuild = False
-            if node_eval.tree_node.all_branches_generated:
-                if should_rebuild:
-                    did_rebuild = (
-                        node_eval.one_of_best_children_becomes_best_next_node()
-                    )
-            else:
-                direct_value = self._direct_value_candidate(node_eval)
-                assert direct_value is not None
-                if best_child is None:
-                    best_child = node_eval.tree_node.branches_children[
-                        best_branch_after_update
-                    ]
-                    assert best_child is not None
-                if self._is_child_value_better_than_direct_value(
-                    node_eval=node_eval,
-                    child_value=node_eval.child_value_candidate(
-                        best_branch_after_update
-                    ),
-                ):
-                    if should_rebuild:
-                        did_rebuild = (
-                            node_eval.one_of_best_children_becomes_best_next_node()
-                        )
-                else:
-                    if best_child is None:
-                        best_child = node_eval.tree_node.branches_children[
-                            best_branch_after_update
-                        ]
-                        assert best_child is not None
-                    if self._is_child_value_better_than_direct_value(
-                        node_eval=node_eval,
-                        child_value=node_eval.child_value_candidate(
-                            best_branch_after_update
-                        ),
-                    ):
-                        if should_rebuild:
-                            did_rebuild = (
-                                node_eval.one_of_best_children_becomes_best_next_node()
-                            )
-                    else:
-                        node_eval.clear_best_branch_sequence()
-
-            if (
-                node_eval.best_branch_sequence
-                and best_child_pv_updated
-                and not did_rebuild
-            ):
-                node_eval.update_best_branch_sequence(
-                    branches_with_updated_best_branch_seq
-                )
+        node_eval.sync_float_views_from_values()
 
         value_changed = has_value_changed(
             value_before=value_before_update,
             value_after=node_eval.minmax_value,
         )
         pv_changed = pv_before_update != node_eval.best_branch_sequence
+        over_changed = over_before_update_tag != node_eval.over_event.get_over_tag()
 
         return BackupResult(
             value_changed=value_changed,
             pv_changed=pv_changed,
-            over_changed=False,
+            over_changed=over_changed,
         )
 
     def _update_value_value_only(
@@ -168,7 +124,6 @@ class ExplicitMinimaxBackupPolicy:
             direct_value = self._direct_value_candidate(node_eval)
             assert direct_value is not None
             node_eval.minmax_value = direct_value
-            node_eval.sync_float_views_from_values()
             return
 
         best_child_value = node_eval.child_value_candidate(best_branch_key)
@@ -189,7 +144,6 @@ class ExplicitMinimaxBackupPolicy:
                 value_after_update = direct_value
 
         node_eval.minmax_value = value_after_update
-        node_eval.sync_float_views_from_values()
 
     def _update_branches_values_value_only(
         self,
