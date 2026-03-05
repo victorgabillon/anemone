@@ -20,6 +20,7 @@ from anemone.node_selector.opening_instructions import (
     create_instructions_to_open_all_branches,
 )
 from anemone.nodes.algorithm_node import AlgorithmNode
+from anemone.values.evaluation_ordering import DEFAULT_EVALUATION_ORDERING
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -93,11 +94,13 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             if not node.tree_evaluation.is_terminal_candidate()
         ]
 
-        # sort them by order of importance for the player
+        # sort them by search-priority projection for the root player perspective
+        side_to_move = tree.root_node.state.turn
         nodes_to_consider_sorted_by_value = sorted(
             nodes_to_consider_not_over,
-            key=lambda x: tree.root_node.tree_evaluation.subjective_value_of(
-                x.tree_evaluation
+            key=lambda node: DEFAULT_EVALUATION_ORDERING.search_sort_key(
+                node.tree_evaluation.require_value_candidate(),
+                side_to_move=side_to_move,
             ),
         )  # best last
 

@@ -17,7 +17,7 @@ from enum import StrEnum
 from random import Random
 from typing import Literal, Protocol
 
-from valanga import BranchKey, State
+from valanga import BranchKey, Color, State
 from valanga.policy import BranchPolicy
 
 from anemone.nodes.algorithm_node.algorithm_node import (
@@ -101,11 +101,14 @@ class SoftmaxRule:
         branches: list[BranchKey] = []
         scores: list[float] = []
 
+        root_turn = root_node.state.turn
         for bk, child in root_node.branches_children.items():
             if child is None:
                 continue
             branches.append(bk)
-            score = root_node.tree_evaluation.subjective_value_of(child.tree_evaluation)
+            score = child.tree_evaluation.get_score()
+            if root_turn is not Color.WHITE:
+                score = -score
             scores.append(float(score))
 
         if not branches:
