@@ -725,7 +725,7 @@ class NodeMinmaxEvaluation[
             AssertionError: If the node is already in the "over" status.
 
         """
-        assert not self.is_over()
+        assert not self.is_terminal_candidate()
 
         # becoming over triggers a full update record_sort_value_of_child
         # where ties are now broken to reach over as fast as possible
@@ -818,7 +818,7 @@ class NodeMinmaxEvaluation[
                 self.branches_not_over.remove(branch)
 
             # Check if child is already not in children_not_over.
-            if not self.is_over() and child.tree_evaluation.is_winner(
+            if not self.is_terminal_candidate() and child.tree_evaluation.is_winner(
                 self.tree_node.state.turn
             ):
                 self.becoming_over_from_children()
@@ -832,12 +832,12 @@ class NodeMinmaxEvaluation[
         if not has_non_over_child:
             self.branches_not_over.clear()
 
-        if not self.is_over() and not has_non_over_child:
+        if not self.is_terminal_candidate() and not has_non_over_child:
             self.becoming_over_from_children()
             is_newly_over = True
 
         if is_newly_over:
-            assert self.is_over()
+            assert self.is_terminal_candidate()
 
         return is_newly_over
 

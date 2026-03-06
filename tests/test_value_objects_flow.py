@@ -134,6 +134,25 @@ def test_terminal_query_routes_to_over_nodes_immediately() -> None:
     assert node.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
 
 
+
+
+def test_add_query_does_not_require_algorithm_node_is_over() -> None:
+    """Queue routing uses Value-terminal candidate state, not AlgorithmNode.is_over()."""
+    evaluator = NodeDirectEvaluator(master_state_evaluator=_BatchValueEvaluator())
+    node = _make_node(node_id=4, turn=Color.WHITE, base_score=0.0, is_terminal=True)
+
+    def _legacy_is_over_should_not_be_called() -> bool:
+        raise AssertionError("add_evaluation_query should use is_terminal_candidate()")
+
+    node.is_over = _legacy_is_over_should_not_be_called
+    queries = EvaluationQueries()
+
+    evaluator.add_evaluation_query(node, queries)
+
+    assert queries.over_nodes == [node]
+    assert queries.not_over_nodes == []
+
+
 def test_minmax_value_is_populated_after_child_backup_and_bridge_holds() -> None:
     """Backup populates minmax Value and keeps float-score bridge aligned."""
     parent = _make_node(node_id=10, turn=Color.WHITE, base_score=0.1, is_terminal=False)
