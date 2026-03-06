@@ -28,7 +28,9 @@ class _NoIsOverOverEvent:
     draw: bool = False
 
     def is_over(self) -> bool:
-        raise AssertionError("search/decision ordering should not call over_event.is_over")
+        raise AssertionError(
+            "search/decision ordering should not call over_event.is_over"
+        )
 
     def is_draw(self) -> bool:
         return self.draw
