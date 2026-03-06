@@ -737,11 +737,27 @@ class NodeMinmaxEvaluation[
         best_over_branch_key = self._pick_over_child_branch()
         best_child = self.tree_node.branches_children[best_over_branch_key]
         assert best_child is not None
+        best_child_value = best_child.tree_evaluation.require_value_candidate()
+        assert best_child.tree_evaluation.is_terminal_candidate()
+        assert best_child_value.over_event is not None
+        child_over_event = best_child_value.over_event
+
         self.over_event.becomes_over(
-            how_over=best_child.tree_evaluation.over_event.how_over,
-            who_is_winner=best_child.tree_evaluation.over_event.who_is_winner,
-            termination=best_child.tree_evaluation.over_event.termination,
+            how_over=child_over_event.how_over,
+            who_is_winner=child_over_event.who_is_winner,
+            termination=child_over_event.termination,
         )
+
+        self.minmax_value = Value(
+            score=best_child_value.score,
+            certainty=(
+                best_child_value.certainty
+                if best_child_value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
+                else Certainty.TERMINAL
+            ),
+            over_event=self.over_event,
+        )
+        self._sync_float_views_from_values()
 
     def _pick_over_child_branch(self) -> BranchKey:
         """Pick the terminal child branch that determines this node over event.
