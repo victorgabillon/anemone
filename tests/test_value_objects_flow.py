@@ -134,8 +134,6 @@ def test_terminal_query_routes_to_over_nodes_immediately() -> None:
     assert node.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
 
 
-
-
 def test_add_query_does_not_require_algorithm_node_is_over() -> None:
     """Queue routing uses Value-terminal candidate state, not AlgorithmNode.is_over()."""
     evaluator = NodeDirectEvaluator(master_state_evaluator=_BatchValueEvaluator())
