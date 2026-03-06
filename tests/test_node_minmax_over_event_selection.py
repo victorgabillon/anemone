@@ -8,7 +8,11 @@ from valanga import Color
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from tests.fakes_tree_evaluation import FakeChildEvaluation, FakeChildNode, FakeOverEvent
+from tests.fakes_tree_evaluation import (
+    FakeChildEvaluation,
+    FakeChildNode,
+    FakeOverEvent,
+)
 
 
 def _build_parent_eval(

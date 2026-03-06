@@ -14,7 +14,7 @@ class _NeverOver:
 class _Eval:
     over = _NeverOver()
 
-    def evaluate(self, state):  # noqa: ANN001
+    def evaluate(self, state) -> float:  # noqa: ANN001
         del state
         return 0.25
 

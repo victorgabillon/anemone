@@ -4,7 +4,11 @@ import pytest
 from valanga import Color
 
 from anemone.values import Certainty, Value
-from tests.fakes_tree_evaluation import FakeChildEvaluation, FakeChildNode, FakeOverEvent
+from tests.fakes_tree_evaluation import (
+    FakeChildEvaluation,
+    FakeChildNode,
+    FakeOverEvent,
+)
 
 
 def test_get_value_candidate_and_getters_return_value() -> None:
@@ -69,5 +73,7 @@ def test_fake_child_node_is_over_uses_terminal_candidate_semantics() -> None:
         ),
     )
 
-    assert not FakeChildNode(node_id=1, tree_evaluation=eval_with_raw_over_only).is_over()
+    assert not FakeChildNode(
+        node_id=1, tree_evaluation=eval_with_raw_over_only
+    ).is_over()
     assert FakeChildNode(node_id=2, tree_evaluation=terminal_eval).is_over()

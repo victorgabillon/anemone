@@ -2,7 +2,11 @@
 
 from valanga import Color
 
-from tests.fakes_tree_evaluation import FakeChildEvaluation, FakeChildNode, FakeOverEvent
+from tests.fakes_tree_evaluation import (
+    FakeChildEvaluation,
+    FakeChildNode,
+    FakeOverEvent,
+)
 from tests.test_node_minmax_over_event_selection import _build_parent_eval
 
 
