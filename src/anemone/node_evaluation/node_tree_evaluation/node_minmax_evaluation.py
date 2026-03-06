@@ -1,19 +1,10 @@
-"""Provide the implementation of the NodeMinmaxEvaluation class for Minimax evaluation.
-
-The NodeMinmaxEvaluation class stores information about a tree node evaluation, including the
-estimated value for the white player, the computed Minimax value, the best branch sequence, and
-children sorted by their evaluations.
-
-It also provides methods for accessing and manipulating evaluation values, determining subjective
-values from the point of view of the player to branch, finding the best child node, checking if the
-node is over, and printing information about the node.
-"""
+"""Provide Value-first NodeMinmaxEvaluation implementation for minimax search."""
 
 # TODO: maybe further split values from over?
 
 from dataclasses import dataclass, field
 from functools import cmp_to_key
-from math import isclose, log
+from math import log
 from random import choice
 from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 
@@ -106,33 +97,15 @@ class NodeMinmaxEvaluation[
     NodeWithValueT: NodeWithValue = NodeWithValue,
     StateT: TurnState = TurnState,
 ]:
-    r"""Represents a node in a tree structure used for the Minimax algorithm evaluation.
-
-    Attributes:
-        tree_node (TreeNode): A reference to the original tree node that is evaluated.
-        value_white_evaluator (float | None): The absolute value with respect to the white player as estimated
-        by an evaluator.
-        value_white_minmax (float | None): The absolute value with respect to the white player as computed from
-        the value_white_* of the descendants of this node (self) by a Minimax procedure.
-        best_node_sequence (list[ITreeNode]): The sequence of best nodes found during the Minimax evaluation.
-        children_sorted_by_value\_ (dict[ITreeNode, Any]): The children of the tree node kept in a dictionary
-        that can be sorted by their evaluations.
-        best_index_for_value (int): The index of the best value in the children_sorted_by_value dictionary.
-        children_not_over (list[ITreeNode]): The list of children that have not yet been found to be over.
-        over_event (OverEvent): The event that determines if the node is over.
-
-    """
+    r"""Value-first minimax evaluation attached to a tree node."""
 
     # a reference to the original tree node that is evaluated
     tree_node: TreeNode[NodeWithValueT, StateT]
 
-    # absolute value wrt to white player as estimated by a state evaluator
-    _value_white_direct_evaluation: float | None = None
+    # canonical state-evaluator value
     direct_value: Value | None = None
 
-    # absolute value wrt to white player as computed from the value_white_* of the descendants
-    # of this node (self) by a minmax procedure.
-    _value_white_minmax: float | None = None
+    # canonical minimax value computed from descendants
     minmax_value: Value | None = None
 
     # the sequence of best branches from this node
@@ -186,16 +159,6 @@ class NodeMinmaxEvaluation[
         """
         return self.branches_sorted_by_value_
 
-    @property
-    def value_white_direct_evaluation(self) -> float | None:
-        """Legacy float view (derived). Do not use for decisions."""
-        return self._value_white_direct_evaluation
-
-    @property
-    def value_white_minmax(self) -> float | None:
-        """Legacy float view (derived). Do not use for decisions."""
-        return self._value_white_minmax
-
     def get_value(self) -> Value:
         """Return the canonical value for this node.
 
@@ -215,7 +178,7 @@ class NodeMinmaxEvaluation[
         """Return the canonical scalar score for this node.
 
         Consumer code should use this and ``get_value_candidate``/``get_value``.
-        Legacy float fields are compatibility views only.
+        Use this for scalar access to canonical Value.
         """
         return self.get_value().score
 
@@ -242,22 +205,7 @@ class NodeMinmaxEvaluation[
             and value.over_event is not None
         )
 
-    def _sync_float_views_from_values(self) -> None:
-        """Synchronize legacy float fields from canonical Value fields.
-
-        Float fields are compatibility views only. They are set to ``None`` when
-        the corresponding canonical Value is missing.
-        """
-        self._value_white_direct_evaluation = (
-            self.direct_value.score if self.direct_value is not None else None
-        )
-        self._value_white_minmax = (
-            self.minmax_value.score if self.minmax_value is not None else None
-        )
-        self._sync_over_from_values()
-        self._assert_float_views_consistent()
-
-    def _sync_over_from_values(self) -> None:
+    def sync_over_from_values(self) -> None:
         """Keep ``over_event`` aligned with terminal/forced Value metadata.
 
         Non-terminal values do not clear existing over state; this keeps legacy
@@ -271,45 +219,6 @@ class NodeMinmaxEvaluation[
             and hasattr(value.over_event, "is_over")
         ):
             self.over_event = value.over_event
-
-    def sync_float_views_from_values(self) -> None:
-        """Public bridge wrapper to sync legacy float views from Value fields."""
-        self._sync_float_views_from_values()
-
-    def _assert_float_views_consistent(self) -> None:
-        if self.direct_value is None:
-            assert self._value_white_direct_evaluation is None
-        else:
-            assert self._value_white_direct_evaluation is not None
-            assert isclose(
-                self._value_white_direct_evaluation,
-                self.direct_value.score,
-                rel_tol=0.0,
-                abs_tol=1e-12,
-            )
-        if self.minmax_value is None:
-            assert self._value_white_minmax is None
-        else:
-            assert self._value_white_minmax is not None
-            assert isclose(
-                self._value_white_minmax,
-                self.minmax_value.score,
-                rel_tol=0.0,
-                abs_tol=1e-12,
-            )
-
-    def assert_value_float_consistency(self) -> None:
-        """Assert Value/float bridge consistency when both representations exist."""
-        self._assert_float_views_consistent()
-
-    def get_value_white(self) -> float:
-        """Return the best estimation of the value for white in this node (float bridge).
-
-        Returns:
-            float: The best estimation of the value for white in this node.
-
-        """
-        return self.get_score()
 
     def set_evaluation(self, evaluation: float) -> None:
         """Set the evaluation from the state evaluator.
@@ -335,7 +244,7 @@ class NodeMinmaxEvaluation[
         # Keep leaf minimax aligned with the latest direct evaluation.
         if not self.tree_node.branches_children or self.minmax_value is None:
             self.minmax_value = self.direct_value
-        self._sync_float_views_from_values()
+        self.sync_over_from_values()
 
     def child_is_better_than_direct(
         self, child: Value, direct: Value, *, side_to_move: Color
@@ -401,21 +310,6 @@ class NodeMinmaxEvaluation[
         """
         score = self.get_score()
         return score if self.tree_node.state.turn is Color.WHITE else -score
-
-    def subjective_value_of(self, another_node_eval: Self) -> float:
-        """Calculate the subjective value of the current node evaluation based on the player to branch.
-
-        Args:
-            another_node_eval (Self): The evaluation of another node.
-
-        Returns:
-            float: The subjective value of the current node evaluation.
-
-        """
-        score = another_node_eval.get_score()
-        if self.tree_node.state.turn is Color.WHITE:
-            return score
-        return -score
 
     def best_branch(self) -> BranchKey | None:
         """Return the best branch node based on the subjective value.
@@ -757,7 +651,7 @@ class NodeMinmaxEvaluation[
             ),
             over_event=self.over_event,
         )
-        self._sync_float_views_from_values()
+        self.sync_over_from_values()
 
     def _pick_over_child_branch(self) -> BranchKey:
         """Pick the terminal child branch that determines this node over event.
@@ -905,7 +799,7 @@ class NodeMinmaxEvaluation[
         else:
             if self.direct_value is None:
                 self.minmax_value = best_child_value
-                self._sync_float_views_from_values()
+                self.sync_over_from_values()
                 return
             if self.child_is_better_than_direct(
                 best_child_value,
@@ -919,7 +813,7 @@ class NodeMinmaxEvaluation[
         assert self.minmax_value is not None, (
             "minmax_value must be resolved from Value candidates during backup."
         )
-        self._sync_float_views_from_values()
+        self.sync_over_from_values()
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
@@ -1189,24 +1083,18 @@ class NodeMinmaxEvaluation[
     def dot_description(self) -> str:
         """Return a string representation of the node's description in DOT format.
 
-        The description includes the values of `value_white_minmax` and `value_white_evaluator`,
+        The description includes canonical minmax/direct scores,
         as well as the best branch sequence and the over event tag.
 
         Returns:
             A string representation of the node's description in DOT format.
 
         """
-        # legacy float view only; do not use for decisions
         value_mm = (
-            f"{self.value_white_minmax:.3f}"
-            if self.value_white_minmax is not None
-            else "None"
+            f"{self.minmax_value.score:.3f}" if self.minmax_value is not None else "None"
         )
-        # legacy float view only; do not use for decisions
         value_eval = (
-            f"{self.value_white_direct_evaluation:.3f}"
-            if self.value_white_direct_evaluation is not None
-            else "None"
+            f"{self.direct_value.score:.3f}" if self.direct_value is not None else "None"
         )
         return (
             "\n wh_val_mm: "

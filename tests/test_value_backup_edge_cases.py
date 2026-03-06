@@ -37,7 +37,7 @@ def test_no_children_values_keeps_direct_value_and_empty_pv() -> None:
         parent_eval_value=0.123,
     )
 
-    assert parent_eval.get_value_white() == 0.123
+    assert parent_eval.get_score() == 0.123
     assert parent_eval.best_branch() is None
     assert parent_eval.best_branch_sequence == []
 
@@ -67,9 +67,9 @@ def test_partial_expansion_does_not_switch_to_child_worse_than_direct() -> None:
 
     # In partial mode, if no child beats the direct evaluation, the node keeps its direct value.
     # The implementation can still keep the best explored branch metadata.
-    assert parent_eval.get_value_white() == 0.5
+    assert parent_eval.get_score() == 0.5
     assert parent_eval.best_branch() == 1
-    assert parent_eval.get_value_white() != 0.4
+    assert parent_eval.get_score() != 0.4
 
 
 def test_partial_expansion_switches_to_child_better_than_direct() -> None:
@@ -92,5 +92,5 @@ def test_partial_expansion_switches_to_child_better_than_direct() -> None:
     children[1].tree_evaluation.set_value(0.8)
     parent_eval.minmax_value_update_from_children(branches_with_updated_value={1})
 
-    assert parent_eval.get_value_white() == 0.8
+    assert parent_eval.get_score() == 0.8
     assert parent_eval.best_branch_sequence[:1] == [1]

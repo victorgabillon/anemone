@@ -41,7 +41,7 @@ def _make_leaf(node_id: int, value: Value) -> Any:
     ev = NodeMinmaxEvaluation(tree_node=tree_node)
     ev.direct_value = value
     ev.minmax_value = value
-    ev.sync_float_views_from_values()
+    ev.sync_over_from_values()
     return SimpleNamespace(tree_node=tree_node, tree_evaluation=ev)
 
 
@@ -75,7 +75,7 @@ def _make_parent(
     )
     parent.direct_value = direct_value
     parent.minmax_value = direct_value
-    parent.sync_float_views_from_values()
+    parent.sync_over_from_values()
     return parent
 
 
@@ -238,7 +238,7 @@ def test_direct_eval_change_without_minmax_change_reports_no_value_change() -> N
         branches_with_updated_best_branch_seq=set(),
     )
     parent.direct_value = Value(score=0.6, certainty=Certainty.ESTIMATE)
-    parent.sync_float_views_from_values()
+    parent.sync_over_from_values()
 
     result = parent.backup_from_children(
         branches_with_updated_value={0},

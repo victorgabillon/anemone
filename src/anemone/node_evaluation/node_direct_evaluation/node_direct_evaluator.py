@@ -122,7 +122,7 @@ class NodeDirectEvaluator[StateT: State = State]:
             certainty=Certainty.TERMINAL,
             over_event=canonical_over_event,
         )
-        node.tree_evaluation.sync_float_views_from_values()
+        node.tree_evaluation.sync_over_from_values()
         assert node.tree_evaluation.direct_value is not None
         assert node.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
         assert node.tree_evaluation.direct_value.over_event is not None
@@ -303,7 +303,7 @@ class NodeDirectEvaluator[StateT: State = State]:
                 over_event=value.over_event,
             )
             node.tree_evaluation.direct_value = processed_value
-            node.tree_evaluation.sync_float_views_from_values()
+            node.tree_evaluation.sync_over_from_values()
             assert node.tree_evaluation.direct_value is not None, (
                 f"direct_value must be set for non-terminal node {node.tree_node.id}"
             )

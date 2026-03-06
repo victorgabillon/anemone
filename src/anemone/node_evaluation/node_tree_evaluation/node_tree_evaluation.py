@@ -1,6 +1,6 @@
 """Provide the NodeTreeEvaluation interface."""
 
-from typing import TYPE_CHECKING, Any, Protocol, Self
+from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga import (
     BranchKey,
@@ -119,10 +119,6 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Print the current best line."""
         ...
 
-    def get_value_white(self) -> float:
-        """Return a legacy float view of the white evaluation (do not use for decisions)."""
-        ...
-
     def get_score(self) -> float:
         """Return the canonical scalar score for this node evaluation."""
         ...
@@ -139,8 +135,8 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Return the canonical Value used by minimax and ordering logic."""
         ...
 
-    def sync_float_views_from_values(self) -> None:
-        """Synchronize legacy float bridge fields from canonical Value fields."""
+    def sync_over_from_values(self) -> None:
+        """Synchronize ``over_event`` from canonical terminal Value metadata."""
         ...
 
     def best_branch(self) -> BranchKey | None:
@@ -167,10 +163,6 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         self, how_equal: str | None = None
     ) -> list[BranchKey]:
         """Return all best branches according to an equality rule."""
-        ...
-
-    def subjective_value_of(self, another_node_eval: Self) -> float:
-        """Return this node's value relative to another evaluation."""
         ...
 
     def sort_branches_not_over(self) -> list[BranchKey]:
