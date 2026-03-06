@@ -89,12 +89,6 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Update the best branch sequence from updated branches."""
         ...
 
-    def minmax_value_update_from_children(
-        self, branches_with_updated_value: set[BranchKey]
-    ) -> tuple[bool, bool]:
-        """Update minmax value from children and return update flags."""
-        ...
-
     def backup_from_children(
         self,
         branches_with_updated_value: set[BranchKey],

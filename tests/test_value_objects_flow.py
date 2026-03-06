@@ -186,8 +186,9 @@ def test_minmax_value_is_populated_after_child_backup_and_bridge_holds() -> None
 
     parent.tree_evaluation.direct_value = Value(score=0.1, certainty=Certainty.ESTIMATE)
     parent.tree_evaluation.sync_over_from_values()
-    parent.tree_evaluation.minmax_value_update_from_children(
-        branches_with_updated_value={0}
+    parent.tree_evaluation.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
     )
 
     assert parent.tree_evaluation.minmax_value is not None
