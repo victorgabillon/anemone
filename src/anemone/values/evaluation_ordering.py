@@ -104,8 +104,6 @@ class EvaluationOrdering:
         return TerminalOutcome.LOSS
 
     def _is_terminal_like(self, value: Value) -> bool:
-        if value.over_event is not None and value.over_event.is_over():
-            return True
         return value.certainty in {Certainty.TERMINAL, Certainty.FORCED}
 
     def _terminal_vs_estimate(

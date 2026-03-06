@@ -22,6 +22,21 @@ class _FakeOverEvent:
         return self.winner == player
 
 
+@dataclass(frozen=True)
+class _NoIsOverOverEvent:
+    winner: Color | None = None
+    draw: bool = False
+
+    def is_over(self) -> bool:
+        raise AssertionError("search/decision ordering should not call over_event.is_over")
+
+    def is_draw(self) -> bool:
+        return self.draw
+
+    def is_winner(self, player: Color) -> bool:
+        return self.winner == player
+
+
 def test_semantic_compare_win_beats_high_estimate() -> None:
     ordering = EvaluationOrdering(win_score=1.0, draw_score=0.0, loss_score=-1.0)
     win = Value(
@@ -93,3 +108,16 @@ def test_search_sort_key_is_projection_based_bish() -> None:
     assert ordering.search_sort_key(black_estimate_lower, side_to_move=Color.BLACK) < (
         ordering.search_sort_key(black_win, side_to_move=Color.BLACK)
     )
+
+
+def test_ordering_does_not_use_over_event_is_over() -> None:
+    ordering = EvaluationOrdering()
+    forced_win = Value(
+        score=-42.0,
+        certainty=Certainty.FORCED,
+        over_event=_NoIsOverOverEvent(winner=Color.WHITE),
+    )
+    estimate = Value(score=0.5)
+
+    assert ordering.semantic_compare(forced_win, estimate, side_to_move=Color.WHITE) > 0
+    assert ordering.search_sort_key(forced_win, side_to_move=Color.WHITE) == -1.0

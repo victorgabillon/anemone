@@ -127,7 +127,6 @@ class NodeDirectEvaluator[StateT: State = State]:
         assert node.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
         assert node.tree_evaluation.direct_value.over_event is not None
         assert node.tree_evaluation.is_terminal_candidate()
-        assert node.tree_evaluation.is_over()
 
     def _canonical_terminal_over_event(
         self,
