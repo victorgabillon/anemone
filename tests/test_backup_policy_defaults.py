@@ -53,4 +53,3 @@ def test_factory_defaults_to_explicit_policy() -> None:
     explicit_factory = NodeTreeMinmaxEvaluationFactory()
     explicit_eval = explicit_factory.create(_leaf(0.2).tree_node)
     assert isinstance(explicit_eval.backup_policy, ExplicitMinimaxBackupPolicy)
-

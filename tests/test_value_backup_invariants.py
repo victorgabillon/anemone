@@ -42,7 +42,9 @@ def test_backup_value_equals_a_child_value_and_pv_starts_with_best_branch() -> N
     }
     parent_eval = _build_parent_eval(turn=Color.WHITE, children=children)
 
-    parent_eval.backup_from_children(branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set())
+    parent_eval.backup_from_children(
+        branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set()
+    )
 
     child_values = {c.tree_evaluation.value_white for c in children.values()}
     assert parent_eval.get_score() in child_values
@@ -80,10 +82,14 @@ def test_backup_tie_break_is_deterministic() -> None:
     }
     parent_eval = _build_parent_eval(turn=Color.WHITE, children=children)
 
-    parent_eval.backup_from_children(branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set())
+    parent_eval.backup_from_children(
+        branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set()
+    )
     first_choice = parent_eval.best_branch_sequence[:1]
 
-    parent_eval.backup_from_children(branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set())
+    parent_eval.backup_from_children(
+        branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set()
+    )
     second_choice = parent_eval.best_branch_sequence[:1]
 
     assert first_choice == second_choice == [0]

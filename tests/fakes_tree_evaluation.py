@@ -95,7 +95,6 @@ class FakeChildEvaluation:
     def get_score(self) -> float:
         return self.require_value_candidate().score
 
-
     def is_terminal_candidate(self) -> bool:
         value = self.get_value_candidate()
         return (

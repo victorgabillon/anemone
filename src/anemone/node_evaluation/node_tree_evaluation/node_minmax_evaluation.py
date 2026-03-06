@@ -1003,10 +1003,14 @@ class NodeMinmaxEvaluation[
 
         """
         value_mm = (
-            f"{self.minmax_value.score:.3f}" if self.minmax_value is not None else "None"
+            f"{self.minmax_value.score:.3f}"
+            if self.minmax_value is not None
+            else "None"
         )
         value_eval = (
-            f"{self.direct_value.score:.3f}" if self.direct_value is not None else "None"
+            f"{self.direct_value.score:.3f}"
+            if self.direct_value is not None
+            else "None"
         )
         return (
             "\n wh_val_mm: "

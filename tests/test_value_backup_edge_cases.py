@@ -56,14 +56,18 @@ def test_partial_expansion_does_not_switch_to_child_worse_than_direct() -> None:
         parent_eval_value=0.5,
     )
 
-    parent_eval.backup_from_children(branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set())
+    parent_eval.backup_from_children(
+        branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set()
+    )
     assert parent_eval.best_branch() is not None
 
     parent_eval.tree_node.all_branches_generated = False
 
     # Update a child to a value still worse than direct evaluator (0.4 < 0.5).
     children[1].tree_evaluation.set_value(0.4)
-    parent_eval.backup_from_children(branches_with_updated_value={1}, branches_with_updated_best_branch_seq=set())
+    parent_eval.backup_from_children(
+        branches_with_updated_value={1}, branches_with_updated_best_branch_seq=set()
+    )
 
     # In partial mode, if no child beats the direct evaluation, the node keeps its direct value.
     # The implementation can still keep the best explored branch metadata.
@@ -84,13 +88,17 @@ def test_partial_expansion_switches_to_child_better_than_direct() -> None:
         parent_eval_value=0.1,
     )
 
-    parent_eval.backup_from_children(branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set())
+    parent_eval.backup_from_children(
+        branches_with_updated_value={0, 1}, branches_with_updated_best_branch_seq=set()
+    )
     assert parent_eval.best_branch_sequence[:1] == [0]
 
     parent_eval.tree_node.all_branches_generated = False
 
     children[1].tree_evaluation.set_value(0.8)
-    parent_eval.backup_from_children(branches_with_updated_value={1}, branches_with_updated_best_branch_seq=set())
+    parent_eval.backup_from_children(
+        branches_with_updated_value={1}, branches_with_updated_best_branch_seq=set()
+    )
 
     assert parent_eval.get_score() == 0.8
     assert parent_eval.best_branch_sequence[:1] == [1]

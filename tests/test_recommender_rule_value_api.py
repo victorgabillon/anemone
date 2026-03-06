@@ -14,7 +14,6 @@ class _ChildEval:
         return self.score
 
 
-
 @dataclass
 class _ChildNode:
     tree_evaluation: _ChildEval
