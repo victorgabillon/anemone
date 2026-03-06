@@ -4,7 +4,8 @@ from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import Any
 
-from valanga import Color
+from valanga import Color, OverEvent
+from valanga.over_event import HowOver
 
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
     EvaluationQueries,
@@ -24,12 +25,14 @@ class _OverDetector:
         self, state: SimpleNamespace
     ) -> tuple[Any | None, float | None]:
         if state.is_terminal:
+            over = OverEvent()
+            over.becomes_over(
+                how_over=HowOver.WIN,
+                who_is_winner=Color.WHITE,
+                termination="terminal",
+            )
             return (
-                SimpleNamespace(
-                    how_over="mate",
-                    who_is_winner=Color.WHITE,
-                    termination="terminal",
-                ),
+                over,
                 1.0,
             )
         return None, None
@@ -182,10 +185,8 @@ def test_minmax_value_is_populated_after_child_backup_and_bridge_holds() -> None
     parent.tree_node.all_branches_generated = True
 
     child.tree_evaluation.direct_value = Value(score=0.8, certainty=Certainty.ESTIMATE)
-    child.tree_evaluation.sync_over_from_values()
 
     parent.tree_evaluation.direct_value = Value(score=0.1, certainty=Certainty.ESTIMATE)
-    parent.tree_evaluation.sync_over_from_values()
     parent.tree_evaluation.backup_from_children(
         branches_with_updated_value={0},
         branches_with_updated_best_branch_seq=set(),
@@ -203,13 +204,11 @@ def test_get_value_prefers_minmax_else_direct() -> None:
 
     direct = Value(score=0.2, certainty=Certainty.ESTIMATE)
     node.tree_evaluation.direct_value = direct
-    node.tree_evaluation.sync_over_from_values()
 
     assert node.tree_evaluation.get_value() == direct
 
     minmax = Value(score=0.6, certainty=Certainty.FORCED)
     node.tree_evaluation.minmax_value = minmax
-    node.tree_evaluation.sync_over_from_values()
 
     assert node.tree_evaluation.get_value() == minmax
 
@@ -221,7 +220,6 @@ def _protocol_score(eval_like: NodeTreeEvaluation[Any]) -> float:
 def test_node_tree_evaluation_protocol_exposes_value_api() -> None:
     node = _make_node(node_id=99, turn=Color.WHITE, base_score=0.4, is_terminal=False)
     node.tree_evaluation.direct_value = Value(score=0.4, certainty=Certainty.ESTIMATE)
-    node.tree_evaluation.sync_over_from_values()
 
     assert _protocol_score(node.tree_evaluation) == 0.4
     assert node.tree_evaluation.get_value_candidate() is not None

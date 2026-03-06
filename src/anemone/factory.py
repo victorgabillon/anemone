@@ -14,7 +14,7 @@ from anemone.dynamics import SearchDynamics, normalize_search_dynamics
 from anemone.hooks.search_hooks import SearchHooks
 from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
 from anemone.node_evaluation.node_direct_evaluation.protocols import (
-    MasterStateEvaluator,
+    MasterStateValueEvaluator,
 )
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
     NodeTreeEvaluationFactory,
@@ -59,7 +59,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState, ActionT: Hashable](
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
-    master_state_evaluator: MasterStateEvaluator,
+    master_state_evaluator: MasterStateValueEvaluator,
     state_representation_factory: RepresentationFactory[
         StateT, EvaluatorInput, StateModifications
     ]
@@ -95,7 +95,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
-    master_state_evaluator: MasterStateEvaluator,
+    master_state_evaluator: MasterStateValueEvaluator,
     state_representation_factory: RepresentationFactory[
         StateT, EvaluatorInput, StateModifications
     ]

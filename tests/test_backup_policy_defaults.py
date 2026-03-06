@@ -24,7 +24,6 @@ def _leaf(score: float) -> SimpleNamespace:
     ev = NodeMinmaxEvaluation(tree_node=tree_node)
     ev.direct_value = Value(score=score, certainty=Certainty.ESTIMATE)
     ev.minmax_value = Value(score=score, certainty=Certainty.ESTIMATE)
-    ev.sync_over_from_values()
     return SimpleNamespace(tree_node=tree_node, tree_evaluation=ev)
 
 

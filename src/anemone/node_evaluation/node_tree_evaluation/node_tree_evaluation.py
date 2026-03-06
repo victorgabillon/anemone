@@ -34,8 +34,6 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
     # canonical minmax value (Value-first API)
     minmax_value: Value | None
 
-    # creating a base Over event that is set to None
-    over_event: OverEvent
 
     # the list of branches that have not yet be found to be over
     # using atm a list instead of set as atm python set are not insertion ordered which adds randomness
@@ -66,6 +64,12 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
 
         """
         ...
+
+    @property
+    def over_event(self) -> OverEvent:
+        """Return the over event if the game is over, else return None."""
+        ...
+
 
     def is_terminal_candidate(self) -> bool:
         """Return whether the canonical Value candidate is terminal/forced with over metadata."""
@@ -129,9 +133,7 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Return the canonical Value used by minimax and ordering logic."""
         ...
 
-    def sync_over_from_values(self) -> None:
-        """Synchronize ``over_event`` from canonical terminal Value metadata."""
-        ...
+
 
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch key."""

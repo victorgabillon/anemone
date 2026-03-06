@@ -139,8 +139,6 @@ class NodeMinmaxEvaluation[
         default_factory=make_branches_not_over_factory
     )
 
-    # creating a base Over event that is set to None
-    over_event: OverEvent = field(default_factory=OverEvent)
 
     # policy used to orchestrate backup behavior from updated children
     backup_policy: "BackupPolicy | None" = None
@@ -202,23 +200,8 @@ class NodeMinmaxEvaluation[
         return (
             value is not None
             and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
-            and value.over_event is not None
         )
 
-    def sync_over_from_values(self) -> None:
-        """Keep ``over_event`` aligned with terminal/forced Value metadata.
-
-        Non-terminal values do not clear existing over state; this keeps legacy
-        ``update_over`` behavior stable when Value metadata is not terminal.
-        """
-        value = self.get_value_candidate()
-        if (
-            value is not None
-            and value.certainty in {Certainty.TERMINAL, Certainty.FORCED}
-            and value.over_event is not None
-            and hasattr(value.over_event, "is_over")
-        ):
-            self.over_event = value.over_event
 
     def set_evaluation(self, evaluation: float) -> None:
         """Set the evaluation from the state evaluator.
@@ -238,13 +221,12 @@ class NodeMinmaxEvaluation[
             self.direct_value = Value(
                 score=evaluation,
                 certainty=Certainty.ESTIMATE,
-                over_event=None,
+                over_event=OverEvent(),
             )
 
         # Keep leaf minimax aligned with the latest direct evaluation.
         if not self.tree_node.branches_children or self.minmax_value is None:
             self.minmax_value = self.direct_value
-        self.sync_over_from_values()
 
     def child_is_better_than_direct(
         self, child: Value, direct: Value, *, side_to_move: Color
@@ -400,6 +382,12 @@ class NodeMinmaxEvaluation[
 
         return [item[0] for item in sorted(candidates, key=cmp_to_key(_cmp))]
 
+
+    def get_over_event_candidate(self) -> OverEvent:
+        value = self.get_value_candidate()
+        assert value is not None, "Cannot get over event candidate: node has no Value candidate."
+        return  value.over_event
+
     def is_over(self) -> bool:
         """Check if the game is over.
 
@@ -407,10 +395,10 @@ class NodeMinmaxEvaluation[
             bool: True if the game is over, False otherwise.
 
         """
-        over_event = self.over_event
-        if hasattr(over_event, "is_over"):
-            return bool(over_event.is_over())
-        return bool(getattr(over_event, "_is_over", False))
+        over_event = self.get_over_event_candidate()
+        if over_event is not None:
+            return over_event.is_over()
+        return False
 
     def is_win(self) -> bool:
         """Check if the current game state is a win.
@@ -419,7 +407,10 @@ class NodeMinmaxEvaluation[
             bool: True if the game state is a win, False otherwise.
 
         """
-        return self.over_event.is_win()
+        over_event = self.get_over_event_candidate()
+        if over_event is not None:
+            return over_event.is_win()
+        return False
 
     def is_draw(self) -> bool:
         """Check if the current game state is a draw.
@@ -428,7 +419,19 @@ class NodeMinmaxEvaluation[
             bool: True if the game state is a draw, False otherwise.
 
         """
-        return self.over_event.is_draw()
+        over_event = self.get_over_event_candidate()
+        if over_event is not None:
+            return over_event.is_draw()
+        return False
+
+
+    @property
+    def over_event(self) -> OverEvent:
+        """Return the over event if the game is over, else return None."""
+        over_event = self.get_over_event_candidate()
+        if over_event is not None:
+            return over_event
+        raise ValueError("No over event available: node is not over.")
 
     def is_winner(self, player: Color) -> bool:
         """Determine if the specified player is the winner.
@@ -440,7 +443,10 @@ class NodeMinmaxEvaluation[
             bool: True if the player is the winner, False otherwise.
 
         """
-        return self.over_event.is_winner(player)
+        over_event = self.get_over_event_candidate()
+        if over_event is not None:
+            return over_event.is_winner(player)
+        return False
 
     def print_branches_sorted_by_value(
         self, dynamics: SearchDynamics[Any, Any]
@@ -636,7 +642,8 @@ class NodeMinmaxEvaluation[
         assert best_child_value.over_event is not None
         child_over_event = best_child_value.over_event
 
-        self.over_event.becomes_over(
+        over_event  = self.get_over_event_candidate()  # sanity check we can get it from the child value candidate
+        over_event.becomes_over(
             how_over=child_over_event.how_over,
             who_is_winner=child_over_event.who_is_winner,
             termination=child_over_event.termination,
@@ -649,9 +656,8 @@ class NodeMinmaxEvaluation[
                 if best_child_value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
                 else Certainty.TERMINAL
             ),
-            over_event=self.over_event,
+            over_event=self.get_over_event_candidate(),
         )
-        self.sync_over_from_values()
 
     def _pick_over_child_branch(self) -> BranchKey:
         """Pick the terminal child branch that determines this node over event.
@@ -799,7 +805,6 @@ class NodeMinmaxEvaluation[
         else:
             if self.direct_value is None:
                 self.minmax_value = best_child_value
-                self.sync_over_from_values()
                 return
             if self.child_is_better_than_direct(
                 best_child_value,
@@ -813,7 +818,6 @@ class NodeMinmaxEvaluation[
         assert self.minmax_value is not None, (
             "minmax_value must be resolved from Value candidates during backup."
         )
-        self.sync_over_from_values()
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
@@ -1012,6 +1016,8 @@ class NodeMinmaxEvaluation[
             if self.direct_value is not None
             else "None"
         )
+        over_event = self.get_over_event_candidate()
+        over_event_tag = over_event.get_over_tag() if over_event is not None else ""
         return (
             "\n wh_val_mm: "
             + value_mm
@@ -1020,7 +1026,7 @@ class NodeMinmaxEvaluation[
             + "\n branches*"
             + self.description_best_branch_sequence()
             + "\nover: "
-            + self.over_event.get_over_tag()
+            + over_event_tag
         )
 
     def description_best_branch_sequence(self) -> str:

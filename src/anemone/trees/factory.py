@@ -1,6 +1,6 @@
 """ValueTreeFactory."""
 
-from valanga import State
+from valanga import TurnState
 
 from anemone import node_factory as nod_fac
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
@@ -13,7 +13,7 @@ from anemone.trees.tree import Tree
 from .descendants import RangedDescendants
 
 
-class ValueTreeFactory[StateT: State = State]:
+class ValueTreeFactory[StateT: TurnState = TurnState]:
     """ValueTreeFactory."""
 
     node_factory: nod_fac.AlgorithmNodeFactory[StateT]

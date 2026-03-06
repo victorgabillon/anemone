@@ -1,11 +1,9 @@
 """Value objects carrying score metadata for direct evaluation."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from valanga import OverEvent
+from valanga import OverEvent
 
 
 class Certainty(Enum):
@@ -22,4 +20,4 @@ class Value:
 
     score: float
     certainty: Certainty = Certainty.ESTIMATE
-    over_event: "OverEvent | None" = None
+    over_event: OverEvent  = field(default_factory=OverEvent)
