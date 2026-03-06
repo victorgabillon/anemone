@@ -4,10 +4,7 @@ from types import SimpleNamespace
 
 from valanga import Color
 
-from anemone.backup_policies import (
-    ExplicitMinimaxBackupPolicy,
-    LegacyMinimaxBackupPolicy,
-)
+from anemone.backup_policies import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -51,12 +48,9 @@ def test_node_minmax_evaluation_backup_default_is_explicit_policy() -> None:
     assert isinstance(node_eval.backup_policy, ExplicitMinimaxBackupPolicy)
 
 
-def test_factory_defaults_to_explicit_policy_and_can_opt_into_legacy() -> None:
-    """Factory should default to explicit and support legacy opt-in."""
+def test_factory_defaults_to_explicit_policy() -> None:
+    """Factory should default to explicit backup policy."""
     explicit_factory = NodeTreeMinmaxEvaluationFactory()
     explicit_eval = explicit_factory.create(_leaf(0.2).tree_node)
     assert isinstance(explicit_eval.backup_policy, ExplicitMinimaxBackupPolicy)
 
-    legacy_factory = NodeTreeMinmaxEvaluationFactory(use_legacy_backup_policy=True)
-    legacy_eval = legacy_factory.create(_leaf(0.2).tree_node)
-    assert isinstance(legacy_eval.backup_policy, LegacyMinimaxBackupPolicy)

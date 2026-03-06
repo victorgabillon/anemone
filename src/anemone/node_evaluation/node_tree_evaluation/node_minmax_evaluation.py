@@ -972,80 +972,6 @@ class NodeMinmaxEvaluation[
             side_to_move=self.tree_node.state.turn,
         )
 
-    def minmax_value_update_from_children_legacy(
-        self, branches_with_updated_value: set[BranchKey]
-    ) -> tuple[bool, bool]:
-        """Update the value and best branch of the node based on updated child values.
-
-        Args:
-            branches_with_updated_value (set[Ibranch]): A set of branches with updated values.
-
-        Returns:
-            tuple[bool, bool]: A tuple containing two boolean values indicating whether the value and best branch have
-            changed.
-
-        """
-        # TODO: to be tested!!
-
-        # updates value
-        value_white_before_update = self.get_score()
-
-        best_branch_key_before_update: BranchKey | None = self.best_branch()
-        self.update_branches_values(branches_to_consider=branches_with_updated_value)
-        self.update_value_minmax()
-
-        value_white_after_update = self.get_score()
-        has_value_changed: bool = value_white_before_update != value_white_after_update
-
-        # # updates best_branch #TODO: maybe split in two functions but be careful one has to be done oft the other
-        if best_branch_key_before_update is None:
-            best_child_before_update_not_the_best_anymore = True
-        else:
-            # here we compare the values in the self.children_sorted_by_value which might include more
-            # than just the basic values #TODO: make that more clear at some point maybe even creating a value object
-            updated_value_of_best_child_before_update = self.branches_sorted_by_value[
-                best_branch_key_before_update
-            ]
-            best_value_children_after = self.best_branch_value()
-            if best_value_children_after is None:
-                best_child_before_update_not_the_best_anymore = True
-            else:
-                best_child_before_update_not_the_best_anymore = (
-                    not self.are_equal_values(
-                        updated_value_of_best_child_before_update,
-                        best_value_children_after,
-                    )
-                )
-
-        best_branch_seq_before_update: list[BranchKey] = (
-            self.best_branch_sequence.copy()
-        )
-        if self.tree_node.all_branches_generated:
-            if best_child_before_update_not_the_best_anymore:
-                self.one_of_best_children_becomes_best_next_node()
-        else:
-            # we only consider a child as best if it is more promising than the evaluation of self
-            # in self.value_white_evaluator
-            assert best_branch_key_before_update is not None
-            best_child_before_update = self.tree_node.branches_children[
-                best_branch_key_before_update
-            ]
-            assert best_child_before_update is not None
-            best_child_value = self.child_value_candidate(best_branch_key_before_update)
-            if (
-                best_child_value is not None
-                and self.is_value_subjectively_better_than_evaluation(best_child_value)
-            ):
-                self.one_of_best_children_becomes_best_next_node()
-            else:
-                self.clear_best_branch_sequence()
-        best_branch_seq_after_update = self.best_branch_sequence
-        has_best_node_seq_changed = (
-            best_branch_seq_before_update != best_branch_seq_after_update
-        )
-
-        return has_value_changed, has_best_node_seq_changed
-
     def backup_from_children(
         self,
         branches_with_updated_value: set[BranchKey],
@@ -1065,20 +991,6 @@ class NodeMinmaxEvaluation[
             branches_with_updated_value=branches_with_updated_value,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
         )
-
-    def minmax_value_update_from_children(
-        self, branches_with_updated_value: set[BranchKey]
-    ) -> tuple[bool, bool]:
-        """Temporary legacy API wrapper around policy-driven backup.
-
-        Note: This path only reflects value-driven PV changes. Sequence-only
-        PV updates must use `backup_from_children(...)`.
-        """
-        backup_result = self.backup_from_children(
-            branches_with_updated_value=branches_with_updated_value,
-            branches_with_updated_best_branch_seq=set(),
-        )
-        return backup_result.value_changed, backup_result.pv_changed
 
     def dot_description(self) -> str:
         """Return a string representation of the node's description in DOT format.

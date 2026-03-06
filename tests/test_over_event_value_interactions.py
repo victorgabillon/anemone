@@ -216,7 +216,10 @@ def test_terminal_selection_and_minmax_best_branch_remain_consistent() -> None:
     parent_eval.set_evaluation(0.0)
 
     parent_eval.becoming_over_from_children()
-    parent_eval.minmax_value_update_from_children({"draw", "win"})
+    parent_eval.backup_from_children(
+        branches_with_updated_value={"draw", "win"},
+        branches_with_updated_best_branch_seq=set(),
+    )
 
     assert parent_eval.over_event.is_winner(Color.WHITE)
     # Now: terminal over-event selection and PV tracking are consistent.
