@@ -13,8 +13,6 @@ class _ChildEval:
     def get_score(self) -> float:
         return self.score
 
-    def get_value_white(self) -> float:
-        raise AssertionError("float API should not be used")
 
 
 @dataclass

@@ -49,7 +49,6 @@ class FakeChildEvaluation:
 
     value_white: float
     over_event: FakeOverEvent = field(default_factory=FakeOverEvent)
-    value_white_minmax: float | None = None
     direct_value: Value | None = None
     minmax_value: Value | None = None
     best_branch_sequence: list[Any] = field(default_factory=list)
@@ -66,9 +65,6 @@ class FakeChildEvaluation:
             self.direct_value = canonical_value
         if self.minmax_value is None:
             self.minmax_value = self.direct_value
-        self.value_white_minmax = (
-            None if self.minmax_value is None else self.minmax_value.score
-        )
 
     def set_value(self, score: float) -> None:
         """Keep float bridge and canonical Values aligned in test mutations."""
@@ -82,7 +78,6 @@ class FakeChildEvaluation:
         )
         self.direct_value = canonical_value
         self.minmax_value = canonical_value
-        self.value_white_minmax = canonical_value.score
 
     def get_value_candidate(self) -> Value | None:
         if self.minmax_value is not None:
@@ -100,8 +95,6 @@ class FakeChildEvaluation:
     def get_score(self) -> float:
         return self.require_value_candidate().score
 
-    def get_value_white(self) -> float:
-        return self.get_score()
 
     def is_terminal_candidate(self) -> bool:
         value = self.get_value_candidate()

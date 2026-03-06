@@ -30,7 +30,7 @@ class LegacyMinimaxBackupPolicy:
                 branches_with_updated_value=branches_with_updated_value
             )
         )
-        node_eval.sync_float_views_from_values()
+        node_eval.sync_over_from_values()
 
         pv_changed_from_sequence = False
         if branches_with_updated_best_branch_seq:

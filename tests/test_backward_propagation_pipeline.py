@@ -85,7 +85,7 @@ def test_single_expansion_propagates_to_root() -> None:
 
     _open_branch(tree, tree_manager, tree.root_node, branch=0)
 
-    assert isclose(tree.root_node.tree_evaluation.get_value_white(), 0.2, abs_tol=1e-6)
+    assert isclose(tree.root_node.tree_evaluation.get_score(), 0.2, abs_tol=1e-6)
     assert tree.root_node.tree_evaluation.best_branch_sequence[:1] == [0]
 
 
@@ -95,7 +95,7 @@ def test_second_expansion_can_change_root_choice() -> None:
     _open_branch(tree, tree_manager, tree.root_node, branch=0)
     _open_branch(tree, tree_manager, tree.root_node, branch=1)
 
-    assert isclose(tree.root_node.tree_evaluation.get_value_white(), 0.6, abs_tol=1e-6)
+    assert isclose(tree.root_node.tree_evaluation.get_score(), 0.6, abs_tol=1e-6)
     assert tree.root_node.tree_evaluation.best_branch_sequence[:1] == [1]
 
 
@@ -108,8 +108,8 @@ def test_deep_leaf_update_propagates_through_intermediate_node() -> None:
 
     _open_branch(tree, tree_manager, node_a, branch=0)
 
-    assert isclose(node_a.tree_evaluation.get_value_white(), -0.8, abs_tol=1e-6)
+    assert isclose(node_a.tree_evaluation.get_score(), -0.8, abs_tol=1e-6)
     assert node_a.tree_evaluation.best_branch_sequence[:1] == [0]
 
-    assert isclose(tree.root_node.tree_evaluation.get_value_white(), -0.8, abs_tol=1e-6)
+    assert isclose(tree.root_node.tree_evaluation.get_score(), -0.8, abs_tol=1e-6)
     assert tree.root_node.tree_evaluation.best_branch_sequence[:2] == [0, 0]

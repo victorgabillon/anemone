@@ -81,7 +81,9 @@ def _run_backup(
         branches_with_updated_value=updated_values,
         branches_with_updated_best_branch_seq=updated_best_seq,
     )
-    return ev.value_white_minmax, ev.best_branch_sequence.copy(), result
+    candidate = ev.get_value_candidate()
+    score = None if candidate is None else candidate.score
+    return score, ev.best_branch_sequence.copy(), result
 
 
 def _run_backup_or_exc(
@@ -234,8 +236,8 @@ def test_equivalence_full_generation_value_and_pv_head(
         updated_best_seq=set(),
     )
 
-    assert legacy.value_white_minmax == expected_value
-    assert explicit.value_white_minmax == expected_value
+    assert legacy.get_score() == expected_value
+    assert explicit.get_score() == expected_value
     assert explicit.best_branch_sequence[:1] == [expected_best_branch]
 
 
@@ -283,7 +285,7 @@ def test_equivalence_partial_expansion_direct_dominates_clears_pv() -> None:
         updated_best_seq=set(),
     )
 
-    assert legacy.value_white_minmax == 0.5
+    assert legacy.get_score() == 0.5
     assert explicit.best_branch_sequence == []
 
 
@@ -331,7 +333,7 @@ def test_equivalence_partial_expansion_direct_dominates_clears_pv_black() -> Non
         updated_best_seq=set(),
     )
 
-    assert legacy.value_white_minmax == 0.5
+    assert legacy.get_score() == 0.5
     assert explicit.best_branch_sequence == []
 
 
@@ -379,7 +381,7 @@ def test_equivalence_partial_expansion_child_dominates_sets_pv() -> None:
         updated_best_seq=set(),
     )
 
-    assert legacy.value_white_minmax == 0.8
+    assert legacy.get_score() == 0.8
     assert explicit.best_branch_sequence[:1] == [0]
 
 
@@ -427,7 +429,7 @@ def test_equivalence_partial_expansion_child_dominates_sets_pv_black() -> None:
         updated_best_seq=set(),
     )
 
-    assert legacy.value_white_minmax == 0.1
+    assert legacy.get_score() == 0.1
     assert explicit.best_branch_sequence[:1] == [0]
 
 
@@ -719,7 +721,7 @@ def test_equivalence_value_and_best_pv_change_in_same_backup_call() -> None:
         updated_best_seq={1},
     )
 
-    assert legacy.value_white_minmax == 0.95
+    assert legacy.get_score() == 0.95
     assert explicit.best_branch_sequence == [1, 99]
 
 
@@ -764,9 +766,9 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
         legacy, explicit, updated_values={0, 1}, updated_best_seq=set()
     )
 
-    legacy_before = (legacy.value_white_minmax, legacy.best_branch_sequence.copy())
+    legacy_before = (legacy.get_score(), legacy.best_branch_sequence.copy())
     explicit_before = (
-        explicit.value_white_minmax,
+        explicit.get_score(),
         explicit.best_branch_sequence.copy(),
     )
 
@@ -774,9 +776,9 @@ def test_equivalence_empty_updates_after_baseline_is_noop() -> None:
         legacy, explicit, updated_values=set(), updated_best_seq=set()
     )
 
-    assert (legacy.value_white_minmax, legacy.best_branch_sequence) == legacy_before
+    assert (legacy.get_score(), legacy.best_branch_sequence) == legacy_before
     assert (
-        explicit.value_white_minmax,
+        explicit.get_score(),
         explicit.best_branch_sequence,
     ) == explicit_before
 
@@ -869,7 +871,7 @@ def test_explicit_rejects_partial_expansion_without_direct_baseline() -> None:
 
     explicit.direct_value = None
     explicit.minmax_value = None
-    explicit.sync_float_views_from_values()
+    explicit.sync_over_from_values()
 
     legacy_is_exc, _ = _run_backup_or_exc(
         legacy,

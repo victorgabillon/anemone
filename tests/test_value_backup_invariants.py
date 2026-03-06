@@ -3,7 +3,6 @@
 from types import SimpleNamespace
 from typing import Any
 
-import pytest
 from valanga import Color
 
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
@@ -46,8 +45,8 @@ def test_backup_value_equals_a_child_value_and_pv_starts_with_best_branch() -> N
     parent_eval.minmax_value_update_from_children(branches_with_updated_value={0, 1})
 
     child_values = {c.tree_evaluation.value_white for c in children.values()}
-    assert parent_eval.value_white_minmax in child_values
-    assert parent_eval.value_white_minmax == 0.7
+    assert parent_eval.get_score() in child_values
+    assert parent_eval.get_score() == 0.7
     assert parent_eval.best_branch_sequence[:1] == [1]
 
 
@@ -61,7 +60,7 @@ def test_backup_respects_turn_white_max_black_min() -> None:
     white_parent_eval.minmax_value_update_from_children(
         branches_with_updated_value={0, 1}
     )
-    assert white_parent_eval.value_white_minmax == 0.9
+    assert white_parent_eval.get_score() == 0.9
     assert white_parent_eval.best_branch_sequence[:1] == [1]
 
     black_parent_eval = _build_parent_eval(turn=Color.BLACK, children=children)
@@ -88,7 +87,7 @@ def test_backup_tie_break_is_deterministic() -> None:
     assert first_choice == second_choice == [0]
 
 
-def test_float_bridge_properties_are_read_only_views() -> None:
+def test_set_evaluation_sets_canonical_value_views() -> None:
     parent_tree_node = SimpleNamespace(
         id=0,
         state=SimpleNamespace(turn=Color.WHITE),
@@ -99,10 +98,9 @@ def test_float_bridge_properties_are_read_only_views() -> None:
 
     evaluation.set_evaluation(0.33)
 
-    assert evaluation.value_white_direct_evaluation == 0.33
-    assert evaluation.value_white_minmax == 0.33
-    with pytest.raises(AttributeError):
-        evaluation.value_white_minmax = 0.99
+    assert evaluation.direct_value is not None
+    assert evaluation.minmax_value is not None
+    assert evaluation.get_score() == 0.33
 
 
 def test_set_evaluation_populates_direct_value_guardrail() -> None:
