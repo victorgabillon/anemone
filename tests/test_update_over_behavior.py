@@ -132,6 +132,23 @@ def test_update_over_turn_sensitivity_win_for_opponent_does_not_force_over() -> 
     assert not parent.over_event.is_over()
 
 
+def test_update_over_uses_terminal_candidate_instead_of_is_over() -> None:
+    win = _terminal_child(node_id=1, winner=Color.WHITE, term="mate")
+    parent = _build_parent_eval({"win": win})
+    parent.set_evaluation(0.0)
+    parent.tree_node.state.turn = Color.WHITE
+
+    def _legacy_is_over_should_not_be_called() -> bool:
+        raise AssertionError("update_over should use is_terminal_candidate()")
+
+    parent.is_over = _legacy_is_over_should_not_be_called
+
+    newly_over = _update_over(parent, {"win"})
+
+    assert newly_over
+    assert parent.over_event.is_over()
+
+
 def test_update_over_idempotent_second_call_no_change() -> None:
     win = _terminal_child(node_id=1, winner=Color.WHITE, term="mate")
     parent = _build_parent_eval({"win": win})

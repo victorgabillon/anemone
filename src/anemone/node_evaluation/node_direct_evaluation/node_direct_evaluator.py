@@ -281,7 +281,7 @@ class NodeDirectEvaluator[StateT: State = State]:
         # Re-read into a local after the call: this breaks mypy's earlier narrowing.
         direct_value: Value | None = node.tree_evaluation.direct_value
 
-        if node.is_over():
+        if node.tree_evaluation.is_terminal_candidate():
             if direct_value is None:
                 raise DirectValueInvariantError(
                     node_id=node.tree_node.id,
