@@ -62,6 +62,7 @@ def test_update_over_single_terminal_win_forces_parent_over() -> None:
 
     assert newly_over
     assert parent.over_event.is_over()
+    assert parent.is_terminal_candidate()
     assert parent.over_event.is_winner(Color.WHITE)
     assert parent.over_event.termination == "mate"
 
@@ -99,6 +100,7 @@ def test_update_over_all_children_terminal_forces_parent_over() -> None:
 
     assert newly_over
     assert parent.over_event.is_over()
+    assert parent.is_terminal_candidate()
     assert parent.over_event.termination == "stalemate"
 
 
@@ -132,21 +134,26 @@ def test_update_over_turn_sensitivity_win_for_opponent_does_not_force_over() -> 
     assert not parent.over_event.is_over()
 
 
-def test_update_over_uses_terminal_candidate_instead_of_is_over() -> None:
+def test_update_over_uses_terminal_candidate_instead_of_is_over(monkeypatch) -> None:
     win = _terminal_child(node_id=1, winner=Color.WHITE, term="mate")
     parent = _build_parent_eval({"win": win})
     parent.set_evaluation(0.0)
     parent.tree_node.state.turn = Color.WHITE
 
-    def _legacy_is_over_should_not_be_called() -> bool:
+    def _legacy_is_over_should_not_be_called(*_args, **_kwargs) -> bool:
         raise AssertionError("update_over should use is_terminal_candidate()")
 
-    parent.is_over = _legacy_is_over_should_not_be_called
+    monkeypatch.setattr(
+        type(parent),
+        "is_over",
+        _legacy_is_over_should_not_be_called,
+    )
 
     newly_over = _update_over(parent, {"win"})
 
     assert newly_over
     assert parent.over_event.is_over()
+    assert parent.is_terminal_candidate()
 
 
 def test_update_over_idempotent_second_call_no_change() -> None:
@@ -161,4 +168,5 @@ def test_update_over_idempotent_second_call_no_change() -> None:
     assert first
     assert not second
     assert parent.over_event.is_over()
+    assert parent.is_terminal_candidate()
     assert parent.over_event.termination == "mate"
