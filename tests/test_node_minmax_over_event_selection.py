@@ -25,7 +25,6 @@ def _build_parent_eval(
         all_branches_generated=True,
     )
     evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
-    evaluation.over_event = FakeOverEvent()
     return evaluation
 
 

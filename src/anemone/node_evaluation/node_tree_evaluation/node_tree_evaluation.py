@@ -11,7 +11,7 @@ from valanga import (
 
 from anemone.backup_policies.types import BackupResult
 from anemone.dynamics import SearchDynamics
-from anemone.values import Value
+from anemone.values import Certainty, Value
 
 type BranchSortValue = tuple[float, int, int]
 
@@ -66,13 +66,33 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         ...
 
     @property
-    def over_event(self) -> OverEvent:
+    def over_event(self) -> OverEvent | None:
         """Return the over event if the game is over, else return None."""
         ...
 
 
     def is_terminal_candidate(self) -> bool:
         """Return whether the canonical Value candidate is terminal/forced with over metadata."""
+        ...
+
+    def set_direct_terminal_value(
+        self,
+        *,
+        score: float,
+        over_event: OverEvent,
+        certainty: Certainty = Certainty.TERMINAL,
+    ) -> None:
+        """Set direct_value to an explicit terminal Value."""
+        ...
+
+    def set_minmax_terminal_value(
+        self,
+        *,
+        score: float,
+        over_event: OverEvent,
+        certainty: Certainty = Certainty.TERMINAL,
+    ) -> None:
+        """Set minmax_value to an explicit terminal Value."""
         ...
 
     def dot_description(self) -> str:

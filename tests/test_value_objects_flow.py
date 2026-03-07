@@ -38,28 +38,6 @@ class _OverDetector:
         return None, None
 
 
-class _MutableOverEvent:
-    def __init__(self) -> None:
-        self._is_over = False
-        self.how_over: Any | None = None
-        self.who_is_winner: Any | None = None
-        self.termination: Any | None = None
-
-    def becomes_over(self, how_over: Any, who_is_winner: Any, termination: Any) -> None:
-        self._is_over = True
-        self.how_over = how_over
-        self.who_is_winner = who_is_winner
-        self.termination = termination
-
-    def is_over(self) -> bool:
-        return self._is_over
-
-    def is_winner(self, player: Color) -> bool:
-        return self._is_over and self.who_is_winner is player
-
-    def is_draw(self) -> bool:
-        return self._is_over and self.who_is_winner is None
-
 
 class _BatchValueEvaluator:
     over = _OverDetector()
@@ -85,7 +63,6 @@ def _make_node(
         all_branches_generated=False,
     )
     tree_evaluation = NodeMinmaxEvaluation(tree_node=tree_node)
-    tree_evaluation.over_event = _MutableOverEvent()
     return SimpleNamespace(
         state=state,
         tree_node=tree_node,
