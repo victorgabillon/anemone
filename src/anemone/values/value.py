@@ -1,6 +1,6 @@
 """Value objects carrying score metadata for direct evaluation."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 
 from valanga import OverEvent
@@ -20,4 +20,4 @@ class Value:
 
     score: float
     certainty: Certainty = Certainty.ESTIMATE
-    over_event: OverEvent  = field(default_factory=OverEvent)
+    over_event: OverEvent | None = None

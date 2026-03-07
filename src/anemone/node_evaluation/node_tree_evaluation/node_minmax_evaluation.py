@@ -456,12 +456,9 @@ class NodeMinmaxEvaluation[
 
 
     @property
-    def over_event(self) -> OverEvent:
-        """Return the over event if the game is over, else return None."""
-        over_event = self.get_over_event_candidate()
-        if over_event is not None:
-            return over_event
-        raise ValueError("No over event available: node is not over.")
+    def over_event(self) -> OverEvent | None:
+        """Return the candidate over event, or ``None`` when non-terminal."""
+        return self.get_over_event_candidate()
 
     def is_winner(self, player: Color) -> bool:
         """Determine if the specified player is the winner.
