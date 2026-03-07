@@ -200,6 +200,7 @@ class NodeMinmaxEvaluation[
         return (
             value is not None
             and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
+            and value.over_event is not None
         )
 
 
@@ -221,12 +222,40 @@ class NodeMinmaxEvaluation[
             self.direct_value = Value(
                 score=evaluation,
                 certainty=Certainty.ESTIMATE,
-                over_event=OverEvent(),
+                over_event=None,
             )
 
         # Keep leaf minimax aligned with the latest direct evaluation.
         if not self.tree_node.branches_children or self.minmax_value is None:
             self.minmax_value = self.direct_value
+
+    def set_direct_terminal_value(
+        self,
+        *,
+        score: float,
+        over_event: OverEvent,
+        certainty: Certainty = Certainty.TERMINAL,
+    ) -> None:
+        """Set ``direct_value`` to an explicit terminal Value."""
+        self.direct_value = Value(
+            score=score,
+            certainty=certainty,
+            over_event=over_event,
+        )
+
+    def set_minmax_terminal_value(
+        self,
+        *,
+        score: float,
+        over_event: OverEvent,
+        certainty: Certainty = Certainty.TERMINAL,
+    ) -> None:
+        """Set ``minmax_value`` to an explicit terminal Value."""
+        self.minmax_value = Value(
+            score=score,
+            certainty=certainty,
+            over_event=over_event,
+        )
 
     def child_is_better_than_direct(
         self, child: Value, direct: Value, *, side_to_move: Color
@@ -383,10 +412,11 @@ class NodeMinmaxEvaluation[
         return [item[0] for item in sorted(candidates, key=cmp_to_key(_cmp))]
 
 
-    def get_over_event_candidate(self) -> OverEvent:
+    def get_over_event_candidate(self) -> OverEvent | None:
         value = self.get_value_candidate()
-        assert value is not None, "Cannot get over event candidate: node has no Value candidate."
-        return  value.over_event
+        if value is None:
+            return None
+        return value.over_event
 
     def is_over(self) -> bool:
         """Check if the game is over.
@@ -426,12 +456,9 @@ class NodeMinmaxEvaluation[
 
 
     @property
-    def over_event(self) -> OverEvent:
-        """Return the over event if the game is over, else return None."""
-        over_event = self.get_over_event_candidate()
-        if over_event is not None:
-            return over_event
-        raise ValueError("No over event available: node is not over.")
+    def over_event(self) -> OverEvent | None:
+        """Return the candidate over event, or ``None`` when non-terminal."""
+        return self.get_over_event_candidate()
 
     def is_winner(self, player: Color) -> bool:
         """Determine if the specified player is the winner.
@@ -642,21 +669,10 @@ class NodeMinmaxEvaluation[
         assert best_child_value.over_event is not None
         child_over_event = best_child_value.over_event
 
-        over_event  = self.get_over_event_candidate()  # sanity check we can get it from the child value candidate
-        over_event.becomes_over(
-            how_over=child_over_event.how_over,
-            who_is_winner=child_over_event.who_is_winner,
-            termination=child_over_event.termination,
-        )
-
-        self.minmax_value = Value(
+        self.set_minmax_terminal_value(
             score=best_child_value.score,
-            certainty=(
-                best_child_value.certainty
-                if best_child_value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
-                else Certainty.TERMINAL
-            ),
-            over_event=self.get_over_event_candidate(),
+            certainty=best_child_value.certainty,
+            over_event=child_over_event,
         )
 
     def _pick_over_child_branch(self) -> BranchKey:

@@ -96,8 +96,7 @@ class NodeDirectEvaluator[StateT: TurnState = TurnState]:
             evaluation=evaluation,
             canonical_over_event=over_event,
         )
-        node.tree_evaluation.over_event = over_event
-        node.tree_evaluation.direct_value = Value(
+        node.tree_evaluation.set_direct_terminal_value(
             score=terminal_score,
             certainty=Certainty.TERMINAL,
             over_event=over_event,

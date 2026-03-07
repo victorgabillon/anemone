@@ -61,6 +61,7 @@ def test_update_over_single_terminal_win_forces_parent_over() -> None:
     newly_over = _update_over(parent, {"win"})
 
     assert newly_over
+    assert parent.over_event is not None
     assert parent.over_event.is_over()
     assert parent.is_terminal_candidate()
     assert parent.over_event.is_winner(Color.WHITE)
@@ -81,7 +82,7 @@ def test_update_over_single_terminal_draw_does_not_force_over_if_other_live_chil
 
     # pin current behavior: draw alone is not enough to conclude game is over at parent
     assert not newly_over
-    assert not parent.over_event.is_over()
+    assert parent.over_event is None
 
 
 def test_update_over_all_children_terminal_forces_parent_over() -> None:
@@ -99,6 +100,7 @@ def test_update_over_all_children_terminal_forces_parent_over() -> None:
     newly_over = _update_over(parent, {"draw", "loss"})
 
     assert newly_over
+    assert parent.over_event is not None
     assert parent.over_event.is_over()
     assert parent.is_terminal_candidate()
     assert parent.over_event.termination == "stalemate"
@@ -117,7 +119,7 @@ def test_update_over_single_terminal_loss_does_not_force_over_if_other_live_chil
     newly_over = _update_over(parent, {"loss"})
 
     assert not newly_over
-    assert not parent.over_event.is_over()
+    assert parent.over_event is None
 
 
 def test_update_over_turn_sensitivity_win_for_opponent_does_not_force_over() -> None:
@@ -131,7 +133,7 @@ def test_update_over_turn_sensitivity_win_for_opponent_does_not_force_over() -> 
     newly_over = _update_over(parent, {"w"})
 
     assert not newly_over
-    assert not parent.over_event.is_over()
+    assert parent.over_event is None
 
 
 def test_update_over_uses_terminal_candidate_instead_of_is_over(monkeypatch) -> None:
@@ -152,6 +154,7 @@ def test_update_over_uses_terminal_candidate_instead_of_is_over(monkeypatch) -> 
     newly_over = _update_over(parent, {"win"})
 
     assert newly_over
+    assert parent.over_event is not None
     assert parent.over_event.is_over()
     assert parent.is_terminal_candidate()
 
@@ -167,6 +170,7 @@ def test_update_over_idempotent_second_call_no_change() -> None:
 
     assert first
     assert not second
+    assert parent.over_event is not None
     assert parent.over_event.is_over()
     assert parent.is_terminal_candidate()
     assert parent.over_event.termination == "mate"

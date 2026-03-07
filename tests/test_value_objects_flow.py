@@ -38,38 +38,24 @@ class _OverDetector:
         return None, None
 
 
-class _MutableOverEvent:
-    def __init__(self) -> None:
-        self._is_over = False
-        self.how_over: Any | None = None
-        self.who_is_winner: Any | None = None
-        self.termination: Any | None = None
-
-    def becomes_over(self, how_over: Any, who_is_winner: Any, termination: Any) -> None:
-        self._is_over = True
-        self.how_over = how_over
-        self.who_is_winner = who_is_winner
-        self.termination = termination
-
-    def is_over(self) -> bool:
-        return self._is_over
-
-    def is_winner(self, player: Color) -> bool:
-        return self._is_over and self.who_is_winner is player
-
-    def is_draw(self) -> bool:
-        return self._is_over and self.who_is_winner is None
-
 
 class _BatchValueEvaluator:
     over = _OverDetector()
 
     def evaluate(self, state: Any) -> Value:
-        return Value(score=state.base_score, certainty=Certainty.ESTIMATE)
+        return Value(
+            score=state.base_score,
+            certainty=Certainty.ESTIMATE,
+            over_event=None,
+        )
 
     def evaluate_batch_items(self, items: Sequence[Any]) -> list[Value]:
         return [
-            Value(score=node.state.base_score, certainty=Certainty.ESTIMATE)
+            Value(
+                score=node.state.base_score,
+                certainty=Certainty.ESTIMATE,
+                over_event=None,
+            )
             for node in items
         ]
 
@@ -85,7 +71,6 @@ def _make_node(
         all_branches_generated=False,
     )
     tree_evaluation = NodeMinmaxEvaluation(tree_node=tree_node)
-    tree_evaluation.over_event = _MutableOverEvent()
     return SimpleNamespace(
         state=state,
         tree_node=tree_node,
@@ -184,9 +169,13 @@ def test_minmax_value_is_populated_after_child_backup_and_bridge_holds() -> None
     parent.tree_node.branches_children = {0: child}
     parent.tree_node.all_branches_generated = True
 
-    child.tree_evaluation.direct_value = Value(score=0.8, certainty=Certainty.ESTIMATE)
+    child.tree_evaluation.direct_value = Value(
+        score=0.8, certainty=Certainty.ESTIMATE, over_event=None
+    )
 
-    parent.tree_evaluation.direct_value = Value(score=0.1, certainty=Certainty.ESTIMATE)
+    parent.tree_evaluation.direct_value = Value(
+        score=0.1, certainty=Certainty.ESTIMATE, over_event=None
+    )
     parent.tree_evaluation.backup_from_children(
         branches_with_updated_value={0},
         branches_with_updated_best_branch_seq=set(),
@@ -202,7 +191,7 @@ def test_get_value_prefers_minmax_else_direct() -> None:
     """Canonical Value getter returns minmax when present, else direct."""
     node = _make_node(node_id=20, turn=Color.WHITE, base_score=0.2, is_terminal=False)
 
-    direct = Value(score=0.2, certainty=Certainty.ESTIMATE)
+    direct = Value(score=0.2, certainty=Certainty.ESTIMATE, over_event=None)
     node.tree_evaluation.direct_value = direct
 
     assert node.tree_evaluation.get_value() == direct
@@ -219,7 +208,9 @@ def _protocol_score(eval_like: NodeTreeEvaluation[Any]) -> float:
 
 def test_node_tree_evaluation_protocol_exposes_value_api() -> None:
     node = _make_node(node_id=99, turn=Color.WHITE, base_score=0.4, is_terminal=False)
-    node.tree_evaluation.direct_value = Value(score=0.4, certainty=Certainty.ESTIMATE)
+    node.tree_evaluation.direct_value = Value(
+        score=0.4, certainty=Certainty.ESTIMATE, over_event=None
+    )
 
     assert _protocol_score(node.tree_evaluation) == 0.4
     assert node.tree_evaluation.get_value_candidate() is not None
