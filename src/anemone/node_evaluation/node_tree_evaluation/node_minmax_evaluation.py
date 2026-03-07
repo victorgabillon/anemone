@@ -139,7 +139,6 @@ class NodeMinmaxEvaluation[
         default_factory=make_branches_not_over_factory
     )
 
-
     # policy used to orchestrate backup behavior from updated children
     backup_policy: "BackupPolicy | None" = None
 
@@ -202,7 +201,6 @@ class NodeMinmaxEvaluation[
             and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
             and value.over_event is not None
         )
-
 
     def set_evaluation(self, evaluation: float) -> None:
         """Set the evaluation from the state evaluator.
@@ -411,8 +409,8 @@ class NodeMinmaxEvaluation[
 
         return [item[0] for item in sorted(candidates, key=cmp_to_key(_cmp))]
 
-
     def get_over_event_candidate(self) -> OverEvent | None:
+        """Return the candidate over event from the candidate Value, or ``None`` when non-terminal."""
         value = self.get_value_candidate()
         if value is None:
             return None
@@ -453,7 +451,6 @@ class NodeMinmaxEvaluation[
         if over_event is not None:
             return over_event.is_draw()
         return False
-
 
     @property
     def over_event(self) -> OverEvent | None:

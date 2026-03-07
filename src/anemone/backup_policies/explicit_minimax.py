@@ -87,7 +87,6 @@ class ExplicitMinimaxBackupPolicy:
         ):
             node_eval.update_best_branch_sequence(branches_with_updated_best_branch_seq)
 
-
         value_changed = has_value_changed(
             value_before=value_before_update,
             value_after=node_eval.minmax_value,

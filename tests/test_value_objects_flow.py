@@ -38,7 +38,6 @@ class _OverDetector:
         return None, None
 
 
-
 class _BatchValueEvaluator:
     over = _OverDetector()
 
