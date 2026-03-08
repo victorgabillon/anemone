@@ -11,6 +11,7 @@ from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
+from tests.fakes_tree_evaluation import set_estimate_value
 
 
 @dataclass
@@ -37,7 +38,7 @@ def _make_leaf_eval(
         all_branches_generated=True,
     )
     ev = NodeMinmaxEvaluation(tree_node=leaf_tree_node, backup_policy=None)
-    ev.set_evaluation(value_white)
+    set_estimate_value(ev, score=value_white)
     ev.set_best_branch_sequence(pv_tail[:])
     return ev
 
@@ -65,7 +66,7 @@ def _make_parent_eval() -> tuple[
         tree_node=parent_tree_node,
         backup_policy=ExplicitMinimaxBackupPolicy(),
     )
-    parent.set_evaluation(0.0)
+    set_estimate_value(parent, score=0.0)
     parent.update_branches_values(branches_to_consider=set(children.keys()))
     return parent, children
 
@@ -211,7 +212,7 @@ def test_partial_expansion_pv_invariant_helper() -> None:
     parent, _ = _make_parent_eval()
     parent.tree_node.all_branches_generated = False
     parent.tree_node.state.turn = Color.WHITE
-    parent.set_evaluation(1e9)
+    set_estimate_value(parent, score=1e9)
     parent.update_branches_values(branches_to_consider={0, 1})
 
     parent.backup_from_children(
@@ -228,7 +229,7 @@ def test_partial_expansion_pv_invariant_helper_allows_non_empty_pv() -> None:
     parent, _ = _make_parent_eval()
     parent.tree_node.all_branches_generated = False
     parent.tree_node.state.turn = Color.WHITE
-    parent.set_evaluation(-1e9)
+    set_estimate_value(parent, score=-1e9)
     parent.update_branches_values(branches_to_consider={0, 1})
 
     parent.backup_from_children(
@@ -245,7 +246,7 @@ def test_partial_expansion_pv_invariant_helper_black_disallows_pv() -> None:
     parent, _ = _make_parent_eval()
     parent.tree_node.all_branches_generated = False
     parent.tree_node.state.turn = Color.BLACK
-    parent.set_evaluation(-1e9)
+    set_estimate_value(parent, score=-1e9)
     parent.update_branches_values(branches_to_consider={0, 1})
 
     parent.backup_from_children(
@@ -262,7 +263,7 @@ def test_partial_expansion_pv_invariant_helper_black_allows_non_empty_pv() -> No
     parent, _ = _make_parent_eval()
     parent.tree_node.all_branches_generated = False
     parent.tree_node.state.turn = Color.BLACK
-    parent.set_evaluation(1e9)
+    set_estimate_value(parent, score=1e9)
     parent.update_branches_values(branches_to_consider={0, 1})
 
     parent.backup_from_children(

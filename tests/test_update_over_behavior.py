@@ -8,6 +8,7 @@ from tests.fakes_tree_evaluation import (
     FakeChildEvaluation,
     FakeChildNode,
     FakeOverEvent,
+    set_estimate_value,
 )
 from tests.test_node_minmax_over_event_selection import _build_parent_eval
 
@@ -55,7 +56,7 @@ def test_update_over_single_terminal_win_forces_parent_over() -> None:
     live = _non_terminal_child(node_id=2, value_white=0.2)
 
     parent = _build_parent_eval({"win": win, "live": live})
-    parent.set_evaluation(0.0)
+    set_estimate_value(parent, score=0.0)
     parent.tree_node.state.turn = Color.WHITE
 
     newly_over = _update_over(parent, {"win"})
@@ -75,7 +76,7 @@ def test_update_over_single_terminal_draw_does_not_force_over_if_other_live_chil
     live = _non_terminal_child(node_id=2, value_white=0.2)
 
     parent = _build_parent_eval({"draw": draw, "live": live})
-    parent.set_evaluation(0.0)
+    set_estimate_value(parent, score=0.0)
     parent.tree_node.state.turn = Color.WHITE
 
     newly_over = _update_over(parent, {"draw"})
@@ -94,7 +95,7 @@ def test_update_over_all_children_terminal_forces_parent_over() -> None:
     )
 
     parent = _build_parent_eval({"draw": draw, "loss": loss})
-    parent.set_evaluation(0.0)
+    set_estimate_value(parent, score=0.0)
     parent.tree_node.state.turn = Color.WHITE
 
     newly_over = _update_over(parent, {"draw", "loss"})
@@ -113,7 +114,7 @@ def test_update_over_single_terminal_loss_does_not_force_over_if_other_live_chil
     live = _non_terminal_child(node_id=2, value_white=0.2)
 
     parent = _build_parent_eval({"loss": loss, "live": live})
-    parent.set_evaluation(0.0)
+    set_estimate_value(parent, score=0.0)
     parent.tree_node.state.turn = Color.WHITE
 
     newly_over = _update_over(parent, {"loss"})
@@ -127,7 +128,7 @@ def test_update_over_turn_sensitivity_win_for_opponent_does_not_force_over() -> 
     live = _non_terminal_child(node_id=2, value_white=0.2)
 
     parent = _build_parent_eval({"w": white_win, "live": live})
-    parent.set_evaluation(0.0)
+    set_estimate_value(parent, score=0.0)
     parent.tree_node.state.turn = Color.BLACK
 
     newly_over = _update_over(parent, {"w"})
@@ -139,7 +140,7 @@ def test_update_over_turn_sensitivity_win_for_opponent_does_not_force_over() -> 
 def test_update_over_uses_terminal_candidate_instead_of_is_over(monkeypatch) -> None:
     win = _terminal_child(node_id=1, winner=Color.WHITE, term="mate")
     parent = _build_parent_eval({"win": win})
-    parent.set_evaluation(0.0)
+    set_estimate_value(parent, score=0.0)
     parent.tree_node.state.turn = Color.WHITE
 
     def _legacy_is_over_should_not_be_called(*_args, **_kwargs) -> bool:
@@ -162,7 +163,7 @@ def test_update_over_uses_terminal_candidate_instead_of_is_over(monkeypatch) -> 
 def test_update_over_idempotent_second_call_no_change() -> None:
     win = _terminal_child(node_id=1, winner=Color.WHITE, term="mate")
     parent = _build_parent_eval({"win": win})
-    parent.set_evaluation(0.0)
+    set_estimate_value(parent, score=0.0)
     parent.tree_node.state.turn = Color.WHITE
 
     first = _update_over(parent, {"win"})

@@ -6,6 +6,7 @@ from tests.fakes_tree_evaluation import (
     FakeChildEvaluation,
     FakeChildNode,
     FakeOverEvent,
+    set_estimate_value,
 )
 from tests.test_node_minmax_over_event_selection import _build_parent_eval
 
@@ -213,7 +214,7 @@ def test_terminal_selection_and_minmax_best_branch_remain_consistent() -> None:
 
     parent_eval = _build_parent_eval({"draw": draw_child, "win": win_child})
     parent_eval.tree_node.all_branches_generated = True
-    parent_eval.set_evaluation(0.0)
+    set_estimate_value(parent_eval, score=0.0)
 
     parent_eval.becoming_over_from_children()
     parent_eval.backup_from_children(

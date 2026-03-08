@@ -15,7 +15,7 @@ class _FakeEval:
     def is_terminal_candidate(self) -> bool:
         return self.terminal
 
-    def require_value_candidate(self) -> Value:
+    def get_value(self) -> Value:
         assert self.value is not None
         return self.value
 

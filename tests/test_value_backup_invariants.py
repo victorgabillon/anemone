@@ -9,7 +9,11 @@ from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import 
     NodeMinmaxEvaluation,
 )
 from anemone.values import Certainty
-from tests.fakes_tree_evaluation import FakeChildEvaluation, FakeChildNode
+from tests.fakes_tree_evaluation import (
+    FakeChildEvaluation,
+    FakeChildNode,
+    set_estimate_value,
+)
 
 
 def _build_parent_eval(
@@ -25,7 +29,7 @@ def _build_parent_eval(
         all_branches_generated=True,
     )
     evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
-    evaluation.set_evaluation(parent_eval_value)
+    set_estimate_value(evaluation, score=parent_eval_value)
     return evaluation
 
 
@@ -95,7 +99,7 @@ def test_backup_tie_break_is_deterministic() -> None:
     assert first_choice == second_choice == [0]
 
 
-def test_set_evaluation_sets_canonical_value_views() -> None:
+def test_setting_estimate_value_sets_canonical_value_views() -> None:
     parent_tree_node = SimpleNamespace(
         id=0,
         state=SimpleNamespace(turn=Color.WHITE),
@@ -104,14 +108,14 @@ def test_set_evaluation_sets_canonical_value_views() -> None:
     )
     evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
 
-    evaluation.set_evaluation(0.33)
+    set_estimate_value(evaluation, score=0.33)
 
     assert evaluation.direct_value is not None
     assert evaluation.minmax_value is not None
     assert evaluation.get_score() == 0.33
 
 
-def test_set_evaluation_populates_direct_value_guardrail() -> None:
+def test_setting_estimate_value_populates_direct_value_guardrail() -> None:
     parent_tree_node = SimpleNamespace(
         id=0,
         state=SimpleNamespace(turn=Color.WHITE),
@@ -120,7 +124,7 @@ def test_set_evaluation_populates_direct_value_guardrail() -> None:
     )
     evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
 
-    evaluation.set_evaluation(0.123)
+    set_estimate_value(evaluation, score=0.123)
 
     assert evaluation.direct_value is not None
     assert evaluation.direct_value.score == 0.123
@@ -128,7 +132,7 @@ def test_set_evaluation_populates_direct_value_guardrail() -> None:
     assert evaluation.direct_value.certainty is Certainty.ESTIMATE
 
 
-def test_set_evaluation_keeps_leaf_minmax_in_sync_with_direct_value() -> None:
+def test_setting_estimate_value_keeps_leaf_minmax_in_sync_with_direct_value() -> None:
     parent_tree_node = SimpleNamespace(
         id=0,
         state=SimpleNamespace(turn=Color.WHITE),
@@ -137,8 +141,8 @@ def test_set_evaluation_keeps_leaf_minmax_in_sync_with_direct_value() -> None:
     )
     evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
 
-    evaluation.set_evaluation(0.2)
-    evaluation.set_evaluation(0.95)
+    set_estimate_value(evaluation, score=0.2)
+    set_estimate_value(evaluation, score=0.95)
 
     assert evaluation.direct_value is not None
     assert evaluation.minmax_value is not None

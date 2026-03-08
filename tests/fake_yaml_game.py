@@ -8,13 +8,15 @@ from valanga import BranchKey, Color, OverEvent, State, StateModifications, Stat
 
 from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation.node_direct_evaluation.protocols import (
-    MasterStateEvaluator,
+    MasterStateValueEvaluator,
 )
 from anemone.node_evaluation.node_direct_evaluation.protocols import OverEventDetector
 from anemone.values import Certainty, Value
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
+
+    from valanga.evaluations import EvalItem
 
 
 def build_yaml_maps(
@@ -155,17 +157,26 @@ class NeverOverDetector(OverEventDetector):
         return None, None
 
 
-class MasterStateEvaluatorFromYaml(MasterStateEvaluator):
+class MasterStateValueEvaluatorFromYaml(MasterStateValueEvaluator):
     """Returns the YAML value for the node id stored in state.tag."""
 
     over: OverEventDetector
 
-    def evaluate_batch_items(self, nodes):
-        scores = self.value_white_batch_items(nodes)
+    def evaluate_batch_items[ItemStateT: State](
+        self, items: Sequence[EvalItem[ItemStateT]]
+    ) -> list[Value]:
+        scores = self.value_white_batch_items(items)
         return [
             Value(score=float(score), certainty=Certainty.ESTIMATE, over_event=None)
             for score in scores
         ]
+
+    def evaluate(self, state: State) -> Value:
+        return Value(
+            score=self.value_white(state),
+            certainty=Certainty.ESTIMATE,
+            over_event=None,
+        )
 
     def __init__(self, value_by_id: dict[int, float]) -> None:
         self._value_by_id = value_by_id

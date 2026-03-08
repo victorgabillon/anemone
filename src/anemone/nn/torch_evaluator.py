@@ -1,4 +1,4 @@
-"""Torch-based MasterStateEvaluator for efficient batch evaluations."""
+"""Torch-based value evaluator for efficient batch evaluations."""
 # pyright: reportMissingImports=false
 
 from collections.abc import Sequence
@@ -9,9 +9,10 @@ from valanga import State
 from valanga.evaluations import EvalItem
 
 from anemone.node_evaluation.node_direct_evaluation.protocols import (
-    MasterStateEvaluator,
+    MasterStateValueEvaluator,
     OverEventDetector,
 )
+from anemone.values import Certainty, Value
 
 if TYPE_CHECKING:
     from coral.neural_networks.nn_content_evaluator import NNContentEvaluator
@@ -30,8 +31,8 @@ class TorchDependencyError(ModuleNotFoundError):
 
 
 @dataclass(slots=True)
-class TorchMasterNNStateEvaluator(MasterStateEvaluator):
-    """Torch-backed MasterStateEvaluator that supports efficient batch evaluation.
+class TorchMasterNNStateEvaluator(MasterStateValueEvaluator):
+    """Torch-backed value evaluator that supports efficient batch evaluation.
 
     This lives in an optional module so anemone core has no torch dependency.
     """
@@ -58,6 +59,14 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
         """Evaluate a single state by delegating to the batch path."""
         # Slow path: evaluate a single state by wrapping it as an EvalItem.
         return self.value_white_batch_items([_SingleEvalItem(state)])[0]
+
+    def evaluate(self, state: State) -> Value:
+        """Evaluate one state into an estimate Value."""
+        return Value(
+            score=float(self.value_white(state)),
+            certainty=Certainty.ESTIMATE,
+            over_event=None,
+        )
 
     def value_white_batch_items[ItemStateT: State](
         self, items: Sequence[EvalItem[ItemStateT]]
@@ -95,6 +104,16 @@ class TorchMasterNNStateEvaluator(MasterStateEvaluator):
             values.append(float(vw))
 
         return values
+
+    def evaluate_batch_items[ItemStateT: State](
+        self, items: Sequence[EvalItem[ItemStateT]]
+    ) -> list[Value]:
+        """Evaluate a batch of items into estimate Values."""
+        scores = self.value_white_batch_items(items)
+        return [
+            Value(score=float(score), certainty=Certainty.ESTIMATE, over_event=None)
+            for score in scores
+        ]
 
 
 class _SingleEvalItem:

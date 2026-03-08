@@ -9,6 +9,23 @@ from valanga import Color
 from anemone.values import Certainty, Value
 
 
+def set_estimate_value(
+    node_eval: "Any",
+    *,
+    score: float,
+    also_minmax: bool = True,
+) -> None:
+    """Set explicit ESTIMATE Value on a node evaluation test fixture."""
+    value = Value(
+        score=score,
+        certainty=Certainty.ESTIMATE,
+        over_event=None,
+    )
+    node_eval.direct_value = value
+    if also_minmax:
+        node_eval.minmax_value = value
+
+
 @dataclass
 class FakeOverEvent:
     """Small over-event stub for unit tests."""

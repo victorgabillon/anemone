@@ -1,14 +1,18 @@
 """Edge-case tests documenting current value backup semantics."""
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 from valanga import Color
 
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from tests.fakes_tree_evaluation import FakeChildEvaluation, FakeChildNode
+from tests.fakes_tree_evaluation import (
+    FakeChildEvaluation,
+    FakeChildNode,
+    set_estimate_value,
+)
 
 
 def _build_parent_eval(
@@ -24,8 +28,8 @@ def _build_parent_eval(
         branches_children=children,
         all_branches_generated=all_generated,
     )
-    evaluation = NodeMinmaxEvaluation(tree_node=parent_tree_node)
-    evaluation.set_evaluation(parent_eval_value)
+    evaluation = NodeMinmaxEvaluation(tree_node=cast(Any, parent_tree_node))
+    set_estimate_value(evaluation, score=parent_eval_value)
     return evaluation
 
 

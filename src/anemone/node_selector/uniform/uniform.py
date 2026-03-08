@@ -99,7 +99,7 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         nodes_to_consider_sorted_by_value = sorted(
             nodes_to_consider_not_over,
             key=lambda node: DEFAULT_EVALUATION_ORDERING.search_sort_key(
-                node.tree_evaluation.require_value_candidate(),
+                node.tree_evaluation.get_value(),
                 side_to_move=side_to_move,
             ),
         )  # best last

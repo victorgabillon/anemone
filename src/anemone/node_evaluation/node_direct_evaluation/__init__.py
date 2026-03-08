@@ -12,14 +12,20 @@ Available objects:
 """
 
 from .factory import create_node_evaluator
-from .node_direct_evaluator import EvaluationQueries, NodeDirectEvaluator
-from .protocols import MasterStateValueEvaluator
-from .value_wrappers import FloatToValueEvaluator
+from .node_direct_evaluator import (
+    DirectValueInvariantError,
+    EvaluationQueries,
+    NodeDirectEvaluator,
+    NodeEvaluatorTypes,
+)
+from .protocols import MasterStateValueEvaluator, OverEventDetector
 
 __all__ = [
+    "DirectValueInvariantError",
     "EvaluationQueries",
-    "FloatToValueEvaluator",
     "MasterStateValueEvaluator",
     "NodeDirectEvaluator",
+    "NodeEvaluatorTypes",
+    "OverEventDetector",
     "create_node_evaluator",
 ]

@@ -110,7 +110,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[
         dynamics (SearchDynamics | Dynamics): The dynamics used for labeling the edges in the visualization.
         args (TreeAndValuePlayerArgs): Arguments for creating the selector.
         random_generator (Random): The random number generator.
-        master_state_evaluator (MasterStateEvaluator): Evaluator for state values.
+        master_state_evaluator (MasterStateValueEvaluator): Evaluator for state values.
         state_representation_factory (RepresentationFactory | None): Optional state representation factory.
         node_tree_evaluation_factory (NodeTreeEvaluationFactory[StateT]): Factory for node tree evaluations.
         hooks (SearchHooks | None): Optional search hooks for monitoring and logging.

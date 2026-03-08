@@ -43,18 +43,6 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
 
     best_branch_sequence: list[BranchKey]
 
-    def set_evaluation(self, evaluation: float) -> None:
-        """Set the evaluation from the state evaluator.
-
-        Args:
-            evaluation (float): The evaluation value to be set.
-
-        Returns:
-            None
-
-        """
-        ...
-
     def is_over(self) -> bool:
         """Check if the game is over.
 

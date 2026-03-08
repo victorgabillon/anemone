@@ -57,7 +57,7 @@ from anemone.utils.small_tools import MyPath
 from tests.fake_yaml_game import (
     FakeYamlDynamics,
     FakeYamlState,
-    MasterStateEvaluatorFromYaml,
+    MasterStateValueEvaluatorFromYaml,
     build_yaml_maps,
 )
 
@@ -142,7 +142,7 @@ def build_tree_from_yaml_clean(
     children_by_id, value_by_id = build_yaml_maps(yaml_nodes)
     expected_nodes = len(value_by_id)
 
-    master_eval = MasterStateEvaluatorFromYaml(value_by_id=value_by_id)
+    master_eval = MasterStateValueEvaluatorFromYaml(value_by_id=value_by_id)
     node_direct_eval = NodeDirectEvaluator(master_state_evaluator=master_eval)
 
     # factories like prod
