@@ -9,7 +9,7 @@ Classes:
 
 from dataclasses import dataclass
 from random import Random
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from anemone import trees
 from anemone.node_selector.branch_explorer import SamplingPriorities, ZipfBranchExplorer
@@ -23,6 +23,9 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 if TYPE_CHECKING:
     from anemone import tree_manager as tree_man
+    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+        NodeMinmaxEvaluation,
+    )
 
 
 @dataclass
@@ -85,7 +88,9 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         wandering_node: NodeT = tree.root_node
 
-        while wandering_node.tree_evaluation.branches_not_over:
+        while cast(
+            "NodeMinmaxEvaluation[Any, Any]", wandering_node.tree_evaluation
+        ).branches_not_over:
             assert not wandering_node.tree_evaluation.is_terminal_candidate()
             branch = self.branch_explorer.sample_branch_to_explore(
                 tree_node_to_sample_from=wandering_node

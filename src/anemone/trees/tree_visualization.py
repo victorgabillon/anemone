@@ -19,7 +19,7 @@ structure to a file.
 
 import sys
 from pickle import dump
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from graphviz import Digraph
 from valanga import BranchKey, State
@@ -31,6 +31,11 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 )
 
 from .tree import Tree
+
+if TYPE_CHECKING:
+    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+        NodeMinmaxEvaluation,
+    )
 
 
 def add_dot[StateT: State](
@@ -87,7 +92,9 @@ def display_special[StateT: State](
             + "|"
             + str(dynamics.action_name(node.state, branch_key))
             + "|"
-            + node.tree_evaluation.description_tree_visualizer_branch(child)
+            + cast(
+                "NodeMinmaxEvaluation[Any, Any]", node.tree_evaluation
+            ).description_tree_visualizer_branch(child)
         )
         dot.edge(str(node.id), str(child.id), edge_description)
         dot.node(str(child.id), child.dot_description())

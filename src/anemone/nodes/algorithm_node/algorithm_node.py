@@ -4,7 +4,7 @@ It wraps tree nodes with values, minimax computation, and exploration tools.
 """
 
 from collections.abc import MutableMapping
-from typing import Self
+from typing import TYPE_CHECKING, Self, cast
 
 from valanga import (
     BranchKey,
@@ -19,6 +19,11 @@ from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
     NodeTreeEvaluation,
 )
 from anemone.nodes.tree_node import TreeNode
+
+if TYPE_CHECKING:
+    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+        NodeMinmaxEvaluation,
+    )
 
 
 class AlgorithmNode[StateT: State = State]:
@@ -187,7 +192,12 @@ class AlgorithmNode[StateT: State = State]:
             else ""
         )
 
-        return f"{self.tree_node.dot_description()}\n{self.tree_evaluation.dot_description()}\n{exploration_description}"
+        tree_eval = cast("NodeMinmaxEvaluation", self.tree_evaluation)
+        return (
+            f"{self.tree_node.dot_description()}\n"
+            f"{tree_eval.dot_description()}\n"
+            f"{exploration_description}"
+        )
 
     def __str__(self) -> str:
         """Return a concise string representation of the node."""

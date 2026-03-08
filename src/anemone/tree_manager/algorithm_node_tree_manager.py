@@ -1,7 +1,7 @@
 """Defining the AlgorithmNodeTreeManager class."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey
 
@@ -33,6 +33,9 @@ from .tree_manager import TreeManager
 
 if TYPE_CHECKING:
     from anemone import node_selector as node_sel
+    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+        NodeMinmaxEvaluation,
+    )
 
 
 @dataclass
@@ -78,7 +81,9 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             tree=tree, parent_node=parent_node, branch=branch
         )
 
-        parent_node.tree_evaluation.branches_not_over.append(
+        cast(
+            "NodeMinmaxEvaluation[Any, Any]", parent_node.tree_evaluation
+        ).branches_not_over.append(
             branch
         )  # default action checks for over event are performed later
 
@@ -240,4 +245,6 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             tree: The tree containing branches and their evaluations.
 
         """
-        tree.root_node.tree_evaluation.print_best_line()
+        cast(
+            "NodeMinmaxEvaluation[Any, Any]", tree.root_node.tree_evaluation
+        ).print_best_line()

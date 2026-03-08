@@ -108,6 +108,16 @@ class NodeMinmaxEvaluation[
     # canonical minimax value computed from descendants
     minmax_value: Value | None = None
 
+    @property
+    def backed_up_value(self) -> Value | None:
+        """Return the generic backed-up Value alias used by game-agnostic APIs."""
+        return self.minmax_value
+
+    @backed_up_value.setter
+    def backed_up_value(self, value: Value | None) -> None:
+        """Set the generic backed-up Value alias used by game-agnostic APIs."""
+        self.minmax_value = value
+
     # the sequence of best branches from this node
     best_branch_sequence: list[BranchKey] = field(
         default_factory=make_branch_sequence_factory
@@ -160,11 +170,11 @@ class NodeMinmaxEvaluation[
         """Return the canonical value for this node.
 
         Returns:
-            Value: The minmax value when available, otherwise direct value.
+            Value: The backed-up value when available, otherwise direct value.
 
         """
-        if self.minmax_value is not None:
-            return self.minmax_value
+        if self.backed_up_value is not None:
+            return self.backed_up_value
         assert self.direct_value is not None, (
             "Node has no canonical Value: both minmax_value and direct_value are None. "
             "Set direct_value explicitly to a Value or compute minmax_value via backup."
@@ -180,9 +190,9 @@ class NodeMinmaxEvaluation[
         return self.get_value().score
 
     def get_value_candidate(self) -> Value | None:
-        """Return minmax when available, else direct Value, or ``None``."""
-        if self.minmax_value is not None:
-            return self.minmax_value
+        """Return backed-up value when available, else direct Value, or ``None``."""
+        if self.backed_up_value is not None:
+            return self.backed_up_value
         return self.direct_value
 
     def is_terminal_candidate(self) -> bool:
@@ -216,7 +226,7 @@ class NodeMinmaxEvaluation[
         certainty: Certainty = Certainty.TERMINAL,
     ) -> None:
         """Set ``minmax_value`` to an explicit terminal Value."""
-        self.minmax_value = Value(
+        self.backed_up_value = Value(
             score=score,
             certainty=certainty,
             over_event=over_event,

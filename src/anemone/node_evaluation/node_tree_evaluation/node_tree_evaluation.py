@@ -1,26 +1,19 @@
 """Provide the NodeTreeEvaluation interface."""
 
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import Protocol
 
 from valanga import (
     BranchKey,
-    OverEvent,
     State,
     StateEvaluation,
 )
 
 from anemone.backup_policies.types import BackupResult
-from anemone.dynamics import SearchDynamics
-from anemone.values import Certainty, Value
-
-type BranchSortValue = tuple[float, int, int]
+from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
+from anemone.values import Value
 
 
-if TYPE_CHECKING:
-    from anemone.nodes.itree_node import ITreeNode
-
-
-class NodeTreeEvaluation[StateT: State = State](Protocol):
+class NodeTreeEvaluation[StateT: State = State](NodeValueEvaluation, Protocol):
     """Interface for node tree evaluation.
 
     This is the evaluation of a node that is based both on a direct evaluation of the state within
@@ -29,69 +22,37 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
 
     """
 
-    # canonical direct evaluation value (Value-first API)
-    direct_value: Value | None
-    # canonical minmax value (Value-first API)
-    minmax_value: Value | None
+    @property
+    def direct_value(self) -> Value | None:
+        """Return the canonical direct evaluation value for this node."""
+        ...
 
-    # the list of branches that have not yet be found to be over
-    # using atm a list instead of set as atm python set are not insertion ordered which adds randomness
-    # and makes debug harder
-    branches_not_over: list[BranchKey]
-
-    branches_sorted_by_value_: dict[BranchKey, BranchSortValue]
-
-    best_branch_sequence: list[BranchKey]
-
-    def is_over(self) -> bool:
-        """Check if the game is over.
-
-        Returns:
-            bool: True if the game is over, False otherwise.
-
-        """
+    @direct_value.setter
+    def direct_value(self, value: Value | None) -> None:
+        """Set the canonical direct evaluation value for this node."""
         ...
 
     @property
-    def over_event(self) -> OverEvent | None:
-        """Return the over event if the game is over, else return None."""
+    def backed_up_value(self) -> Value | None:
+        """Return the canonical backed-up value for this node."""
         ...
 
-    def is_terminal_candidate(self) -> bool:
-        """Return whether the canonical Value candidate is terminal/forced with over metadata."""
+    @backed_up_value.setter
+    def backed_up_value(self, value: Value | None) -> None:
+        """Set the canonical backed-up value for this node."""
         ...
 
-    def set_direct_terminal_value(
-        self,
-        *,
-        score: float,
-        over_event: OverEvent,
-        certainty: Certainty = Certainty.TERMINAL,
-    ) -> None:
-        """Set direct_value to an explicit terminal Value."""
+    @property
+    def minmax_value(self) -> Value | None:
+        """Return the minimax-specific backed-up value for this node."""
         ...
 
-    def set_minmax_terminal_value(
-        self,
-        *,
-        score: float,
-        over_event: OverEvent,
-        certainty: Certainty = Certainty.TERMINAL,
-    ) -> None:
-        """Set minmax_value to an explicit terminal Value."""
+    @minmax_value.setter
+    def minmax_value(self, value: Value | None) -> None:
+        """Set the minimax-specific backed-up value for this node."""
         ...
 
-    def dot_description(self) -> str:
-        """Return a string representation of the node's description in DOT format.
-
-        The description includes canonical evaluation information,
-        as well as the best branch sequence and the over event tag.
-
-        Returns:
-            A string representation of the node's description in DOT format.
-
-        """
-        ...
+    best_branch_sequence: list[BranchKey]
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
@@ -115,52 +76,10 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Return a state evaluation for this node."""
         ...
 
-    def description_tree_visualizer_branch(self, child: "ITreeNode[StateT]") -> str:
-        """Return a visualization label for a child branch."""
-        ...
-
-    def print_best_line(self) -> None:
-        """Print the current best line."""
-        ...
-
-    def get_score(self) -> float:
-        """Return the canonical scalar score for this node evaluation."""
-        ...
-
-    def get_value_candidate(self) -> Value | None:
-        """Return minmax when available, else direct Value, or ``None``."""
-        ...
-
-    def get_value(self) -> Value:
-        """Return the canonical Value used by minimax and ordering logic."""
-        ...
-
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch key."""
         ...
 
     def second_best_branch(self) -> BranchKey:
         """Return the second-best branch key."""
-        ...
-
-    def print_branches_sorted_by_value(
-        self, dynamics: SearchDynamics[Any, Any]
-    ) -> None:
-        """Print branches sorted by value."""
-        ...
-
-    def print_branches_sorted_by_value_and_exploration(
-        self, dynamics: SearchDynamics[Any, Any]
-    ) -> None:
-        """Print branches sorted by value and exploration metrics."""
-        ...
-
-    def get_all_of_the_best_branches(
-        self, how_equal: str | None = None
-    ) -> list[BranchKey]:
-        """Return all best branches according to an equality rule."""
-        ...
-
-    def sort_branches_not_over(self) -> list[BranchKey]:
-        """Return branches not over, sorted by evaluation."""
         ...

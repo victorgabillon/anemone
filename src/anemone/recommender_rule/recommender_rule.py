@@ -15,7 +15,7 @@ Example usage:
 from dataclasses import dataclass
 from enum import StrEnum
 from random import Random
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from valanga import BranchKey, Color, State
 from valanga.policy import BranchPolicy
@@ -24,6 +24,11 @@ from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
 from anemone.utils.small_tools import softmax
+
+if TYPE_CHECKING:
+    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+        NodeMinmaxEvaluation,
+    )
 
 
 def sample_from_policy(policy: BranchPolicy, rng: Random) -> BranchKey:
@@ -76,9 +81,10 @@ class AlmostEqualLogistic:
 
     def policy[StateT: State](self, root_node: AlgorithmNode[StateT]) -> BranchPolicy:
         """Compute a policy based on near-equal best branches."""
-        best: list[BranchKey] = root_node.tree_evaluation.get_all_of_the_best_branches(
-            how_equal="almost_equal_logistic"
-        )
+        best: list[BranchKey] = cast(
+            "NodeMinmaxEvaluation",
+            root_node.tree_evaluation,
+        ).get_all_of_the_best_branches(how_equal="almost_equal_logistic")
 
         # Fallback: if empty, uniform over all existing children
         if not best:

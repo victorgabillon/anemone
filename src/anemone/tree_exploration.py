@@ -17,7 +17,7 @@ Functions:
 
 from dataclasses import dataclass
 from random import Random
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey, State, StateEvaluation, TurnState
 from valanga.game import BranchName
@@ -40,6 +40,10 @@ from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
     from valanga.policy import BranchPolicy
+
+    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+        NodeMinmaxEvaluation,
+    )
 
 
 @dataclass
@@ -122,7 +126,10 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             )
 
             # ,end='\r')
-            self.tree.root_node.tree_evaluation.print_branches_sorted_by_value_and_exploration(
+            cast(
+                "NodeMinmaxEvaluation[Any, Any]",
+                self.tree.root_node.tree_evaluation,
+            ).print_branches_sorted_by_value_and_exploration(
                 dynamics=self.tree_manager.dynamics
             )
             self.tree_manager.print_best_line(tree=self.tree)

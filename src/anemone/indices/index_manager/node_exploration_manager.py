@@ -1,7 +1,7 @@
 """Module that contains the logic to compute the exploration index of a node in a tree."""
 
 from math import inf
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from valanga import BranchKey, Color, State
 
@@ -23,9 +23,10 @@ from anemone.utils.small_tools import (
 
 if TYPE_CHECKING:
     from anemone.basics import TreeDepth
-    from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
-        NodeTreeEvaluation,
+    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+        NodeMinmaxEvaluation,
     )
+    from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
     from anemone.trees.descendants import RangedDescendants
 
 
@@ -132,7 +133,7 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
 
 
 def _score(node: AlgorithmNode[Any]) -> float:
-    tree_eval: NodeTreeEvaluation[Any] = node.tree_evaluation
+    tree_eval: NodeValueEvaluation = node.tree_evaluation
     return tree_eval.get_score()
 
 
@@ -499,9 +500,11 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
         for parent_node in tree_nodes[tree_depth].values():
             branch_rank: int
             branch: BranchKey
-            for branch_rank, branch in enumerate(
-                parent_node.tree_evaluation.branches_sorted_by_value_
-            ):
+            tree_eval = cast(
+                "NodeMinmaxEvaluation[Any, Any]",
+                parent_node.tree_evaluation,
+            )
+            for branch_rank, branch in enumerate(tree_eval.branches_sorted_by_value_):
                 child_node = parent_node.branches_children[branch]
                 if child_node is None:
                     continue

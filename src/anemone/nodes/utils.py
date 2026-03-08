@@ -5,9 +5,7 @@ from typing import Any
 from valanga import BranchKey, Color, State
 
 from anemone.dynamics import SearchDynamics
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
-    NodeTreeEvaluation,
-)
+from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
@@ -121,7 +119,7 @@ def print_a_branch_sequence_from_root[StateT: State](
     print(f"a_branch_sequence_from_root{branch_sequence_from_root}")
 
 
-def is_winning(node_tree_evaluation: NodeTreeEvaluation, color: Color) -> bool:
+def is_winning(node_tree_evaluation: NodeValueEvaluation, color: Color) -> bool:
     """Check if the color to play in the node is winning.
 
     Args:
