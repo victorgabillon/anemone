@@ -101,16 +101,13 @@ class FakeChildEvaluation:
             return self.minmax_value
         return self.direct_value
 
-    def require_value_candidate(self) -> Value:
+    def get_value(self) -> Value:
         candidate = self.get_value_candidate()
         assert candidate is not None, "FakeChildEvaluation has no Value candidate"
         return candidate
 
-    def get_value(self) -> Value:
-        return self.require_value_candidate()
-
     def get_score(self) -> float:
-        return self.require_value_candidate().score
+        return self.get_value().score
 
     def is_terminal_candidate(self) -> bool:
         value = self.get_value_candidate()

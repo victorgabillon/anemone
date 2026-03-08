@@ -131,10 +131,6 @@ class NodeTreeEvaluation[StateT: State = State](Protocol):
         """Return minmax when available, else direct Value, or ``None``."""
         ...
 
-    def require_value_candidate(self) -> Value:
-        """Return minmax when available, else direct Value, raising if unavailable."""
-        ...
-
     def get_value(self) -> Value:
         """Return the canonical Value used by minimax and ordering logic."""
         ...

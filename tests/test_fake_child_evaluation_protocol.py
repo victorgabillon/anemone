@@ -18,17 +18,7 @@ def test_get_value_candidate_and_getters_return_value() -> None:
 
     assert candidate is not None
     assert fake.get_value() is candidate
-    assert fake.require_value_candidate() is candidate
     assert fake.get_score() == 0.42
-
-
-def test_require_value_candidate_raises_when_both_values_missing() -> None:
-    fake = FakeChildEvaluation(value_white=0.0)
-    fake.direct_value = None
-    fake.minmax_value = None
-
-    with pytest.raises(AssertionError, match="no Value candidate"):
-        fake.require_value_candidate()
 
 
 def test_is_terminal_candidate_requires_forced_or_terminal_with_over_event() -> None:
