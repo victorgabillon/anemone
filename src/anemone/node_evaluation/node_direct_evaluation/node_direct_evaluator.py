@@ -114,10 +114,7 @@ class NodeDirectEvaluator[StateT: TurnState = TurnState]:
             return evaluation
         tree_eval: NodeMinmaxEvaluation[Any, Any] = cast("Any", node.tree_evaluation)
         return float(
-            tree_eval.evaluation_ordering.terminal_score(
-                canonical_over_event,
-                perspective=node.state.turn,
-            )
+            tree_eval.objective.terminal_score(canonical_over_event, node.state)
         )
 
     def evaluate_all_queried_nodes(

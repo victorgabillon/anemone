@@ -159,9 +159,9 @@ class ExplicitMinimaxBackupPolicy:
             if child_value is None:
                 continue
 
-            subjective_sort_value = node_eval.evaluation_ordering.search_sort_key(
+            subjective_sort_value = node_eval.objective.evaluate_value(
                 child_value,
-                side_to_move=node_eval.tree_node.state.turn,
+                node_eval.tree_node.state,
             )
 
             if node_eval.is_terminal_candidate():

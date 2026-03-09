@@ -13,6 +13,7 @@ from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import 
     NodeMinmaxEvaluation,
 )
 from anemone.nodes.tree_node import TreeNode
+from anemone.objectives import AdversarialZeroSumObjective, Objective
 
 
 class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
@@ -21,12 +22,17 @@ class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
     def __init__(
         self,
         backup_policy: BackupPolicy | None = None,
+        objective: Objective[StateT] | None = None,
     ) -> None:
         """Initialize the factory with an explicit backup policy."""
         if backup_policy is not None:
             self.backup_policy = backup_policy
         else:
             self.backup_policy = ExplicitMinimaxBackupPolicy()
+        if objective is not None:
+            self.objective = objective
+        else:
+            self.objective = AdversarialZeroSumObjective()
 
     def create(
         self,
@@ -44,6 +50,7 @@ class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
         return NodeMinmaxEvaluation(
             tree_node=tree_node,
             backup_policy=self.backup_policy,
+            objective=self.objective,
         )
 
 

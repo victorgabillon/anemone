@@ -15,6 +15,7 @@ from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import 
     NodeMinmaxEvaluation,
 )
 from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
+from anemone.objectives import Objective
 from anemone.values import Certainty, Value
 
 
@@ -33,6 +34,21 @@ class _OverDetector:
                 over,
                 1.0,
             )
+        return None, None
+
+
+class _OverDetectorWithoutEvaluation:
+    def check_obvious_over_events(
+        self, state: SimpleNamespace
+    ) -> tuple[Any | None, float | None]:
+        if state.is_terminal:
+            over = OverEvent()
+            over.becomes_over(
+                how_over=HowOver.WIN,
+                who_is_winner=Color.WHITE,
+                termination="terminal",
+            )
+            return over, None
         return None, None
 
 
@@ -55,6 +71,24 @@ class _BatchValueEvaluator:
             )
             for node in items
         ]
+
+
+class _TerminalScoreObjective(Objective[Any]):
+    def evaluate_value(self, value: Value, state: Any) -> float:
+        del state
+        return value.score
+
+    def semantic_compare(self, left: Value, right: Value, state: Any) -> int:
+        del state
+        if left.score > right.score:
+            return 1
+        if left.score < right.score:
+            return -1
+        return 0
+
+    def terminal_score(self, over_event: OverEvent, state: Any) -> float:
+        del over_event, state
+        return 42.0
 
 
 def _make_node(
@@ -103,6 +137,19 @@ def test_terminal_detection_sets_terminal_direct_value() -> None:
     assert node.tree_evaluation.direct_value is not None
     assert node.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
     assert node.tree_evaluation.direct_value.over_event is not None
+
+
+def test_terminal_detection_uses_objective_terminal_score_when_needed() -> None:
+    """Terminal direct evaluation should source fallback terminal scores from Objective."""
+    evaluator = NodeDirectEvaluator(master_state_evaluator=_BatchValueEvaluator())
+    node = _make_node(node_id=21, turn=Color.WHITE, base_score=0.0, is_terminal=True)
+    node.tree_evaluation.objective = _TerminalScoreObjective()
+    evaluator.master_state_value_evaluator.over = _OverDetectorWithoutEvaluation()
+
+    evaluator.check_obvious_over_events(node)
+
+    assert node.tree_evaluation.direct_value is not None
+    assert node.tree_evaluation.direct_value.score == 42.0
 
 
 def test_terminal_query_routes_to_over_nodes_immediately() -> None:

@@ -11,6 +11,7 @@ from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import 
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
+from anemone.objectives import AdversarialZeroSumObjective
 from anemone.values import Certainty, Value
 
 
@@ -45,6 +46,7 @@ def test_node_minmax_evaluation_backup_default_is_explicit_policy() -> None:
     )
 
     assert isinstance(node_eval.backup_policy, ExplicitMinimaxBackupPolicy)
+    assert isinstance(node_eval.objective, AdversarialZeroSumObjective)
 
 
 def test_factory_defaults_to_explicit_policy() -> None:
@@ -52,3 +54,4 @@ def test_factory_defaults_to_explicit_policy() -> None:
     explicit_factory = NodeTreeMinmaxEvaluationFactory()
     explicit_eval = explicit_factory.create(_leaf(0.2).tree_node)
     assert isinstance(explicit_eval.backup_policy, ExplicitMinimaxBackupPolicy)
+    assert isinstance(explicit_eval.objective, AdversarialZeroSumObjective)

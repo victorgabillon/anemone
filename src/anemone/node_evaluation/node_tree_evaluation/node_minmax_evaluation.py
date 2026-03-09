@@ -21,6 +21,7 @@ from valanga import (
 from anemone.dynamics import SearchDynamics
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
+from anemone.objectives import AdversarialZeroSumObjective, Objective
 from anemone.utils.logger import anemone_logger
 from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.values import (
@@ -92,6 +93,11 @@ def make_branches_not_over_factory() -> list[BranchKey]:
     return []
 
 
+def make_default_objective() -> Objective[TurnState]:
+    """Create the default objective preserving current adversarial semantics."""
+    return AdversarialZeroSumObjective()
+
+
 @dataclass(slots=True)
 class NodeMinmaxEvaluation[
     NodeWithValueT: NodeWithValue = NodeWithValue,
@@ -154,6 +160,9 @@ class NodeMinmaxEvaluation[
 
     # ordering policy for comparing/projecting Value objects
     evaluation_ordering: EvaluationOrdering = DEFAULT_EVALUATION_ORDERING
+
+    # objective responsible for semantic interpretation of Value objects at this node
+    objective: Objective[StateT] = field(default_factory=make_default_objective)
 
     @property
     def branches_sorted_by_value(self) -> dict[BranchKey, BranchSortValue]:
@@ -236,11 +245,12 @@ class NodeMinmaxEvaluation[
         self, child: Value, direct: Value, *, side_to_move: Color
     ) -> bool:
         """Determine if a child's value is better than the direct evaluation for the current node."""
+        assert side_to_move == self.tree_node.state.turn
         return (
-            self.evaluation_ordering.semantic_compare(
+            self.objective.semantic_compare(
                 child,
                 direct,
-                side_to_move=side_to_move,
+                self.tree_node.state,
             )
             >= 0
         )
@@ -338,9 +348,7 @@ class NodeMinmaxEvaluation[
             a: tuple[BranchKey, Value, BranchSortValue],
             b: tuple[BranchKey, Value, BranchSortValue],
         ) -> int:
-            sem = self.evaluation_ordering.semantic_compare(
-                a[1], b[1], side_to_move=self.tree_node.state.turn
-            )
+            sem = self.objective.semantic_compare(a[1], b[1], self.tree_node.state)
             if sem != 0:
                 return -sem
             if a[2] < b[2]:
@@ -519,9 +527,9 @@ class NodeMinmaxEvaluation[
             "Ensure children receive direct_value explicitly as a Value or "
             "minmax_value via backup before calling record_sort_value_of_child()."
         )
-        subjective_value_of_child = self.evaluation_ordering.search_sort_key(
+        subjective_value_of_child = self.objective.evaluate_value(
             child_value,
-            side_to_move=self.tree_node.state.turn,
+            self.tree_node.state,
         )
         if self.is_terminal_candidate():
             # the shorter the check the better now
