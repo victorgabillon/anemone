@@ -6,21 +6,14 @@ from valanga import BranchKey, State
 
 from anemone.backup_policies.types import BackupResult
 from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
-from anemone.values import Value
 
 
 class NodeSingleAgentEvaluation[StateT: State = State](NodeValueEvaluation, Protocol):
-    """Single-agent decision and backup semantics layered on canonical values."""
+    """Single-agent decision and backup semantics layered on canonical values.
 
-    @property
-    def backed_up_value(self) -> Value | None:
-        """Return the subtree-backed-up value for this node."""
-        ...
-
-    @backed_up_value.setter
-    def backed_up_value(self, value: Value | None) -> None:
-        """Set the subtree-backed-up value for this node."""
-        ...
+    The canonical Value access surface is inherited from ``NodeValueEvaluation``.
+    This protocol adds the family-specific decision and backup operations.
+    """
 
     best_branch_sequence: list[BranchKey]
 

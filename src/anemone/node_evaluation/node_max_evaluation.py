@@ -7,10 +7,12 @@ from typing import Any, cast
 from valanga import BranchKey, OverEvent, State
 
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
+from anemone.backup_policies.protocols import BackupPolicy
+from anemone.node_evaluation import canonical_value
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective
-from anemone.values import Certainty, Value
+from anemone.values import Value
 
 
 def make_branch_sequence_factory() -> list[BranchKey]:
@@ -39,7 +41,7 @@ class NodeMaxEvaluation[StateT: State = State]:
         default_factory=make_branch_sequence_factory
     )
     objective: Objective[StateT] = field(default_factory=make_default_objective)
-    backup_policy: ExplicitMaxBackupPolicy = field(
+    backup_policy: BackupPolicy["NodeMaxEvaluation[StateT]"] = field(
         default_factory=make_default_backup_policy
     )
 
@@ -55,38 +57,33 @@ class NodeMaxEvaluation[StateT: State = State]:
 
     def get_value_candidate(self) -> Value | None:
         """Return backed-up value when available, else direct value."""
-        if self.backed_up_value is not None:
-            return self.backed_up_value
-        return self.direct_value
+        return canonical_value.get_value_candidate(
+            backed_up_value=self.backed_up_value,
+            direct_value=self.direct_value,
+        )
 
     def get_value(self) -> Value:
         """Return the canonical Value for this node."""
-        candidate = self.get_value_candidate()
-        assert candidate is not None, (
-            "Node has no canonical Value: both backed_up_value and direct_value are None."
+        return canonical_value.get_value(
+            backed_up_value=self.backed_up_value,
+            direct_value=self.direct_value,
         )
-        return candidate
 
     def get_score(self) -> float:
         """Return the canonical scalar score for this node."""
-        return self.get_value().score
+        return canonical_value.get_score(
+            backed_up_value=self.backed_up_value,
+            direct_value=self.direct_value,
+        )
 
     def is_terminal_candidate(self) -> bool:
         """Return True when candidate Value is terminal/forced and has over metadata."""
-        value = self.get_value_candidate()
-        return (
-            value is not None
-            and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
-            and value.over_event is not None
-        )
+        return canonical_value.is_terminal_candidate_value(self.get_value_candidate())
 
     @property
     def over_event(self) -> OverEvent | None:
         """Return terminal metadata when present on the canonical candidate."""
-        value = self.get_value_candidate()
-        if value is None:
-            return None
-        return value.over_event
+        return canonical_value.get_over_event_candidate(self.get_value_candidate())
 
     def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
         """Return the best available Value candidate for a child branch."""

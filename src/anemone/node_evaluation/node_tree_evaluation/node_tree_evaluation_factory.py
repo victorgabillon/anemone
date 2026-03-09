@@ -21,7 +21,7 @@ class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
 
     def __init__(
         self,
-        backup_policy: BackupPolicy | None = None,
+        backup_policy: BackupPolicy[NodeMinmaxEvaluation[Any, StateT]] | None = None,
         objective: Objective[StateT] | None = None,
     ) -> None:
         """Initialize the factory with an explicit backup policy."""

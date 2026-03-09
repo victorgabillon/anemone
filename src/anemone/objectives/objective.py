@@ -8,14 +8,14 @@ from anemone.values import Value
 
 
 class Objective[StateT: State = State](Protocol):
-    """Interpret canonical Value objects for a node-local search objective."""
+    """Interpret canonical Value objects for a node-local search objective family."""
 
     def evaluate_value(self, value: Value, state: StateT) -> float:
         """Project a canonical Value to the scalar used for node-local ordering."""
         ...
 
     def semantic_compare(self, left: Value, right: Value, state: StateT) -> int:
-        """Compare two Values from the perspective induced by the given state."""
+        """Compare two Values using the semantics induced by the given state."""
         ...
 
     def terminal_score(self, over_event: OverEvent, state: StateT) -> float:

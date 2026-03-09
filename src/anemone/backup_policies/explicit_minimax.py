@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class ExplicitMinimaxBackupPolicy:
-    """Backup policy that computes minimax value/PV/over explicitly from Value."""
+    """Backup policy that computes adversarial minimax value/PV/over from Value."""
 
     def backup_from_children(
         self,

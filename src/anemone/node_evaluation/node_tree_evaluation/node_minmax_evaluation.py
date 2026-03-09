@@ -19,6 +19,7 @@ from valanga import (
 )
 
 from anemone.dynamics import SearchDynamics
+from anemone.node_evaluation import canonical_value
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
@@ -156,7 +157,7 @@ class NodeMinmaxEvaluation[
     )
 
     # policy used to orchestrate backup behavior from updated children
-    backup_policy: "BackupPolicy | None" = None
+    backup_policy: "BackupPolicy[Any] | None" = None
 
     # ordering policy for comparing/projecting Value objects
     evaluation_ordering: EvaluationOrdering = DEFAULT_EVALUATION_ORDERING
@@ -182,13 +183,10 @@ class NodeMinmaxEvaluation[
             Value: The backed-up value when available, otherwise direct value.
 
         """
-        if self.backed_up_value is not None:
-            return self.backed_up_value
-        assert self.direct_value is not None, (
-            "Node has no canonical Value: both minmax_value and direct_value are None. "
-            "Set direct_value explicitly to a Value or compute minmax_value via backup."
+        return canonical_value.get_value(
+            backed_up_value=self.backed_up_value,
+            direct_value=self.direct_value,
         )
-        return self.direct_value
 
     def get_score(self) -> float:
         """Return the canonical scalar score for this node.
@@ -196,22 +194,21 @@ class NodeMinmaxEvaluation[
         Consumer code should use this and ``get_value_candidate``/``get_value``.
         Use this for scalar access to canonical Value.
         """
-        return self.get_value().score
+        return canonical_value.get_score(
+            backed_up_value=self.backed_up_value,
+            direct_value=self.direct_value,
+        )
 
     def get_value_candidate(self) -> Value | None:
         """Return backed-up value when available, else direct Value, or ``None``."""
-        if self.backed_up_value is not None:
-            return self.backed_up_value
-        return self.direct_value
+        return canonical_value.get_value_candidate(
+            backed_up_value=self.backed_up_value,
+            direct_value=self.direct_value,
+        )
 
     def is_terminal_candidate(self) -> bool:
         """Return True when candidate Value is TERMINAL/FORCED and has ``over_event``."""
-        value = self.get_value_candidate()
-        return (
-            value is not None
-            and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
-            and value.over_event is not None
-        )
+        return canonical_value.is_terminal_candidate_value(self.get_value_candidate())
 
     def set_direct_terminal_value(
         self,
@@ -361,10 +358,7 @@ class NodeMinmaxEvaluation[
 
     def get_over_event_candidate(self) -> OverEvent | None:
         """Return the candidate over event from the candidate Value, or ``None`` when non-terminal."""
-        value = self.get_value_candidate()
-        if value is None:
-            return None
-        return value.over_event
+        return canonical_value.get_over_event_candidate(self.get_value_candidate())
 
     def is_over(self) -> bool:
         """Check if the game is over.
@@ -919,7 +913,7 @@ class NodeMinmaxEvaluation[
 
             self.backup_policy = ExplicitMinimaxBackupPolicy()
         assert self.backup_policy is not None
-        policy: BackupPolicy = self.backup_policy
+        policy: BackupPolicy[Any] = self.backup_policy
         return policy.backup_from_children(
             node_eval=self,
             branches_with_updated_value=branches_with_updated_value,
