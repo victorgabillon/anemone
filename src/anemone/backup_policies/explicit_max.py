@@ -73,7 +73,7 @@ class ExplicitMaxBackupPolicy:
             return direct_value
         if direct_value is None:
             return best_child_value
-        if getattr(node_eval.tree_node, "all_branches_generated", False):
+        if node_eval.tree_node.all_branches_generated:
             return best_child_value
         if (
             node_eval.objective.semantic_compare(

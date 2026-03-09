@@ -85,6 +85,12 @@ def test_single_agent_objective_prefers_terminal_on_equal_score() -> None:
     assert objective.semantic_compare(terminal, estimate, state) > 0
 
 
+def test_node_max_defaults_to_explicit_max_backup_policy() -> None:
+    node = _node(node_id=0, direct_value=Value(score=0.1))
+
+    assert isinstance(node.backup_policy, ExplicitMaxBackupPolicy)
+
+
 def test_node_max_get_value_prefers_backed_up_value() -> None:
     direct = Value(score=0.1)
     backed_up = Value(score=0.9)

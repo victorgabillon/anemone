@@ -2,17 +2,15 @@
 
 from dataclasses import dataclass, field
 from functools import cmp_to_key
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from valanga import BranchKey, OverEvent, State
 
+from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective
 from anemone.values import Certainty, Value
-
-if TYPE_CHECKING:
-    from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 
 
 def make_branch_sequence_factory() -> list[BranchKey]:
@@ -23,6 +21,11 @@ def make_branch_sequence_factory() -> list[BranchKey]:
 def make_default_objective() -> Objective[State]:
     """Create the default single-agent objective."""
     return SingleAgentMaxObjective()
+
+
+def make_default_backup_policy() -> ExplicitMaxBackupPolicy:
+    """Create the default single-agent max backup policy."""
+    return ExplicitMaxBackupPolicy()
 
 
 @dataclass(slots=True)
@@ -36,7 +39,9 @@ class NodeMaxEvaluation[StateT: State = State]:
         default_factory=make_branch_sequence_factory
     )
     objective: Objective[StateT] = field(default_factory=make_default_objective)
-    backup_policy: "ExplicitMaxBackupPolicy | None" = None
+    backup_policy: ExplicitMaxBackupPolicy = field(
+        default_factory=make_default_backup_policy
+    )
 
     @property
     def backed_up_value(self) -> Value | None:
@@ -161,14 +166,8 @@ class NodeMaxEvaluation[StateT: State = State]:
         self,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> "Any":
+    ) -> Any:
         """Delegate backup work to the configured single-agent backup policy."""
-        if self.backup_policy is None:
-            from anemone.backup_policies.explicit_max import (  # pylint: disable=import-outside-toplevel
-                ExplicitMaxBackupPolicy,
-            )
-
-            self.backup_policy = ExplicitMaxBackupPolicy()
         return self.backup_policy.backup_from_children(
             node_eval=self,
             branches_with_updated_value=branches_with_updated_value,
