@@ -1,5 +1,6 @@
 """Backup policies for tree-evaluation propagation."""
 
+from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.backup_policies.types import BackupResult
@@ -7,5 +8,6 @@ from anemone.backup_policies.types import BackupResult
 __all__ = [
     "BackupPolicy",
     "BackupResult",
+    "ExplicitMaxBackupPolicy",
     "ExplicitMinimaxBackupPolicy",
 ]

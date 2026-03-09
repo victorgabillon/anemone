@@ -1,1 +1,1 @@
-"""Node evaluation utilities and evaluation factories."""
+"""Node evaluation utilities and evaluation families."""

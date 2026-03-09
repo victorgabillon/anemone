@@ -1,0 +1,176 @@
+"""Provide a small single-agent max node evaluation implementation."""
+
+from dataclasses import dataclass, field
+from functools import cmp_to_key
+from typing import TYPE_CHECKING, Any, cast
+
+from valanga import BranchKey, OverEvent, State
+
+from anemone.nodes.tree_node import TreeNode
+from anemone.objectives import Objective
+from anemone.objectives.single_agent_max import SingleAgentMaxObjective
+from anemone.values import Certainty, Value
+
+if TYPE_CHECKING:
+    from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
+
+
+def make_branch_sequence_factory() -> list[BranchKey]:
+    """Create a factory for best-branch sequences."""
+    return []
+
+
+def make_default_objective() -> Objective[State]:
+    """Create the default single-agent objective."""
+    return SingleAgentMaxObjective()
+
+
+@dataclass(slots=True)
+class NodeMaxEvaluation[StateT: State = State]:
+    """Canonical Value-based node evaluation for single-agent max search."""
+
+    tree_node: TreeNode[Any, StateT]
+    direct_value: Value | None = None
+    _backed_up_value: Value | None = None
+    best_branch_sequence: list[BranchKey] = field(
+        default_factory=make_branch_sequence_factory
+    )
+    objective: Objective[StateT] = field(default_factory=make_default_objective)
+    backup_policy: "ExplicitMaxBackupPolicy | None" = None
+
+    @property
+    def backed_up_value(self) -> Value | None:
+        """Return the canonical backed-up value for this node."""
+        return self._backed_up_value
+
+    @backed_up_value.setter
+    def backed_up_value(self, value: Value | None) -> None:
+        """Set the canonical backed-up value for this node."""
+        self._backed_up_value = value
+
+    def get_value_candidate(self) -> Value | None:
+        """Return backed-up value when available, else direct value."""
+        if self.backed_up_value is not None:
+            return self.backed_up_value
+        return self.direct_value
+
+    def get_value(self) -> Value:
+        """Return the canonical Value for this node."""
+        candidate = self.get_value_candidate()
+        assert candidate is not None, (
+            "Node has no canonical Value: both backed_up_value and direct_value are None."
+        )
+        return candidate
+
+    def get_score(self) -> float:
+        """Return the canonical scalar score for this node."""
+        return self.get_value().score
+
+    def is_terminal_candidate(self) -> bool:
+        """Return True when candidate Value is terminal/forced and has over metadata."""
+        value = self.get_value_candidate()
+        return (
+            value is not None
+            and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
+            and value.over_event is not None
+        )
+
+    @property
+    def over_event(self) -> OverEvent | None:
+        """Return terminal metadata when present on the canonical candidate."""
+        value = self.get_value_candidate()
+        if value is None:
+            return None
+        return value.over_event
+
+    def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
+        """Return the best available Value candidate for a child branch."""
+        child = self.tree_node.branches_children[branch_key]
+        if child is None:
+            return None
+        return cast("Value | None", child.tree_evaluation.get_value_candidate())
+
+    def best_branch(self) -> BranchKey | None:
+        """Return the best currently-valued child branch."""
+        candidates: list[tuple[BranchKey, Value, int]] = []
+        for branch_key, child in self.tree_node.branches_children.items():
+            if child is None:
+                continue
+            child_value = child.tree_evaluation.get_value_candidate()
+            if child_value is None:
+                continue
+            candidates.append((branch_key, child_value, child.tree_node.id))
+
+        if not candidates:
+            return None
+
+        def _cmp(
+            left: tuple[BranchKey, Value, int],
+            right: tuple[BranchKey, Value, int],
+        ) -> int:
+            semantic = self.objective.semantic_compare(
+                left[1],
+                right[1],
+                self.tree_node.state,
+            )
+            if semantic > 0:
+                return -1
+            if semantic < 0:
+                return 1
+            if left[2] < right[2]:
+                return -1
+            if left[2] > right[2]:
+                return 1
+            return (
+                -1
+                if str(left[0]) < str(right[0])
+                else (1 if str(left[0]) > str(right[0]) else 0)
+            )
+
+        return sorted(candidates, key=cmp_to_key(_cmp))[0][0]
+
+    def update_best_branch_sequence(
+        self, branches_with_updated_best_branch_seq: set[BranchKey]
+    ) -> bool:
+        """Update the current principal variation from the best child when needed."""
+        best_branch_key = self.best_branch()
+        if best_branch_key is None:
+            return self.set_best_branch_sequence([])
+
+        if (
+            best_branch_key not in branches_with_updated_best_branch_seq
+            and self.best_branch_sequence
+            and self.best_branch_sequence[0] == best_branch_key
+        ):
+            return False
+
+        best_child = self.tree_node.branches_children[best_branch_key]
+        assert best_child is not None
+        return self.set_best_branch_sequence(
+            [best_branch_key, *best_child.tree_evaluation.best_branch_sequence]
+        )
+
+    def set_best_branch_sequence(self, new_seq: list[BranchKey]) -> bool:
+        """Replace the stored principal variation content."""
+        if self.best_branch_sequence == new_seq:
+            return False
+        self.best_branch_sequence = new_seq.copy()
+        return True
+
+    def backup_from_children(
+        self,
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> "Any":
+        """Delegate backup work to the configured single-agent backup policy."""
+        if self.backup_policy is None:
+            from anemone.backup_policies.explicit_max import (  # pylint: disable=import-outside-toplevel
+                ExplicitMaxBackupPolicy,
+            )
+
+            self.backup_policy = ExplicitMaxBackupPolicy()
+        return self.backup_policy.backup_from_children(
+            node_eval=self,
+            branches_with_updated_value=branches_with_updated_value,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+        )
