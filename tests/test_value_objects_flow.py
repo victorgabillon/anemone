@@ -14,9 +14,7 @@ from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
-    NodeTreeEvaluation,
-)
+from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
 from anemone.values import Certainty, Value
 
 
@@ -201,7 +199,7 @@ def test_get_value_prefers_minmax_else_direct() -> None:
     assert node.tree_evaluation.get_value() == minmax
 
 
-def _protocol_score(eval_like: NodeTreeEvaluation[Any]) -> float:
+def _protocol_score(eval_like: NodeValueEvaluation) -> float:
     return eval_like.get_score()
 
 

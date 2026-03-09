@@ -15,8 +15,8 @@ from valanga import (
 from valanga.evaluator_types import EvaluatorInput
 
 from anemone.indices.node_indices import NodeExplorationData
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation import (
-    NodeTreeEvaluation,
+from anemone.node_evaluation.node_tree_evaluation.node_adversarial_evaluation import (
+    NodeAdversarialEvaluation,
 )
 from anemone.nodes.tree_node import TreeNode
 
@@ -34,7 +34,7 @@ class AlgorithmNode[StateT: State = State]:
 
     tree_node: TreeNode[Self, StateT]
     # the reference to the tree node that is wrapped pointing to other AlgorithmNodes
-    tree_evaluation: NodeTreeEvaluation[StateT]  # Use Any to break circular dependency
+    tree_evaluation: NodeAdversarialEvaluation[StateT]
     exploration_index_data: (
         NodeExplorationData[Self, StateT] | None
     )  # the object storing the information to help the algorithm decide the next nodes to explore
@@ -52,7 +52,7 @@ class AlgorithmNode[StateT: State = State]:
     def __init__(
         self,
         tree_node: TreeNode[Self, StateT],
-        tree_evaluation: NodeTreeEvaluation[StateT],
+        tree_evaluation: NodeAdversarialEvaluation[StateT],
         exploration_index_data: NodeExplorationData[Self, StateT] | None,
         state_representation: ContentRepresentation[StateT, EvaluatorInput] | None,
     ) -> None:
@@ -60,7 +60,7 @@ class AlgorithmNode[StateT: State = State]:
 
         Args:
             tree_node (TreeNode): The tree node that is wrapped.
-            tree_evaluation (NodeTreeEvaluation): The object computing the value.
+            tree_evaluation (NodeAdversarialEvaluation): The object computing adversarial value and branch decisions.
             exploration_index_data (NodeExplorationData | None): The object storing the information to help the algorithm decide the next nodes to explore.
             state_representation (ContentRepresentation | None): The state representation used for evaluation.
 
