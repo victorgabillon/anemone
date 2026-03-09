@@ -10,7 +10,8 @@ from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import 
     NodeMinmaxEvaluation,
 )
 from anemone.objectives import AdversarialZeroSumObjective
-from anemone.values import Certainty, EvaluationOrdering, Value
+from anemone.values import EvaluationOrdering
+from valanga.evaluations import Certainty, Value
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,7 @@ def _leaf(node_id: int, score: float) -> Any:
         all_branches_generated=True,
     )
     tree_evaluation = NodeMinmaxEvaluation(tree_node=tree_node)
-    value = Value(score=score)
+    value = Value(score=score, certainty=Certainty.ESTIMATE)
     tree_evaluation.direct_value = value
     tree_evaluation.minmax_value = value
     return SimpleNamespace(tree_node=tree_node, tree_evaluation=tree_evaluation)
@@ -75,7 +76,7 @@ def test_adversarial_objective_matches_existing_ordering_adapter() -> None:
         certainty=Certainty.FORCED,
         over_event=_FakeOverEvent(winner=Color.WHITE),
     )
-    estimate = Value(score=3.0)
+    estimate = Value(score=3.0, certainty=Certainty.ESTIMATE)
     state = _state(Color.WHITE)
 
     assert objective.evaluate_value(win, state) == ordering.search_sort_key(
@@ -100,8 +101,8 @@ def test_adversarial_objective_matches_existing_ordering_adapter() -> None:
 
 def test_adversarial_objective_interpretation_depends_on_turn() -> None:
     objective = AdversarialZeroSumObjective()
-    lower = Value(score=0.2)
-    higher = Value(score=0.8)
+    lower = Value(score=0.2, certainty=Certainty.ESTIMATE)
+    higher = Value(score=0.8, certainty=Certainty.ESTIMATE)
 
     assert objective.semantic_compare(lower, higher, _state(Color.WHITE)) < 0
     assert objective.semantic_compare(lower, higher, _state(Color.BLACK)) > 0
@@ -141,7 +142,7 @@ def test_minimax_best_branch_uses_injected_objective() -> None:
         tree_node=parent_tree_node,
         objective=_ReverseObjective(),
     )
-    parent.direct_value = Value(score=0.0)
+    parent.direct_value = Value(score=0.0, certainty=Certainty.ESTIMATE)
 
     parent.backup_from_children(
         branches_with_updated_value={0, 1},
@@ -149,4 +150,4 @@ def test_minimax_best_branch_uses_injected_objective() -> None:
     )
 
     assert parent.best_branch() == 1
-    assert parent.minmax_value == Value(score=0.1)
+    assert parent.minmax_value == Value(score=0.1, certainty=Certainty.ESTIMATE)

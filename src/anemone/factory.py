@@ -59,7 +59,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState, ActionT: Hashable](
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
     args: TreeAndValuePlayerArgs,
     random_generator: Random,
-    master_state_evaluator: MasterStateValueEvaluator,
+    master_state_value_evaluator: MasterStateValueEvaluator,
     state_representation_factory: RepresentationFactory[
         StateT, EvaluatorInput, StateModifications
     ]
@@ -80,7 +80,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState, ActionT: Hashable](
         dynamics=dynamics,
         args=args,
         random_generator=random_generator,
-        master_state_evaluator=master_state_evaluator,
+        master_state_evaluator=master_state_value_evaluator,
         state_representation_factory=state_representation_factory,
         node_tree_evaluation_factory=node_tree_evaluation_factory,
         hooks=hooks,

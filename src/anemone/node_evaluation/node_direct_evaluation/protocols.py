@@ -4,9 +4,7 @@ from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
 from valanga import OverEvent, State
-from valanga.evaluations import EvalItem
-
-from anemone.values import Value
+from valanga.evaluations import EvalItem, Value
 
 
 class OverEventDetector(Protocol):

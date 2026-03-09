@@ -3,7 +3,7 @@
 import pytest
 from valanga import Color
 
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 from tests.fakes_tree_evaluation import (
     FakeChildEvaluation,
     FakeChildNode,

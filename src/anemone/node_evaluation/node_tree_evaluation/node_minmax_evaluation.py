@@ -1,4 +1,5 @@
 """Provide Value-first NodeMinmaxEvaluation implementation for minimax search."""
+# pylint: disable=duplicate-code
 
 # TODO: maybe further split values from over?
 
@@ -11,12 +12,10 @@ from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 from valanga import (
     BranchKey,
     Color,
-    FloatyStateEvaluation,
-    ForcedOutcome,
     OverEvent,
-    StateEvaluation,
     TurnState,
 )
+from valanga.evaluations import Certainty, Value
 
 from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation import canonical_value
@@ -27,9 +26,7 @@ from anemone.utils.logger import anemone_logger
 from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.values import (
     DEFAULT_EVALUATION_ORDERING,
-    Certainty,
     EvaluationOrdering,
-    Value,
 )
 
 if TYPE_CHECKING:
@@ -1052,14 +1049,3 @@ class NodeMinmaxEvaluation[
                 if self.are_almost_equal_values(child_value_logit, best_value_logit):
                     best_branches.append(branch_key)
         return best_branches
-
-    def evaluate(self) -> StateEvaluation:
-        """Build a StateEvaluation from current minmax state."""
-        if self.is_terminal_candidate():
-            value = self.get_value()
-            assert value.over_event is not None
-            return ForcedOutcome(
-                outcome=value.over_event,
-                line=self.best_branch_sequence.copy(),
-            )
-        return FloatyStateEvaluation(value_white=self.get_score())

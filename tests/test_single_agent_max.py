@@ -7,7 +7,7 @@ from typing import Any
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.node_evaluation.node_max_evaluation import NodeMaxEvaluation
 from anemone.objectives import SingleAgentMaxObjective
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 
 @dataclass(frozen=True)
@@ -67,8 +67,18 @@ def test_single_agent_objective_uses_raw_score_without_turn() -> None:
     objective = SingleAgentMaxObjective(terminal_score_value=-7.0)
     state = _state()
 
-    assert objective.evaluate_value(Value(score=3.5), state) == 3.5
-    assert objective.semantic_compare(Value(score=2.0), Value(score=1.0), state) > 0
+    assert (
+        objective.evaluate_value(Value(score=3.5, certainty=Certainty.ESTIMATE), state)
+        == 3.5
+    )
+    assert (
+        objective.semantic_compare(
+            Value(score=2.0, certainty=Certainty.ESTIMATE),
+            Value(score=1.0, certainty=Certainty.ESTIMATE),
+            state,
+        )
+        > 0
+    )
     assert objective.terminal_score(_FakeOverEvent(), state) == -7.0
 
 
@@ -86,14 +96,14 @@ def test_single_agent_objective_prefers_terminal_on_equal_score() -> None:
 
 
 def test_node_max_defaults_to_explicit_max_backup_policy() -> None:
-    node = _node(node_id=0, direct_value=Value(score=0.1))
+    node = _node(node_id=0, direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE))
 
     assert isinstance(node.backup_policy, ExplicitMaxBackupPolicy)
 
 
 def test_node_max_get_value_prefers_backed_up_value() -> None:
-    direct = Value(score=0.1)
-    backed_up = Value(score=0.9)
+    direct = Value(score=0.1, certainty=Certainty.ESTIMATE)
+    backed_up = Value(score=0.9, certainty=Certainty.ESTIMATE)
     node = _node(node_id=0, direct_value=direct, backed_up_value=backed_up)
 
     assert node.get_value() == backed_up
@@ -101,7 +111,7 @@ def test_node_max_get_value_prefers_backed_up_value() -> None:
 
 
 def test_node_max_get_value_falls_back_to_direct_value() -> None:
-    direct = Value(score=0.4)
+    direct = Value(score=0.4, certainty=Certainty.ESTIMATE)
     node = _node(node_id=0, direct_value=direct, backed_up_value=None)
 
     assert node.get_value() == direct
@@ -110,12 +120,18 @@ def test_node_max_get_value_falls_back_to_direct_value() -> None:
 
 def test_explicit_max_backup_chooses_highest_scoring_child_and_updates_pv() -> None:
     children = {
-        0: _child(10, Value(score=0.2), best_branch_sequence=[7]),
-        1: _child(11, Value(score=0.9), best_branch_sequence=[8, 9]),
+        0: _child(
+            10, Value(score=0.2, certainty=Certainty.ESTIMATE), best_branch_sequence=[7]
+        ),
+        1: _child(
+            11,
+            Value(score=0.9, certainty=Certainty.ESTIMATE),
+            best_branch_sequence=[8, 9],
+        ),
     }
     node = _node(
         node_id=0,
-        direct_value=Value(score=0.1),
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
         children=children,
         all_branches_generated=True,
     )
@@ -128,18 +144,18 @@ def test_explicit_max_backup_chooses_highest_scoring_child_and_updates_pv() -> N
 
     assert result.value_changed
     assert result.pv_changed
-    assert node.backed_up_value == Value(score=0.9)
+    assert node.backed_up_value == Value(score=0.9, certainty=Certainty.ESTIMATE)
     assert node.best_branch() == 1
     assert node.best_branch_sequence == [1, 8, 9]
 
 
 def test_explicit_max_backup_falls_back_to_direct_value_when_direct_is_better() -> None:
     children = {
-        0: _child(10, Value(score=0.2)),
+        0: _child(10, Value(score=0.2, certainty=Certainty.ESTIMATE)),
     }
     node = _node(
         node_id=0,
-        direct_value=Value(score=0.5),
+        direct_value=Value(score=0.5, certainty=Certainty.ESTIMATE),
         children=children,
         all_branches_generated=False,
     )
@@ -150,7 +166,7 @@ def test_explicit_max_backup_falls_back_to_direct_value_when_direct_is_better() 
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert node.backed_up_value == Value(score=0.5)
+    assert node.backed_up_value == Value(score=0.5, certainty=Certainty.ESTIMATE)
     assert node.best_branch_sequence == []
 
 
@@ -160,7 +176,7 @@ def test_explicit_max_backup_falls_back_to_direct_when_no_child_value_exists() -
     }
     node = _node(
         node_id=0,
-        direct_value=Value(score=0.3),
+        direct_value=Value(score=0.3, certainty=Certainty.ESTIMATE),
         children=children,
         all_branches_generated=False,
     )
@@ -170,7 +186,7 @@ def test_explicit_max_backup_falls_back_to_direct_when_no_child_value_exists() -
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert node.backed_up_value == Value(score=0.3)
+    assert node.backed_up_value == Value(score=0.3, certainty=Certainty.ESTIMATE)
     assert node.best_branch() is None
 
 

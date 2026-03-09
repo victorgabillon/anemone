@@ -11,7 +11,7 @@ from anemone.node_evaluation.node_direct_evaluation.protocols import (
     MasterStateValueEvaluator,
 )
 from anemone.node_evaluation.node_direct_evaluation.protocols import OverEventDetector
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence

@@ -6,7 +6,7 @@ from typing import Any
 
 from valanga import Color
 
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 
 def set_estimate_value(

@@ -8,7 +8,7 @@ from valanga import Color
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.values import Certainty
+from valanga.evaluations import Certainty
 from tests.fakes_tree_evaluation import (
     FakeChildEvaluation,
     FakeChildNode,

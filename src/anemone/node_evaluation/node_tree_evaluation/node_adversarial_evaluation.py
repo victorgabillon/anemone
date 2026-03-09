@@ -5,12 +5,11 @@ from typing import Protocol
 from valanga import (
     BranchKey,
     State,
-    StateEvaluation,
 )
+from valanga.evaluations import Value
 
 from anemone.backup_policies.types import BackupResult
 from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
-from anemone.values import Value
 
 
 class NodeAdversarialEvaluation[StateT: State = State](NodeValueEvaluation, Protocol):
@@ -44,10 +43,6 @@ class NodeAdversarialEvaluation[StateT: State = State](NodeValueEvaluation, Prot
 
     def update_over(self, branches_with_updated_over: set[BranchKey]) -> bool:
         """Update terminal-state information from changed child branches."""
-        ...
-
-    def evaluate(self) -> StateEvaluation:
-        """Return a state evaluation derived from adversarial node semantics."""
         ...
 
     def best_branch(self) -> BranchKey | None:

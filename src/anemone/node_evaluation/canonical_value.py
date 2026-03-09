@@ -1,8 +1,7 @@
 """Small shared helpers for canonical Value access across node-evaluation families."""
 
 from valanga import OverEvent
-
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 
 def get_value_candidate(

@@ -9,11 +9,11 @@ from anemone.utils.my_value_sorted_dict import sort_dic
 
 if TYPE_CHECKING:
     from valanga import BranchKey
+    from valanga.evaluations import Value
 
     from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
-    from anemone.values import Value
 
 
 class ExplicitMinimaxBackupPolicy:

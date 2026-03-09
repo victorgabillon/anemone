@@ -15,7 +15,7 @@ from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory i
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 
 class _FakeOverEvent:
@@ -52,8 +52,8 @@ def test_canonical_value_semantics_align_across_families() -> None:
     adversarial = NodeMinmaxEvaluation(tree_node=_adversarial_tree_node())
     single_agent = NodeMaxEvaluation(tree_node=_single_agent_tree_node())
 
-    direct = Value(score=0.2)
-    backed_up = Value(score=0.9)
+    direct = Value(score=0.2, certainty=Certainty.ESTIMATE)
+    backed_up = Value(score=0.9, certainty=Certainty.ESTIMATE)
 
     adversarial.direct_value = direct
     adversarial.backed_up_value = backed_up
@@ -103,8 +103,8 @@ def test_default_construction_is_intentional_in_both_families() -> None:
 def test_family_specific_objective_semantics_remain_distinct() -> None:
     adversarial_objective = AdversarialZeroSumObjective()
     single_agent_objective = SingleAgentMaxObjective()
-    left = Value(score=0.2)
-    right = Value(score=0.8)
+    left = Value(score=0.2, certainty=Certainty.ESTIMATE)
+    right = Value(score=0.8, certainty=Certainty.ESTIMATE)
 
     assert (
         adversarial_objective.semantic_compare(

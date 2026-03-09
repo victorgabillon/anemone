@@ -6,9 +6,9 @@ from itertools import chain
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from valanga import OverEvent, TurnState
+from valanga.evaluations import Certainty, Value
 
 from anemone.nodes.algorithm_node import AlgorithmNode
-from anemone.values import Certainty, Value
 
 from .protocols import MasterStateValueEvaluator
 

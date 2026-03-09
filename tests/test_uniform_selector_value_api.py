@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from valanga import Color
 
 from anemone.node_selector.uniform.uniform import Uniform
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 
 @dataclass

@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
-from valanga import Color, FloatyStateEvaluation
+from valanga import Color
+from valanga.evaluations import Value
 
 from anemone.backup_policies.explicit_minimax import (
     ExplicitMinimaxBackupPolicy,
@@ -13,7 +14,8 @@ from anemone.backup_policies.explicit_minimax import (
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.values import DEFAULT_EVALUATION_ORDERING, Certainty, Value
+from anemone.values import DEFAULT_EVALUATION_ORDERING
+from valanga.evaluations import Certainty, Value
 
 
 @dataclass(frozen=True)
@@ -413,10 +415,10 @@ def test_evaluate_does_not_emit_forced_outcome_for_non_terminal_estimate_with_ov
         ),
     )
 
-    result = parent.evaluate()
+    result = parent.get_value()
 
-    assert isinstance(result, FloatyStateEvaluation)
-    assert result.value_white == 0.25
+    assert isinstance(result, Value)
+    assert result.score == 0.25
 
 
 def test_best_branch_prefers_estimate_over_forced_loss() -> None:

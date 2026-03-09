@@ -7,8 +7,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from valanga import Color
-
-from .value import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 if TYPE_CHECKING:
     from valanga import OverEvent
@@ -117,7 +116,7 @@ class EvaluationOrdering:
             return 1
         if terminal_outcome is TerminalOutcome.LOSS:
             return -1
-        draw_value = Value(score=self.draw_score)
+        draw_value = Value(score=self.draw_score, certainty=Certainty.FORCED)
         return _compare_scores(
             draw_value.score, estimate.score, side_to_move=side_to_move
         )

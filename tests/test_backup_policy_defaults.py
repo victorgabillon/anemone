@@ -12,7 +12,7 @@ from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory i
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.objectives import AdversarialZeroSumObjective
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 
 def _leaf(score: float) -> SimpleNamespace:

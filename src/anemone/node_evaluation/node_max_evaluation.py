@@ -5,6 +5,7 @@ from functools import cmp_to_key
 from typing import Any, cast
 
 from valanga import BranchKey, OverEvent, State
+from valanga.evaluations import Value
 
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
@@ -12,7 +13,6 @@ from anemone.node_evaluation import canonical_value
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective
-from anemone.values import Value
 
 
 def make_branch_sequence_factory() -> list[BranchKey]:

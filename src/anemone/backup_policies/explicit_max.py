@@ -9,9 +9,9 @@ from anemone.backup_policies.types import BackupResult
 
 if TYPE_CHECKING:
     from valanga import BranchKey
+    from valanga.evaluations import Value
 
     from anemone.node_evaluation.node_max_evaluation import NodeMaxEvaluation
-    from anemone.values import Value
 
 
 class ExplicitMaxBackupPolicy:

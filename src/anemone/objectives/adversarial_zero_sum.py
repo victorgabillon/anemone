@@ -3,8 +3,9 @@
 from dataclasses import dataclass
 
 from valanga import OverEvent, TurnState
+from valanga.evaluations import Value
 
-from anemone.values import DEFAULT_EVALUATION_ORDERING, EvaluationOrdering, Value
+from anemone.values import DEFAULT_EVALUATION_ORDERING, EvaluationOrdering
 
 
 @dataclass(frozen=True, slots=True)

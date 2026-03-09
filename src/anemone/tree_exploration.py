@@ -19,7 +19,8 @@ from dataclasses import dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
-from valanga import BranchKey, State, StateEvaluation, TurnState
+from valanga import BranchKey, State, TurnState
+from valanga.evaluations import Value
 from valanga.game import BranchName
 from valanga.policy import NotifyProgressCallable, Recommendation
 
@@ -57,16 +58,16 @@ class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 def compute_child_evals[StateT: State](
     root: AlgorithmNode[StateT],
     dynamics: SearchDynamics[StateT, Any],
-) -> dict[BranchName, StateEvaluation]:
+) -> dict[BranchName, Value]:
     """Compute evaluations for each existing child branch."""
-    evals: dict[BranchName, StateEvaluation] = {}
+    evals: dict[BranchName, Value] = {}
     for bk, child in root.branches_children.items():
         if child is None:
             continue
 
         # Use whatever your canonical per-node evaluation is:
         bk_name = dynamics.action_name(root.state, bk)
-        evals[bk_name] = child.tree_evaluation.evaluate()
+        evals[bk_name] = child.tree_evaluation.get_value()
     return evals
 
 
@@ -207,7 +208,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         branch_recommendation = Recommendation(
             recommended_name=best_branch_name,
-            evaluation=self.tree.root_node.tree_evaluation.evaluate(),
+            evaluation=self.tree.root_node.tree_evaluation.get_value(),
             policy=policy,
             branch_evals=compute_child_evals(
                 self.tree.root_node,

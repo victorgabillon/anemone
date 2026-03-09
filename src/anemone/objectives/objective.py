@@ -3,8 +3,7 @@
 from typing import Protocol
 
 from valanga import OverEvent, State
-
-from anemone.values import Value
+from valanga.evaluations import Value
 
 
 class Objective[StateT: State = State](Protocol):

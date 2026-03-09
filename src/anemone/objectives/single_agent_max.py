@@ -3,8 +3,7 @@
 from dataclasses import dataclass
 
 from valanga import OverEvent, State
-
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 
 @dataclass(frozen=True, slots=True)

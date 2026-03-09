@@ -6,13 +6,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from valanga import State
-from valanga.evaluations import EvalItem
+from valanga.evaluations import Certainty, EvalItem, Value
 
 from anemone.node_evaluation.node_direct_evaluation.protocols import (
     MasterStateValueEvaluator,
     OverEventDetector,
 )
-from anemone.values import Certainty, Value
 
 if TYPE_CHECKING:
     from coral.neural_networks.nn_content_evaluator import NNContentEvaluator

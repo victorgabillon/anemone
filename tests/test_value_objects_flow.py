@@ -16,7 +16,7 @@ from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import 
 )
 from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
 from anemone.objectives import Objective
-from anemone.values import Certainty, Value
+from valanga.evaluations import Certainty, Value
 
 
 class _OverDetector:
