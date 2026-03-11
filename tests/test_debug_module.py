@@ -7,7 +7,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 
-from anemone.debug import DebugEdgeView, DotRenderer, TreeSnapshotAdapter
+from anemone.debug import (
+    DebugEdgeView,
+    DotRenderer,
+    EvaluationDebugInspectorResolver,
+    NodeDebugLabelBuilder,
+    TreeSnapshotAdapter,
+)
+from anemone.debug.evaluation_inspectors import (
+    GenericValueFamilyInspector,
+    MinmaxFamilyInspector,
+)
 from anemone.trees.tree_visualization import display, display_special
 
 
@@ -51,6 +61,15 @@ class FakeMinmaxEvaluation:
 
 
 @dataclass
+class FakeHybridEvaluation:
+    direct_value: FakeValue | None = None
+    backed_up_value: FakeValue | None = None
+    minmax_value: FakeValue | None = None
+    best_branch_sequence: list[str] = field(default_factory=list)
+    over_event: FakeOverEvent | None = None
+
+
+@dataclass
 class FakeIndexData:
     index: float | None = None
     max_depth_descendants: int | None = None
@@ -61,7 +80,9 @@ class FakeNode:
     id_: int
     tree_depth_: int
     state_: FakeState | None = None
-    tree_evaluation: FakeEvaluation | FakeMinmaxEvaluation | None = None
+    tree_evaluation: (
+        FakeEvaluation | FakeMinmaxEvaluation | FakeHybridEvaluation | None
+    ) = None
     exploration_index_data: FakeIndexData | None = None
     parent_nodes_: dict[FakeNode, str] = field(default_factory=dict)
     branches_children_: dict[str, FakeNode | None] = field(default_factory=dict)
@@ -93,6 +114,53 @@ class FakeDynamics:
     def action_name(self, state: FakeState | None, action: str) -> str:
         _ = state
         return f"move:{action}"
+
+
+def test_generic_value_family_inspector_summarizes_canonical_fields() -> None:
+    evaluation = FakeEvaluation(
+        direct_value=FakeValue(score=0.3, certainty="estimate"),
+        backed_up_value=FakeValue(score=0.9, certainty="forced"),
+        best_branch_sequence=["a", "b"],
+        over_event=FakeOverEvent("win"),
+    )
+
+    lines = GenericValueFamilyInspector().summarize(evaluation)
+
+    assert "direct=score=0.3, certainty=estimate" in lines
+    assert "backed_up=score=0.9, certainty=forced" in lines
+    assert "pv=a -> b" in lines
+    assert "over=win" in lines
+
+
+def test_minmax_family_inspector_summarizes_compatibility_fields() -> None:
+    evaluation = FakeMinmaxEvaluation(
+        direct_value=FakeValue(score=0.25),
+        minmax_value=FakeValue(score=0.5, certainty="forced"),
+        best_branch_sequence=["c"],
+        over_event_candidate=FakeOverEvent("forced-win"),
+    )
+
+    lines = MinmaxFamilyInspector().summarize(evaluation)
+
+    assert "direct=score=0.25" in lines
+    assert "backed_up=score=0.5, certainty=forced" in lines
+    assert "pv=c" in lines
+    assert "over=forced-win" in lines
+
+
+def test_evaluation_debug_inspector_resolver_prefers_generic_family() -> None:
+    evaluation = FakeHybridEvaluation(
+        direct_value=FakeValue(score=0.3),
+        backed_up_value=FakeValue(score=0.7),
+        minmax_value=FakeValue(score=1.1),
+        best_branch_sequence=["a"],
+        over_event=FakeOverEvent("resolved"),
+    )
+
+    lines = EvaluationDebugInspectorResolver().summarize(evaluation)
+
+    assert "backed_up=score=0.7" in lines
+    assert "backed_up=score=1.1" not in lines
 
 
 def test_tree_snapshot_adapter_captures_nodes_and_edges() -> None:
@@ -180,6 +248,33 @@ def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> No
             "max_depth_descendants=4",
         ]
     )
+
+
+def test_node_debug_label_builder_delegates_evaluation_and_index_formatting() -> None:
+    node = FakeNode(
+        id_=9,
+        tree_depth_=4,
+        state_=FakeState(tag="builder"),
+        tree_evaluation=FakeEvaluation(
+            direct_value=FakeValue(score=0.1),
+            backed_up_value=FakeValue(score=0.8),
+            best_branch_sequence=["x", "y"],
+            over_event=FakeOverEvent("done"),
+        ),
+        exploration_index_data=FakeIndexData(index=2.5, max_depth_descendants=6),
+    )
+
+    label = NodeDebugLabelBuilder().build_label(node)
+
+    assert "id=9" in label
+    assert "depth=4" in label
+    assert "state=builder" in label
+    assert "direct=score=0.1" in label
+    assert "backed_up=score=0.8" in label
+    assert "pv=x -> y" in label
+    assert "over=done" in label
+    assert "index=2.5" in label
+    assert "max_depth_descendants=6" in label
 
 
 def test_tree_snapshot_adapter_uses_minmax_and_over_event_fallbacks() -> None:
