@@ -44,7 +44,7 @@ lint = [
 ]
 
 typecheck = [
-  "mypy>=1.18.2",
+  "mypy>=1.19.1",
   "pyright[nodejs]>=1.1.408",
   "types-PyYAML>=6.0.12.12",
 ]
@@ -311,7 +311,7 @@ deps = [
   "graphviz",
 
   # tools
-  "mypy>=1.18.2",
+  "mypy>=1.19.1",
   "pyright[nodejs]>=1.1.408",
   "types-PyYAML>=6.0.12.12",
 ]
