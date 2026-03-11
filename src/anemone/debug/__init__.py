@@ -26,6 +26,13 @@ from .observable import (
     snapshot_children,
     summarize_node_evaluation,
 )
+from .persistence import load_debug_trace, save_debug_trace
+from .recording import (
+    DebugTimelineEntry,
+    DebugTimelineRecorder,
+    DebugTrace,
+    make_tree_snapshot_provider,
+)
 from .sink import NullSearchDebugSink, SearchDebugSink
 from .snapshot_adapter import TreeSnapshotAdapter
 
@@ -35,6 +42,9 @@ __all__ = [
     "ChildLinked",
     "DebugEdgeView",
     "DebugNodeView",
+    "DebugTimelineEntry",
+    "DebugTimelineRecorder",
+    "DebugTrace",
     "DebugTreeSnapshot",
     "DirectValueAssigned",
     "DotRenderer",
@@ -55,6 +65,9 @@ __all__ = [
     "SearchIterationStarted",
     "TreeSnapshotAdapter",
     "diff_new_children",
+    "load_debug_trace",
+    "make_tree_snapshot_provider",
+    "save_debug_trace",
     "snapshot_children",
     "summarize_node_evaluation",
 ]
