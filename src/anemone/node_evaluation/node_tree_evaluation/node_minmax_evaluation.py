@@ -917,68 +917,6 @@ class NodeMinmaxEvaluation[
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
         )
 
-    def dot_description(self) -> str:
-        """Return a string representation of the node's description in DOT format.
-
-        The description includes canonical minmax/direct scores,
-        as well as the best branch sequence and the over event tag.
-
-        Returns:
-            A string representation of the node's description in DOT format.
-
-        """
-        value_mm = (
-            f"{self.minmax_value.score:.3f}"
-            if self.minmax_value is not None
-            else "None"
-        )
-        value_eval = (
-            f"{self.direct_value.score:.3f}"
-            if self.direct_value is not None
-            else "None"
-        )
-        over_event = self.get_over_event_candidate()
-        over_event_tag = over_event.get_over_tag() if over_event is not None else ""
-        return (
-            "\n wh_val_mm: "
-            + value_mm
-            + "\n wh_val_eval: "
-            + value_eval
-            + "\n branches*"
-            + self.description_best_branch_sequence()
-            + "\nover: "
-            + over_event_tag
-        )
-
-    def description_best_branch_sequence(self) -> str:
-        """Return a string representation of the best branch sequence.
-
-        This method iterates over the best node sequence and constructs a string representation
-        of the branches in the sequence. Each branch is appended to the result string, separated by an underscore.
-
-        Returns:
-            A string representation of the best branch sequence.
-
-        """
-        res = ""
-        branch_key: BranchKey
-        for branch_key in self.best_branch_sequence:
-            res += "_" + str(branch_key)
-        return res
-
-    def description_tree_visualizer_branch(self, child: ITreeNode[StateT]) -> str:
-        """Return a string representation of the branch for the tree visualizer.
-
-        Args:
-            child (ITreeNode[StateT]): The child node representing the branch.
-
-        Returns:
-            str: A string representation of the branch for the tree visualizer.
-
-        """
-        _ = child  # to avoid unused variable warning, to be used when we want to print more info about the branch
-        return ""
-
     def print_best_line(self) -> None:
         """Print the best line from the current node to the leaf node.
 

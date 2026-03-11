@@ -1,107 +1,100 @@
-"""Provide functions for visualizing and saving tree structures.
-
-The functions in this module allow for the visualization of tree structures using the Graphviz library.
-It provides a way to display the tree structure as a graph and save it as a PDF file.
-Additionally, it provides a function to save the raw data of the tree structure to a file using pickle.
-
-Functions:
-- add_dot(dot: Digraph, treenode: ITreeNode) -> None: Adds nodes and edges to the graph representation of the tree.
-- display_special(node: ITreeNode, format: str, index: dict[BranchKey, str]) -> Digraph: Displays a special
-representation of the tree with additional information.
-- display(tree: Tree, format_str: str) -> Digraph: Displays the tree structure as a graph.
-- save_pdf_to_file(tree: Tree) -> None: Saves the tree structure as a PDF file.
-- save_raw_data_to_file(tree: Tree, count: str = '#') -> None: Saves the raw data of the tree
-structure to a file.
-"""
+"""Provide compatibility wrappers for tree visualization."""
 
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
+from __future__ import annotations
+
 import sys
 from pickle import dump
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
-from graphviz import Digraph
-from valanga import BranchKey, State
+from valanga import State
 
-from anemone.dynamics import SearchDynamics
-from anemone.nodes import ITreeNode
-from anemone.nodes.algorithm_node.algorithm_node import (
-    AlgorithmNode,
-)
-
-from .tree import Tree
+from anemone.debug import DotRenderer, TreeSnapshotAdapter
 
 if TYPE_CHECKING:
-    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
-        NodeMinmaxEvaluation,
-    )
+    from collections.abc import Callable
+
+    from graphviz import Digraph
+    from valanga import BranchKey
+
+    from anemone.dynamics import SearchDynamics
+    from anemone.nodes import ITreeNode
+    from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+
+    from .tree import Tree
+
+
+def _action_edge_label_builder[StateT: State](
+    dynamics: SearchDynamics[StateT, Any],
+) -> Callable[[ITreeNode[StateT], BranchKey, ITreeNode[StateT]], str]:
+    """Build edge labels from action names."""
+
+    def build_label(
+        parent: ITreeNode[StateT], branch_key: BranchKey, child: ITreeNode[StateT]
+    ) -> str:
+        _ = child
+        return str(dynamics.action_name(parent.state, branch_key))
+
+    return build_label
+
+
+def _special_edge_label_builder[StateT: State](
+    dynamics: SearchDynamics[StateT, Any],
+    index: dict[BranchKey, str],
+) -> Callable[[ITreeNode[StateT], BranchKey, ITreeNode[StateT]], str]:
+    """Build the legacy special-edge label prefix with best-effort rank data."""
+
+    def build_label(
+        parent: ITreeNode[StateT], branch_key: BranchKey, child: ITreeNode[StateT]
+    ) -> str:
+        _ = child
+        parts = [
+            index.get(branch_key, "?"),
+            str(dynamics.action_name(parent.state, branch_key)),
+        ]
+        return "|".join(parts)
+
+    return build_label
+
+
+def _render_snapshot[StateT: State](
+    root: ITreeNode[StateT],
+    format_str: str,
+    edge_label_builder: (
+        Callable[[ITreeNode[StateT], BranchKey, ITreeNode[StateT]], str | None] | None
+    ),
+) -> Digraph:
+    """Capture ``root`` into a debug snapshot and render it as DOT."""
+    snapshot = TreeSnapshotAdapter(edge_label_builder=edge_label_builder).snapshot(root)
+    return DotRenderer().render(snapshot, format_str=format_str)
 
 
 def add_dot[StateT: State](
     dot: Digraph, treenode: ITreeNode[StateT], dynamics: SearchDynamics[StateT, Any]
 ) -> None:
-    """Add a node and edges to the given Dot graph based on the provided tree node.
-
-    Args:
-        dot (Digraph): The Dot graph to add the node and edges to.
-        treenode (ITreeNode): The tree node to visualize.
-        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
-
-    Returns:
-        None
-
-    """
-    nd = treenode.dot_description()
-    dot.node(str(treenode.id), nd)
-    branch: BranchKey
-    for _, branch in enumerate(treenode.branches_children):
-        if treenode.branches_children[branch] is not None:
-            child = treenode.branches_children[branch]
-            if child is not None:
-                cdd = str(child.id)
-                dot.edge(
-                    str(treenode.id),
-                    cdd,
-                    str(dynamics.action_name(treenode.state, branch)),
-                )
-                add_dot(dot, child, dynamics=dynamics)
+    """Add the subtree rooted at ``treenode`` to ``dot``."""
+    rendered = _render_snapshot(
+        root=treenode,
+        format_str=getattr(dot, "format", None) or "pdf",
+        edge_label_builder=_action_edge_label_builder(dynamics),
+    )
+    dot.body.extend(rendered.body)
 
 
 def display_special[StateT: State](
-    node: AlgorithmNode[StateT],  # or AlgorithmNode if you prefer
+    node: AlgorithmNode[StateT],
     format_str: str,
     index: dict[BranchKey, str],
     dynamics: SearchDynamics[StateT, Any],
 ) -> Digraph:
-    """Display a tree with custom edge labels for the given node."""
-    dot = Digraph(format=format_str)
-
-    nd = node.dot_description()
-    dot.node(str(node.id), nd)
-
-    sorted_branches: list[BranchKey] = sorted(node.branches_children.keys(), key=str)
-
-    for branch_key in sorted_branches:
-        child = node.branches_children[branch_key]
-        if child is None:
-            continue
-
-        edge_description: str = (
-            index[branch_key]
-            + "|"
-            + str(dynamics.action_name(node.state, branch_key))
-            + "|"
-            + cast(
-                "NodeMinmaxEvaluation[Any, Any]", node.tree_evaluation
-            ).description_tree_visualizer_branch(child)
-        )
-        dot.edge(str(node.id), str(child.id), edge_description)
-        dot.node(str(child.id), child.dot_description())
-        print("--branch:", edge_description)
-        print("--child:", child.dot_description())
-
-    return dot
+    """Display a tree with the legacy special-edge label prefix for the given node."""
+    return _render_snapshot(
+        root=node,
+        format_str=format_str,
+        edge_label_builder=_special_edge_label_builder(dynamics, index),
+    )
 
 
 def display[StateT: State](
@@ -109,51 +102,25 @@ def display[StateT: State](
     format_str: str,
     dynamics: SearchDynamics[StateT, Any],
 ) -> Digraph:
-    """Display a tree using graph visualization.
-
-    Args:
-        tree (Tree): The tree to be displayed.
-        format_str (str): The format of the output graph (e.g., 'png', 'pdf', 'svg').
-        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
-
-    Returns:
-        Digraph: The graph representation of the tree.
-
-    """
-    dot = Digraph(format=format_str)
-    add_dot(dot, tree.root_node, dynamics=dynamics)
-    return dot
+    """Display a tree using the debug snapshot and DOT renderer."""
+    return _render_snapshot(
+        root=tree.root_node,
+        format_str=format_str,
+        edge_label_builder=_action_edge_label_builder(dynamics),
+    )
 
 
 def save_pdf_to_file[StateT: State](
     tree: Tree[AlgorithmNode[StateT]], dynamics: SearchDynamics[StateT, Any]
 ) -> None:
-    """Save the visualization of a tree as a PDF file.
-
-    Args:
-        tree (Tree): The tree to be visualized and saved.
-        dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
-
-    Returns:
-        None
-
-    """
+    """Save the visualization of a tree as a PDF file."""
     dot = display(tree=tree, format_str="pdf", dynamics=dynamics)
     tag_ = tree.root_node.state.tag
     dot.render("chipiron/runs/treedisplays/TreeVisual_" + str(tag_) + ".pdf")
 
 
 def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
-    """Save raw tree data to a file.
-
-    Args:
-        tree (Tree): The Tree object to save.
-        count (str, optional): A string to append to the filename. Defaults to '#'.
-
-    Returns:
-        None
-
-    """
+    """Save raw tree data to a file."""
     tag_ = tree.root_node.state.tag
     filename = "chipiron/debugTreeData_" + str(tag_) + "-" + str(count) + ".td"
 

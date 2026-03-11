@@ -40,7 +40,6 @@ class TreeNode[
         add_parent(new_parent_node: ITreeNode): Adds a parent node to the current node.
         is_over(): Checks if the state is terminal.
         print_branches_children(): Prints the branches-children links of the node.
-        dot_description(): Returns the dot description of the node.
 
     """
 
@@ -204,21 +203,3 @@ class TreeNode[
             else:
                 print(branch, child.id, end=" ")
         print(" ")
-
-    def dot_description(self) -> str:
-        """Return a string representation of the node in the DOT format.
-
-        The string includes the node's ID, depth, and state tag.
-
-        Returns:
-            A string representation of the node in the DOT format.
-
-        """
-        return (
-            "id:"
-            + str(self.id)
-            + " dep: "
-            + str(self.tree_depth)
-            + "\nfen:"
-            + str(self.state.tag)
-        )

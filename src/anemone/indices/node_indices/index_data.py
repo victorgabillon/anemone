@@ -21,22 +21,10 @@ class NodeExplorationData[
         tree_node (TreeNode): The tree node associated with the exploration data.
         index (float | None): The index value associated with the node. Defaults to None.
 
-    Methods:
-        dot_description(): Returns a string representation of the exploration data for dot visualization.
-
     """
 
     tree_node: TreeNode[Node, StateT]
     index: float | None = None
-
-    def dot_description(self) -> str:
-        """Return a string representation of the dot description for the index.
-
-        Returns:
-            str: The dot description of the index.
-
-        """
-        return f"index:{self.index}"
 
 
 @dataclass
@@ -50,22 +38,10 @@ class RecurZipfQuoolExplorationData[
         zipf_factored_proba (float | None): The probability associated with the node, factored by zipf-quool factor.
             Defaults to None.
 
-    Methods:
-        dot_description(): Returns a string representation of the exploration data for dot visualization.
-
     """
 
     # the 'proba' associated by recursively multiplying 1/rank of the node with the max zipf_factor of the parents
     zipf_factored_proba: float | None = None
-
-    def dot_description(self) -> str:
-        """Return a string representation of the index and zipf_factored_proba values.
-
-        Returns:
-            str: A string representation of the index and zipf_factored_proba values.
-
-        """
-        return f"index:{self.index} zipf_factored_proba:{self.zipf_factored_proba}"
 
 
 @dataclass
@@ -79,17 +55,10 @@ class MinMaxPathValue[
         min_path_value (float | None): The minimum path value associated with the node. Defaults to None.
         max_path_value (float | None): The maximum path value associated with the node. Defaults to None.
 
-    Methods:
-        dot_description(): Returns a string representation of the exploration data for dot visualization.
-
     """
 
     min_path_value: float | None = None
     max_path_value: float | None = None
-
-    def dot_description(self) -> str:
-        """Return a string representation of min/max path values."""
-        return f"min_path_value: {self.min_path_value}, max_path_value: {self.max_path_value}"
 
 
 @dataclass
@@ -102,26 +71,9 @@ class IntervalExplo[
     Attributes:
         interval (Interval | None): The interval associated with the node. Defaults to None.
 
-    Methods:
-        dot_description(): Returns a string representation of the exploration data for dot visualization.
-
     """
 
     interval: Interval | None = field(default_factory=Interval)
-
-    def dot_description(self) -> str:
-        """Return a string representation of the interval values.
-
-        If the interval is None, returns 'None'.
-        Otherwise, returns a string in the format 'min_interval_value: {min_value}, max_interval_value: {max_value}'.
-
-        Returns:
-            str: A string representation of the interval values.
-
-        """
-        if self.interval is None:
-            return "None"
-        return f"min_interval_value: {self.interval.min_value}, max_interval_value: {self.interval.max_value}"
 
 
 @dataclass
@@ -151,12 +103,3 @@ class MaxDepthDescendants[
         has_index_changed: bool = new_index != previous_index
 
         return has_index_changed
-
-    def dot_description(self) -> str:
-        """Return a string representation of the dot description for the node indices.
-
-        Returns:
-            str: The dot description for the node indices.
-
-        """
-        return f"max_depth_descendants: {self.max_depth_descendants}"

@@ -5,9 +5,8 @@ possible branches. It provides properties and methods for accessing information
 about the node, such as its ID, state, depth, child nodes, and parent nodes.
 
 The `ITreeNode` protocol also defines methods for adding a parent node,
-generating a dot description for visualization, checking if all branches have
-been generated, accessing the available branches, and checking if the state is
-terminal.
+checking if all branches have been generated, accessing the available
+branches, and checking if the state is terminal.
 
 Note: This is an interface and should not be instantiated directly.
 """
@@ -77,15 +76,6 @@ class ITreeNode[StateT: State = State](Protocol):
             branch_key: The branch key that led to the node from the new parent.
 
         """
-
-    def dot_description(self) -> str:
-        """Generate a dot description for visualization.
-
-        Returns:
-            A string containing the dot description.
-
-        """
-        ...
 
     @property
     def all_branches_generated(self) -> bool:

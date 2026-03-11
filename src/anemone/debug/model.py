@@ -16,8 +16,18 @@ class DebugNodeView:
 
 
 @dataclass(frozen=True)
+class DebugEdgeView:
+    """Directed connection between two debug nodes."""
+
+    parent_id: str
+    child_id: str
+    label: str | None = None
+
+
+@dataclass(frozen=True)
 class DebugTreeSnapshot:
     """A complete snapshot of a search tree for visualization."""
 
     nodes: tuple[DebugNodeView, ...]
     root_id: str
+    edges: tuple[DebugEdgeView, ...] = ()
