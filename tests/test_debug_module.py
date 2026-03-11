@@ -52,8 +52,8 @@ def test_dot_renderer_outputs_nodes_and_edge() -> None:
     snapshot = TreeSnapshotAdapter().snapshot(root)
     source = DotRenderer().render(snapshot).source
 
-    assert '1 [label="id=1\\ndepth=0"]' in source
-    assert '2 [label="id=2\\ndepth=1"]' in source
+    assert '1 [label="id=1\ndepth=0"]' in source
+    assert '2 [label="id=2\ndepth=1"]' in source
     assert "1 -> 2" in source
 
 

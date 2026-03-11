@@ -1,3 +1,5 @@
+"""Adapt runtime tree nodes into immutable debug snapshots."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -12,6 +14,7 @@ class TreeSnapshotAdapter:
     """Build a ``DebugTreeSnapshot`` from a tree of ``ITreeNode`` instances."""
 
     def snapshot(self, root: ITreeNode) -> DebugTreeSnapshot:
+        """Traverse the tree rooted at ``root`` and capture its current shape."""
         nodes: list[DebugNodeView] = []
         visited: set[str] = set()
         stack: list[ITreeNode] = [root]
@@ -24,7 +27,7 @@ class TreeSnapshotAdapter:
                 continue
 
             visited.add(node_id)
-            parent_ids = tuple(str(parent.id) for parent in node.parent_nodes.keys())
+            parent_ids = tuple(str(parent.id) for parent in node.parent_nodes)
             label = self._build_label(node)
 
             nodes.append(
@@ -37,12 +40,12 @@ class TreeSnapshotAdapter:
             )
 
             # Some trees may store unopened or absent children as ``None``.
-            for child in node.branches_children.values():
-                if child is not None:
-                    stack.append(child)
+            stack.extend(
+                child for child in node.branches_children.values() if child is not None
+            )
 
         return DebugTreeSnapshot(nodes=tuple(nodes), root_id=str(root.id))
 
     def _build_label(self, node: ITreeNode) -> str:
         """Build a simple textual label for a node."""
-        return f"id={node.id}\\ndepth={node.tree_depth}"
+        return f"id={node.id}\ndepth={node.tree_depth}"

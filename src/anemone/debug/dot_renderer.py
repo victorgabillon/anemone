@@ -1,21 +1,54 @@
+"""Render debug tree snapshots as Graphviz DOT graphs."""
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol, cast
 
 from graphviz import Digraph
 
-from .model import DebugTreeSnapshot
+if TYPE_CHECKING:
+    from .model import DebugTreeSnapshot
+
+
+class _GraphvizNode(Protocol):
+    def __call__(
+        self,
+        name: str,
+        label: str | None = None,
+        **attrs: str,
+    ) -> None: ...
+
+
+class _GraphvizEdge(Protocol):
+    def __call__(
+        self,
+        tail_name: str,
+        head_name: str,
+        label: str | None = None,
+        **attrs: str,
+    ) -> None: ...
+
+
+class _GraphvizDigraph(Protocol):
+    node: _GraphvizNode
+    edge: _GraphvizEdge
 
 
 class DotRenderer:
     """Convert ``DebugTreeSnapshot`` instances into Graphviz DOT graphs."""
 
     def render(self, snapshot: DebugTreeSnapshot) -> Digraph:
+        """Build a directed graph representation for the provided snapshot."""
         graph = Digraph()
+        typed_graph = cast("_GraphvizDigraph", graph)
+        add_node = typed_graph.node
+        add_edge = typed_graph.edge
 
         for node in snapshot.nodes:
-            graph.node(node.node_id, label=node.label)
+            add_node(node.node_id, label=node.label)
 
         for node in snapshot.nodes:
             for parent_id in node.parent_ids:
-                graph.edge(parent_id, node.node_id)
+                add_edge(parent_id, node.node_id)
 
         return graph

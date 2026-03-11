@@ -1,3 +1,5 @@
+"""Immutable data models used by the debug tree tooling."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
