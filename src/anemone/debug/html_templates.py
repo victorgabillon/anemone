@@ -161,6 +161,18 @@ def render_replay_index_html() -> str:
         opacity: 0.45;
       }
 
+      .checkbox-control {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .checkbox-control input {
+        accent-color: var(--accent);
+      }
+
       .detail-card,
       .snapshot-card {
         padding: 0 1rem 1rem;
@@ -240,7 +252,7 @@ def render_replay_index_html() -> str:
         <section class="card">
           <div class="timeline-header">
             <h1 class="heading">Debug Trace Replay</h1>
-            <p class="subheading" id="timeline-meta">Loading trace.json...</p>
+            <p class="subheading" id="timeline-meta">Loading replay payload...</p>
           </div>
           <ol class="timeline-list" id="timeline"></ol>
         </section>
@@ -250,6 +262,10 @@ def render_replay_index_html() -> str:
           <div class="controls">
             <button id="previous-entry" type="button">Previous</button>
             <button id="next-entry" type="button">Next</button>
+            <label class="checkbox-control" for="auto-follow-latest">
+              <input id="auto-follow-latest" type="checkbox" checked>
+              <span>Auto-follow latest</span>
+            </label>
             <span class="meta" id="current-index">No entry selected</span>
           </div>
           <div class="detail-header">
@@ -284,6 +300,7 @@ def render_replay_index_html() -> str:
       const timelineMetaElement = document.getElementById("timeline-meta");
       const previousButton = document.getElementById("previous-entry");
       const nextButton = document.getElementById("next-entry");
+      const autoFollowElement = document.getElementById("auto-follow-latest");
       const currentIndexElement = document.getElementById("current-index");
       const entryTitleElement = document.getElementById("entry-title");
       const entryTypeElement = document.getElementById("entry-type");
@@ -293,6 +310,8 @@ def render_replay_index_html() -> str:
 
       let entries = [];
       let selectedIndex = 0;
+      let pollHandle = null;
+      let isRefreshing = false;
 
       function formatIndex(index) {
         return String(index).padStart(4, "0");
@@ -369,6 +388,46 @@ def render_replay_index_html() -> str:
         updateControls();
       }
 
+      function startPolling() {
+        if (pollHandle !== null) {
+          return;
+        }
+
+        pollHandle = window.setInterval(() => {
+          void refreshTrace();
+        }, 1000);
+      }
+
+      function stopPolling() {
+        if (pollHandle === null) {
+          return;
+        }
+
+        window.clearInterval(pollHandle);
+        pollHandle = null;
+      }
+
+      function syncPolling(payload) {
+        if (payload && payload.is_live && !payload.is_complete) {
+          startPolling();
+          return;
+        }
+
+        stopPolling();
+      }
+
+      function renderTimelineMeta(payload) {
+        const entryCount = payload && Number.isInteger(payload.entry_count)
+          ? payload.entry_count
+          : entries.length;
+        const mode = payload && payload.is_live
+          ? payload.is_complete
+            ? "live session complete"
+            : "live session updating"
+          : "static replay";
+        timelineMetaElement.textContent = `${entryCount} entries loaded | ${mode}`;
+      }
+
       async function renderSnapshot(entryIndex) {
         const snapshotEntry = nearestSnapshotAtOrBefore(entryIndex);
         snapshotViewElement.replaceChildren();
@@ -423,26 +482,58 @@ def render_replay_index_html() -> str:
         await renderDetails();
       }
 
-      async function loadTrace() {
+      async function fetchSessionPayload() {
+        const sessionResponse = await fetch("session.json", { cache: "no-store" });
+        if (sessionResponse.ok) {
+          return await sessionResponse.json();
+        }
+        if (sessionResponse.status !== 404) {
+          throw new Error(`HTTP ${sessionResponse.status}`);
+        }
+
+        const traceResponse = await fetch("trace.json", { cache: "no-store" });
+        if (!traceResponse.ok) {
+          throw new Error(`HTTP ${traceResponse.status}`);
+        }
+        return await traceResponse.json();
+      }
+
+      async function refreshTrace() {
+        if (isRefreshing) {
+          return;
+        }
+
+        isRefreshing = true;
         try {
-          const response = await fetch("trace.json");
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+          const payload = await fetchSessionPayload();
+          entries = Array.isArray(payload.entries) ? payload.entries : [];
+
+          if (entries.length > 0) {
+            if (autoFollowElement.checked) {
+              selectedIndex = entries.length - 1;
+            } else if (selectedIndex >= entries.length) {
+              selectedIndex = entries.length - 1;
+            }
+          } else {
+            selectedIndex = 0;
           }
 
-          const payload = await response.json();
-          entries = Array.isArray(payload.entries) ? payload.entries : [];
-          timelineMetaElement.textContent = `${payload.entry_count ?? entries.length} entries loaded`;
-
+          renderTimelineMeta(payload);
           renderTimeline();
+
           if (entries.length > 0) {
-            await selectEntry(0);
+            await renderDetails();
           } else {
             renderEmptyDetails("No replay entries available.");
           }
+
+          syncPolling(payload);
         } catch (error) {
-          timelineMetaElement.textContent = "Failed to load trace.json";
+          stopPolling();
+          timelineMetaElement.textContent = "Failed to load replay payload";
           renderEmptyDetails(`Unable to load replay payload: ${error}`);
+        } finally {
+          isRefreshing = false;
         }
       }
 
@@ -458,7 +549,13 @@ def render_replay_index_html() -> str:
         }
       });
 
-      void loadTrace();
+      autoFollowElement.addEventListener("change", async () => {
+        if (autoFollowElement.checked && entries.length > 0) {
+          await selectEntry(entries.length - 1);
+        }
+      });
+
+      void refreshTrace();
     </script>
   </body>
 </html>

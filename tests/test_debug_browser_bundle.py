@@ -126,7 +126,8 @@ def test_export_replay_bundle_writes_expected_trace_json(tmp_path: Path) -> None
 def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     html = render_replay_index_html()
 
-    assert 'fetch("trace.json")' in html
+    assert 'fetch("session.json"' in html
+    assert 'fetch("trace.json"' in html
     assert 'id="timeline"' in html
     assert 'id="entry-summary"' in html
     assert 'id="snapshot-view"' in html

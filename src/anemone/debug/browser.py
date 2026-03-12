@@ -1,4 +1,4 @@
-"""Local browser serving helpers for static debug replay bundles."""
+"""Local browser serving helpers for debug replay bundles and live sessions."""
 
 from __future__ import annotations
 
@@ -33,6 +33,16 @@ def serve_replay_bundle(
             print("Stopping debug replay bundle server.")
 
 
+def serve_live_debug_session(
+    directory: str | Path,
+    *,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+) -> None:
+    """Serve a live debug session directory over HTTP until interrupted."""
+    serve_replay_bundle(directory, host=host, port=port)
+
+
 def export_and_serve_trace(
     trace: DebugTrace,
     directory: str | Path,
@@ -50,4 +60,4 @@ def export_and_serve_trace(
     serve_replay_bundle(bundle_dir, host=host, port=port)
 
 
-__all__ = ["export_and_serve_trace", "serve_replay_bundle"]
+__all__ = ["export_and_serve_trace", "serve_live_debug_session", "serve_replay_bundle"]

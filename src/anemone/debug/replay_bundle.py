@@ -23,30 +23,42 @@ def build_replay_payload(
     snapshot_directory: str = _DEFAULT_SNAPSHOT_DIRECTORY,
 ) -> dict[str, Any]:
     """Build a JSON-friendly browser payload for ``trace``."""
-    entries: list[dict[str, int | str | bool | None]] = []
-
-    for entry in trace:
-        snapshot_file = None
-        if entry.snapshot is not None:
-            snapshot_file = _snapshot_relative_path(
-                entry,
-                snapshot_format=snapshot_format,
-                snapshot_directory=snapshot_directory,
-            )
-
-        entries.append(
-            {
-                "index": entry.index,
-                "event_type": entry.event.__class__.__name__,
-                "event_summary": format_debug_event(entry.event),
-                "has_snapshot": entry.snapshot is not None,
-                "snapshot_file": snapshot_file,
-            }
+    entries = [
+        build_replay_entry_payload(
+            entry,
+            snapshot_format=snapshot_format,
+            snapshot_directory=snapshot_directory,
         )
+        for entry in trace
+    ]
 
     return {
         "entry_count": len(trace),
         "entries": entries,
+    }
+
+
+def build_replay_entry_payload(
+    entry: DebugTimelineEntry,
+    *,
+    snapshot_format: str = "svg",
+    snapshot_directory: str = _DEFAULT_SNAPSHOT_DIRECTORY,
+) -> dict[str, int | str | bool | None]:
+    """Build the browser payload for one timeline entry."""
+    snapshot_file = None
+    if entry.snapshot is not None:
+        snapshot_file = _snapshot_relative_path(
+            entry,
+            snapshot_format=snapshot_format,
+            snapshot_directory=snapshot_directory,
+        )
+
+    return {
+        "index": entry.index,
+        "event_type": entry.event.__class__.__name__,
+        "event_summary": format_debug_event(entry.event),
+        "has_snapshot": entry.snapshot is not None,
+        "snapshot_file": snapshot_file,
     }
 
 
@@ -106,6 +118,7 @@ def _snapshot_relative_path(
 
 
 __all__ = [
+    "build_replay_entry_payload",
     "build_replay_payload",
     "export_replay_bundle",
     "write_replay_payload",

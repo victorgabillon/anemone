@@ -1,7 +1,7 @@
 """Tests for debug timeline recording and persistence."""
 
 # ruff: noqa: D103
-
+# pylint: disable=duplicate-code
 from __future__ import annotations
 
 from dataclasses import dataclass, field
