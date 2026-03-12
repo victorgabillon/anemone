@@ -204,6 +204,13 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert 'id="selected-node-direct-value"' in html
     assert 'id="selected-node-index-fields"' in html
     assert 'id="selected-node-raw-label"' in html
+    assert 'id="action-jump-node-event"' in html
+    assert 'id="action-jump-node-value"' in html
+    assert 'id="action-expand-node"' in html
+    assert 'id="action-run-node-event"' in html
+    assert 'id="action-run-node-value"' in html
+    assert 'id="action-focus-node"' in html
+    assert 'id="action-clear-node-focus"' in html
     assert "Pause" in html
     assert "Resume" in html
     assert "Step" in html
@@ -233,14 +240,23 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert "jumpToNextPvChange" in html
     assert "jumpToNextValueChange" in html
     assert "jumpToNextSelectedNodeEvent" in html
+    assert "jumpToNextSelectedNodeValueChange" in html
+    assert "focusTimelineOnNode" in html
+    assert "clearTimelineNodeFocus" in html
     assert "event_fields" in html
     assert "breakpoint_hit" in html
+    assert "focusedNodeId" in html
     assert "loadInlineSvg" in html
     assert "renderInlineSvg" in html
     assert "initializeGraphInteraction" in html
     assert "extractNodeIdFromGraphvizGroup" in html
     assert "renderGraphSelection" in html
     assert "selectNode" in html
+    assert 'sendCommand("expand_node"' in html
+    assert 'sendCommand("run_until_node_event"' in html
+    assert 'sendCommand("run_until_node_value_change"' in html
+    assert 'sendCommand("focus_node_timeline"' in html
+    assert 'sendCommand("clear_timeline_focus"' in html
     assert "g.node" in html
     assert "g.edge" in html
     assert "is-root-path" in html

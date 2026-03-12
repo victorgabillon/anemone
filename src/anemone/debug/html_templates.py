@@ -488,6 +488,15 @@ def render_replay_index_html() -> str:
             <h2 class="heading">Node Inspection</h2>
             <p class="subheading" id="node-selection-status">No node selected</p>
           </div>
+          <div class="controls">
+            <button id="action-jump-node-event" type="button">Next Node Event</button>
+            <button id="action-jump-node-value" type="button">Next Backed-Up Value Change</button>
+            <button id="action-expand-node" type="button">Expand Node</button>
+            <button id="action-run-node-event" type="button">Run Until Node Event</button>
+            <button id="action-run-node-value" type="button">Run Until Backed-Up Value Change</button>
+            <button id="action-focus-node" type="button">Focus Timeline</button>
+            <button id="action-clear-node-focus" type="button">Clear Node Focus</button>
+          </div>
           <div class="detail-card">
             <ul class="node-list" id="node-list">
               <li class="empty">No snapshot nodes available yet.</li>
@@ -640,6 +649,13 @@ def render_replay_index_html() -> str:
       const highlightNeighborhoodElement = document.getElementById("highlight-neighborhood");
       const highlightPvPathElement = document.getElementById("highlight-pv-path");
       const dimUnrelatedGraphElement = document.getElementById("dim-unrelated-graph");
+      const jumpNodeEventButton = document.getElementById("action-jump-node-event");
+      const jumpNodeValueButton = document.getElementById("action-jump-node-value");
+      const expandNodeButton = document.getElementById("action-expand-node");
+      const runNodeEventButton = document.getElementById("action-run-node-event");
+      const runNodeValueButton = document.getElementById("action-run-node-value");
+      const focusNodeButton = document.getElementById("action-focus-node");
+      const clearNodeFocusButton = document.getElementById("action-clear-node-focus");
       const nodeSelectionStatusElement = document.getElementById("node-selection-status");
       const nodeListElement = document.getElementById("node-list");
       const nodeDetailsElement = document.getElementById("node-details");
@@ -669,6 +685,7 @@ def render_replay_index_html() -> str:
       let currentGraphNodeMap = new Map();
       let currentGraphEdgeMap = new Map();
       let selectedNodeId = null;
+      let focusedNodeId = null;
       let breakpointSequence = 0;
       let searchQuery = "";
       let selectedEventTypeFilter = "all";
@@ -724,6 +741,7 @@ def render_replay_index_html() -> str:
         return entries.filter((entry) => (
           entryMatchesSearch(entry, searchQuery)
           && entryMatchesEventTypeFilter(entry, selectedEventTypeFilter)
+          && (!focusedNodeId || entryInvolvesNodeId(entry, focusedNodeId))
         ));
       }
 
@@ -742,6 +760,9 @@ def render_replay_index_html() -> str:
         }
         if (searchQuery.trim() !== "") {
           parts.push(`Search: "${searchQuery}"`);
+        }
+        if (focusedNodeId) {
+          parts.push(`Node focus: ${focusedNodeId}`);
         }
         if (timelineStatusMessage) {
           parts.push(timelineStatusMessage);
@@ -775,6 +796,15 @@ def render_replay_index_html() -> str:
         return eventFields.node_id === nodeId
           || eventFields.parent_id === nodeId
           || eventFields.child_id === nodeId;
+      }
+
+      function entryIsValueChangeForNodeId(entry, nodeId) {
+        return Boolean(
+          entry
+          && entry.event_fields
+          && entry.event_fields.node_id === nodeId
+          && entry.event_fields.value_changed === true
+        );
       }
 
       function nearestSnapshotAtOrBefore(index) {
@@ -1049,7 +1079,7 @@ def render_replay_index_html() -> str:
         const hasFocus = highlightedNodeIds.size > 0 || highlightedEdgeKeys.size > 0;
         if (dimUnrelatedGraph && hasFocus && currentSnapshotMetadata) {
           currentGraphNodeMap.forEach((_, nodeId) => {
-            if (!highlightedNodeIds.has(nodeId)) {
+            if (nodeId !== selectedNodeId && !highlightedNodeIds.has(nodeId)) {
               dimmedNodeIds.add(nodeId);
             }
           });
@@ -1490,6 +1520,13 @@ def render_replay_index_html() -> str:
         jumpNextPvChangeButton.disabled = !hasEntries;
         jumpNextValueChangeButton.disabled = !hasEntries;
         jumpNextSelectedNodeEventButton.disabled = !hasEntries || !hasSelectedNode;
+        jumpNodeEventButton.disabled = !hasEntries || !hasSelectedNode;
+        jumpNodeValueButton.disabled = !hasEntries || !hasSelectedNode;
+        expandNodeButton.disabled = !canControl || !hasSelectedNode;
+        runNodeEventButton.disabled = !canControl || !hasSelectedNode;
+        runNodeValueButton.disabled = !canControl || !hasSelectedNode;
+        focusNodeButton.disabled = !hasEntries || !hasSelectedNode;
+        clearNodeFocusButton.disabled = !focusedNodeId;
       }
 
       function renderCommandStatus(payload) {
@@ -1549,6 +1586,13 @@ def render_replay_index_html() -> str:
           renderBreakpointList([]);
           updateControls();
           return;
+        }
+
+        if (
+          typeof controlState.focused_node_id === "string"
+          || controlState.focused_node_id === null
+        ) {
+          focusedNodeId = controlState.focused_node_id;
         }
 
         pauseStateElement.textContent = controlState.paused
@@ -1661,12 +1705,15 @@ def render_replay_index_html() -> str:
         await renderDetails();
       }
 
-      async function sendCommand(commandName) {
+      async function sendCommand(commandName, payload = {}) {
         try {
           const response = await fetch("/command", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ command: commandName }),
+            body: JSON.stringify({
+              command: commandName,
+              ...payload,
+            }),
           });
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -1780,6 +1827,34 @@ def render_replay_index_html() -> str:
           (entry) => entryInvolvesNodeId(entry, selectedNodeId),
           `No later event found for node ${selectedNodeId}.`
         );
+      }
+
+      async function jumpToNextSelectedNodeValueChange() {
+        if (!selectedNodeId) {
+          setTimelineStatusMessage("Select a node before jumping to node value changes.");
+          return;
+        }
+
+        await jumpToNextMatching(
+          (entry) => entryIsValueChangeForNodeId(entry, selectedNodeId),
+          `No later value change found for node ${selectedNodeId}.`
+        );
+      }
+
+      async function focusTimelineOnNode(nodeId) {
+        if (!nodeId) {
+          return;
+        }
+
+        focusedNodeId = nodeId;
+        clearTimelineStatusMessage();
+        await refreshTimelineViewFromControls();
+      }
+
+      async function clearTimelineNodeFocus() {
+        focusedNodeId = null;
+        clearTimelineStatusMessage();
+        await refreshTimelineViewFromControls();
       }
 
       async function loadSnapshotMetadataForEntry(entryIndex) {
@@ -2046,6 +2121,52 @@ def render_replay_index_html() -> str:
 
       jumpNextSelectedNodeEventButton.addEventListener("click", async () => {
         await jumpToNextSelectedNodeEvent();
+      });
+
+      jumpNodeEventButton.addEventListener("click", async () => {
+        await jumpToNextSelectedNodeEvent();
+      });
+
+      jumpNodeValueButton.addEventListener("click", async () => {
+        await jumpToNextSelectedNodeValueChange();
+      });
+
+      expandNodeButton.addEventListener("click", async () => {
+        if (!selectedNodeId) {
+          return;
+        }
+        await sendCommand("expand_node", { node_id: selectedNodeId });
+      });
+
+      runNodeEventButton.addEventListener("click", async () => {
+        if (!selectedNodeId) {
+          return;
+        }
+        await sendCommand("run_until_node_event", { node_id: selectedNodeId });
+      });
+
+      runNodeValueButton.addEventListener("click", async () => {
+        if (!selectedNodeId) {
+          return;
+        }
+        await sendCommand("run_until_node_value_change", { node_id: selectedNodeId });
+      });
+
+      focusNodeButton.addEventListener("click", async () => {
+        if (!selectedNodeId) {
+          return;
+        }
+        if (currentPayload && currentPayload.is_live && !currentPayload.is_complete) {
+          await sendCommand("focus_node_timeline", { node_id: selectedNodeId });
+        }
+        await focusTimelineOnNode(selectedNodeId);
+      });
+
+      clearNodeFocusButton.addEventListener("click", async () => {
+        if (currentPayload && currentPayload.is_live && !currentPayload.is_complete) {
+          await sendCommand("clear_timeline_focus");
+        }
+        await clearTimelineNodeFocus();
       });
 
       highlightRootPathElement.addEventListener("change", () => {

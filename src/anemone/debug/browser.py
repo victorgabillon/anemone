@@ -52,7 +52,7 @@ class DebugSessionHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.send_error(404, "Unknown debug command endpoint")
 
     def _handle_command_post(self) -> None:
-        """Handle pause/resume/step commands posted by the browser."""
+        """Handle live control commands posted by the browser."""
         payload = self._read_request_payload()
         if payload is None:
             return
@@ -74,6 +74,28 @@ class DebugSessionHTTPRequestHandler(SimpleHTTPRequestHandler):
                 self._controller.request_resume()
             case DebugCommand.STEP:
                 self._controller.request_step()
+            case DebugCommand.EXPAND_NODE:
+                node_id = self._read_required_node_id(payload)
+                if node_id is None:
+                    return
+                self._controller.expand_node(node_id)
+            case DebugCommand.RUN_UNTIL_NODE_EVENT:
+                node_id = self._read_required_node_id(payload)
+                if node_id is None:
+                    return
+                self._controller.run_until_node_event(node_id)
+            case DebugCommand.RUN_UNTIL_NODE_VALUE_CHANGE:
+                node_id = self._read_required_node_id(payload)
+                if node_id is None:
+                    return
+                self._controller.run_until_node_value_change(node_id)
+            case DebugCommand.FOCUS_NODE_TIMELINE:
+                node_id = self._read_required_node_id(payload)
+                if node_id is None:
+                    return
+                self._controller.focus_node_timeline(node_id)
+            case DebugCommand.CLEAR_TIMELINE_FOCUS:
+                self._controller.clear_timeline_focus()
             case DebugCommand.NONE:
                 self.send_error(400, "Unknown debug command")
                 return
@@ -135,6 +157,14 @@ class DebugSessionHTTPRequestHandler(SimpleHTTPRequestHandler):
             self.send_error(400, "Invalid JSON payload")
             return None
         return cast("dict[str, object]", payload)
+
+    def _read_required_node_id(self, payload: dict[str, object]) -> str | None:
+        """Return a non-empty ``node_id`` field or emit ``400``."""
+        node_id = payload.get("node_id")
+        if not isinstance(node_id, str) or not node_id:
+            self.send_error(400, "Invalid or missing node_id")
+            return None
+        return node_id
 
 
 def serve_replay_bundle(

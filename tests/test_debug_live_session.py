@@ -155,5 +155,9 @@ def test_render_replay_index_html_contains_live_polling_hooks() -> None:
     assert 'id="highlight-neighborhood"' in html
     assert 'id="highlight-pv-path"' in html
     assert 'id="dim-unrelated-graph"' in html
+    assert 'id="action-expand-node"' in html
+    assert 'id="action-run-node-event"' in html
+    assert 'id="action-run-node-value"' in html
+    assert 'id="action-focus-node"' in html
     assert 'id="node-list"' in html
     assert 'id="node-details"' in html
