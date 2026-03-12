@@ -156,6 +156,16 @@ def render_replay_index_html() -> str:
         cursor: pointer;
       }
 
+      .controls select,
+      .controls input {
+        border: 1px solid rgba(32, 74, 64, 0.2);
+        border-radius: 0.75rem;
+        padding: 0.45rem 0.75rem;
+        background: var(--panel);
+        color: var(--ink);
+        font: inherit;
+      }
+
       .controls button:disabled {
         cursor: not-allowed;
         opacity: 0.45;
@@ -230,6 +240,21 @@ def render_replay_index_html() -> str:
         font-style: italic;
       }
 
+      .breakpoint-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      .breakpoint-item {
+        border: 1px solid rgba(32, 74, 64, 0.16);
+        border-radius: 0.8rem;
+        background: var(--panel-strong);
+        padding: 0.7rem 0.85rem;
+      }
+
       @media (max-width: 900px) {
         .shell {
           grid-template-columns: 1fr;
@@ -262,11 +287,15 @@ def render_replay_index_html() -> str:
           <div class="controls">
             <button id="previous-entry" type="button">Previous</button>
             <button id="next-entry" type="button">Next</button>
+            <button id="pause-search" type="button">Pause</button>
+            <button id="resume-search" type="button">Resume</button>
+            <button id="step-search" type="button">Step</button>
             <label class="checkbox-control" for="auto-follow-latest">
               <input id="auto-follow-latest" type="checkbox" checked>
               <span>Auto-follow latest</span>
             </label>
             <span class="meta" id="current-index">No entry selected</span>
+            <span class="meta" id="command-status">Live control unavailable</span>
           </div>
           <div class="detail-header">
             <h2 class="heading" id="entry-title">Replay details</h2>
@@ -293,6 +322,42 @@ def render_replay_index_html() -> str:
             </div>
           </div>
         </section>
+        <section class="card">
+          <div class="detail-header">
+            <h2 class="heading">Breakpoints</h2>
+            <p class="subheading" id="pause-state">Status: unknown</p>
+            <p class="subheading" id="last-breakpoint-hit">Last breakpoint hit: none</p>
+          </div>
+          <div class="detail-card detail-grid">
+            <div class="controls">
+              <select id="event-type-breakpoint">
+                <option value="SearchIterationStarted">Iteration Started</option>
+                <option value="NodeSelected">Node Selected</option>
+                <option value="NodeOpeningPlanned">Node Opening Planned</option>
+                <option value="ChildLinked">Child Linked</option>
+                <option value="DirectValueAssigned">Direct Value Assigned</option>
+                <option value="BackupStarted">Backup Started</option>
+                <option value="BackupFinished">Backup Finished</option>
+                <option value="SearchIterationCompleted">Iteration Completed</option>
+              </select>
+              <button id="add-event-breakpoint" type="button">Add Event Breakpoint</button>
+              <input id="node-id-breakpoint" type="text" placeholder="Node id">
+              <button id="add-node-breakpoint" type="button">Add Node Breakpoint</button>
+              <select id="backup-flag-breakpoint">
+                <option value="value_changed">Value Changed</option>
+                <option value="pv_changed">PV Changed</option>
+                <option value="over_changed">Over Changed</option>
+              </select>
+              <button id="add-backup-flag-breakpoint" type="button">Add Backup Breakpoint</button>
+              <input id="iteration-breakpoint" type="number" min="0" step="1" placeholder="Iteration">
+              <button id="add-iteration-breakpoint" type="button">Add Iteration Breakpoint</button>
+              <button id="clear-breakpoints" type="button">Clear Breakpoints</button>
+            </div>
+            <ul class="breakpoint-list" id="breakpoint-list">
+              <li class="empty">No breakpoints configured.</li>
+            </ul>
+          </div>
+        </section>
       </main>
     </div>
     <script>
@@ -300,8 +365,24 @@ def render_replay_index_html() -> str:
       const timelineMetaElement = document.getElementById("timeline-meta");
       const previousButton = document.getElementById("previous-entry");
       const nextButton = document.getElementById("next-entry");
+      const pauseButton = document.getElementById("pause-search");
+      const resumeButton = document.getElementById("resume-search");
+      const stepButton = document.getElementById("step-search");
+      const addEventBreakpointButton = document.getElementById("add-event-breakpoint");
+      const addNodeBreakpointButton = document.getElementById("add-node-breakpoint");
+      const addBackupFlagBreakpointButton = document.getElementById("add-backup-flag-breakpoint");
+      const addIterationBreakpointButton = document.getElementById("add-iteration-breakpoint");
+      const clearBreakpointsButton = document.getElementById("clear-breakpoints");
       const autoFollowElement = document.getElementById("auto-follow-latest");
+      const eventTypeBreakpointElement = document.getElementById("event-type-breakpoint");
+      const nodeIdBreakpointElement = document.getElementById("node-id-breakpoint");
+      const backupFlagBreakpointElement = document.getElementById("backup-flag-breakpoint");
+      const iterationBreakpointElement = document.getElementById("iteration-breakpoint");
       const currentIndexElement = document.getElementById("current-index");
+      const commandStatusElement = document.getElementById("command-status");
+      const pauseStateElement = document.getElementById("pause-state");
+      const lastBreakpointHitElement = document.getElementById("last-breakpoint-hit");
+      const breakpointListElement = document.getElementById("breakpoint-list");
       const entryTitleElement = document.getElementById("entry-title");
       const entryTypeElement = document.getElementById("entry-type");
       const entrySummaryElement = document.getElementById("entry-summary");
@@ -312,6 +393,9 @@ def render_replay_index_html() -> str:
       let selectedIndex = 0;
       let pollHandle = null;
       let isRefreshing = false;
+      let currentPayload = null;
+      let currentControlState = null;
+      let breakpointSequence = 0;
 
       function formatIndex(index) {
         return String(index).padStart(4, "0");
@@ -370,8 +454,88 @@ def render_replay_index_html() -> str:
 
       function updateControls() {
         const hasEntries = entries.length > 0;
+        const canControl = Boolean(
+          currentPayload && currentPayload.is_live && !currentPayload.is_complete
+        );
         previousButton.disabled = !hasEntries || selectedIndex <= 0;
         nextButton.disabled = !hasEntries || selectedIndex >= entries.length - 1;
+        pauseButton.disabled = !canControl;
+        resumeButton.disabled = !canControl;
+        stepButton.disabled = !canControl;
+        addEventBreakpointButton.disabled = !canControl;
+        addNodeBreakpointButton.disabled = !canControl;
+        addBackupFlagBreakpointButton.disabled = !canControl;
+        addIterationBreakpointButton.disabled = !canControl;
+        clearBreakpointsButton.disabled = !canControl;
+      }
+
+      function renderCommandStatus(payload) {
+        if (!payload || !payload.is_live) {
+          commandStatusElement.textContent = "Static replay: live control unavailable";
+          return;
+        }
+
+        if (payload.is_complete) {
+          commandStatusElement.textContent = "Session complete";
+          return;
+        }
+
+        commandStatusElement.textContent = "Live control enabled";
+      }
+
+      function renderBreakpointList(breakpoints) {
+        breakpointListElement.replaceChildren();
+
+        if (!Array.isArray(breakpoints) || breakpoints.length === 0) {
+          const emptyItem = document.createElement("li");
+          emptyItem.className = "empty";
+          emptyItem.textContent = "No breakpoints configured.";
+          breakpointListElement.appendChild(emptyItem);
+          return;
+        }
+
+        breakpoints.forEach((breakpoint) => {
+          const item = document.createElement("li");
+          item.className = "breakpoint-item";
+          item.textContent = formatBreakpoint(breakpoint);
+          breakpointListElement.appendChild(item);
+        });
+      }
+
+      function formatBreakpoint(breakpoint) {
+        switch (breakpoint.kind) {
+          case "event_type":
+            return `${breakpoint.id} | event type = ${breakpoint.event_type}`;
+          case "node_id":
+            return `${breakpoint.id} | node id = ${breakpoint.node_id}`;
+          case "backup_flag":
+            return `${breakpoint.id} | backup flag = ${breakpoint.flag_name}`;
+          case "iteration":
+            return `${breakpoint.id} | iteration = ${breakpoint.iteration_index}`;
+          default:
+            return breakpoint.id || "breakpoint";
+        }
+      }
+
+      function renderControlState(controlState) {
+        currentControlState = controlState;
+
+        if (!controlState) {
+          pauseStateElement.textContent = "Status: unknown";
+          lastBreakpointHitElement.textContent = "Last breakpoint hit: none";
+          renderBreakpointList([]);
+          updateControls();
+          return;
+        }
+
+        pauseStateElement.textContent = controlState.paused
+          ? "Status: paused"
+          : "Status: running";
+        lastBreakpointHitElement.textContent = controlState.last_breakpoint_hit
+          ? `Last breakpoint hit: ${controlState.last_breakpoint_hit}`
+          : "Last breakpoint hit: none";
+        renderBreakpointList(controlState.breakpoints);
+        updateControls();
       }
 
       function renderEmptyDetails(message) {
@@ -426,6 +590,65 @@ def render_replay_index_html() -> str:
             : "live session updating"
           : "static replay";
         timelineMetaElement.textContent = `${entryCount} entries loaded | ${mode}`;
+      }
+
+      async function sendCommand(commandName) {
+        try {
+          const response = await fetch("/command", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ command: commandName }),
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          commandStatusElement.textContent = `Sent ${commandName} command`;
+          await refreshTrace();
+        } catch (error) {
+          commandStatusElement.textContent = `Command failed: ${error}`;
+        }
+      }
+
+      function nextBreakpointId(prefix) {
+        breakpointSequence += 1;
+        return `${prefix}-${Date.now()}-${breakpointSequence}`;
+      }
+
+      async function addBreakpoint(payload) {
+        try {
+          const response = await fetch("/breakpoints", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "add",
+              breakpoint: payload,
+            }),
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          commandStatusElement.textContent = `Added breakpoint ${payload.id}`;
+          await refreshTrace();
+        } catch (error) {
+          commandStatusElement.textContent = `Breakpoint failed: ${error}`;
+        }
+      }
+
+      async function clearBreakpoints() {
+        try {
+          const response = await fetch("/breakpoints", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "clear" }),
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          commandStatusElement.textContent = "Cleared breakpoints";
+          await refreshTrace();
+        } catch (error) {
+          commandStatusElement.textContent = `Breakpoint clear failed: ${error}`;
+        }
       }
 
       async function renderSnapshot(entryIndex) {
@@ -498,6 +721,17 @@ def render_replay_index_html() -> str:
         return await traceResponse.json();
       }
 
+      async function fetchControlState() {
+        const response = await fetch("control_state.json", { cache: "no-store" });
+        if (response.ok) {
+          return await response.json();
+        }
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       async function refreshTrace() {
         if (isRefreshing) {
           return;
@@ -506,6 +740,8 @@ def render_replay_index_html() -> str:
         isRefreshing = true;
         try {
           const payload = await fetchSessionPayload();
+          const controlState = await fetchControlState();
+          currentPayload = payload;
           entries = Array.isArray(payload.entries) ? payload.entries : [];
 
           if (entries.length > 0) {
@@ -519,6 +755,8 @@ def render_replay_index_html() -> str:
           }
 
           renderTimelineMeta(payload);
+          renderCommandStatus(payload);
+          renderControlState(controlState);
           renderTimeline();
 
           if (entries.length > 0) {
@@ -530,7 +768,12 @@ def render_replay_index_html() -> str:
           syncPolling(payload);
         } catch (error) {
           stopPolling();
+          currentPayload = null;
+          currentControlState = null;
           timelineMetaElement.textContent = "Failed to load replay payload";
+          commandStatusElement.textContent = "Live control unavailable";
+          pauseStateElement.textContent = "Status: unknown";
+          lastBreakpointHitElement.textContent = "Last breakpoint hit: none";
           renderEmptyDetails(`Unable to load replay payload: ${error}`);
         } finally {
           isRefreshing = false;
@@ -553,6 +796,68 @@ def render_replay_index_html() -> str:
         if (autoFollowElement.checked && entries.length > 0) {
           await selectEntry(entries.length - 1);
         }
+      });
+
+      pauseButton.addEventListener("click", async () => {
+        await sendCommand("pause");
+      });
+
+      resumeButton.addEventListener("click", async () => {
+        await sendCommand("resume");
+      });
+
+      stepButton.addEventListener("click", async () => {
+        await sendCommand("step");
+      });
+
+      addEventBreakpointButton.addEventListener("click", async () => {
+        await addBreakpoint({
+          kind: "event_type",
+          id: nextBreakpointId("bp-event"),
+          enabled: true,
+          event_type: eventTypeBreakpointElement.value,
+        });
+      });
+
+      addNodeBreakpointButton.addEventListener("click", async () => {
+        if (!nodeIdBreakpointElement.value) {
+          commandStatusElement.textContent = "Node breakpoint requires a node id";
+          return;
+        }
+
+        await addBreakpoint({
+          kind: "node_id",
+          id: nextBreakpointId("bp-node"),
+          enabled: true,
+          node_id: nodeIdBreakpointElement.value,
+        });
+      });
+
+      addBackupFlagBreakpointButton.addEventListener("click", async () => {
+        await addBreakpoint({
+          kind: "backup_flag",
+          id: nextBreakpointId("bp-backup"),
+          enabled: true,
+          flag_name: backupFlagBreakpointElement.value,
+        });
+      });
+
+      addIterationBreakpointButton.addEventListener("click", async () => {
+        if (!iterationBreakpointElement.value) {
+          commandStatusElement.textContent = "Iteration breakpoint requires a number";
+          return;
+        }
+
+        await addBreakpoint({
+          kind: "iteration",
+          id: nextBreakpointId("bp-iteration"),
+          enabled: true,
+          iteration_index: Number.parseInt(iterationBreakpointElement.value, 10),
+        });
+      });
+
+      clearBreakpointsButton.addEventListener("click", async () => {
+        await clearBreakpoints();
       });
 
       void refreshTrace();

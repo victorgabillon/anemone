@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from copy import copy
-from dataclasses import dataclass, is_dataclass, replace
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from anemone.debug.events import SearchIterationCompleted, SearchIterationStarted
+from anemone.debug.exploration_clone import clone_exploration
 from anemone.debug.observable.observable_node_selector import ObservableNodeSelector
 from anemone.debug.observable.observable_tree_manager import (
     ObservableAlgorithmNodeTreeManager,
@@ -147,7 +147,7 @@ class ObservableTreeExploration:
             iteration_state=iteration_state,
         )
 
-        observed_exploration = _clone_exploration(
+        observed_exploration = clone_exploration(
             tree_exploration,
             tree_manager=observed_tree_manager,
             node_selector=observed_node_selector,
@@ -158,21 +158,6 @@ class ObservableTreeExploration:
     def explore(self, random_generator: Random) -> Any:
         """Delegate exploration to the wrapped core exploration object."""
         return self._base_exploration.explore(random_generator=random_generator)
-
-
-def _clone_exploration(tree_exploration: Any, **updates: Any) -> Any:
-    """Return a shallow clone of ``tree_exploration`` with updated collaborators.
-
-    This helper is intended for debug observation and assumes collaborator
-    replacement is sufficient for safe delegated execution.
-    """
-    if is_dataclass(tree_exploration) and not isinstance(tree_exploration, type):
-        return replace(tree_exploration, **updates)
-
-    cloned_exploration = copy(tree_exploration)
-    for attribute_name, value in updates.items():
-        setattr(cloned_exploration, attribute_name, value)
-    return cloned_exploration
 
 
 def _ensure_observable_tree_manager(base: Any, *, debug_sink: SearchDebugSink) -> Any:

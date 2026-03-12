@@ -19,6 +19,7 @@ from .sink import SearchDebugSink
 
 if TYPE_CHECKING:
     from .events import SearchDebugEvent
+    from .live_control import DebugSessionController
 
 _DEFAULT_SNAPSHOT_DIRECTORY = "snapshots"
 
@@ -42,6 +43,7 @@ class LiveDebugSessionRecorder(SearchDebugSink):
         snapshot_policy: SnapshotPolicy | None = None,
         snapshot_format: str = "svg",
         html_template: str | None = None,
+        controller: DebugSessionController | None = None,
     ) -> None:
         """Initialize a live session bundle rooted at ``directory``."""
         self._directory = Path(directory)
@@ -50,6 +52,7 @@ class LiveDebugSessionRecorder(SearchDebugSink):
         self._snapshot_policy = snapshot_policy
         self._snapshot_format = snapshot_format
         self._html_template = html_template
+        self._controller = controller
         self._entries: list[DebugTimelineEntry] = []
         self._is_complete = False
 
@@ -76,6 +79,8 @@ class LiveDebugSessionRecorder(SearchDebugSink):
             self._export_snapshot(entry)
 
         self.write_session_json()
+        if self._controller is not None:
+            self._controller.handle_event(event)
 
     def finalize(self) -> None:
         """Mark the live session as complete and rewrite the session payload."""

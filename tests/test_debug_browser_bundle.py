@@ -128,7 +128,14 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
 
     assert 'fetch("session.json"' in html
     assert 'fetch("trace.json"' in html
+    assert 'fetch("control_state.json"' in html
+    assert 'fetch("/command"' in html
+    assert 'fetch("/breakpoints"' in html
     assert 'id="timeline"' in html
     assert 'id="entry-summary"' in html
     assert 'id="snapshot-view"' in html
+    assert "Pause" in html
+    assert "Resume" in html
+    assert "Step" in html
+    assert "Clear Breakpoints" in html
     assert "nearestSnapshotAtOrBefore" in html
