@@ -1,7 +1,16 @@
-"""Utilities for capturing and rendering debug views of search trees."""
+"""Public entrypoints for Anemone's live and replayable debug GUI.
+
+The recommended way to run the browser debugger around a real exploration is
+``build_live_debug_environment(...)``. Use ``serve_live_debug_session(...)`` to
+view an on-disk live session while search is running, or ``serve_replay_bundle``
+/ ``export_and_serve_trace(...)`` for offline replay workflows.
+"""
 
 # pylint: disable=duplicate-code
+# ruff: noqa: RUF022
 
+# Primary public entrypoints
+# Advanced live control surface
 from .breakpoints import (
     BackupFlagBreakpoint,
     DebugBreakpoint,
@@ -20,8 +29,12 @@ from .browser import (
     serve_live_debug_session,
     serve_replay_bundle,
 )
+
+# Low-level debugging primitives
 from .dot_renderer import DotRenderer
 from .evaluation_inspectors import EvaluationDebugInspectorResolver
+
+# Browser-visible event model
 from .events import (
     BackupFinished,
     BackupStarted,
@@ -64,6 +77,8 @@ from .observable import (
     snapshot_children,
     summarize_node_evaluation,
 )
+
+# Replay and trace helpers
 from .persistence import load_debug_trace, save_debug_trace
 from .recording import (
     DebugTimelineEntry,
@@ -88,76 +103,81 @@ from .snapshot_serialization import (
 )
 
 __all__ = [
-    "BackupFinished",
-    "BackupFlagBreakpoint",
-    "BackupStarted",
-    "ChildLinked",
-    "ControlledTreeExploration",
-    "DebugBreakpoint",
-    "DebugCommand",
-    "DebugEdgeView",
-    "DebugNodeView",
-    "DebugSessionController",
+    # Primary public entrypoints
+    "LiveDebugEnvironment",
+    "build_live_debug_environment",
+    "serve_live_debug_session",
+    "serve_replay_bundle",
+    "export_and_serve_trace",
+    # Replay and export helpers
     "DebugTimelineEntry",
     "DebugTimelineRecorder",
     "DebugTrace",
-    "DebugTreeSnapshot",
-    "DirectValueAssigned",
-    "DotRenderer",
-    "EvaluationDebugInspectorResolver",
+    "TraceReplayView",
+    "build_replay_entry_payload",
+    "build_replay_payload",
+    "export_replay_bundle",
+    "format_debug_event",
+    "load_debug_trace",
+    "make_tree_snapshot_provider",
+    "save_debug_trace",
+    "write_replay_payload",
+    # Advanced live control surface
+    "BackupFlagBreakpoint",
+    "ControlledTreeExploration",
+    "DebugBreakpoint",
+    "DebugCommand",
+    "DebugSessionController",
     "EventTypeBreakpoint",
     "IterationBreakpoint",
-    "LiveDebugEnvironment",
     "LiveDebugSessionRecorder",
-    "NodeDebugLabelBuilder",
-    "NodeEvaluationSummary",
     "NodeIdBreakpoint",
-    "NodeOpeningPlanned",
-    "NodeSelected",
-    "NullSearchDebugSink",
-    "ObservableAlgorithmNodeTreeManager",
-    "ObservableDirectEvaluator",
-    "ObservableNodeSelector",
-    "ObservableTreeExploration",
-    "ObservableUpdater",
-    "SearchDebugEvent",
-    "SearchDebugSink",
-    "SearchIterationCompleted",
-    "SearchIterationStarted",
-    "TraceReplayView",
-    "TreeSnapshotAdapter",
     "any_breakpoint_matches",
     "breakpoint_from_json",
     "breakpoint_matches",
     "breakpoint_to_json",
     "breakpoints_from_json",
     "breakpoints_to_json",
-    "build_live_debug_environment",
-    "build_replay_entry_payload",
-    "build_replay_payload",
+    "write_debug_command",
+    # Browser-visible event model
+    "BackupFinished",
+    "BackupStarted",
+    "ChildLinked",
+    "DirectValueAssigned",
+    "NodeOpeningPlanned",
+    "NodeSelected",
+    "SearchDebugEvent",
+    "SearchIterationCompleted",
+    "SearchIterationStarted",
+    # Low-level debugging primitives
+    "DebugEdgeView",
+    "DebugNodeView",
+    "DebugTreeSnapshot",
+    "DotRenderer",
+    "EvaluationDebugInspectorResolver",
+    "NodeDebugLabelBuilder",
+    "NodeEvaluationSummary",
+    "NullSearchDebugSink",
+    "ObservableAlgorithmNodeTreeManager",
+    "ObservableDirectEvaluator",
+    "ObservableNodeSelector",
+    "ObservableTreeExploration",
+    "ObservableUpdater",
+    "SearchDebugSink",
+    "TreeSnapshotAdapter",
     "diff_new_children",
-    "export_and_serve_trace",
-    "export_replay_bundle",
     "export_snapshot_dot",
     "export_snapshot_entry",
     "export_snapshot_json",
     "export_snapshot_render",
     "export_trace_snapshots",
     "export_trace_summary",
-    "format_debug_event",
-    "load_debug_trace",
     "load_snapshot_json",
-    "make_tree_snapshot_provider",
     "render_replay_index_html",
     "render_snapshot",
-    "save_debug_trace",
-    "serve_live_debug_session",
-    "serve_replay_bundle",
     "snapshot_children",
     "snapshot_from_json",
     "snapshot_to_json",
     "summarize_node_evaluation",
-    "write_debug_command",
-    "write_replay_payload",
     "write_snapshot_json",
 ]

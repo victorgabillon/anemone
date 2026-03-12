@@ -1,4 +1,9 @@
-"""Replay bundle helpers for exporting browser-viewable debug traces."""
+"""Replay bundle helpers for exporting browser-viewable debug traces.
+
+A replay bundle is the static directory form of an already recorded trace. It
+differs from a live session, whose JSON payload remains mutable while search is
+running.
+"""
 
 from __future__ import annotations
 

@@ -1,8 +1,13 @@
-"""Reference helpers for running a live Anemone debug session.
+"""Canonical example for running a live Anemone debug session.
 
-This example keeps the application-specific exploration construction outside of
-the debug package. Pass an already-built exploration object plus a random
-generator, and the helper wires the browser session around it.
+This example keeps application-specific exploration construction outside of the
+debug package. Pass an already-built exploration object plus a random
+generator, and this module demonstrates the recommended public API:
+
+* ``build_live_debug_environment(...)``
+* ``env.controlled_exploration.explore(...)``
+* ``env.finalize()``
+* ``serve_live_debug_session(...)``
 """
 
 from __future__ import annotations
@@ -19,7 +24,8 @@ if TYPE_CHECKING:
 _MODULE_USAGE_MESSAGE = (
     "Import run_live_debug_session(...) into a project-specific script that "
     "constructs a real tree exploration object, then call "
-    "serve_debug_session(...) to view the live session."
+    "print_serving_instructions(...) or serve_debug_session(...) to view the "
+    "live session."
 )
 
 
@@ -29,7 +35,7 @@ def run_live_debug_session(
     session_directory: str | Path,
     random_generator: Random,
 ) -> Any:
-    """Run ``tree_exploration`` inside the standard live debug environment."""
+    """Run ``tree_exploration`` inside the supported live debug environment."""
     debug_environment = build_live_debug_environment(
         tree_exploration=tree_exploration,
         session_directory=session_directory,
@@ -40,6 +46,18 @@ def run_live_debug_session(
         )
     finally:
         debug_environment.finalize()
+
+
+def print_serving_instructions(
+    session_directory: str | Path,
+    *,
+    port: int = 8000,
+) -> None:
+    """Print the recommended command for serving the finished live session."""
+    print(
+        "Serve the live debug session with "
+        f"serve_live_debug_session({session_directory!r}, port={port})."
+    )
 
 
 def serve_debug_session(session_directory: str | Path, *, port: int = 8000) -> None:

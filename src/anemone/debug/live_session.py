@@ -1,4 +1,9 @@
-"""Incremental live-session recording helpers for browser debug viewing."""
+"""Incremental live session recording helpers for browser debug viewing.
+
+A live session is the on-disk state written while exploration is running. It is
+distinct from an offline replay bundle: the session JSON stays mutable until
+``finalize()`` marks the run complete.
+"""
 
 # pylint: disable=duplicate-code
 from __future__ import annotations
@@ -93,7 +98,12 @@ class LiveDebugSessionRecorder(SearchDebugSink):
         self.write_session_json()
 
     def finalize(self) -> None:
-        """Mark the live session as complete and rewrite the session payload."""
+        """Mark the live session as complete and rewrite the session payload.
+
+        Browser viewers can follow the session while it is still incomplete.
+        Finalization only flips the explicit completion marker written to
+        ``session.json``.
+        """
         self._is_complete = True
         self.write_session_json()
 

@@ -173,7 +173,11 @@ def serve_replay_bundle(
     host: str = "127.0.0.1",
     port: int = 8000,
 ) -> None:
-    """Serve a replay bundle over HTTP until interrupted."""
+    """Serve a finalized replay bundle over HTTP until interrupted.
+
+    A replay bundle is a static browser-viewable directory exported from a
+    completed trace.
+    """
     bundle_dir = Path(directory).resolve()
     if not bundle_dir.is_dir():
         raise FileNotFoundError(str(bundle_dir))
@@ -193,7 +197,11 @@ def serve_live_debug_session(
     host: str = "127.0.0.1",
     port: int = 8000,
 ) -> None:
-    """Serve a live debug session directory over HTTP until interrupted."""
+    """Serve a live session directory over HTTP until interrupted.
+
+    A live session may be viewed while exploration is still running or after it
+    has been finalized.
+    """
     bundle_dir = Path(directory).resolve()
     if not bundle_dir.is_dir():
         raise FileNotFoundError(str(bundle_dir))

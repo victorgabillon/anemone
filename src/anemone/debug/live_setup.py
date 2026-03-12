@@ -27,10 +27,11 @@ from .recording import SnapshotPolicy, make_tree_snapshot_provider
 class LiveDebugEnvironment:
     """Group the controller, recorder, and wrapped exploration for one session.
 
-    The recorder writes session files incrementally while exploration runs.
-    Calling :meth:`finalize` marks the session complete for the live browser
-    viewer. If a process exits before finalization, the session remains usable
-    but stays marked as incomplete.
+    The recorder writes live session files incrementally while exploration runs.
+    Calling :meth:`finalize` marks the session complete for the browser viewer.
+    Live serving can happen during the run or after it completes. If a process
+    exits before finalization, the session remains usable but stays marked as
+    incomplete.
     """
 
     controlled_exploration: Any
@@ -39,7 +40,7 @@ class LiveDebugEnvironment:
     session_directory: Path
 
     def finalize(self) -> None:
-        """Mark the live debug session complete."""
+        """Mark the live session complete for the browser viewer."""
         self.recorder.finalize()
 
 
@@ -59,6 +60,10 @@ def build_live_debug_environment(
     3. ``LiveDebugSessionRecorder`` using that provider and controller
     4. ``ControlledTreeExploration`` with debug event emission routed to the
        recorder
+
+    The returned environment is the supported public entrypoint for live
+    debugging. Call ``controlled_exploration.explore(...)`` to run the search,
+    and ``finalize()`` once the run is finished.
     """
     resolved_session_directory = Path(session_directory)
     resolved_session_directory.mkdir(parents=True, exist_ok=True)
