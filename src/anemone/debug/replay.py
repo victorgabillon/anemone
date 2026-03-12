@@ -24,32 +24,48 @@ if TYPE_CHECKING:
 
 def format_debug_event(event: SearchDebugEvent) -> str:
     """Return a compact developer-facing summary line for one debug event."""
-    if isinstance(event, SearchIterationStarted):
-        return f"iteration {event.iteration_index} started"
-    if isinstance(event, SearchIterationCompleted):
-        return f"iteration {event.iteration_index} completed"
-    if isinstance(event, NodeSelected):
-        return f"node {event.node_id} selected"
-    if isinstance(event, NodeOpeningPlanned):
-        return f"node {event.node_id} opening planned ({event.branch_count} branches)"
-    if isinstance(event, ChildLinked):
-        already = " (already present)" if event.was_already_present else ""
-        return f"linked {event.parent_id} --{event.branch_key}--> {event.child_id}{already}"
-    if isinstance(event, DirectValueAssigned):
-        return f"node {event.node_id} direct value = {event.value_repr}"
-    if isinstance(event, BackupStarted):
-        return f"node {event.node_id} backup started"
-    if isinstance(event, BackupFinished):
-        return (
-            f"node {event.node_id} backup finished "
-            "("
-            f"value_changed={event.value_changed}, "
-            f"pv_changed={event.pv_changed}, "
-            f"over_changed={event.over_changed}"
-            ")"
-        )
+    return _format_debug_event_object(event)
 
-    return event.__class__.__name__
+
+def _format_debug_event_object(event: object) -> str:
+    """Return a readable debug summary for known events or a class-name fallback."""
+    match event:
+        case SearchIterationStarted(iteration_index=iteration_index):
+            return f"iteration {iteration_index} started"
+        case SearchIterationCompleted(iteration_index=iteration_index):
+            return f"iteration {iteration_index} completed"
+        case NodeSelected(node_id=node_id):
+            return f"node {node_id} selected"
+        case NodeOpeningPlanned(node_id=node_id, branch_count=branch_count):
+            return f"node {node_id} opening planned ({branch_count} branches)"
+        case ChildLinked(
+            parent_id=parent_id,
+            child_id=child_id,
+            branch_key=branch_key,
+            was_already_present=was_already_present,
+        ):
+            already = " (already present)" if was_already_present else ""
+            return f"linked {parent_id} --{branch_key}--> {child_id}{already}"
+        case DirectValueAssigned(node_id=node_id, value_repr=value_repr):
+            return f"node {node_id} direct value = {value_repr}"
+        case BackupStarted(node_id=node_id):
+            return f"node {node_id} backup started"
+        case BackupFinished(
+            node_id=node_id,
+            value_changed=value_changed,
+            pv_changed=pv_changed,
+            over_changed=over_changed,
+        ):
+            return (
+                f"node {node_id} backup finished "
+                "("
+                f"value_changed={value_changed}, "
+                f"pv_changed={pv_changed}, "
+                f"over_changed={over_changed}"
+                ")"
+            )
+        case _:
+            return event.__class__.__name__
 
 
 @dataclass(frozen=True)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from .dot_renderer import DotRenderer
 from .replay import format_debug_event
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from graphviz import Digraph
 
     from .model import DebugTreeSnapshot
-    from .recording import DebugTrace
+    from .recording import DebugTimelineEntry, DebugTrace
 
 
 _EVENT_NAME_SANITIZER = re.compile(r"[^0-9A-Za-z_]+")
@@ -51,11 +51,15 @@ def export_snapshot_render(
     target.parent.mkdir(parents=True, exist_ok=True)
 
     graph = render_snapshot(snapshot, format_str=format_str)
-    rendered_path = graph.render(
-        filename=target.stem,
-        directory=str(target.parent),
-        cleanup=True,
-        format=format_str,
+    graph_as_any = cast(Any, graph)  # noqa: TC006
+    rendered_path = cast(
+        "str",
+        graph_as_any.render(
+            filename=target.stem,
+            directory=str(target.parent),
+            cleanup=True,
+            format=format_str,
+        ),
     )
     return Path(rendered_path)
 
@@ -88,9 +92,7 @@ def export_trace_snapshots(
         if entry.snapshot is None:
             continue
 
-        event_name = _safe_event_name(entry.event.__class__.__name__)
-        extension = "dot" if format_str.lower() == "dot" else format_str
-        output_path = output_dir / f"{entry.index:04d}_{event_name}.{extension}"
+        output_path = output_dir / trace_snapshot_filename(entry, format_str=format_str)
         exported.append(
             export_snapshot_entry(entry.snapshot, output_path, format_str=format_str)
         )
@@ -116,6 +118,22 @@ def _safe_event_name(event_name: str) -> str:
     return sanitized or "event"
 
 
+def _snapshot_extension(format_str: str) -> str:
+    """Return the normalized output extension for ``format_str``."""
+    return "dot" if format_str.lower() == "dot" else format_str
+
+
+def trace_snapshot_filename(
+    entry: DebugTimelineEntry,
+    *,
+    format_str: str = "svg",
+) -> str:
+    """Return the deterministic snapshot filename for one trace entry."""
+    event_name = _safe_event_name(entry.event.__class__.__name__)
+    extension = _snapshot_extension(format_str)
+    return f"{entry.index:04d}_{event_name}.{extension}"
+
+
 __all__ = [
     "export_snapshot_dot",
     "export_snapshot_entry",
@@ -123,4 +141,5 @@ __all__ = [
     "export_trace_snapshots",
     "export_trace_summary",
     "render_snapshot",
+    "trace_snapshot_filename",
 ]

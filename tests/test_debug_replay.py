@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from anemone.debug import (
     BackupFinished,
     ChildLinked,
@@ -14,6 +16,7 @@ from anemone.debug import (
     DirectValueAssigned,
     NodeOpeningPlanned,
     NodeSelected,
+    SearchDebugEvent,
     SearchIterationStarted,
     TraceReplayView,
     format_debug_event,
@@ -123,3 +126,13 @@ def test_format_debug_event_produces_readable_lines() -> None:
     )
     assert "backup finished" in backup
     assert "value_changed=True" in backup
+
+
+def test_format_debug_event_falls_back_to_class_name_for_unexpected_events() -> None:
+    class UnexpectedEvent:
+        pass
+
+    assert (
+        format_debug_event(cast("SearchDebugEvent", UnexpectedEvent()))
+        == "UnexpectedEvent"
+    )
