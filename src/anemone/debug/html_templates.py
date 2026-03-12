@@ -238,15 +238,49 @@ def render_replay_index_html() -> str:
         cursor: pointer;
       }
 
+      .snapshot-stage svg g.node.is-root-path ellipse,
+      .snapshot-stage svg g.node.is-root-path polygon,
+      .snapshot-stage svg g.node.is-root-path path,
+      .snapshot-stage svg g.edge.is-root-path path,
+      .snapshot-stage svg g.edge.is-root-path polygon {
+        stroke: #204a40;
+        stroke-width: 2.4px;
+      }
+
+      .snapshot-stage svg g.node.is-neighborhood ellipse,
+      .snapshot-stage svg g.node.is-neighborhood polygon,
+      .snapshot-stage svg g.node.is-neighborhood path,
+      .snapshot-stage svg g.edge.is-neighborhood path,
+      .snapshot-stage svg g.edge.is-neighborhood polygon {
+        stroke: #2d6f9b;
+        stroke-width: 2.2px;
+      }
+
+      .snapshot-stage svg g.node.is-pv-path ellipse,
+      .snapshot-stage svg g.node.is-pv-path polygon,
+      .snapshot-stage svg g.node.is-pv-path path,
+      .snapshot-stage svg g.edge.is-pv-path path,
+      .snapshot-stage svg g.edge.is-pv-path polygon {
+        stroke: #b8860b;
+        stroke-width: 2.6px;
+      }
+
+      .snapshot-stage svg g.node.is-dimmed,
+      .snapshot-stage svg g.edge.is-dimmed {
+        opacity: 0.22;
+      }
+
       .snapshot-stage svg g.node.is-selected ellipse,
       .snapshot-stage svg g.node.is-selected polygon,
       .snapshot-stage svg g.node.is-selected path {
         stroke: #a53f1a;
         stroke-width: 3px;
+        opacity: 1;
       }
 
       .snapshot-stage svg g.node.is-selected text {
         font-weight: 700;
+        opacity: 1;
       }
 
       .snapshot-stage pre {
@@ -425,6 +459,24 @@ def render_replay_index_html() -> str:
             <h2 class="heading">Nearest Snapshot</h2>
             <p class="snapshot-note" id="snapshot-status">No snapshot loaded</p>
           </div>
+          <div class="controls">
+            <label class="checkbox-control" for="highlight-root-path">
+              <input id="highlight-root-path" type="checkbox" checked>
+              <span>Highlight root path</span>
+            </label>
+            <label class="checkbox-control" for="highlight-neighborhood">
+              <input id="highlight-neighborhood" type="checkbox" checked>
+              <span>Highlight selected neighborhood</span>
+            </label>
+            <label class="checkbox-control" for="highlight-pv-path">
+              <input id="highlight-pv-path" type="checkbox">
+              <span>Highlight PV path</span>
+            </label>
+            <label class="checkbox-control" for="dim-unrelated-graph">
+              <input id="dim-unrelated-graph" type="checkbox">
+              <span>Dim unrelated graph</span>
+            </label>
+          </div>
           <div class="snapshot-card">
             <div class="snapshot-stage" id="snapshot-view">
               <div class="empty">No snapshot available yet</div>
@@ -584,6 +636,10 @@ def render_replay_index_html() -> str:
       const entrySummaryElement = document.getElementById("entry-summary");
       const snapshotStatusElement = document.getElementById("snapshot-status");
       const snapshotViewElement = document.getElementById("snapshot-view");
+      const highlightRootPathElement = document.getElementById("highlight-root-path");
+      const highlightNeighborhoodElement = document.getElementById("highlight-neighborhood");
+      const highlightPvPathElement = document.getElementById("highlight-pv-path");
+      const dimUnrelatedGraphElement = document.getElementById("dim-unrelated-graph");
       const nodeSelectionStatusElement = document.getElementById("node-selection-status");
       const nodeListElement = document.getElementById("node-list");
       const nodeDetailsElement = document.getElementById("node-details");
@@ -611,11 +667,21 @@ def render_replay_index_html() -> str:
       let currentSnapshotMetadata = null;
       let currentSnapshotMetadataFile = null;
       let currentGraphNodeMap = new Map();
+      let currentGraphEdgeMap = new Map();
       let selectedNodeId = null;
       let breakpointSequence = 0;
       let searchQuery = "";
       let selectedEventTypeFilter = "all";
       let timelineStatusMessage = "";
+      let highlightRootPath = true;
+      let highlightNeighborhood = true;
+      let highlightPvPath = false;
+      let dimUnrelatedGraph = false;
+
+      highlightRootPath = highlightRootPathElement.checked;
+      highlightNeighborhood = highlightNeighborhoodElement.checked;
+      highlightPvPath = highlightPvPathElement.checked;
+      dimUnrelatedGraph = dimUnrelatedGraphElement.checked;
 
       function formatIndex(index) {
         return String(index).padStart(4, "0");
@@ -746,6 +812,268 @@ def render_replay_index_html() -> str:
         return findNodeById(snapshotMetadata, nodeId) !== null;
       }
 
+      function findParentIds(snapshotMetadata, nodeId) {
+        const node = findNodeById(snapshotMetadata, nodeId);
+        if (!node || !Array.isArray(node.parent_ids)) {
+          return [];
+        }
+        return node.parent_ids;
+      }
+
+      function findChildIds(snapshotMetadata, nodeId) {
+        const node = findNodeById(snapshotMetadata, nodeId);
+        if (node && Array.isArray(node.child_ids)) {
+          return node.child_ids;
+        }
+        return findOutgoingEdges(snapshotMetadata, nodeId).map((edge) => edge.child_id);
+      }
+
+      function edgeKey(parentId, childId) {
+        return `${parentId}->${childId}`;
+      }
+
+      function findEdge(snapshotMetadata, parentId, childId) {
+        if (!snapshotMetadata || !Array.isArray(snapshotMetadata.edges)) {
+          return null;
+        }
+        return snapshotMetadata.edges.find((edge) => (
+          edge.parent_id === parentId && edge.child_id === childId
+        )) || null;
+      }
+
+      function computeRootPathNodeIds(snapshotMetadata, nodeId) {
+        if (!snapshotMetadata || !nodeId || !nodeExists(snapshotMetadata, nodeId)) {
+          return new Set();
+        }
+
+        const pathNodeIds = [];
+        const seenNodeIds = new Set();
+        let currentNodeId = nodeId;
+        while (currentNodeId && !seenNodeIds.has(currentNodeId)) {
+          pathNodeIds.push(currentNodeId);
+          seenNodeIds.add(currentNodeId);
+          const parentIds = findParentIds(snapshotMetadata, currentNodeId);
+          currentNodeId = parentIds.length > 0 ? parentIds[0] : null;
+        }
+        pathNodeIds.reverse();
+        return new Set(pathNodeIds);
+      }
+
+      function computeRootPathEdgeKeys(snapshotMetadata, nodeId) {
+        if (!snapshotMetadata || !nodeId || !nodeExists(snapshotMetadata, nodeId)) {
+          return new Set();
+        }
+
+        const pathEdgeKeys = [];
+        const seenNodeIds = new Set();
+        let currentNodeId = nodeId;
+        while (currentNodeId && !seenNodeIds.has(currentNodeId)) {
+          seenNodeIds.add(currentNodeId);
+          const parentIds = findParentIds(snapshotMetadata, currentNodeId);
+          if (parentIds.length === 0) {
+            break;
+          }
+          const parentId = parentIds[0];
+          if (findEdge(snapshotMetadata, parentId, currentNodeId)) {
+            pathEdgeKeys.push(edgeKey(parentId, currentNodeId));
+          }
+          currentNodeId = parentId;
+        }
+        pathEdgeKeys.reverse();
+        return new Set(pathEdgeKeys);
+      }
+
+      function computeNeighborhoodNodeIds(snapshotMetadata, nodeId) {
+        if (!snapshotMetadata || !nodeId || !nodeExists(snapshotMetadata, nodeId)) {
+          return new Set();
+        }
+
+        const neighborhoodNodeIds = new Set([nodeId]);
+        findParentIds(snapshotMetadata, nodeId).forEach((parentId) => {
+          neighborhoodNodeIds.add(parentId);
+        });
+        findChildIds(snapshotMetadata, nodeId).forEach((childId) => {
+          neighborhoodNodeIds.add(childId);
+        });
+        return neighborhoodNodeIds;
+      }
+
+      function computeNeighborhoodEdgeKeys(snapshotMetadata, nodeId) {
+        if (!snapshotMetadata || !nodeId || !nodeExists(snapshotMetadata, nodeId)) {
+          return new Set();
+        }
+
+        const neighborhoodEdgeKeys = new Set();
+        findParentIds(snapshotMetadata, nodeId).forEach((parentId) => {
+          if (findEdge(snapshotMetadata, parentId, nodeId)) {
+            neighborhoodEdgeKeys.add(edgeKey(parentId, nodeId));
+          }
+        });
+        findChildIds(snapshotMetadata, nodeId).forEach((childId) => {
+          if (findEdge(snapshotMetadata, nodeId, childId)) {
+            neighborhoodEdgeKeys.add(edgeKey(nodeId, childId));
+          }
+        });
+        return neighborhoodEdgeKeys;
+      }
+
+      function findChildByBranchLabel(snapshotMetadata, nodeId, branchLabel) {
+        const node = findNodeById(snapshotMetadata, nodeId);
+        if (!node) {
+          return null;
+        }
+
+        const childIds = Array.isArray(node.child_ids) ? node.child_ids : [];
+        const edgeLabelsByChild = node.edge_labels_by_child && typeof node.edge_labels_by_child === "object"
+          ? node.edge_labels_by_child
+          : {};
+        const matchingChildId = childIds.find((childId) => (
+          edgeLabelsByChild[childId] === branchLabel
+        ));
+        if (matchingChildId) {
+          return matchingChildId;
+        }
+
+        const matchingEdge = findOutgoingEdges(snapshotMetadata, nodeId).find((edge) => (
+          edge.label === branchLabel
+        ));
+        return matchingEdge ? matchingEdge.child_id : null;
+      }
+
+      function computePrincipalVariationNodeIds(snapshotMetadata) {
+        if (!snapshotMetadata || !snapshotMetadata.root_id) {
+          return new Set();
+        }
+
+        const rootNode = findNodeById(snapshotMetadata, snapshotMetadata.root_id);
+        if (!rootNode || typeof rootNode.principal_variation !== "string") {
+          return new Set();
+        }
+
+        const branchTokens = rootNode.principal_variation
+          .split("->")
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0);
+        if (branchTokens.length === 0) {
+          return new Set();
+        }
+
+        const pvNodeIds = [rootNode.node_id];
+        let currentNodeId = rootNode.node_id;
+        for (const branchToken of branchTokens) {
+          const nextChildId = findChildByBranchLabel(
+            snapshotMetadata,
+            currentNodeId,
+            branchToken,
+          );
+          if (!nextChildId) {
+            break;
+          }
+          pvNodeIds.push(nextChildId);
+          currentNodeId = nextChildId;
+        }
+        return new Set(pvNodeIds);
+      }
+
+      function computePrincipalVariationEdgeKeys(snapshotMetadata) {
+        if (!snapshotMetadata || !snapshotMetadata.root_id) {
+          return new Set();
+        }
+
+        const rootNode = findNodeById(snapshotMetadata, snapshotMetadata.root_id);
+        if (!rootNode || typeof rootNode.principal_variation !== "string") {
+          return new Set();
+        }
+
+        const branchTokens = rootNode.principal_variation
+          .split("->")
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0);
+        if (branchTokens.length === 0) {
+          return new Set();
+        }
+
+        const pvEdgeKeys = new Set();
+        let currentNodeId = rootNode.node_id;
+        for (const branchToken of branchTokens) {
+          const nextChildId = findChildByBranchLabel(
+            snapshotMetadata,
+            currentNodeId,
+            branchToken,
+          );
+          if (!nextChildId) {
+            break;
+          }
+          if (findEdge(snapshotMetadata, currentNodeId, nextChildId)) {
+            pvEdgeKeys.add(edgeKey(currentNodeId, nextChildId));
+          }
+          currentNodeId = nextChildId;
+        }
+        return pvEdgeKeys;
+      }
+
+      function computeGraphFocusState() {
+        const highlightedNodeIds = new Set();
+        const highlightedEdgeKeys = new Set();
+        const rootPathNodeIds = highlightRootPath
+          ? computeRootPathNodeIds(currentSnapshotMetadata, selectedNodeId)
+          : new Set();
+        const rootPathEdgeKeys = highlightRootPath
+          ? computeRootPathEdgeKeys(currentSnapshotMetadata, selectedNodeId)
+          : new Set();
+        const neighborhoodNodeIds = highlightNeighborhood
+          ? computeNeighborhoodNodeIds(currentSnapshotMetadata, selectedNodeId)
+          : new Set();
+        const neighborhoodEdgeKeys = highlightNeighborhood
+          ? computeNeighborhoodEdgeKeys(currentSnapshotMetadata, selectedNodeId)
+          : new Set();
+        const pvNodeIds = highlightPvPath
+          ? computePrincipalVariationNodeIds(currentSnapshotMetadata)
+          : new Set();
+        const pvEdgeKeys = highlightPvPath
+          ? computePrincipalVariationEdgeKeys(currentSnapshotMetadata)
+          : new Set();
+
+        rootPathNodeIds.forEach((nodeId) => highlightedNodeIds.add(nodeId));
+        neighborhoodNodeIds.forEach((nodeId) => highlightedNodeIds.add(nodeId));
+        pvNodeIds.forEach((nodeId) => highlightedNodeIds.add(nodeId));
+        rootPathEdgeKeys.forEach((key) => highlightedEdgeKeys.add(key));
+        neighborhoodEdgeKeys.forEach((key) => highlightedEdgeKeys.add(key));
+        pvEdgeKeys.forEach((key) => highlightedEdgeKeys.add(key));
+        if (selectedNodeId) {
+          highlightedNodeIds.add(selectedNodeId);
+        }
+
+        const dimmedNodeIds = new Set();
+        const dimmedEdgeKeys = new Set();
+        const hasFocus = highlightedNodeIds.size > 0 || highlightedEdgeKeys.size > 0;
+        if (dimUnrelatedGraph && hasFocus && currentSnapshotMetadata) {
+          currentGraphNodeMap.forEach((_, nodeId) => {
+            if (!highlightedNodeIds.has(nodeId)) {
+              dimmedNodeIds.add(nodeId);
+            }
+          });
+          currentGraphEdgeMap.forEach((_, key) => {
+            if (!highlightedEdgeKeys.has(key)) {
+              dimmedEdgeKeys.add(key);
+            }
+          });
+        }
+
+        return {
+          highlightedNodeIds,
+          highlightedEdgeKeys,
+          rootPathNodeIds,
+          rootPathEdgeKeys,
+          neighborhoodNodeIds,
+          neighborhoodEdgeKeys,
+          pvNodeIds,
+          pvEdgeKeys,
+          dimmedNodeIds,
+          dimmedEdgeKeys,
+        };
+      }
+
       function extractNodeIdFromGraphvizGroup(nodeGroup) {
         const titleElement = Array.from(nodeGroup.children).find(
           (child) => child.tagName && child.tagName.toLowerCase() === "title"
@@ -764,6 +1092,31 @@ def render_replay_index_html() -> str:
         return candidateNodeId;
       }
 
+      function extractEdgeKeyFromGraphvizGroup(edgeGroup) {
+        const titleElement = Array.from(edgeGroup.children).find(
+          (child) => child.tagName && child.tagName.toLowerCase() === "title"
+        ) || edgeGroup.querySelector("title");
+        if (!titleElement || !titleElement.textContent) {
+          return null;
+        }
+
+        const candidateEdgeText = titleElement.textContent.trim();
+        const arrowIndex = candidateEdgeText.indexOf("->");
+        if (arrowIndex <= 0) {
+          return null;
+        }
+
+        const parentId = candidateEdgeText.slice(0, arrowIndex).trim();
+        const childId = candidateEdgeText.slice(arrowIndex + 2).trim();
+        if (!parentId || !childId) {
+          return null;
+        }
+        if (!findEdge(currentSnapshotMetadata, parentId, childId)) {
+          return null;
+        }
+        return edgeKey(parentId, childId);
+      }
+
       function renderGraphSelection() {
         currentGraphNodeMap.forEach((nodeGroup) => {
           nodeGroup.classList.remove("is-selected");
@@ -776,6 +1129,67 @@ def render_replay_index_html() -> str:
         currentGraphNodeMap.get(selectedNodeId).classList.add("is-selected");
       }
 
+      function renderGraphFocus() {
+        currentGraphNodeMap.forEach((nodeGroup) => {
+          nodeGroup.classList.remove(
+            "is-root-path",
+            "is-neighborhood",
+            "is-pv-path",
+            "is-dimmed",
+          );
+        });
+        currentGraphEdgeMap.forEach((edgeGroup) => {
+          edgeGroup.classList.remove(
+            "is-root-path",
+            "is-neighborhood",
+            "is-pv-path",
+            "is-dimmed",
+          );
+        });
+
+        const focusState = computeGraphFocusState();
+        focusState.rootPathNodeIds.forEach((nodeId) => {
+          if (currentGraphNodeMap.has(nodeId)) {
+            currentGraphNodeMap.get(nodeId).classList.add("is-root-path");
+          }
+        });
+        focusState.rootPathEdgeKeys.forEach((key) => {
+          if (currentGraphEdgeMap.has(key)) {
+            currentGraphEdgeMap.get(key).classList.add("is-root-path");
+          }
+        });
+        focusState.neighborhoodNodeIds.forEach((nodeId) => {
+          if (currentGraphNodeMap.has(nodeId)) {
+            currentGraphNodeMap.get(nodeId).classList.add("is-neighborhood");
+          }
+        });
+        focusState.neighborhoodEdgeKeys.forEach((key) => {
+          if (currentGraphEdgeMap.has(key)) {
+            currentGraphEdgeMap.get(key).classList.add("is-neighborhood");
+          }
+        });
+        focusState.pvNodeIds.forEach((nodeId) => {
+          if (currentGraphNodeMap.has(nodeId)) {
+            currentGraphNodeMap.get(nodeId).classList.add("is-pv-path");
+          }
+        });
+        focusState.pvEdgeKeys.forEach((key) => {
+          if (currentGraphEdgeMap.has(key)) {
+            currentGraphEdgeMap.get(key).classList.add("is-pv-path");
+          }
+        });
+        focusState.dimmedNodeIds.forEach((nodeId) => {
+          if (currentGraphNodeMap.has(nodeId)) {
+            currentGraphNodeMap.get(nodeId).classList.add("is-dimmed");
+          }
+        });
+        focusState.dimmedEdgeKeys.forEach((key) => {
+          if (currentGraphEdgeMap.has(key)) {
+            currentGraphEdgeMap.get(key).classList.add("is-dimmed");
+          }
+        });
+      }
+
       function selectNode(nodeId) {
         if (!nodeExists(currentSnapshotMetadata, nodeId)) {
           return;
@@ -784,11 +1198,13 @@ def render_replay_index_html() -> str:
         renderNodeList();
         renderNodeDetails();
         renderGraphSelection();
+        renderGraphFocus();
         updateControls();
       }
 
       function initializeGraphInteraction(svgElement) {
         currentGraphNodeMap = new Map();
+        currentGraphEdgeMap = new Map();
 
         const nodeGroups = svgElement.querySelectorAll("g.node");
         nodeGroups.forEach((nodeGroup) => {
@@ -805,7 +1221,17 @@ def render_replay_index_html() -> str:
           });
         });
 
+        const edgeGroups = svgElement.querySelectorAll("g.edge");
+        edgeGroups.forEach((edgeGroup) => {
+          const key = extractEdgeKeyFromGraphvizGroup(edgeGroup);
+          if (!key) {
+            return;
+          }
+          currentGraphEdgeMap.set(key, edgeGroup);
+        });
+
         renderGraphSelection();
+        renderGraphFocus();
       }
 
       async function loadInlineSvg(snapshotFile) {
@@ -1144,6 +1570,7 @@ def render_replay_index_html() -> str:
         currentSnapshotMetadata = null;
         currentSnapshotMetadataFile = null;
         currentGraphNodeMap = new Map();
+        currentGraphEdgeMap = new Map();
         selectedNodeId = null;
         snapshotViewElement.replaceChildren();
         const emptyMessage = document.createElement("div");
@@ -1364,6 +1791,7 @@ def render_replay_index_html() -> str:
           renderNodeList();
           renderNodeDetails();
           renderGraphSelection();
+          renderGraphFocus();
           return;
         }
 
@@ -1385,6 +1813,7 @@ def render_replay_index_html() -> str:
         renderNodeList();
         renderNodeDetails();
         renderGraphSelection();
+        renderGraphFocus();
         updateControls();
       }
 
@@ -1401,6 +1830,7 @@ def render_replay_index_html() -> str:
           currentSnapshotMetadata = null;
           currentSnapshotMetadataFile = null;
           currentGraphNodeMap = new Map();
+          currentGraphEdgeMap = new Map();
           selectedNodeId = null;
           renderNodeList();
           renderNodeDetails();
@@ -1414,12 +1844,14 @@ def render_replay_index_html() -> str:
 
         if (snapshotEntry.snapshot_file.endsWith(".dot")) {
           currentGraphNodeMap = new Map();
+          currentGraphEdgeMap = new Map();
           const response = await fetch(snapshotEntry.snapshot_file, { cache: "no-store" });
           const dotSource = await response.text();
           const block = document.createElement("pre");
           block.textContent = dotSource;
           snapshotViewElement.appendChild(block);
           renderGraphSelection();
+          renderGraphFocus();
           return;
         }
 
@@ -1427,6 +1859,7 @@ def render_replay_index_html() -> str:
         const svgElement = renderInlineSvg(svgText);
         if (!svgElement) {
           currentGraphNodeMap = new Map();
+          currentGraphEdgeMap = new Map();
           const emptyMessage = document.createElement("div");
           emptyMessage.className = "empty";
           emptyMessage.textContent = "Unable to render inline SVG snapshot.";
@@ -1613,6 +2046,26 @@ def render_replay_index_html() -> str:
 
       jumpNextSelectedNodeEventButton.addEventListener("click", async () => {
         await jumpToNextSelectedNodeEvent();
+      });
+
+      highlightRootPathElement.addEventListener("change", () => {
+        highlightRootPath = highlightRootPathElement.checked;
+        renderGraphFocus();
+      });
+
+      highlightNeighborhoodElement.addEventListener("change", () => {
+        highlightNeighborhood = highlightNeighborhoodElement.checked;
+        renderGraphFocus();
+      });
+
+      highlightPvPathElement.addEventListener("change", () => {
+        highlightPvPath = highlightPvPathElement.checked;
+        renderGraphFocus();
+      });
+
+      dimUnrelatedGraphElement.addEventListener("change", () => {
+        dimUnrelatedGraph = dimUnrelatedGraphElement.checked;
+        renderGraphFocus();
       });
 
       autoFollowElement.addEventListener("change", async () => {

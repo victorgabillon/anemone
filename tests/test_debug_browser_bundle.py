@@ -194,6 +194,10 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert 'id="timeline-filter-status"' in html
     assert 'id="entry-summary"' in html
     assert 'id="snapshot-view"' in html
+    assert 'id="highlight-root-path"' in html
+    assert 'id="highlight-neighborhood"' in html
+    assert 'id="highlight-pv-path"' in html
+    assert 'id="dim-unrelated-graph"' in html
     assert 'id="node-list"' in html
     assert 'id="node-details"' in html
     assert 'id="selected-node-id"' in html
@@ -210,6 +214,17 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert "renderNodeInspector" in html
     assert "renderListItems" in html
     assert "renderNodeDetails" in html
+    assert "computeRootPathNodeIds" in html
+    assert "computeRootPathEdgeKeys" in html
+    assert "computeNeighborhoodNodeIds" in html
+    assert "computeNeighborhoodEdgeKeys" in html
+    assert "computePrincipalVariationNodeIds" in html
+    assert "computePrincipalVariationEdgeKeys" in html
+    assert "computeGraphFocusState" in html
+    assert "renderGraphFocus" in html
+    assert "extractEdgeKeyFromGraphvizGroup" in html
+    assert "currentGraphEdgeMap" in html
+    assert "edgeKey(" in html
     assert "entryMatchesSearch" in html
     assert "entryMatchesEventTypeFilter" in html
     assert "computeVisibleEntries" in html
@@ -227,4 +242,9 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert "renderGraphSelection" in html
     assert "selectNode" in html
     assert "g.node" in html
+    assert "g.edge" in html
+    assert "is-root-path" in html
+    assert "is-neighborhood" in html
+    assert "is-pv-path" in html
+    assert "is-dimmed" in html
     assert "is-selected" in html

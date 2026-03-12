@@ -151,5 +151,9 @@ def test_render_replay_index_html_contains_live_polling_hooks() -> None:
     assert 'id="timeline-search"' in html
     assert 'id="timeline-event-filter"' in html
     assert 'id="timeline-filter-status"' in html
+    assert 'id="highlight-root-path"' in html
+    assert 'id="highlight-neighborhood"' in html
+    assert 'id="highlight-pv-path"' in html
+    assert 'id="dim-unrelated-graph"' in html
     assert 'id="node-list"' in html
     assert 'id="node-details"' in html
