@@ -366,6 +366,27 @@ def render_replay_index_html() -> str:
           <div class="timeline-header">
             <h1 class="heading">Debug Trace Replay</h1>
             <p class="subheading" id="timeline-meta">Loading replay payload...</p>
+            <div class="controls">
+              <input id="timeline-search" type="text" placeholder="Search events or node ids">
+              <select id="timeline-event-filter">
+                <option value="all">All Events</option>
+                <option value="SearchIterationStarted">Iteration Started</option>
+                <option value="NodeSelected">Node Selected</option>
+                <option value="NodeOpeningPlanned">Node Opening Planned</option>
+                <option value="ChildLinked">Child Linked</option>
+                <option value="DirectValueAssigned">Direct Value Assigned</option>
+                <option value="BackupStarted">Backup Started</option>
+                <option value="BackupFinished">Backup Finished</option>
+                <option value="SearchIterationCompleted">Iteration Completed</option>
+              </select>
+              <input id="jump-entry-index" type="number" min="0" step="1" placeholder="Entry index">
+              <button id="jump-entry-button" type="button">Go</button>
+              <button id="jump-next-breakpoint" type="button">Next Breakpoint Hit</button>
+              <button id="jump-next-pv-change" type="button">Next PV Change</button>
+              <button id="jump-next-value-change" type="button">Next Value Change</button>
+              <button id="jump-next-selected-node-event" type="button">Next Selected Node Event</button>
+            </div>
+            <p class="timeline-summary" id="timeline-filter-status">Showing 0 / 0 entries</p>
           </div>
           <ol class="timeline-list" id="timeline"></ol>
         </section>
@@ -529,6 +550,15 @@ def render_replay_index_html() -> str:
     <script>
       const timelineElement = document.getElementById("timeline");
       const timelineMetaElement = document.getElementById("timeline-meta");
+      const timelineSearchElement = document.getElementById("timeline-search");
+      const timelineEventFilterElement = document.getElementById("timeline-event-filter");
+      const jumpEntryIndexElement = document.getElementById("jump-entry-index");
+      const jumpEntryButton = document.getElementById("jump-entry-button");
+      const jumpNextBreakpointButton = document.getElementById("jump-next-breakpoint");
+      const jumpNextPvChangeButton = document.getElementById("jump-next-pv-change");
+      const jumpNextValueChangeButton = document.getElementById("jump-next-value-change");
+      const jumpNextSelectedNodeEventButton = document.getElementById("jump-next-selected-node-event");
+      const timelineFilterStatusElement = document.getElementById("timeline-filter-status");
       const previousButton = document.getElementById("previous-entry");
       const nextButton = document.getElementById("next-entry");
       const pauseButton = document.getElementById("pause-search");
@@ -572,6 +602,7 @@ def render_replay_index_html() -> str:
       const selectedNodeRawLabelElement = document.getElementById("selected-node-raw-label");
 
       let entries = [];
+      let visibleEntries = [];
       let selectedIndex = 0;
       let pollHandle = null;
       let isRefreshing = false;
@@ -582,9 +613,102 @@ def render_replay_index_html() -> str:
       let currentGraphNodeMap = new Map();
       let selectedNodeId = null;
       let breakpointSequence = 0;
+      let searchQuery = "";
+      let selectedEventTypeFilter = "all";
+      let timelineStatusMessage = "";
 
       function formatIndex(index) {
         return String(index).padStart(4, "0");
+      }
+
+      function hasActiveTimelineFilters() {
+        return searchQuery.trim() !== "" || selectedEventTypeFilter !== "all";
+      }
+
+      function entryMatchesSearch(entry, query) {
+        const normalizedQuery = query.trim().toLowerCase();
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        const eventFieldsText = entry.event_fields
+          ? JSON.stringify(entry.event_fields).toLowerCase()
+          : "";
+        const breakpointHitText = typeof entry.breakpoint_hit === "string"
+          ? entry.breakpoint_hit.toLowerCase()
+          : "";
+        const haystack = [
+          String(entry.index),
+          entry.event_type || "",
+          entry.event_summary || "",
+          breakpointHitText,
+          eventFieldsText,
+        ].join(" ").toLowerCase();
+        return haystack.includes(normalizedQuery);
+      }
+
+      function entryMatchesEventTypeFilter(entry, eventType) {
+        if (eventType === "all") {
+          return true;
+        }
+        return entry.event_type === eventType;
+      }
+
+      function computeVisibleEntries() {
+        return entries.filter((entry) => (
+          entryMatchesSearch(entry, searchQuery)
+          && entryMatchesEventTypeFilter(entry, selectedEventTypeFilter)
+        ));
+      }
+
+      function isSelectedEntryVisible() {
+        return visibleEntries.some((entry) => entry.index === selectedIndex);
+      }
+
+      function currentVisibleEntryPosition() {
+        return visibleEntries.findIndex((entry) => entry.index === selectedIndex);
+      }
+
+      function renderTimelineFilterStatus() {
+        const parts = [`Showing ${visibleEntries.length} / ${entries.length} entries`];
+        if (selectedEventTypeFilter !== "all") {
+          parts.push(`Filter: ${selectedEventTypeFilter}`);
+        }
+        if (searchQuery.trim() !== "") {
+          parts.push(`Search: "${searchQuery}"`);
+        }
+        if (timelineStatusMessage) {
+          parts.push(timelineStatusMessage);
+        }
+        timelineFilterStatusElement.textContent = parts.join(" | ");
+      }
+
+      function setTimelineStatusMessage(message) {
+        timelineStatusMessage = message;
+        renderTimelineFilterStatus();
+      }
+
+      function clearTimelineStatusMessage() {
+        if (!timelineStatusMessage) {
+          return;
+        }
+        timelineStatusMessage = "";
+        renderTimelineFilterStatus();
+      }
+
+      function entryHasBreakpointHit(entry) {
+        return typeof entry.breakpoint_hit === "string" && entry.breakpoint_hit.length > 0;
+      }
+
+      function entryInvolvesNodeId(entry, nodeId) {
+        if (!entry || !entry.event_fields || !nodeId) {
+          return false;
+        }
+
+        const eventFields = entry.event_fields;
+        return eventFields.node_id === nodeId
+          || eventFields.parent_id === nodeId
+          || eventFields.child_id === nodeId;
       }
 
       function nearestSnapshotAtOrBefore(index) {
@@ -660,6 +784,7 @@ def render_replay_index_html() -> str:
         renderNodeList();
         renderNodeDetails();
         renderGraphSelection();
+        updateControls();
       }
 
       function initializeGraphInteraction(svgElement) {
@@ -865,15 +990,25 @@ def render_replay_index_html() -> str:
           emptyItem.className = "empty";
           emptyItem.textContent = "No replay entries available.";
           timelineElement.appendChild(emptyItem);
+          renderTimelineFilterStatus();
           return;
         }
 
-        entries.forEach((entry, position) => {
+        if (visibleEntries.length === 0) {
+          const emptyItem = document.createElement("li");
+          emptyItem.className = "empty";
+          emptyItem.textContent = "No timeline entries match the current search/filter.";
+          timelineElement.appendChild(emptyItem);
+          renderTimelineFilterStatus();
+          return;
+        }
+
+        visibleEntries.forEach((entry) => {
           const listItem = document.createElement("li");
           const button = document.createElement("button");
           button.type = "button";
           button.className = "timeline-item";
-          if (position === selectedIndex) {
+          if (entry.index === selectedIndex) {
             button.classList.add("is-selected");
           }
 
@@ -890,12 +1025,14 @@ def render_replay_index_html() -> str:
           button.appendChild(line);
           button.appendChild(summary);
           button.addEventListener("click", () => {
-            selectEntry(position);
+            selectEntry(entry.index);
           });
 
           listItem.appendChild(button);
           timelineElement.appendChild(listItem);
         });
+
+        renderTimelineFilterStatus();
       }
 
       function updateControls() {
@@ -903,8 +1040,17 @@ def render_replay_index_html() -> str:
         const canControl = Boolean(
           currentPayload && currentPayload.is_live && !currentPayload.is_complete
         );
-        previousButton.disabled = !hasEntries || selectedIndex <= 0;
-        nextButton.disabled = !hasEntries || selectedIndex >= entries.length - 1;
+        const hasSelectedNode = Boolean(selectedNodeId);
+        const visiblePosition = currentVisibleEntryPosition();
+        if (hasActiveTimelineFilters()) {
+          previousButton.disabled = visiblePosition <= 0;
+          nextButton.disabled = (
+            visiblePosition < 0 || visiblePosition >= visibleEntries.length - 1
+          );
+        } else {
+          previousButton.disabled = !hasEntries || selectedIndex <= 0;
+          nextButton.disabled = !hasEntries || selectedIndex >= entries.length - 1;
+        }
         pauseButton.disabled = !canControl;
         resumeButton.disabled = !canControl;
         stepButton.disabled = !canControl;
@@ -913,6 +1059,11 @@ def render_replay_index_html() -> str:
         addBackupFlagBreakpointButton.disabled = !canControl;
         addIterationBreakpointButton.disabled = !canControl;
         clearBreakpointsButton.disabled = !canControl;
+        jumpEntryButton.disabled = !hasEntries;
+        jumpNextBreakpointButton.disabled = !hasEntries;
+        jumpNextPvChangeButton.disabled = !hasEntries;
+        jumpNextValueChangeButton.disabled = !hasEntries;
+        jumpNextSelectedNodeEventButton.disabled = !hasEntries || !hasSelectedNode;
       }
 
       function renderCommandStatus(payload) {
@@ -1044,6 +1195,45 @@ def render_replay_index_html() -> str:
         timelineMetaElement.textContent = `${entryCount} entries loaded | ${mode}`;
       }
 
+      function synchronizeSelectionWithVisibleEntries() {
+        if (entries.length === 0) {
+          selectedIndex = 0;
+          return;
+        }
+
+        if (selectedIndex >= entries.length) {
+          selectedIndex = entries.length - 1;
+        }
+
+        if (visibleEntries.length === 0) {
+          return;
+        }
+
+        if (!isSelectedEntryVisible()) {
+          selectedIndex = visibleEntries[0].index;
+        }
+      }
+
+      function applyTimelineFilters() {
+        visibleEntries = computeVisibleEntries();
+        synchronizeSelectionWithVisibleEntries();
+        renderTimeline();
+        updateControls();
+      }
+
+      async function refreshTimelineViewFromControls() {
+        applyTimelineFilters();
+        if (entries.length === 0) {
+          renderEmptyDetails("No replay entries available.");
+          return;
+        }
+        if (visibleEntries.length === 0 && hasActiveTimelineFilters()) {
+          renderEmptyDetails("No timeline entries match the current search/filter.");
+          return;
+        }
+        await renderDetails();
+      }
+
       async function sendCommand(commandName) {
         try {
           const response = await fetch("/command", {
@@ -1103,6 +1293,68 @@ def render_replay_index_html() -> str:
         }
       }
 
+      async function jumpToEntryIndex(index) {
+        if (!Number.isInteger(index)) {
+          setTimelineStatusMessage("Enter a valid entry index.");
+          return;
+        }
+
+        const targetEntry = entries.find((entry) => entry.index === index);
+        if (!targetEntry) {
+          setTimelineStatusMessage(`Entry index ${index} was not found.`);
+          return;
+        }
+
+        clearTimelineStatusMessage();
+        await selectEntry(targetEntry.index);
+      }
+
+      async function jumpToNextMatching(predicate, missingMessage) {
+        for (let index = selectedIndex + 1; index < entries.length; index += 1) {
+          const entry = entries[index];
+          if (predicate(entry)) {
+            clearTimelineStatusMessage();
+            await selectEntry(index);
+            return;
+          }
+        }
+
+        setTimelineStatusMessage(missingMessage);
+      }
+
+      async function jumpToNextBreakpointHit() {
+        await jumpToNextMatching(
+          (entry) => entryHasBreakpointHit(entry),
+          "No later breakpoint hit found."
+        );
+      }
+
+      async function jumpToNextPvChange() {
+        await jumpToNextMatching(
+          (entry) => entry.event_fields && entry.event_fields.pv_changed === true,
+          "No later PV change found."
+        );
+      }
+
+      async function jumpToNextValueChange() {
+        await jumpToNextMatching(
+          (entry) => entry.event_fields && entry.event_fields.value_changed === true,
+          "No later value change found."
+        );
+      }
+
+      async function jumpToNextSelectedNodeEvent() {
+        if (!selectedNodeId) {
+          setTimelineStatusMessage("Select a node before jumping to node events.");
+          return;
+        }
+
+        await jumpToNextMatching(
+          (entry) => entryInvolvesNodeId(entry, selectedNodeId),
+          `No later event found for node ${selectedNodeId}.`
+        );
+      }
+
       async function loadSnapshotMetadataForEntry(entryIndex) {
         const snapshotEntry = nearestSnapshotAtOrBefore(entryIndex);
         if (!snapshotEntry || !snapshotEntry.snapshot_metadata_file) {
@@ -1133,6 +1385,7 @@ def render_replay_index_html() -> str:
         renderNodeList();
         renderNodeDetails();
         renderGraphSelection();
+        updateControls();
       }
 
       async function renderSnapshot(entryIndex) {
@@ -1190,6 +1443,11 @@ def render_replay_index_html() -> str:
           return;
         }
 
+        if (visibleEntries.length === 0 && hasActiveTimelineFilters()) {
+          renderEmptyDetails("No timeline entries match the current search/filter.");
+          return;
+        }
+
         const entry = entries[selectedIndex];
         currentIndexElement.textContent = `Entry ${selectedIndex + 1} of ${entries.length}`;
         entryTitleElement.textContent = `[${formatIndex(entry.index)}] ${entry.event_summary}`;
@@ -1203,6 +1461,9 @@ def render_replay_index_html() -> str:
       }
 
       async function selectEntry(index) {
+        if (!Number.isInteger(index) || index < 0 || index >= entries.length) {
+          return;
+        }
         selectedIndex = index;
         renderTimeline();
         await renderDetails();
@@ -1248,7 +1509,7 @@ def render_replay_index_html() -> str:
           entries = Array.isArray(payload.entries) ? payload.entries : [];
 
           if (entries.length > 0) {
-            if (autoFollowElement.checked) {
+            if (autoFollowElement.checked && !hasActiveTimelineFilters()) {
               selectedIndex = entries.length - 1;
             } else if (selectedIndex >= entries.length) {
               selectedIndex = entries.length - 1;
@@ -1260,12 +1521,12 @@ def render_replay_index_html() -> str:
           renderTimelineMeta(payload);
           renderCommandStatus(payload);
           renderControlState(controlState);
-          renderTimeline();
+          applyTimelineFilters();
 
-          if (entries.length > 0) {
+          if (entries.length > 0 && (visibleEntries.length > 0 || !hasActiveTimelineFilters())) {
             await renderDetails();
           } else {
-            renderEmptyDetails("No replay entries available.");
+            renderEmptyDetails("No timeline entries match the current search/filter.");
           }
 
           syncPolling(payload);
@@ -1284,19 +1545,79 @@ def render_replay_index_html() -> str:
       }
 
       previousButton.addEventListener("click", async () => {
+        clearTimelineStatusMessage();
+        if (hasActiveTimelineFilters()) {
+          const visiblePosition = currentVisibleEntryPosition();
+          if (visiblePosition > 0) {
+            await selectEntry(visibleEntries[visiblePosition - 1].index);
+          }
+          return;
+        }
+
         if (selectedIndex > 0) {
           await selectEntry(selectedIndex - 1);
         }
       });
 
       nextButton.addEventListener("click", async () => {
+        clearTimelineStatusMessage();
+        if (hasActiveTimelineFilters()) {
+          const visiblePosition = currentVisibleEntryPosition();
+          if (visiblePosition >= 0 && visiblePosition < visibleEntries.length - 1) {
+            await selectEntry(visibleEntries[visiblePosition + 1].index);
+          }
+          return;
+        }
+
         if (selectedIndex < entries.length - 1) {
           await selectEntry(selectedIndex + 1);
         }
       });
 
+      timelineSearchElement.addEventListener("input", async () => {
+        searchQuery = timelineSearchElement.value.trim();
+        clearTimelineStatusMessage();
+        await refreshTimelineViewFromControls();
+      });
+
+      timelineEventFilterElement.addEventListener("change", async () => {
+        selectedEventTypeFilter = timelineEventFilterElement.value;
+        clearTimelineStatusMessage();
+        await refreshTimelineViewFromControls();
+      });
+
+      jumpEntryButton.addEventListener("click", async () => {
+        const requestedIndex = Number.parseInt(jumpEntryIndexElement.value, 10);
+        await jumpToEntryIndex(requestedIndex);
+      });
+
+      jumpEntryIndexElement.addEventListener("keydown", async (event) => {
+        if (event.key !== "Enter") {
+          return;
+        }
+        const requestedIndex = Number.parseInt(jumpEntryIndexElement.value, 10);
+        await jumpToEntryIndex(requestedIndex);
+      });
+
+      jumpNextBreakpointButton.addEventListener("click", async () => {
+        await jumpToNextBreakpointHit();
+      });
+
+      jumpNextPvChangeButton.addEventListener("click", async () => {
+        await jumpToNextPvChange();
+      });
+
+      jumpNextValueChangeButton.addEventListener("click", async () => {
+        await jumpToNextValueChange();
+      });
+
+      jumpNextSelectedNodeEventButton.addEventListener("click", async () => {
+        await jumpToNextSelectedNodeEvent();
+      });
+
       autoFollowElement.addEventListener("change", async () => {
-        if (autoFollowElement.checked && entries.length > 0) {
+        if (autoFollowElement.checked && entries.length > 0 && !hasActiveTimelineFilters()) {
+          clearTimelineStatusMessage();
           await selectEntry(entries.length - 1);
         }
       });

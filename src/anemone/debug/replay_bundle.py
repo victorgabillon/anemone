@@ -13,7 +13,7 @@ from .export import (
     trace_snapshot_metadata_filename,
 )
 from .html_templates import render_replay_index_html
-from .replay import format_debug_event
+from .replay import build_event_fields_payload, format_debug_event
 
 if TYPE_CHECKING:
     from .recording import DebugTimelineEntry, DebugTrace
@@ -48,7 +48,7 @@ def build_replay_entry_payload(
     *,
     snapshot_format: str = "svg",
     snapshot_directory: str = _DEFAULT_SNAPSHOT_DIRECTORY,
-) -> dict[str, int | str | bool | None]:
+) -> dict[str, Any]:
     """Build the browser payload for one timeline entry."""
     snapshot_file = None
     snapshot_metadata_file = None
@@ -67,6 +67,8 @@ def build_replay_entry_payload(
         "index": entry.index,
         "event_type": entry.event.__class__.__name__,
         "event_summary": format_debug_event(entry.event),
+        "event_fields": build_event_fields_payload(entry.event),
+        "breakpoint_hit": entry.breakpoint_hit,
         "has_snapshot": entry.snapshot is not None,
         "snapshot_file": snapshot_file,
         "snapshot_metadata_file": snapshot_metadata_file,

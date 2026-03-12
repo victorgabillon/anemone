@@ -72,10 +72,17 @@ class LiveDebugSessionRecorder(SearchDebugSink):
         if self._snapshot_provider is not None and self._should_capture_snapshot(event):
             snapshot = self._snapshot_provider(event)
 
+        breakpoint_hit = None
+        if self._controller is not None:
+            matching_breakpoint = self._controller.handle_event(event)
+            if matching_breakpoint is not None:
+                breakpoint_hit = matching_breakpoint.id
+
         entry = DebugTimelineEntry(
             index=len(self._entries),
             event=event,
             snapshot=snapshot,
+            breakpoint_hit=breakpoint_hit,
         )
         self._entries.append(entry)
         self._is_complete = False
@@ -84,8 +91,6 @@ class LiveDebugSessionRecorder(SearchDebugSink):
             self._export_snapshot(entry)
 
         self.write_session_json()
-        if self._controller is not None:
-            self._controller.handle_event(event)
 
     def finalize(self) -> None:
         """Mark the live session as complete and rewrite the session payload."""

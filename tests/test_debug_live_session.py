@@ -76,6 +76,8 @@ def test_live_debug_session_recorder_writes_events_incrementally(
 
     assert first_payload["entry_count"] == 1
     assert first_payload["entries"][0]["event_type"] == "SearchIterationStarted"
+    assert first_payload["entries"][0]["event_fields"] == {"iteration_index": 0}
+    assert first_payload["entries"][0]["breakpoint_hit"] is None
     assert first_payload["entries"][0]["snapshot_file"] is None
     assert first_payload["entries"][0]["snapshot_metadata_file"] is None
 
@@ -86,6 +88,8 @@ def test_live_debug_session_recorder_writes_events_incrementally(
 
     assert second_payload["entry_count"] == 2
     assert second_payload["entries"][1]["event_summary"] == "node 9 selected"
+    assert second_payload["entries"][1]["event_fields"] == {"node_id": "9"}
+    assert second_payload["entries"][1]["breakpoint_hit"] is None
     assert second_payload["entries"][1]["snapshot_file"] == (
         "snapshots/0001_NodeSelected.dot"
     )
@@ -144,5 +148,8 @@ def test_render_replay_index_html_contains_live_polling_hooks() -> None:
     assert 'fetch("trace.json"' in html
     assert "setInterval" in html
     assert 'id="auto-follow-latest"' in html
+    assert 'id="timeline-search"' in html
+    assert 'id="timeline-event-filter"' in html
+    assert 'id="timeline-filter-status"' in html
     assert 'id="node-list"' in html
     assert 'id="node-details"' in html

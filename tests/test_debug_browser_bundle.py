@@ -77,6 +77,7 @@ def _build_trace() -> DebugTrace:
                     over_changed=False,
                 ),
                 snapshot=_make_snapshot("5"),
+                breakpoint_hit="bp-3",
             ),
         )
     )
@@ -92,6 +93,8 @@ def test_build_replay_payload_is_json_friendly() -> None:
     assert isinstance(entries, list)
     assert entries[0]["event_type"] == "SearchIterationStarted"
     assert entries[0]["event_summary"] == "iteration 1 started"
+    assert entries[0]["event_fields"] == {"iteration_index": 1}
+    assert entries[0]["breakpoint_hit"] is None
     assert entries[0]["has_snapshot"] is False
     assert entries[0]["snapshot_file"] is None
     assert entries[0]["snapshot_metadata_file"] is None
@@ -99,12 +102,29 @@ def test_build_replay_payload_is_json_friendly() -> None:
     assert entries[2]["snapshot_metadata_file"] == (
         "snapshots/0002_ChildLinked.snapshot.json"
     )
+    assert entries[2]["event_fields"] == {
+        "parent_id": "5",
+        "child_id": "8",
+        "branch_key": "a",
+        "was_already_present": False,
+    }
     assert entries[3]["snapshot_file"] is None
     assert entries[3]["snapshot_metadata_file"] is None
+    assert entries[3]["event_fields"] == {
+        "node_id": "8",
+        "value_repr": "score=0.5",
+    }
     assert entries[4]["snapshot_file"] == "snapshots/0004_BackupFinished.svg"
     assert entries[4]["snapshot_metadata_file"] == (
         "snapshots/0004_BackupFinished.snapshot.json"
     )
+    assert entries[4]["event_fields"] == {
+        "node_id": "5",
+        "value_changed": True,
+        "pv_changed": False,
+        "over_changed": False,
+    }
+    assert entries[4]["breakpoint_hit"] == "bp-3"
 
 
 def test_export_replay_bundle_writes_expected_files(tmp_path: Path) -> None:
@@ -146,9 +166,12 @@ def test_export_replay_bundle_writes_expected_trace_json(tmp_path: Path) -> None
     assert payload["entries"][2]["snapshot_metadata_file"] == (
         "snapshots/0002_ChildLinked.snapshot.json"
     )
+    assert payload["entries"][2]["event_fields"]["branch_key"] == "a"
     assert payload["entries"][3]["snapshot_file"] is None
     assert payload["entries"][3]["snapshot_metadata_file"] is None
     assert payload["entries"][4]["event_summary"].startswith("node 5 backup finished")
+    assert payload["entries"][4]["event_fields"]["value_changed"] is True
+    assert payload["entries"][4]["breakpoint_hit"] == "bp-3"
 
 
 def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
@@ -160,6 +183,15 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert 'fetch("/command"' in html
     assert 'fetch("/breakpoints"' in html
     assert 'id="timeline"' in html
+    assert 'id="timeline-search"' in html
+    assert 'id="timeline-event-filter"' in html
+    assert 'id="jump-entry-index"' in html
+    assert 'id="jump-entry-button"' in html
+    assert 'id="jump-next-breakpoint"' in html
+    assert 'id="jump-next-pv-change"' in html
+    assert 'id="jump-next-value-change"' in html
+    assert 'id="jump-next-selected-node-event"' in html
+    assert 'id="timeline-filter-status"' in html
     assert 'id="entry-summary"' in html
     assert 'id="snapshot-view"' in html
     assert 'id="node-list"' in html
@@ -178,6 +210,16 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert "renderNodeInspector" in html
     assert "renderListItems" in html
     assert "renderNodeDetails" in html
+    assert "entryMatchesSearch" in html
+    assert "entryMatchesEventTypeFilter" in html
+    assert "computeVisibleEntries" in html
+    assert "jumpToEntryIndex" in html
+    assert "jumpToNextBreakpointHit" in html
+    assert "jumpToNextPvChange" in html
+    assert "jumpToNextValueChange" in html
+    assert "jumpToNextSelectedNodeEvent" in html
+    assert "event_fields" in html
+    assert "breakpoint_hit" in html
     assert "loadInlineSvg" in html
     assert "renderInlineSvg" in html
     assert "initializeGraphInteraction" in html

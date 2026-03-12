@@ -22,6 +22,7 @@ class DebugTimelineEntry:
     index: int
     event: SearchDebugEvent
     snapshot: DebugTreeSnapshot | None = None
+    breakpoint_hit: str | None = None
 
 
 @dataclass(frozen=True)

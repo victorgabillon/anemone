@@ -27,6 +27,11 @@ def format_debug_event(event: SearchDebugEvent) -> str:
     return _format_debug_event_object(event)
 
 
+def build_event_fields_payload(event: SearchDebugEvent) -> dict[str, object]:
+    """Return a structured JSON-friendly field map for one debug event."""
+    return _build_event_fields_object(event)
+
+
 def _format_debug_event_object(event: object) -> str:
     """Return a readable debug summary for known events or a class-name fallback."""
     match event:
@@ -68,6 +73,49 @@ def _format_debug_event_object(event: object) -> str:
             return event.__class__.__name__
 
 
+def _build_event_fields_object(event: object) -> dict[str, object]:
+    """Return structured event fields for browser-side navigation helpers."""
+    match event:
+        case SearchIterationStarted(iteration_index=iteration_index):
+            return {"iteration_index": iteration_index}
+        case SearchIterationCompleted(iteration_index=iteration_index):
+            return {"iteration_index": iteration_index}
+        case NodeSelected(node_id=node_id):
+            return {"node_id": node_id}
+        case NodeOpeningPlanned(node_id=node_id, branch_count=branch_count):
+            return {"node_id": node_id, "branch_count": branch_count}
+        case ChildLinked(
+            parent_id=parent_id,
+            child_id=child_id,
+            branch_key=branch_key,
+            was_already_present=was_already_present,
+        ):
+            return {
+                "parent_id": parent_id,
+                "child_id": child_id,
+                "branch_key": branch_key,
+                "was_already_present": was_already_present,
+            }
+        case DirectValueAssigned(node_id=node_id, value_repr=value_repr):
+            return {"node_id": node_id, "value_repr": value_repr}
+        case BackupStarted(node_id=node_id):
+            return {"node_id": node_id}
+        case BackupFinished(
+            node_id=node_id,
+            value_changed=value_changed,
+            pv_changed=pv_changed,
+            over_changed=over_changed,
+        ):
+            return {
+                "node_id": node_id,
+                "value_changed": value_changed,
+                "pv_changed": pv_changed,
+                "over_changed": over_changed,
+            }
+        case _:
+            return {}
+
+
 @dataclass(frozen=True)
 class TraceReplayView:
     """Navigation helper for replaying a ``DebugTrace`` timeline."""
@@ -103,4 +151,4 @@ class TraceReplayView:
         return format_debug_event(self.entry_at(index).event)
 
 
-__all__ = ["TraceReplayView", "format_debug_event"]
+__all__ = ["TraceReplayView", "build_event_fields_payload", "format_debug_event"]

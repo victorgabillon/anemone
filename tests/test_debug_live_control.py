@@ -209,3 +209,7 @@ def test_live_debug_session_recorder_notifies_controller_about_breakpoints(
         (tmp_path / "control_state.json").read_text(encoding="utf-8")
     )
     assert control_state["last_breakpoint_hit"] == "bp-7"
+    session_payload = json.loads(
+        (tmp_path / "session.json").read_text(encoding="utf-8")
+    )
+    assert session_payload["entries"][0]["breakpoint_hit"] == "bp-7"
