@@ -302,6 +302,32 @@ def test_controlled_tree_exploration_runs_exactly_one_iteration_for_step(
     assert controller.should_pause() is True
 
 
+def test_controlled_tree_exploration_does_not_wrap_missing_node_selector(
+    tmp_path: Path,
+) -> None:
+    controller = DebugSessionController(tmp_path)
+    tree_manager = _FakeTreeManager()
+    tree_manager.dynamics = _FakeDynamics({"root": ["a"]})
+    stopping_criterion = _FakeStoppingCriterion()
+    base_exploration = _FakeExploration(
+        tree=SimpleNamespace(root_node=_FakeNode(id=1, state="root", tree_depth=0)),
+        tree_manager=tree_manager,
+        stopping_criterion=stopping_criterion,
+        node_selector=None,
+    )
+
+    exploration = ControlledTreeExploration.from_tree_exploration(
+        base_exploration,
+        controller=controller,
+    )
+    result = exploration.explore(random_generator=Random(0))
+
+    assert result.marker == "done"
+    assert exploration.node_selector is None
+    assert tree_manager.update_calls == 1
+    assert stopping_criterion.checks == 2
+
+
 def test_controlled_tree_exploration_forces_best_effort_node_expansion(
     tmp_path: Path,
 ) -> None:

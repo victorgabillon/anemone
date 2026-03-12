@@ -28,7 +28,7 @@ import time
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeGuard, cast
 
 from anemone.node_selector.opening_instructions import (
     OpeningInstruction,
@@ -610,7 +610,11 @@ class ControlledTreeExploration:
             ),
         }
         node_selector = getattr(tree_exploration, "node_selector", None)
-        dynamics = getattr(tree_manager, "dynamics", None) if tree_manager is not None else None
+        dynamics = (
+            getattr(tree_manager, "dynamics", None)
+            if tree_manager is not None
+            else None
+        )
         if node_selector is not None and dynamics is not None:
             updates["node_selector"] = _ControlledNodeSelector(
                 node_selector,
@@ -648,6 +652,11 @@ def _event_is_value_change_for_node(event: Any, node_id: str) -> bool:
         getattr(event, "node_id", None) == node_id
         and getattr(event, "value_changed", None) is True
     )
+
+
+def _is_any_list(value: object) -> TypeGuard[list[Any]]:
+    """Return whether ``value`` is a list with element type intentionally erased."""
+    return isinstance(value, list)
 
 
 def _find_tree_node_by_id(root: Any, node_id: str) -> Any | None:
@@ -701,9 +710,10 @@ def _build_forced_opening_instructions(tree: Any, node_id: str, dynamics: Any) -
     if not callable(get_all):
         return None
 
-    legal_actions = get_all()
-    if not isinstance(legal_actions, list):
+    legal_actions_value = get_all()
+    if not _is_any_list(legal_actions_value):
         return None
+    legal_actions = legal_actions_value
 
     branches_children = cast("dict[Any, Any | None]", branches_children_value)
     first_unopened_branch = next(
