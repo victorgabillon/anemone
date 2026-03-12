@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from types import SimpleNamespace
+from typing import Any, cast
 
 from anemone.debug import (
     DebugEdgeView,
@@ -168,7 +169,7 @@ def test_tree_snapshot_adapter_captures_nodes_and_edges() -> None:
     child = FakeNode(id_=2, tree_depth_=1, parent_nodes_={root: "a"})
     root.branches_children_["a"] = child
 
-    snapshot = TreeSnapshotAdapter().snapshot(root)
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", root))
 
     assert snapshot.root_id == "1"
     nodes_by_id = {node.node_id: node for node in snapshot.nodes}
@@ -176,6 +177,8 @@ def test_tree_snapshot_adapter_captures_nodes_and_edges() -> None:
     assert set(nodes_by_id) == {"1", "2"}
     assert nodes_by_id["2"].parent_ids == ("1",)
     assert nodes_by_id["2"].label == "id=2\ndepth=1"
+    assert nodes_by_id["1"].child_ids == ("2",)
+    assert nodes_by_id["1"].edge_labels_by_child == {}
     assert snapshot.edges == (DebugEdgeView(parent_id="1", child_id="2", label=None),)
 
 
@@ -184,7 +187,7 @@ def test_dot_renderer_outputs_nodes_and_edge() -> None:
     child = FakeNode(id_=2, tree_depth_=1, parent_nodes_={root: "a"})
     root.branches_children_["a"] = child
 
-    snapshot = TreeSnapshotAdapter().snapshot(root)
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", root))
     source = DotRenderer().render(snapshot).source
 
     assert '1 [label="id=1' in source
@@ -201,7 +204,7 @@ def test_tree_snapshot_adapter_supports_dag_parent_links() -> None:
     root_a.branches_children_["a"] = shared
     root_b.branches_children_["b"] = shared
 
-    snapshot = TreeSnapshotAdapter().snapshot(root_a)
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", root_a))
     nodes_by_id = {node.node_id: node for node in snapshot.nodes}
 
     assert snapshot.root_id == "1"
@@ -211,9 +214,10 @@ def test_tree_snapshot_adapter_supports_dag_parent_links() -> None:
 def test_tree_snapshot_adapter_includes_state_tag_when_present() -> None:
     node = FakeNode(id_=4, tree_depth_=2, state_=FakeState(tag="mid"))
 
-    snapshot = TreeSnapshotAdapter().snapshot(node)
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", node))
 
     assert snapshot.nodes[0].label == "id=4\ndepth=2\nstate=mid"
+    assert snapshot.nodes[0].state_tag == "mid"
 
 
 def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> None:
@@ -233,7 +237,7 @@ def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> No
         exploration_index_data=FakeIndexData(index=1.5, max_depth_descendants=4),
     )
 
-    snapshot = TreeSnapshotAdapter().snapshot(node)
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", node))
 
     assert snapshot.nodes[0].label == "\n".join(
         [
@@ -248,6 +252,34 @@ def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> No
             "max_depth_descendants=4",
         ]
     )
+    assert snapshot.nodes[0].state_tag == "state-tag"
+    assert snapshot.nodes[0].direct_value == "score=0.75, certainty=high"
+    assert snapshot.nodes[0].backed_up_value == "score=1.0, over=mate"
+    assert snapshot.nodes[0].principal_variation == "a -> b"
+    assert snapshot.nodes[0].over_event == "terminal"
+    assert snapshot.nodes[0].index_fields == {
+        "index": "1.5",
+        "max_depth_descendants": "4",
+    }
+
+
+def test_tree_snapshot_adapter_populates_child_ids_and_edge_labels() -> None:
+    root = FakeNode(id_=10, tree_depth_=0)
+    child_a = FakeNode(id_=11, tree_depth_=1, parent_nodes_={root: "a"})
+    child_b = FakeNode(id_=12, tree_depth_=1, parent_nodes_={root: "b"})
+    root.branches_children_["a"] = child_a
+    root.branches_children_["b"] = child_b
+
+    snapshot = TreeSnapshotAdapter(
+        edge_label_builder=lambda parent, branch_key, child: f"{branch_key}:{child.id}"
+    ).snapshot(cast("Any", root))
+    nodes_by_id = {node.node_id: node for node in snapshot.nodes}
+
+    assert nodes_by_id["10"].child_ids == ("11", "12")
+    assert nodes_by_id["10"].edge_labels_by_child == {
+        "11": "a:11",
+        "12": "b:12",
+    }
 
 
 def test_node_debug_label_builder_delegates_evaluation_and_index_formatting() -> None:
@@ -293,7 +325,7 @@ def test_tree_snapshot_adapter_uses_minmax_and_over_event_fallbacks() -> None:
     assert not hasattr(node, "dot_description")
     assert not hasattr(node.tree_evaluation, "dot_description")
 
-    snapshot = TreeSnapshotAdapter().snapshot(node)
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", node))
     label = snapshot.nodes[0].label
 
     assert "direct=score=0.25" in label
@@ -315,9 +347,9 @@ def test_tree_visualization_display_does_not_require_dot_description() -> None:
     assert not hasattr(root, "dot_description")
 
     source = display(
-        tree=SimpleNamespace(root_node=root),
+        tree=cast("Any", SimpleNamespace(root_node=root)),
         format_str="svg",
-        dynamics=FakeDynamics(),
+        dynamics=cast("Any", FakeDynamics()),
     ).source
 
     assert '1 [label="id=1' in source
@@ -342,10 +374,10 @@ def test_tree_visualization_display_special_preserves_legacy_edge_label_prefix()
     root.branches_children_["a"] = child
 
     source = display_special(
-        node=root,
+        node=cast("Any", root),
         format_str="svg",
         index={"a": "rank-1"},
-        dynamics=FakeDynamics(),
+        dynamics=cast("Any", FakeDynamics()),
     ).source
 
     assert '1 [label="id=1' in source
@@ -366,10 +398,10 @@ def test_tree_visualization_display_special_uses_placeholder_for_missing_rank() 
     root.branches_children_["a"] = child
 
     source = display_special(
-        node=root,
+        node=cast("Any", root),
         format_str="svg",
         index={},
-        dynamics=FakeDynamics(),
+        dynamics=cast("Any", FakeDynamics()),
     ).source
 
     assert '1 -> 2 [label="?|move:a"]' in source

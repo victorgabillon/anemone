@@ -21,7 +21,20 @@ if TYPE_CHECKING:
 
 
 FIXED_SNAPSHOT = DebugTreeSnapshot(
-    nodes=(DebugNodeView(node_id="1", parent_ids=(), depth=0, label="root"),),
+    nodes=(
+        DebugNodeView(
+            node_id="1",
+            parent_ids=(),
+            depth=0,
+            label="root",
+            state_tag="root",
+            direct_value="score=0.2",
+            backed_up_value="score=0.9",
+            principal_variation="a -> b",
+            over_event="done",
+            index_fields={"index": "2.0"},
+        ),
+    ),
     root_id="1",
 )
 
@@ -104,6 +117,11 @@ def test_live_debug_session_recorder_writes_snapshot_files_only_when_needed(
         "0001_NodeSelected.dot",
         "0001_NodeSelected.snapshot.json",
     }
+    snapshot_payload = json.loads(
+        (snapshot_dir / "0001_NodeSelected.snapshot.json").read_text(encoding="utf-8")
+    )
+    assert snapshot_payload["nodes"][0]["state_tag"] == "root"
+    assert snapshot_payload["nodes"][0]["principal_variation"] == "a -> b"
 
 
 def test_live_debug_session_recorder_finalize_marks_session_complete(

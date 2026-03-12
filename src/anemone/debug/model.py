@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+def _empty_string_dict() -> dict[str, str]:
+    """Return an empty string-keyed dictionary for dataclass defaults."""
+    return {}
 
 
 @dataclass(frozen=True)
@@ -13,6 +18,14 @@ class DebugNodeView:
     parent_ids: tuple[str, ...]
     depth: int
     label: str
+    state_tag: str | None = None
+    direct_value: str | None = None
+    backed_up_value: str | None = None
+    principal_variation: str | None = None
+    over_event: str | None = None
+    index_fields: dict[str, str] = field(default_factory=_empty_string_dict)
+    child_ids: tuple[str, ...] = ()
+    edge_labels_by_child: dict[str, str] = field(default_factory=_empty_string_dict)
 
 
 @dataclass(frozen=True)

@@ -33,6 +33,22 @@ def format_over_event(over_event: Any) -> str:
     return str(over_event)
 
 
+def resolve_evaluation_over_event(evaluation: Any) -> Any | None:
+    """Return the best-effort over-event exposed by ``evaluation``."""
+    over_event = safe_getattr(evaluation, "over_event")
+    if over_event is not None:
+        return over_event
+
+    getter = safe_getattr(evaluation, "get_over_event_candidate")
+    if callable(getter):
+        try:
+            return getter()
+        except (AttributeError, TypeError):
+            return None
+
+    return None
+
+
 def format_branch_sequence(sequence: Any) -> str:
     """Render a principal-variation sequence."""
     try:

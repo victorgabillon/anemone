@@ -19,6 +19,14 @@ def snapshot_to_json(snapshot: DebugTreeSnapshot) -> dict[str, Any]:
                 "parent_ids": list(node.parent_ids),
                 "depth": node.depth,
                 "label": node.label,
+                "state_tag": node.state_tag,
+                "direct_value": node.direct_value,
+                "backed_up_value": node.backed_up_value,
+                "principal_variation": node.principal_variation,
+                "over_event": node.over_event,
+                "index_fields": node.index_fields,
+                "child_ids": list(node.child_ids),
+                "edge_labels_by_child": node.edge_labels_by_child,
             }
             for node in snapshot.nodes
         ],
@@ -75,6 +83,14 @@ def _node_from_json(data: dict[str, Any]) -> DebugNodeView:
         parent_ids=tuple(str(parent_id) for parent_id in parent_ids),
         depth=int(data["depth"]),
         label=str(data["label"]),
+        state_tag=_optional_str(data.get("state_tag")),
+        direct_value=_optional_str(data.get("direct_value")),
+        backed_up_value=_optional_str(data.get("backed_up_value")),
+        principal_variation=_optional_str(data.get("principal_variation")),
+        over_event=_optional_str(data.get("over_event")),
+        index_fields=_string_dict(data.get("index_fields")),
+        child_ids=tuple(str(child_id) for child_id in data.get("child_ids", [])),
+        edge_labels_by_child=_string_dict(data.get("edge_labels_by_child")),
     )
 
 
@@ -86,6 +102,19 @@ def _edge_from_json(data: dict[str, Any]) -> DebugEdgeView:
         child_id=str(data["child_id"]),
         label=None if label is None else str(label),
     )
+
+
+def _optional_str(value: Any) -> str | None:
+    """Return ``value`` as ``str`` unless it is ``None``."""
+    return None if value is None else str(value)
+
+
+def _string_dict(value: Any) -> dict[str, str]:
+    """Return a stringified dictionary for JSON-loaded metadata."""
+    if not isinstance(value, dict):
+        return {}
+    loaded_dict = cast("dict[object, object]", value)
+    return {str(key): str(item) for key, item in loaded_dict.items()}
 
 
 __all__ = [

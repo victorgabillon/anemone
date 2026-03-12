@@ -8,6 +8,7 @@ from anemone.debug.formatting import (
     format_branch_sequence,
     format_over_event,
     format_value,
+    resolve_evaluation_over_event,
     safe_getattr,
     safe_hasattr,
 )
@@ -39,15 +40,7 @@ class MinmaxFamilyInspector:
         if best_branch_sequence:
             lines.append(f"pv={format_branch_sequence(best_branch_sequence)}")
 
-        over_event = safe_getattr(evaluation, "over_event")
-        if over_event is None:
-            getter = safe_getattr(evaluation, "get_over_event_candidate")
-            if callable(getter):
-                try:
-                    over_event = getter()
-                except (AttributeError, TypeError):
-                    over_event = None
-
+        over_event = resolve_evaluation_over_event(evaluation)
         if over_event is not None:
             lines.append(f"over={format_over_event(over_event)}")
 

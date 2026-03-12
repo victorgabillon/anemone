@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .evaluation_inspectors.resolver import EvaluationDebugInspectorResolver
 from .formatting import safe_getattr
-from .index_formatter import format_index_lines
+from .node_metadata_builder import NodeDebugMetadataBuilder
 
 
 class NodeDebugLabelBuilder:
@@ -14,49 +13,35 @@ class NodeDebugLabelBuilder:
 
     def __init__(
         self,
-        evaluation_resolver: EvaluationDebugInspectorResolver | None = None,
+        evaluation_resolver: object | None = None,
+        metadata_builder: NodeDebugMetadataBuilder | None = None,
     ) -> None:
-        """Initialize the label builder with an optional evaluation resolver."""
-        self._evaluation_resolver = (
-            evaluation_resolver or EvaluationDebugInspectorResolver()
-        )
+        """Initialize the label builder with an optional metadata builder."""
+        # Kept only for compatibility with older construction sites; label
+        # generation now flows through ``metadata_builder`` instead.
+        del evaluation_resolver
+        self._metadata_builder = metadata_builder or NodeDebugMetadataBuilder()
 
     def build_label(self, node: Any) -> str:
         """Return a multi-line label for ``node`` suitable for Graphviz."""
+        metadata = self._metadata_builder.build_metadata(node)
         node_id = safe_getattr(node, "id")
         depth = safe_getattr(node, "tree_depth")
         lines = [f"id={node_id}", f"depth={depth}"]
 
-        state_tag = self._get_state_tag(node)
-        if state_tag is not None:
-            lines.append(f"state={state_tag}")
-
-        evaluation = safe_getattr(node, "tree_evaluation")
-        if evaluation is not None:
-            lines.extend(self._evaluation_resolver.summarize(evaluation))
-
-        lines.extend(self._get_index_lines(node))
+        if metadata.state_tag is not None:
+            lines.append(f"state={metadata.state_tag}")
+        if metadata.direct_value is not None:
+            lines.append(f"direct={metadata.direct_value}")
+        if metadata.backed_up_value is not None:
+            lines.append(f"backed_up={metadata.backed_up_value}")
+        if metadata.principal_variation is not None:
+            lines.append(f"pv={metadata.principal_variation}")
+        if metadata.over_event is not None:
+            lines.append(f"over={metadata.over_event}")
+        lines.extend(
+            f"{field_name}={field_value}"
+            for field_name, field_value in metadata.index_fields.items()
+        )
 
         return "\n".join(lines)
-
-    def _get_state_tag(self, node: Any) -> str | None:
-        """Return the node state's tag when available."""
-        state = safe_getattr(node, "state")
-        if state is None:
-            node_tag = safe_getattr(node, "tag")
-            return None if node_tag is None else str(node_tag)
-
-        tag = safe_getattr(state, "tag")
-        if tag is None:
-            node_tag = safe_getattr(node, "tag")
-            return None if node_tag is None else str(node_tag)
-
-        return str(tag)
-
-    def _get_index_lines(self, node: Any) -> list[str]:
-        """Collect exploration-index lines from ``node`` if present."""
-        index_data = safe_getattr(node, "exploration_index_data")
-        if index_data is None:
-            return []
-
-        return format_index_lines(index_data)

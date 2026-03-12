@@ -34,6 +34,12 @@ def _make_snapshot(node_id: str) -> DebugTreeSnapshot:
                 parent_ids=(),
                 depth=0,
                 label=f"id={node_id}",
+                state_tag="root",
+                direct_value="score=0.1",
+                backed_up_value="score=0.8",
+                principal_variation="a -> b",
+                over_event="done",
+                index_fields={"index": "1.5"},
             ),
         ),
         root_id=node_id,
@@ -115,6 +121,14 @@ def test_export_replay_bundle_writes_expected_files(tmp_path: Path) -> None:
     assert (bundle_dir / "snapshots" / "0002_ChildLinked.snapshot.json").exists()
     assert (bundle_dir / "snapshots" / "0004_BackupFinished.dot").exists()
     assert (bundle_dir / "snapshots" / "0004_BackupFinished.snapshot.json").exists()
+    snapshot_payload = json.loads(
+        (bundle_dir / "snapshots" / "0002_ChildLinked.snapshot.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert snapshot_payload["nodes"][0]["state_tag"] == "root"
+    assert snapshot_payload["nodes"][0]["direct_value"] == "score=0.1"
+    assert snapshot_payload["nodes"][0]["index_fields"] == {"index": "1.5"}
 
 
 def test_export_replay_bundle_writes_expected_trace_json(tmp_path: Path) -> None:
@@ -150,6 +164,10 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert 'id="snapshot-view"' in html
     assert 'id="node-list"' in html
     assert 'id="node-details"' in html
+    assert 'id="selected-node-id"' in html
+    assert 'id="selected-node-direct-value"' in html
+    assert 'id="selected-node-index-fields"' in html
+    assert 'id="selected-node-raw-label"' in html
     assert "Pause" in html
     assert "Resume" in html
     assert "Step" in html
@@ -157,4 +175,14 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert "nearestSnapshotAtOrBefore" in html
     assert "snapshot_metadata_file" in html
     assert "loadSnapshotMetadataForEntry" in html
+    assert "renderNodeInspector" in html
+    assert "renderListItems" in html
     assert "renderNodeDetails" in html
+    assert "loadInlineSvg" in html
+    assert "renderInlineSvg" in html
+    assert "initializeGraphInteraction" in html
+    assert "extractNodeIdFromGraphvizGroup" in html
+    assert "renderGraphSelection" in html
+    assert "selectNode" in html
+    assert "g.node" in html
+    assert "is-selected" in html

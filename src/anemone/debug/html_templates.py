@@ -226,6 +226,29 @@ def render_replay_index_html() -> str:
         background: white;
       }
 
+      .snapshot-stage svg {
+        max-width: 100%;
+        max-height: 70vh;
+        display: block;
+        box-shadow: 0 12px 36px rgba(37, 26, 18, 0.18);
+        background: white;
+      }
+
+      .snapshot-stage svg g.node {
+        cursor: pointer;
+      }
+
+      .snapshot-stage svg g.node.is-selected ellipse,
+      .snapshot-stage svg g.node.is-selected polygon,
+      .snapshot-stage svg g.node.is-selected path {
+        stroke: #a53f1a;
+        stroke-width: 3px;
+      }
+
+      .snapshot-stage svg g.node.is-selected text {
+        font-weight: 700;
+      }
+
       .snapshot-stage pre {
         width: 100%;
         margin: 0;
@@ -294,6 +317,15 @@ def render_replay_index_html() -> str:
         gap: 0.85rem;
       }
 
+      .node-inspector-section {
+        display: grid;
+        gap: 0.45rem;
+        padding: 0.8rem 0.9rem;
+        border: 1px solid rgba(32, 74, 64, 0.12);
+        border-radius: 0.85rem;
+        background: rgba(255, 250, 243, 0.55);
+      }
+
       .node-details-list {
         margin: 0;
         padding-left: 1.1rem;
@@ -304,6 +336,11 @@ def render_replay_index_html() -> str:
         white-space: pre-wrap;
         word-break: break-word;
         color: var(--ink);
+      }
+
+      .node-details-field {
+        display: grid;
+        gap: 0.18rem;
       }
 
       @media (max-width: 900px) {
@@ -384,7 +421,71 @@ def render_replay_index_html() -> str:
             </ul>
           </div>
           <div class="detail-card node-details-grid" id="node-details">
-            <div class="empty">No node selected.</div>
+            <section class="node-inspector-section">
+              <h3 class="heading">Identity</h3>
+              <div class="node-details-field">
+                <div class="detail-label">Node ID</div>
+                <p class="detail-value" id="selected-node-id">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">Depth</div>
+                <p class="detail-value" id="selected-node-depth">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">Root</div>
+                <p class="detail-value" id="selected-node-root">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">State Tag</div>
+                <p class="detail-value" id="selected-node-state-tag">-</p>
+              </div>
+            </section>
+            <section class="node-inspector-section">
+              <h3 class="heading">Evaluation</h3>
+              <div class="node-details-field">
+                <div class="detail-label">Direct Value</div>
+                <p class="detail-value" id="selected-node-direct-value">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">Backed-Up Value</div>
+                <p class="detail-value" id="selected-node-backed-up-value">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">Principal Variation</div>
+                <p class="detail-value" id="selected-node-pv">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">Over Event</div>
+                <p class="detail-value" id="selected-node-over-event">-</p>
+              </div>
+            </section>
+            <section class="node-inspector-section">
+              <h3 class="heading">Structure</h3>
+              <div class="node-details-field">
+                <div class="detail-label">Parents</div>
+                <p class="detail-value" id="selected-node-parents">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">Children</div>
+                <p class="detail-value" id="selected-node-children">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">Outgoing Edges</div>
+                <ul class="node-details-list" id="selected-node-outgoing-edges">
+                  <li class="empty">-</li>
+                </ul>
+              </div>
+            </section>
+            <section class="node-inspector-section">
+              <h3 class="heading">Exploration / Index</h3>
+              <ul class="node-details-list" id="selected-node-index-fields">
+                <li class="empty">-</li>
+              </ul>
+            </section>
+            <section class="node-inspector-section">
+              <h3 class="heading">Raw Label</h3>
+              <pre class="node-details-pre" id="selected-node-raw-label">-</pre>
+            </section>
           </div>
         </section>
         <section class="card">
@@ -456,6 +557,19 @@ def render_replay_index_html() -> str:
       const nodeSelectionStatusElement = document.getElementById("node-selection-status");
       const nodeListElement = document.getElementById("node-list");
       const nodeDetailsElement = document.getElementById("node-details");
+      const selectedNodeIdElement = document.getElementById("selected-node-id");
+      const selectedNodeDepthElement = document.getElementById("selected-node-depth");
+      const selectedNodeRootElement = document.getElementById("selected-node-root");
+      const selectedNodeStateTagElement = document.getElementById("selected-node-state-tag");
+      const selectedNodeDirectValueElement = document.getElementById("selected-node-direct-value");
+      const selectedNodeBackedUpValueElement = document.getElementById("selected-node-backed-up-value");
+      const selectedNodePvElement = document.getElementById("selected-node-pv");
+      const selectedNodeOverEventElement = document.getElementById("selected-node-over-event");
+      const selectedNodeParentsElement = document.getElementById("selected-node-parents");
+      const selectedNodeChildrenElement = document.getElementById("selected-node-children");
+      const selectedNodeOutgoingEdgesElement = document.getElementById("selected-node-outgoing-edges");
+      const selectedNodeIndexFieldsElement = document.getElementById("selected-node-index-fields");
+      const selectedNodeRawLabelElement = document.getElementById("selected-node-raw-label");
 
       let entries = [];
       let selectedIndex = 0;
@@ -465,6 +579,7 @@ def render_replay_index_html() -> str:
       let currentControlState = null;
       let currentSnapshotMetadata = null;
       let currentSnapshotMetadataFile = null;
+      let currentGraphNodeMap = new Map();
       let selectedNodeId = null;
       let breakpointSequence = 0;
 
@@ -501,6 +616,85 @@ def render_replay_index_html() -> str:
           return [];
         }
         return snapshotMetadata.edges.filter((edge) => edge.parent_id === nodeId);
+      }
+
+      function nodeExists(snapshotMetadata, nodeId) {
+        return findNodeById(snapshotMetadata, nodeId) !== null;
+      }
+
+      function extractNodeIdFromGraphvizGroup(nodeGroup) {
+        const titleElement = Array.from(nodeGroup.children).find(
+          (child) => child.tagName && child.tagName.toLowerCase() === "title"
+        ) || nodeGroup.querySelector("title");
+        if (!titleElement || !titleElement.textContent) {
+          return null;
+        }
+
+        const candidateNodeId = titleElement.textContent.trim();
+        if (!candidateNodeId) {
+          return null;
+        }
+        if (!nodeExists(currentSnapshotMetadata, candidateNodeId)) {
+          return null;
+        }
+        return candidateNodeId;
+      }
+
+      function renderGraphSelection() {
+        currentGraphNodeMap.forEach((nodeGroup) => {
+          nodeGroup.classList.remove("is-selected");
+        });
+
+        if (!selectedNodeId || !currentGraphNodeMap.has(selectedNodeId)) {
+          return;
+        }
+
+        currentGraphNodeMap.get(selectedNodeId).classList.add("is-selected");
+      }
+
+      function selectNode(nodeId) {
+        if (!nodeExists(currentSnapshotMetadata, nodeId)) {
+          return;
+        }
+        selectedNodeId = nodeId;
+        renderNodeList();
+        renderNodeDetails();
+        renderGraphSelection();
+      }
+
+      function initializeGraphInteraction(svgElement) {
+        currentGraphNodeMap = new Map();
+
+        const nodeGroups = svgElement.querySelectorAll("g.node");
+        nodeGroups.forEach((nodeGroup) => {
+          const nodeId = extractNodeIdFromGraphvizGroup(nodeGroup);
+          if (!nodeId) {
+            return;
+          }
+
+          currentGraphNodeMap.set(nodeId, nodeGroup);
+          nodeGroup.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            selectNode(nodeId);
+          });
+        });
+
+        renderGraphSelection();
+      }
+
+      async function loadInlineSvg(snapshotFile) {
+        const response = await fetch(snapshotFile, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.text();
+      }
+
+      function renderInlineSvg(svgText) {
+        snapshotViewElement.replaceChildren();
+        snapshotViewElement.innerHTML = svgText;
+        return snapshotViewElement.querySelector("svg");
       }
 
       function renderNodeList() {
@@ -542,112 +736,125 @@ def render_replay_index_html() -> str:
           button.appendChild(label);
           button.appendChild(summary);
           button.addEventListener("click", () => {
-            selectedNodeId = node.node_id;
-            renderNodeList();
-            renderNodeDetails();
+            selectNode(node.node_id);
           });
           item.appendChild(button);
           nodeListElement.appendChild(item);
         });
       }
 
-      function appendDetailBlock(title, value) {
-        const block = document.createElement("div");
+      function renderListItems(container, items, emptyLabel) {
+        container.replaceChildren();
 
-        const detailLabel = document.createElement("div");
-        detailLabel.className = "detail-label";
-        detailLabel.textContent = title;
+        if (!Array.isArray(items) || items.length === 0) {
+          const emptyItem = document.createElement("li");
+          emptyItem.className = "empty";
+          emptyItem.textContent = emptyLabel;
+          container.appendChild(emptyItem);
+          return;
+        }
 
-        const detailValue = document.createElement("p");
-        detailValue.className = "detail-value";
-        detailValue.textContent = value;
+        items.forEach((itemText) => {
+          const item = document.createElement("li");
+          item.textContent = itemText;
+          container.appendChild(item);
+        });
+      }
 
-        block.appendChild(detailLabel);
-        block.appendChild(detailValue);
-        nodeDetailsElement.appendChild(block);
+      function renderNodeInspector(node) {
+        const childIds = Array.isArray(node.child_ids) ? node.child_ids : [];
+        const parents = Array.isArray(node.parent_ids) ? node.parent_ids : [];
+        const edgeLabelsByChild = node.edge_labels_by_child && typeof node.edge_labels_by_child === "object"
+          ? node.edge_labels_by_child
+          : {};
+        const indexFields = node.index_fields && typeof node.index_fields === "object"
+          ? Object.entries(node.index_fields).map(([key, value]) => `${key} = ${value}`)
+          : [];
+        const outgoingEdges = childIds.length > 0
+          ? childIds.map((childId) => (
+            edgeLabelsByChild[childId] ? `${edgeLabelsByChild[childId]} -> ${childId}` : childId
+          ))
+          : findOutgoingEdges(currentSnapshotMetadata, node.node_id).map((edge) => (
+            edge.label ? `${edge.label} -> ${edge.child_id}` : edge.child_id
+          ));
+
+        selectedNodeIdElement.textContent = node.node_id || "-";
+        selectedNodeDepthElement.textContent = String(node.depth ?? "-");
+        selectedNodeRootElement.textContent = node.node_id === currentSnapshotMetadata.root_id
+          ? "yes"
+          : "no";
+        selectedNodeStateTagElement.textContent = node.state_tag || "-";
+        selectedNodeDirectValueElement.textContent = node.direct_value || "-";
+        selectedNodeBackedUpValueElement.textContent = node.backed_up_value || "-";
+        selectedNodePvElement.textContent = node.principal_variation || "-";
+        selectedNodeOverEventElement.textContent = node.over_event || "-";
+        selectedNodeParentsElement.textContent = parents.length > 0 ? parents.join(", ") : "-";
+        selectedNodeChildrenElement.textContent = childIds.length > 0 ? childIds.join(", ") : "-";
+        renderListItems(selectedNodeOutgoingEdgesElement, outgoingEdges, "none");
+        renderListItems(selectedNodeIndexFieldsElement, indexFields, "none");
+        selectedNodeRawLabelElement.textContent = typeof node.label === "string"
+          ? node.label
+          : "-";
       }
 
       function renderNodeDetails() {
-        nodeDetailsElement.replaceChildren();
-
         if (!currentSnapshotMetadata) {
           nodeSelectionStatusElement.textContent = "No node selected";
-          const emptyMessage = document.createElement("div");
-          emptyMessage.className = "empty";
-          emptyMessage.textContent = "No snapshot metadata available yet.";
-          nodeDetailsElement.appendChild(emptyMessage);
+          selectedNodeIdElement.textContent = "-";
+          selectedNodeDepthElement.textContent = "-";
+          selectedNodeRootElement.textContent = "-";
+          selectedNodeStateTagElement.textContent = "-";
+          selectedNodeDirectValueElement.textContent = "-";
+          selectedNodeBackedUpValueElement.textContent = "-";
+          selectedNodePvElement.textContent = "-";
+          selectedNodeOverEventElement.textContent = "-";
+          selectedNodeParentsElement.textContent = "-";
+          selectedNodeChildrenElement.textContent = "-";
+          renderListItems(selectedNodeOutgoingEdgesElement, [], "No snapshot metadata available yet.");
+          renderListItems(selectedNodeIndexFieldsElement, [], "No snapshot metadata available yet.");
+          selectedNodeRawLabelElement.textContent = "-";
           return;
         }
 
         if (!selectedNodeId) {
           nodeSelectionStatusElement.textContent = "No node selected";
-          const emptyMessage = document.createElement("div");
-          emptyMessage.className = "empty";
-          emptyMessage.textContent = "Select a node from the snapshot node list.";
-          nodeDetailsElement.appendChild(emptyMessage);
+          selectedNodeIdElement.textContent = "-";
+          selectedNodeDepthElement.textContent = "-";
+          selectedNodeRootElement.textContent = "-";
+          selectedNodeStateTagElement.textContent = "-";
+          selectedNodeDirectValueElement.textContent = "-";
+          selectedNodeBackedUpValueElement.textContent = "-";
+          selectedNodePvElement.textContent = "-";
+          selectedNodeOverEventElement.textContent = "-";
+          selectedNodeParentsElement.textContent = "-";
+          selectedNodeChildrenElement.textContent = "-";
+          renderListItems(selectedNodeOutgoingEdgesElement, [], "Select a node to inspect outgoing edges.");
+          renderListItems(selectedNodeIndexFieldsElement, [], "Select a node to inspect index fields.");
+          selectedNodeRawLabelElement.textContent = "-";
           return;
         }
 
         const node = findNodeById(currentSnapshotMetadata, selectedNodeId);
         if (!node) {
           nodeSelectionStatusElement.textContent = "No node selected";
-          const emptyMessage = document.createElement("div");
-          emptyMessage.className = "empty";
-          emptyMessage.textContent = "Selected node is not present in this snapshot.";
-          nodeDetailsElement.appendChild(emptyMessage);
+          selectedNodeIdElement.textContent = "-";
+          selectedNodeDepthElement.textContent = "-";
+          selectedNodeRootElement.textContent = "-";
+          selectedNodeStateTagElement.textContent = "-";
+          selectedNodeDirectValueElement.textContent = "-";
+          selectedNodeBackedUpValueElement.textContent = "-";
+          selectedNodePvElement.textContent = "-";
+          selectedNodeOverEventElement.textContent = "-";
+          selectedNodeParentsElement.textContent = "-";
+          selectedNodeChildrenElement.textContent = "-";
+          renderListItems(selectedNodeOutgoingEdgesElement, [], "Selected node is not present in this snapshot.");
+          renderListItems(selectedNodeIndexFieldsElement, [], "Selected node is not present in this snapshot.");
+          selectedNodeRawLabelElement.textContent = "-";
           return;
         }
 
-        const outgoingEdges = findOutgoingEdges(currentSnapshotMetadata, selectedNodeId);
         nodeSelectionStatusElement.textContent = `Selected node: ${selectedNodeId}`;
-
-        appendDetailBlock("Node ID", node.node_id);
-        appendDetailBlock("Depth", String(node.depth));
-        appendDetailBlock(
-          "Root",
-          node.node_id === currentSnapshotMetadata.root_id ? "yes" : "no"
-        );
-        appendDetailBlock(
-          "Parents",
-          Array.isArray(node.parent_ids) && node.parent_ids.length > 0
-            ? node.parent_ids.join(", ")
-            : "none"
-        );
-
-        const childrenBlock = document.createElement("div");
-        const childrenLabel = document.createElement("div");
-        childrenLabel.className = "detail-label";
-        childrenLabel.textContent = "Children";
-        childrenBlock.appendChild(childrenLabel);
-        if (outgoingEdges.length === 0) {
-          const emptyChildren = document.createElement("p");
-          emptyChildren.className = "detail-value";
-          emptyChildren.textContent = "none";
-          childrenBlock.appendChild(emptyChildren);
-        } else {
-          const childList = document.createElement("ul");
-          childList.className = "node-details-list";
-          outgoingEdges.forEach((edge) => {
-            const childItem = document.createElement("li");
-            childItem.textContent = edge.label
-              ? `${edge.label} -> ${edge.child_id}`
-              : edge.child_id;
-            childList.appendChild(childItem);
-          });
-          childrenBlock.appendChild(childList);
-        }
-        nodeDetailsElement.appendChild(childrenBlock);
-
-        const labelBlock = document.createElement("div");
-        const labelTitle = document.createElement("div");
-        labelTitle.className = "detail-label";
-        labelTitle.textContent = "Label";
-        const labelValue = document.createElement("pre");
-        labelValue.className = "node-details-pre";
-        labelValue.textContent = typeof node.label === "string" ? node.label : "";
-        labelBlock.appendChild(labelTitle);
-        labelBlock.appendChild(labelValue);
-        nodeDetailsElement.appendChild(labelBlock);
+        renderNodeInspector(node);
       }
 
       function renderTimeline() {
@@ -785,6 +992,7 @@ def render_replay_index_html() -> str:
         snapshotStatusElement.textContent = "No snapshot loaded";
         currentSnapshotMetadata = null;
         currentSnapshotMetadataFile = null;
+        currentGraphNodeMap = new Map();
         selectedNodeId = null;
         snapshotViewElement.replaceChildren();
         const emptyMessage = document.createElement("div");
@@ -903,6 +1111,7 @@ def render_replay_index_html() -> str:
           selectedNodeId = null;
           renderNodeList();
           renderNodeDetails();
+          renderGraphSelection();
           return;
         }
 
@@ -923,6 +1132,7 @@ def render_replay_index_html() -> str:
 
         renderNodeList();
         renderNodeDetails();
+        renderGraphSelection();
       }
 
       async function renderSnapshot(entryIndex) {
@@ -937,6 +1147,7 @@ def render_replay_index_html() -> str:
           snapshotViewElement.appendChild(emptyMessage);
           currentSnapshotMetadata = null;
           currentSnapshotMetadataFile = null;
+          currentGraphNodeMap = new Map();
           selectedNodeId = null;
           renderNodeList();
           renderNodeDetails();
@@ -949,18 +1160,28 @@ def render_replay_index_html() -> str:
         snapshotStatusElement.textContent = sourceLabel;
 
         if (snapshotEntry.snapshot_file.endsWith(".dot")) {
-          const response = await fetch(snapshotEntry.snapshot_file);
+          currentGraphNodeMap = new Map();
+          const response = await fetch(snapshotEntry.snapshot_file, { cache: "no-store" });
           const dotSource = await response.text();
           const block = document.createElement("pre");
           block.textContent = dotSource;
           snapshotViewElement.appendChild(block);
+          renderGraphSelection();
           return;
         }
 
-        const image = document.createElement("img");
-        image.alt = `Snapshot for entry ${snapshotEntry.index}`;
-        image.src = snapshotEntry.snapshot_file;
-        snapshotViewElement.appendChild(image);
+        const svgText = await loadInlineSvg(snapshotEntry.snapshot_file);
+        const svgElement = renderInlineSvg(svgText);
+        if (!svgElement) {
+          currentGraphNodeMap = new Map();
+          const emptyMessage = document.createElement("div");
+          emptyMessage.className = "empty";
+          emptyMessage.textContent = "Unable to render inline SVG snapshot.";
+          snapshotViewElement.replaceChildren();
+          snapshotViewElement.appendChild(emptyMessage);
+          return;
+        }
+        initializeGraphInteraction(svgElement);
       }
 
       async function renderDetails() {
@@ -975,8 +1196,10 @@ def render_replay_index_html() -> str:
         entryTypeElement.textContent = entry.event_type;
         entrySummaryElement.textContent = entry.event_summary;
         updateControls();
-        await renderSnapshot(selectedIndex);
+        // Metadata must be available before inline SVG interaction is initialized,
+        // because Graphviz node ids are validated against the structured snapshot.
         await loadSnapshotMetadataForEntry(selectedIndex);
+        await renderSnapshot(selectedIndex);
       }
 
       async function selectEntry(index) {
