@@ -6,7 +6,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .export import export_snapshot_entry, trace_snapshot_filename
+from .export import (
+    export_snapshot_entry,
+    export_snapshot_json,
+    trace_snapshot_filename,
+    trace_snapshot_metadata_filename,
+)
 from .html_templates import render_replay_index_html
 from .recording import (
     DebugTimelineEntry,
@@ -140,12 +145,23 @@ class LiveDebugSessionRecorder(SearchDebugSink):
             format_str=self._snapshot_format,
         )
         if snapshot_path.exists():
+            metadata_path = self._snapshot_directory / trace_snapshot_metadata_filename(
+                entry
+            )
+            if not metadata_path.exists():
+                export_snapshot_json(entry.snapshot, metadata_path)
             return snapshot_path
-        return export_snapshot_entry(
+
+        exported_snapshot_path = export_snapshot_entry(
             entry.snapshot,
             snapshot_path,
             format_str=self._snapshot_format,
         )
+        export_snapshot_json(
+            entry.snapshot,
+            self._snapshot_directory / trace_snapshot_metadata_filename(entry),
+        )
+        return exported_snapshot_path
 
 
 __all__ = ["LiveDebugSessionRecorder", "MissingLiveSessionSnapshotError"]

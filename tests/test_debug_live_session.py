@@ -64,6 +64,7 @@ def test_live_debug_session_recorder_writes_events_incrementally(
     assert first_payload["entry_count"] == 1
     assert first_payload["entries"][0]["event_type"] == "SearchIterationStarted"
     assert first_payload["entries"][0]["snapshot_file"] is None
+    assert first_payload["entries"][0]["snapshot_metadata_file"] is None
 
     recorder.emit(NodeSelected(node_id="9"))
     second_payload = json.loads(
@@ -74,6 +75,9 @@ def test_live_debug_session_recorder_writes_events_incrementally(
     assert second_payload["entries"][1]["event_summary"] == "node 9 selected"
     assert second_payload["entries"][1]["snapshot_file"] == (
         "snapshots/0001_NodeSelected.dot"
+    )
+    assert second_payload["entries"][1]["snapshot_metadata_file"] == (
+        "snapshots/0001_NodeSelected.snapshot.json"
     )
 
 
@@ -95,8 +99,11 @@ def test_live_debug_session_recorder_writes_snapshot_files_only_when_needed(
     recorder.emit(NodeSelected(node_id="9"))
 
     snapshot_files = tuple(snapshot_dir.iterdir())
-    assert len(snapshot_files) == 1
-    assert snapshot_files[0].name == "0001_NodeSelected.dot"
+    assert len(snapshot_files) == 2
+    assert {path.name for path in snapshot_files} == {
+        "0001_NodeSelected.dot",
+        "0001_NodeSelected.snapshot.json",
+    }
 
 
 def test_live_debug_session_recorder_finalize_marks_session_complete(
@@ -119,3 +126,5 @@ def test_render_replay_index_html_contains_live_polling_hooks() -> None:
     assert 'fetch("trace.json"' in html
     assert "setInterval" in html
     assert 'id="auto-follow-latest"' in html
+    assert 'id="node-list"' in html
+    assert 'id="node-details"' in html

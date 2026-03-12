@@ -255,6 +255,57 @@ def render_replay_index_html() -> str:
         padding: 0.7rem 0.85rem;
       }
 
+      .node-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .node-list-item {
+        width: 100%;
+        text-align: left;
+        border: 1px solid rgba(32, 74, 64, 0.16);
+        border-radius: 0.8rem;
+        background: var(--panel-strong);
+        padding: 0.7rem 0.85rem;
+        cursor: pointer;
+      }
+
+      .node-list-item.is-selected {
+        border-color: rgba(165, 63, 26, 0.5);
+        background: rgba(165, 63, 26, 0.08);
+      }
+
+      .node-list-label {
+        display: block;
+        font-weight: 600;
+      }
+
+      .node-list-summary {
+        display: block;
+        margin-top: 0.2rem;
+        color: var(--muted);
+      }
+
+      .node-details-grid {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .node-details-list {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+
+      .node-details-pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--ink);
+      }
+
       @media (max-width: 900px) {
         .shell {
           grid-template-columns: 1fr;
@@ -324,6 +375,20 @@ def render_replay_index_html() -> str:
         </section>
         <section class="card">
           <div class="detail-header">
+            <h2 class="heading">Node Inspection</h2>
+            <p class="subheading" id="node-selection-status">No node selected</p>
+          </div>
+          <div class="detail-card">
+            <ul class="node-list" id="node-list">
+              <li class="empty">No snapshot nodes available yet.</li>
+            </ul>
+          </div>
+          <div class="detail-card node-details-grid" id="node-details">
+            <div class="empty">No node selected.</div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="detail-header">
             <h2 class="heading">Breakpoints</h2>
             <p class="subheading" id="pause-state">Status: unknown</p>
             <p class="subheading" id="last-breakpoint-hit">Last breakpoint hit: none</p>
@@ -388,6 +453,9 @@ def render_replay_index_html() -> str:
       const entrySummaryElement = document.getElementById("entry-summary");
       const snapshotStatusElement = document.getElementById("snapshot-status");
       const snapshotViewElement = document.getElementById("snapshot-view");
+      const nodeSelectionStatusElement = document.getElementById("node-selection-status");
+      const nodeListElement = document.getElementById("node-list");
+      const nodeDetailsElement = document.getElementById("node-details");
 
       let entries = [];
       let selectedIndex = 0;
@@ -395,6 +463,9 @@ def render_replay_index_html() -> str:
       let isRefreshing = false;
       let currentPayload = null;
       let currentControlState = null;
+      let currentSnapshotMetadata = null;
+      let currentSnapshotMetadataFile = null;
+      let selectedNodeId = null;
       let breakpointSequence = 0;
 
       function formatIndex(index) {
@@ -409,6 +480,174 @@ def render_replay_index_html() -> str:
           }
         }
         return null;
+      }
+
+      function firstLabelLine(label) {
+        if (typeof label !== "string" || label.length === 0) {
+          return "(no label)";
+        }
+        return label.split("\n")[0];
+      }
+
+      function findNodeById(snapshotMetadata, nodeId) {
+        if (!snapshotMetadata || !Array.isArray(snapshotMetadata.nodes) || !nodeId) {
+          return null;
+        }
+        return snapshotMetadata.nodes.find((node) => node.node_id === nodeId) || null;
+      }
+
+      function findOutgoingEdges(snapshotMetadata, nodeId) {
+        if (!snapshotMetadata || !Array.isArray(snapshotMetadata.edges) || !nodeId) {
+          return [];
+        }
+        return snapshotMetadata.edges.filter((edge) => edge.parent_id === nodeId);
+      }
+
+      function renderNodeList() {
+        nodeListElement.replaceChildren();
+
+        if (!currentSnapshotMetadata || !Array.isArray(currentSnapshotMetadata.nodes)) {
+          const emptyItem = document.createElement("li");
+          emptyItem.className = "empty";
+          emptyItem.textContent = "No snapshot nodes available yet.";
+          nodeListElement.appendChild(emptyItem);
+          return;
+        }
+
+        if (currentSnapshotMetadata.nodes.length === 0) {
+          const emptyItem = document.createElement("li");
+          emptyItem.className = "empty";
+          emptyItem.textContent = "Snapshot contains no nodes.";
+          nodeListElement.appendChild(emptyItem);
+          return;
+        }
+
+        currentSnapshotMetadata.nodes.forEach((node) => {
+          const item = document.createElement("li");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "node-list-item";
+          if (node.node_id === selectedNodeId) {
+            button.classList.add("is-selected");
+          }
+
+          const label = document.createElement("span");
+          label.className = "node-list-label";
+          label.textContent = `Node ${node.node_id}`;
+
+          const summary = document.createElement("span");
+          summary.className = "node-list-summary";
+          summary.textContent = firstLabelLine(node.label);
+
+          button.appendChild(label);
+          button.appendChild(summary);
+          button.addEventListener("click", () => {
+            selectedNodeId = node.node_id;
+            renderNodeList();
+            renderNodeDetails();
+          });
+          item.appendChild(button);
+          nodeListElement.appendChild(item);
+        });
+      }
+
+      function appendDetailBlock(title, value) {
+        const block = document.createElement("div");
+
+        const detailLabel = document.createElement("div");
+        detailLabel.className = "detail-label";
+        detailLabel.textContent = title;
+
+        const detailValue = document.createElement("p");
+        detailValue.className = "detail-value";
+        detailValue.textContent = value;
+
+        block.appendChild(detailLabel);
+        block.appendChild(detailValue);
+        nodeDetailsElement.appendChild(block);
+      }
+
+      function renderNodeDetails() {
+        nodeDetailsElement.replaceChildren();
+
+        if (!currentSnapshotMetadata) {
+          nodeSelectionStatusElement.textContent = "No node selected";
+          const emptyMessage = document.createElement("div");
+          emptyMessage.className = "empty";
+          emptyMessage.textContent = "No snapshot metadata available yet.";
+          nodeDetailsElement.appendChild(emptyMessage);
+          return;
+        }
+
+        if (!selectedNodeId) {
+          nodeSelectionStatusElement.textContent = "No node selected";
+          const emptyMessage = document.createElement("div");
+          emptyMessage.className = "empty";
+          emptyMessage.textContent = "Select a node from the snapshot node list.";
+          nodeDetailsElement.appendChild(emptyMessage);
+          return;
+        }
+
+        const node = findNodeById(currentSnapshotMetadata, selectedNodeId);
+        if (!node) {
+          nodeSelectionStatusElement.textContent = "No node selected";
+          const emptyMessage = document.createElement("div");
+          emptyMessage.className = "empty";
+          emptyMessage.textContent = "Selected node is not present in this snapshot.";
+          nodeDetailsElement.appendChild(emptyMessage);
+          return;
+        }
+
+        const outgoingEdges = findOutgoingEdges(currentSnapshotMetadata, selectedNodeId);
+        nodeSelectionStatusElement.textContent = `Selected node: ${selectedNodeId}`;
+
+        appendDetailBlock("Node ID", node.node_id);
+        appendDetailBlock("Depth", String(node.depth));
+        appendDetailBlock(
+          "Root",
+          node.node_id === currentSnapshotMetadata.root_id ? "yes" : "no"
+        );
+        appendDetailBlock(
+          "Parents",
+          Array.isArray(node.parent_ids) && node.parent_ids.length > 0
+            ? node.parent_ids.join(", ")
+            : "none"
+        );
+
+        const childrenBlock = document.createElement("div");
+        const childrenLabel = document.createElement("div");
+        childrenLabel.className = "detail-label";
+        childrenLabel.textContent = "Children";
+        childrenBlock.appendChild(childrenLabel);
+        if (outgoingEdges.length === 0) {
+          const emptyChildren = document.createElement("p");
+          emptyChildren.className = "detail-value";
+          emptyChildren.textContent = "none";
+          childrenBlock.appendChild(emptyChildren);
+        } else {
+          const childList = document.createElement("ul");
+          childList.className = "node-details-list";
+          outgoingEdges.forEach((edge) => {
+            const childItem = document.createElement("li");
+            childItem.textContent = edge.label
+              ? `${edge.label} -> ${edge.child_id}`
+              : edge.child_id;
+            childList.appendChild(childItem);
+          });
+          childrenBlock.appendChild(childList);
+        }
+        nodeDetailsElement.appendChild(childrenBlock);
+
+        const labelBlock = document.createElement("div");
+        const labelTitle = document.createElement("div");
+        labelTitle.className = "detail-label";
+        labelTitle.textContent = "Label";
+        const labelValue = document.createElement("pre");
+        labelValue.className = "node-details-pre";
+        labelValue.textContent = typeof node.label === "string" ? node.label : "";
+        labelBlock.appendChild(labelTitle);
+        labelBlock.appendChild(labelValue);
+        nodeDetailsElement.appendChild(labelBlock);
       }
 
       function renderTimeline() {
@@ -544,11 +783,16 @@ def render_replay_index_html() -> str:
         entryTypeElement.textContent = "-";
         entrySummaryElement.textContent = message;
         snapshotStatusElement.textContent = "No snapshot loaded";
+        currentSnapshotMetadata = null;
+        currentSnapshotMetadataFile = null;
+        selectedNodeId = null;
         snapshotViewElement.replaceChildren();
         const emptyMessage = document.createElement("div");
         emptyMessage.className = "empty";
         emptyMessage.textContent = message;
         snapshotViewElement.appendChild(emptyMessage);
+        renderNodeList();
+        renderNodeDetails();
         updateControls();
       }
 
@@ -651,6 +895,36 @@ def render_replay_index_html() -> str:
         }
       }
 
+      async function loadSnapshotMetadataForEntry(entryIndex) {
+        const snapshotEntry = nearestSnapshotAtOrBefore(entryIndex);
+        if (!snapshotEntry || !snapshotEntry.snapshot_metadata_file) {
+          currentSnapshotMetadata = null;
+          currentSnapshotMetadataFile = null;
+          selectedNodeId = null;
+          renderNodeList();
+          renderNodeDetails();
+          return;
+        }
+
+        if (currentSnapshotMetadataFile !== snapshotEntry.snapshot_metadata_file) {
+          const response = await fetch(snapshotEntry.snapshot_metadata_file, {
+            cache: "no-store",
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          currentSnapshotMetadata = await response.json();
+          currentSnapshotMetadataFile = snapshotEntry.snapshot_metadata_file;
+        }
+
+        if (!findNodeById(currentSnapshotMetadata, selectedNodeId)) {
+          selectedNodeId = null;
+        }
+
+        renderNodeList();
+        renderNodeDetails();
+      }
+
       async function renderSnapshot(entryIndex) {
         const snapshotEntry = nearestSnapshotAtOrBefore(entryIndex);
         snapshotViewElement.replaceChildren();
@@ -661,6 +935,11 @@ def render_replay_index_html() -> str:
           emptyMessage.className = "empty";
           emptyMessage.textContent = "No snapshot available yet";
           snapshotViewElement.appendChild(emptyMessage);
+          currentSnapshotMetadata = null;
+          currentSnapshotMetadataFile = null;
+          selectedNodeId = null;
+          renderNodeList();
+          renderNodeDetails();
           return;
         }
 
@@ -697,6 +976,7 @@ def render_replay_index_html() -> str:
         entrySummaryElement.textContent = entry.event_summary;
         updateControls();
         await renderSnapshot(selectedIndex);
+        await loadSnapshotMetadataForEntry(selectedIndex);
       }
 
       async function selectEntry(index) {

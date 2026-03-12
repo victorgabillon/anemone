@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from .dot_renderer import DotRenderer
 from .replay import format_debug_event
+from .snapshot_serialization import write_snapshot_json
 
 if TYPE_CHECKING:
     from graphviz import Digraph
@@ -77,6 +78,11 @@ def export_snapshot_entry(
     return export_snapshot_render(snapshot, target, format_str=format_str)
 
 
+def export_snapshot_json(snapshot: DebugTreeSnapshot, path: str | Path) -> Path:
+    """Write structured snapshot metadata JSON to ``path``."""
+    return write_snapshot_json(snapshot, path)
+
+
 def export_trace_snapshots(
     trace: DebugTrace,
     directory: str | Path,
@@ -134,12 +140,20 @@ def trace_snapshot_filename(
     return f"{entry.index:04d}_{event_name}.{extension}"
 
 
+def trace_snapshot_metadata_filename(entry: DebugTimelineEntry) -> str:
+    """Return the deterministic snapshot metadata filename for one trace entry."""
+    event_name = _safe_event_name(entry.event.__class__.__name__)
+    return f"{entry.index:04d}_{event_name}.snapshot.json"
+
+
 __all__ = [
     "export_snapshot_dot",
     "export_snapshot_entry",
+    "export_snapshot_json",
     "export_snapshot_render",
     "export_trace_snapshots",
     "export_trace_summary",
     "render_snapshot",
     "trace_snapshot_filename",
+    "trace_snapshot_metadata_filename",
 ]

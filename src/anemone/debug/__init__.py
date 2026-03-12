@@ -36,6 +36,7 @@ from .events import (
 from .export import (
     export_snapshot_dot,
     export_snapshot_entry,
+    export_snapshot_json,
     export_snapshot_render,
     export_trace_snapshots,
     export_trace_summary,
@@ -78,6 +79,12 @@ from .replay_bundle import (
 )
 from .sink import NullSearchDebugSink, SearchDebugSink
 from .snapshot_adapter import TreeSnapshotAdapter
+from .snapshot_serialization import (
+    load_snapshot_json,
+    snapshot_from_json,
+    snapshot_to_json,
+    write_snapshot_json,
+)
 
 __all__ = [
     "BackupFinished",
@@ -130,11 +137,13 @@ __all__ = [
     "export_replay_bundle",
     "export_snapshot_dot",
     "export_snapshot_entry",
+    "export_snapshot_json",
     "export_snapshot_render",
     "export_trace_snapshots",
     "export_trace_summary",
     "format_debug_event",
     "load_debug_trace",
+    "load_snapshot_json",
     "make_tree_snapshot_provider",
     "render_replay_index_html",
     "render_snapshot",
@@ -142,7 +151,10 @@ __all__ = [
     "serve_live_debug_session",
     "serve_replay_bundle",
     "snapshot_children",
+    "snapshot_from_json",
+    "snapshot_to_json",
     "summarize_node_evaluation",
     "write_debug_command",
     "write_replay_payload",
+    "write_snapshot_json",
 ]

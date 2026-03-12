@@ -88,9 +88,17 @@ def test_build_replay_payload_is_json_friendly() -> None:
     assert entries[0]["event_summary"] == "iteration 1 started"
     assert entries[0]["has_snapshot"] is False
     assert entries[0]["snapshot_file"] is None
+    assert entries[0]["snapshot_metadata_file"] is None
     assert entries[2]["snapshot_file"] == "snapshots/0002_ChildLinked.svg"
+    assert entries[2]["snapshot_metadata_file"] == (
+        "snapshots/0002_ChildLinked.snapshot.json"
+    )
     assert entries[3]["snapshot_file"] is None
+    assert entries[3]["snapshot_metadata_file"] is None
     assert entries[4]["snapshot_file"] == "snapshots/0004_BackupFinished.svg"
+    assert entries[4]["snapshot_metadata_file"] == (
+        "snapshots/0004_BackupFinished.snapshot.json"
+    )
 
 
 def test_export_replay_bundle_writes_expected_files(tmp_path: Path) -> None:
@@ -104,7 +112,9 @@ def test_export_replay_bundle_writes_expected_files(tmp_path: Path) -> None:
     assert (bundle_dir / "index.html").exists()
     assert (bundle_dir / "trace.json").exists()
     assert (bundle_dir / "snapshots" / "0002_ChildLinked.dot").exists()
+    assert (bundle_dir / "snapshots" / "0002_ChildLinked.snapshot.json").exists()
     assert (bundle_dir / "snapshots" / "0004_BackupFinished.dot").exists()
+    assert (bundle_dir / "snapshots" / "0004_BackupFinished.snapshot.json").exists()
 
 
 def test_export_replay_bundle_writes_expected_trace_json(tmp_path: Path) -> None:
@@ -119,7 +129,11 @@ def test_export_replay_bundle_writes_expected_trace_json(tmp_path: Path) -> None
     assert payload["entry_count"] == 5
     assert payload["entries"][2]["event_summary"] == "linked 5 --a--> 8"
     assert payload["entries"][2]["snapshot_file"] == "snapshots/0002_ChildLinked.dot"
+    assert payload["entries"][2]["snapshot_metadata_file"] == (
+        "snapshots/0002_ChildLinked.snapshot.json"
+    )
     assert payload["entries"][3]["snapshot_file"] is None
+    assert payload["entries"][3]["snapshot_metadata_file"] is None
     assert payload["entries"][4]["event_summary"].startswith("node 5 backup finished")
 
 
@@ -134,8 +148,13 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert 'id="timeline"' in html
     assert 'id="entry-summary"' in html
     assert 'id="snapshot-view"' in html
+    assert 'id="node-list"' in html
+    assert 'id="node-details"' in html
     assert "Pause" in html
     assert "Resume" in html
     assert "Step" in html
     assert "Clear Breakpoints" in html
     assert "nearestSnapshotAtOrBefore" in html
+    assert "snapshot_metadata_file" in html
+    assert "loadSnapshotMetadataForEntry" in html
+    assert "renderNodeDetails" in html

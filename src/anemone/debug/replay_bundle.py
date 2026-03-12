@@ -6,7 +6,12 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
-from .export import export_snapshot_entry, trace_snapshot_filename
+from .export import (
+    export_snapshot_entry,
+    export_snapshot_json,
+    trace_snapshot_filename,
+    trace_snapshot_metadata_filename,
+)
 from .html_templates import render_replay_index_html
 from .replay import format_debug_event
 
@@ -46,10 +51,15 @@ def build_replay_entry_payload(
 ) -> dict[str, int | str | bool | None]:
     """Build the browser payload for one timeline entry."""
     snapshot_file = None
+    snapshot_metadata_file = None
     if entry.snapshot is not None:
         snapshot_file = _snapshot_relative_path(
             entry,
             snapshot_format=snapshot_format,
+            snapshot_directory=snapshot_directory,
+        )
+        snapshot_metadata_file = _snapshot_metadata_relative_path(
+            entry,
             snapshot_directory=snapshot_directory,
         )
 
@@ -59,6 +69,7 @@ def build_replay_entry_payload(
         "event_summary": format_debug_event(entry.event),
         "has_snapshot": entry.snapshot is not None,
         "snapshot_file": snapshot_file,
+        "snapshot_metadata_file": snapshot_metadata_file,
     }
 
 
@@ -96,6 +107,10 @@ def export_replay_bundle(
             snapshot_path,
             format_str=snapshot_format,
         )
+        export_snapshot_json(
+            entry.snapshot,
+            snapshot_dir / trace_snapshot_metadata_filename(entry),
+        )
 
     payload = build_replay_payload(trace, snapshot_format=snapshot_format)
     write_replay_payload(payload, bundle_dir / "trace.json")
@@ -114,6 +129,16 @@ def _snapshot_relative_path(
 ) -> str:
     """Return the browser-relative snapshot path for ``entry``."""
     filename = trace_snapshot_filename(entry, format_str=snapshot_format)
+    return PurePosixPath(snapshot_directory, filename).as_posix()
+
+
+def _snapshot_metadata_relative_path(
+    entry: DebugTimelineEntry,
+    *,
+    snapshot_directory: str,
+) -> str:
+    """Return the browser-relative snapshot metadata path for ``entry``."""
+    filename = trace_snapshot_metadata_filename(entry)
     return PurePosixPath(snapshot_directory, filename).as_posix()
 
 
