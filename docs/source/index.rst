@@ -15,6 +15,8 @@ documentation for details.
    :maxdepth: 2
    :caption: Contents:
 
+   debug_live_session
+
 .. automodule:: anemone
    :members:
    :undoc-members:

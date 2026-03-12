@@ -21,6 +21,8 @@ class ObservableNodeSelector:
 
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown attributes to the wrapped selector."""
+        if self._base is None:
+            raise AttributeError(name)
         return getattr(self._base, name)
 
     def choose_node_and_branch_to_open(
@@ -30,6 +32,9 @@ class ObservableNodeSelector:
         latest_tree_expansions: Any,
     ) -> Any:
         """Delegate node selection and emit one event per selected node."""
+        if self._base is None:
+            return None
+
         opening_instructions = self._base.choose_node_and_branch_to_open(
             tree=tree,
             latest_tree_expansions=latest_tree_expansions,

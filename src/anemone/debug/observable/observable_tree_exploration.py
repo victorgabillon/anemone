@@ -137,8 +137,9 @@ class ObservableTreeExploration:
             debug_sink=sink,
             iteration_state=iteration_state,
         )
+        node_selector = getattr(tree_exploration, "node_selector", None)
         observed_node_selector = _ensure_observable_node_selector(
-            tree_exploration.node_selector,
+            node_selector,
             debug_sink=sink,
         )
         observed_stopping_criterion = _IterationObservingStoppingCriterion(
@@ -169,6 +170,8 @@ def _ensure_observable_tree_manager(base: Any, *, debug_sink: SearchDebugSink) -
 
 def _ensure_observable_node_selector(base: Any, *, debug_sink: SearchDebugSink) -> Any:
     """Return ``base`` wrapped in ``ObservableNodeSelector`` when needed."""
+    if base is None:
+        return None
     if isinstance(base, ObservableNodeSelector):
         return base
     return ObservableNodeSelector(base, debug_sink=debug_sink)

@@ -51,6 +51,7 @@ from .live_control import (
     write_debug_command,
 )
 from .live_session import LiveDebugSessionRecorder
+from .live_setup import LiveDebugEnvironment, build_live_debug_environment
 from .model import DebugEdgeView, DebugNodeView, DebugTreeSnapshot
 from .observable import (
     NodeEvaluationSummary,
@@ -106,6 +107,7 @@ __all__ = [
     "EvaluationDebugInspectorResolver",
     "EventTypeBreakpoint",
     "IterationBreakpoint",
+    "LiveDebugEnvironment",
     "LiveDebugSessionRecorder",
     "NodeDebugLabelBuilder",
     "NodeEvaluationSummary",
@@ -130,6 +132,7 @@ __all__ = [
     "breakpoint_to_json",
     "breakpoints_from_json",
     "breakpoints_to_json",
+    "build_live_debug_environment",
     "build_replay_entry_payload",
     "build_replay_payload",
     "diff_new_children",

@@ -19,6 +19,7 @@ from anemone.debug import (
     EventTypeBreakpoint,
     LiveDebugSessionRecorder,
     NodeSelected,
+    build_live_debug_environment,
     write_debug_command,
 )
 from anemone.node_selector.opening_instructions import OpeningInstructions
@@ -365,6 +366,86 @@ def test_controlled_tree_exploration_forces_best_effort_node_expansion(
         (tmp_path / "control_state.json").read_text(encoding="utf-8")
     )
     assert control_state["requested_expansion_node_id"] is None
+
+
+def test_build_live_debug_environment_returns_valid_environment(
+    tmp_path: Path,
+) -> None:
+    base_exploration = _FakeExploration(
+        tree=SimpleNamespace(root_node=_FakeNode(id=1, state="root", tree_depth=0)),
+        tree_manager=_FakeTreeManager(),
+        stopping_criterion=_FakeStoppingCriterion(),
+    )
+
+    environment = build_live_debug_environment(
+        base_exploration,
+        tmp_path / "live-environment",
+        snapshot_format="dot",
+    )
+
+    assert environment.session_directory == tmp_path / "live-environment"
+    assert isinstance(environment.controller, DebugSessionController)
+    assert isinstance(environment.recorder, LiveDebugSessionRecorder)
+    assert isinstance(environment.controlled_exploration, ControlledTreeExploration)
+    assert environment.session_directory.is_dir()
+    assert (environment.session_directory / "session.json").exists()
+
+
+def test_live_debug_environment_finalize_marks_session_complete(
+    tmp_path: Path,
+) -> None:
+    base_exploration = _FakeExploration(
+        tree=SimpleNamespace(root_node=_FakeNode(id=1, state="root", tree_depth=0)),
+        tree_manager=_FakeTreeManager(),
+        stopping_criterion=_FakeStoppingCriterion(),
+    )
+    environment = build_live_debug_environment(
+        base_exploration,
+        tmp_path / "live-environment",
+        snapshot_format="dot",
+    )
+
+    environment.recorder.emit(NodeSelected(node_id="7"))
+    environment.finalize()
+
+    payload = json.loads(
+        (environment.session_directory / "session.json").read_text(encoding="utf-8")
+    )
+    assert payload["entry_count"] == 1
+    assert payload["is_complete"] is True
+
+
+def test_build_live_debug_environment_records_exploration_smoke_test(
+    tmp_path: Path,
+) -> None:
+    base_exploration = _FakeExploration(
+        tree=SimpleNamespace(root_node=_FakeNode(id=1, state="root", tree_depth=0)),
+        tree_manager=_FakeTreeManager(),
+        stopping_criterion=_FakeStoppingCriterion(),
+    )
+    environment = build_live_debug_environment(
+        base_exploration,
+        tmp_path / "live-environment",
+        snapshot_format="dot",
+    )
+
+    result = environment.controlled_exploration.explore(random_generator=Random(0))
+
+    assert result.marker == "done"
+    payload = json.loads(
+        (environment.session_directory / "session.json").read_text(encoding="utf-8")
+    )
+    assert payload["entry_count"] == 2
+    assert payload["entries"][0]["event_type"] == "SearchIterationStarted"
+    assert payload["entries"][0]["snapshot_file"] == (
+        "snapshots/0000_SearchIterationStarted.dot"
+    )
+    assert payload["entries"][1]["event_type"] == "SearchIterationCompleted"
+    assert (
+        environment.session_directory
+        / "snapshots"
+        / "0000_SearchIterationStarted.snapshot.json"
+    ).exists()
 
 
 def test_live_debug_session_recorder_notifies_controller_about_breakpoints(
