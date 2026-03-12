@@ -13,6 +13,14 @@ from .events import (
     SearchIterationCompleted,
     SearchIterationStarted,
 )
+from .export import (
+    export_snapshot_dot,
+    export_snapshot_entry,
+    export_snapshot_render,
+    export_trace_snapshots,
+    export_trace_summary,
+    render_snapshot,
+)
 from .label_builder import NodeDebugLabelBuilder
 from .model import DebugEdgeView, DebugNodeView, DebugTreeSnapshot
 from .observable import (
@@ -33,6 +41,7 @@ from .recording import (
     DebugTrace,
     make_tree_snapshot_provider,
 )
+from .replay import TraceReplayView, format_debug_event
 from .sink import NullSearchDebugSink, SearchDebugSink
 from .snapshot_adapter import TreeSnapshotAdapter
 
@@ -63,10 +72,18 @@ __all__ = [
     "SearchDebugSink",
     "SearchIterationCompleted",
     "SearchIterationStarted",
+    "TraceReplayView",
     "TreeSnapshotAdapter",
     "diff_new_children",
+    "export_snapshot_dot",
+    "export_snapshot_entry",
+    "export_snapshot_render",
+    "export_trace_snapshots",
+    "export_trace_summary",
+    "format_debug_event",
     "load_debug_trace",
     "make_tree_snapshot_provider",
+    "render_snapshot",
     "save_debug_trace",
     "snapshot_children",
     "summarize_node_evaluation",
