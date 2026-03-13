@@ -31,9 +31,12 @@ env.finalize()
 serve_live_debug_session("runs/debug-session", port=8000)
 ```
 
-During the run, `LiveDebugSessionRecorder` writes the session directory
-incrementally. After the run, the same directory can still be opened in the
-browser as a completed live session.
+During the run, the live debug environment writes the session directory
+incrementally. The snippet above shows post-run viewing. For true live viewing,
+start `serve_live_debug_session(...)` from another terminal or process while
+the exploration is still running, because the server call blocks the current
+process. After the run, the same directory can still be opened in the browser
+as a completed live session.
 
 ## What files are written
 
@@ -55,6 +58,13 @@ Semantics:
 - `commands.json`: the latest browser-to-controller command.
 - `breakpoints.json`: persisted breakpoint configuration.
 - `snapshots/`: exported graph snapshots plus `.snapshot.json` metadata sidecars.
+
+Browser modes:
+
+- `serve_live_debug_session(...)`: serve a mutable live session directory while
+  exploration is running or after it completes.
+- `serve_replay_bundle(...)`: serve a static replay/export bundle built from a
+  finished trace.
 
 Replay bundles typically replace `session.json` with a static `trace.json`
 payload while reusing the browser-facing snapshot directory.

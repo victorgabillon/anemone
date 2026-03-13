@@ -24,8 +24,8 @@ if TYPE_CHECKING:
 _MODULE_USAGE_MESSAGE = (
     "Import run_live_debug_session(...) into a project-specific script that "
     "constructs a real tree exploration object, then call "
-    "print_serving_instructions(...) or serve_debug_session(...) to view the "
-    "live session."
+    "print_serving_instructions(...) or serve_live_debug_session_from_example(...) "
+    "to view the live session."
 )
 
 
@@ -55,12 +55,16 @@ def print_serving_instructions(
 ) -> None:
     """Print the recommended command for serving the finished live session."""
     print(
-        "Serve the live debug session with "
+        "Serve the live debug session from another terminal or process with "
         f"serve_live_debug_session({session_directory!r}, port={port})."
     )
 
 
-def serve_debug_session(session_directory: str | Path, *, port: int = 8000) -> None:
+def serve_live_debug_session_from_example(
+    session_directory: str | Path,
+    *,
+    port: int = 8000,
+) -> None:
     """Serve an existing live debug session directory in the local browser UI."""
     serve_live_debug_session(session_directory, port=port)
 

@@ -1,5 +1,6 @@
 """End-to-end integration coverage for the public debug GUI setup path."""
 
+# pylint: disable=missing-function-docstring
 # ruff: noqa: D103
 
 from __future__ import annotations
@@ -101,10 +102,15 @@ def test_build_live_debug_environment_happy_path(tmp_path: Path) -> None:
     )
 
     assert result.marker == "done"
+    assert environment.session_directory == session_directory
     assert (session_directory / "index.html").exists()
     assert (session_directory / "snapshots").is_dir()
+    assert payload["is_live"] is True
     assert payload["is_complete"] is True
+    assert "entries" in payload
+    assert isinstance(payload["entries"], list)
     assert payload["entry_count"] >= 1
+    assert environment.recorder.to_trace().entries
 
 
 def test_public_live_debug_api_shape(tmp_path: Path) -> None:
