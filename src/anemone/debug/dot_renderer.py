@@ -49,7 +49,7 @@ class DotRenderer:
         add_edge = typed_graph.edge
 
         for node in snapshot.nodes:
-            add_node(node.node_id, label=node.label)
+            add_node(node.node_id, label=node.label, **self._node_attrs(node))
 
         if snapshot.edges:
             for edge in snapshot.edges:
@@ -60,3 +60,28 @@ class DotRenderer:
                     add_edge(parent_id, node.node_id)
 
         return graph
+
+    def _node_attrs(self, node: object) -> dict[str, str]:
+        """Return Graphviz styling attributes for one debug node."""
+        player_label = getattr(node, "player_label", None)
+        over_event = getattr(node, "over_event", None)
+
+        if over_event is not None:
+            return {
+                "style": "filled",
+                "fillcolor": "#dcefd9",
+                "color": "#2f6b2f",
+            }
+        if player_label == "MAX":
+            return {
+                "style": "filled",
+                "fillcolor": "#d8e7ff",
+                "color": "#456fb3",
+            }
+        if player_label == "MIN":
+            return {
+                "style": "filled",
+                "fillcolor": "#f8d9d6",
+                "color": "#b04d43",
+            }
+        return {}

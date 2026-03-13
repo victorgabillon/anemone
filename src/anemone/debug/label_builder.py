@@ -29,6 +29,8 @@ class NodeDebugLabelBuilder:
         depth = safe_getattr(node, "tree_depth")
         lines = [f"id={node_id}", f"depth={depth}"]
 
+        if metadata.player_label is not None:
+            lines.append(f"player={metadata.player_label}")
         if metadata.state_tag is not None:
             lines.append(f"state={metadata.state_tag}")
         if metadata.direct_value is not None:

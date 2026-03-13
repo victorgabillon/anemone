@@ -1,5 +1,6 @@
 """Tests for debug snapshot JSON serialization helpers."""
 
+# pylint: disable=missing-function-docstring
 # ruff: noqa: D103
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ def _build_snapshot() -> DebugTreeSnapshot:
                 parent_ids=(),
                 depth=0,
                 label="id=1\ndepth=0",
+                player_label="MAX",
                 state_tag="root",
                 direct_value="score=0.1",
                 backed_up_value="score=0.9",
@@ -71,6 +73,7 @@ def test_export_snapshot_json_writes_readable_file(tmp_path: Path) -> None:
     assert payload["root_id"] == "1"
     assert payload["nodes"][1]["node_id"] == "2"
     assert payload["edges"][0]["label"] == "a"
+    assert payload["nodes"][0]["player_label"] == "MAX"
     assert payload["nodes"][0]["state_tag"] == "root"
     assert payload["nodes"][0]["direct_value"] == "score=0.1"
     assert payload["nodes"][0]["edge_labels_by_child"] == {"2": "a"}

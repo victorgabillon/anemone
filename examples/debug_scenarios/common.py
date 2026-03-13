@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from random import Random
 from typing import TYPE_CHECKING
@@ -79,11 +80,12 @@ def print_scenario_summary(
 def print_serving_instructions(session_directory: str | Path, *, port: int = 8000) -> None:
     """Print the recommended command for serving the resulting live session."""
     session_directory_str = str(Path(session_directory))
+    python_literal = json.dumps(session_directory_str)
     print("Serve from another terminal with:")
     print(
-        "python -c "
-        f"'from anemone.debug import serve_live_debug_session; "
-        f"serve_live_debug_session({session_directory_str!r}, port={port})'"
+        'python -c '
+        f'"from anemone.debug import serve_live_debug_session; '
+        f'serve_live_debug_session({python_literal}, port={port})"'
     )
 
 

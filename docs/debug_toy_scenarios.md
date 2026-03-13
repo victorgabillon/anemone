@@ -47,7 +47,9 @@ Expected outcome:
 - root PV: `A -> A2`
 
 This is the smallest scenario for inspecting straightforward max backup from the
-real single-agent value family.
+real engine, using the same minmax-capable tree-evaluation family as the
+production Tree-and-Value path while keeping every toy state on the maximizing
+turn.
 
 ### `minimax_micro`
 

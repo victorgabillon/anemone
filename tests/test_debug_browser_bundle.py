@@ -1,5 +1,6 @@
 """Tests for browser replay bundle helpers."""
 
+# pylint: disable=missing-function-docstring
 # ruff: noqa: D103
 
 from __future__ import annotations
@@ -198,9 +199,14 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert 'id="highlight-neighborhood"' in html
     assert 'id="highlight-pv-path"' in html
     assert 'id="dim-unrelated-graph"' in html
+    assert 'id="zoom-out"' in html
+    assert 'id="zoom-in"' in html
+    assert 'id="zoom-fit"' in html
+    assert 'id="zoom-reset"' in html
     assert 'id="node-list"' in html
     assert 'id="node-details"' in html
     assert 'id="selected-node-id"' in html
+    assert 'id="selected-node-player"' in html
     assert 'id="selected-node-direct-value"' in html
     assert 'id="selected-node-index-fields"' in html
     assert 'id="selected-node-raw-label"' in html
@@ -229,9 +235,20 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert "computePrincipalVariationEdgeKeys" in html
     assert "computeGraphFocusState" in html
     assert "renderGraphFocus" in html
+    assert "clearSnapshotViewportState" in html
+    assert "applySnapshotViewport" in html
+    assert "fitSnapshotToView" in html
+    assert "resetSnapshotZoom" in html
+    assert "zoomSnapshot" in html
+    assert "beginSnapshotPan" in html
+    assert "continueSnapshotPan" in html
+    assert "endSnapshotPan" in html
+    assert "handleSnapshotWheel" in html
     assert "extractEdgeKeyFromGraphvizGroup" in html
     assert "currentGraphEdgeMap" in html
+    assert "currentSnapshotSvg" in html
     assert "edgeKey(" in html
+    assert "snapshot-svg-canvas" in html
     assert "entryMatchesSearch" in html
     assert "entryMatchesEventTypeFilter" in html
     assert "computeVisibleEntries" in html

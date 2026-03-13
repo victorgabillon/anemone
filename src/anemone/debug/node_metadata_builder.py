@@ -26,6 +26,7 @@ def _empty_string_dict() -> dict[str, str]:
 class NodeDebugMetadata:
     """Structured best-effort metadata extracted from a runtime node."""
 
+    player_label: str | None = None
     state_tag: str | None = None
     direct_value: str | None = None
     backed_up_value: str | None = None
@@ -41,6 +42,7 @@ class NodeDebugMetadataBuilder:
         """Return structured debug metadata for ``node``."""
         evaluation = safe_getattr(node, "tree_evaluation")
         return NodeDebugMetadata(
+            player_label=self._get_player_label(node),
             state_tag=self._get_state_tag(node),
             direct_value=self._get_direct_value(evaluation),
             backed_up_value=self._get_backed_up_value(evaluation),
@@ -59,6 +61,28 @@ class NodeDebugMetadataBuilder:
 
         node_tag = safe_getattr(node, "tag")
         return None if node_tag is None else str(node_tag)
+
+    def _get_player_label(self, node: Any) -> str | None:
+        """Return a concise MAX/MIN player label when the state exposes a turn."""
+        state = safe_getattr(node, "state")
+        if state is None:
+            return None
+
+        turn = safe_getattr(state, "turn")
+        if turn is None:
+            return None
+
+        turn_name = safe_getattr(turn, "name")
+        if turn_name is not None:
+            normalized_turn_name = str(turn_name).upper()
+        else:
+            normalized_turn_name = str(turn).upper()
+
+        if normalized_turn_name == "WHITE":
+            return "MAX"
+        if normalized_turn_name == "BLACK":
+            return "MIN"
+        return str(turn)
 
     def _get_direct_value(self, evaluation: Any) -> str | None:
         """Return a formatted direct value when available."""

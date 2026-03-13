@@ -216,6 +216,8 @@ def render_replay_index_html() -> str:
         display: grid;
         place-items: center;
         padding: 1rem;
+        position: relative;
+        overflow: hidden;
       }
 
       .snapshot-stage img {
@@ -227,15 +229,42 @@ def render_replay_index_html() -> str:
       }
 
       .snapshot-stage svg {
-        max-width: 100%;
-        max-height: 70vh;
+        max-width: none;
+        max-height: none;
         display: block;
         box-shadow: 0 12px 36px rgba(37, 26, 18, 0.18);
         background: white;
+        position: absolute;
+        top: 0;
+        left: 0;
+        user-select: none;
+        -webkit-user-drag: none;
       }
 
       .snapshot-stage svg g.node {
         cursor: pointer;
+      }
+
+      .snapshot-stage.is-interactive-svg {
+        display: block;
+      }
+
+      .snapshot-stage.is-interactive-svg.is-panning {
+        cursor: grabbing;
+      }
+
+      .snapshot-svg-canvas {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 24rem;
+        overflow: hidden;
+        cursor: grab;
+        touch-action: none;
+      }
+
+      .snapshot-zoom-controls {
+        margin-left: auto;
       }
 
       .snapshot-stage svg g.node.is-root-path ellipse,
@@ -476,6 +505,12 @@ def render_replay_index_html() -> str:
               <input id="dim-unrelated-graph" type="checkbox">
               <span>Dim unrelated graph</span>
             </label>
+            <div class="controls snapshot-zoom-controls">
+              <button id="zoom-out" type="button">-</button>
+              <button id="zoom-in" type="button">+</button>
+              <button id="zoom-fit" type="button">Fit</button>
+              <button id="zoom-reset" type="button">Reset</button>
+            </div>
           </div>
           <div class="snapshot-card">
             <div class="snapshot-stage" id="snapshot-view">
@@ -508,6 +543,10 @@ def render_replay_index_html() -> str:
               <div class="node-details-field">
                 <div class="detail-label">Node ID</div>
                 <p class="detail-value" id="selected-node-id">-</p>
+              </div>
+              <div class="node-details-field">
+                <div class="detail-label">Player</div>
+                <p class="detail-value" id="selected-node-player">-</p>
               </div>
               <div class="node-details-field">
                 <div class="detail-label">Depth</div>
@@ -649,6 +688,10 @@ def render_replay_index_html() -> str:
       const highlightNeighborhoodElement = document.getElementById("highlight-neighborhood");
       const highlightPvPathElement = document.getElementById("highlight-pv-path");
       const dimUnrelatedGraphElement = document.getElementById("dim-unrelated-graph");
+      const zoomOutButton = document.getElementById("zoom-out");
+      const zoomInButton = document.getElementById("zoom-in");
+      const zoomFitButton = document.getElementById("zoom-fit");
+      const zoomResetButton = document.getElementById("zoom-reset");
       const jumpNodeEventButton = document.getElementById("action-jump-node-event");
       const jumpNodeValueButton = document.getElementById("action-jump-node-value");
       const expandNodeButton = document.getElementById("action-expand-node");
@@ -660,6 +703,7 @@ def render_replay_index_html() -> str:
       const nodeListElement = document.getElementById("node-list");
       const nodeDetailsElement = document.getElementById("node-details");
       const selectedNodeIdElement = document.getElementById("selected-node-id");
+      const selectedNodePlayerElement = document.getElementById("selected-node-player");
       const selectedNodeDepthElement = document.getElementById("selected-node-depth");
       const selectedNodeRootElement = document.getElementById("selected-node-root");
       const selectedNodeStateTagElement = document.getElementById("selected-node-state-tag");
@@ -682,6 +726,7 @@ def render_replay_index_html() -> str:
       let currentControlState = null;
       let currentSnapshotMetadata = null;
       let currentSnapshotMetadataFile = null;
+      let currentSnapshotSvg = null;
       let currentGraphNodeMap = new Map();
       let currentGraphEdgeMap = new Map();
       let selectedNodeId = null;
@@ -694,6 +739,12 @@ def render_replay_index_html() -> str:
       let highlightNeighborhood = true;
       let highlightPvPath = false;
       let dimUnrelatedGraph = false;
+      let snapshotZoom = 1;
+      let snapshotPanX = 0;
+      let snapshotPanY = 0;
+      let activePanPointerId = null;
+      let lastPanClientX = 0;
+      let lastPanClientY = 0;
 
       highlightRootPath = highlightRootPathElement.checked;
       highlightNeighborhood = highlightNeighborhoodElement.checked;
@@ -821,7 +872,7 @@ def render_replay_index_html() -> str:
         if (typeof label !== "string" || label.length === 0) {
           return "(no label)";
         }
-        return label.split("\n")[0];
+        return label.split("\\n")[0];
       }
 
       function findNodeById(snapshotMetadata, nodeId) {
@@ -1220,6 +1271,168 @@ def render_replay_index_html() -> str:
         });
       }
 
+      function clearSnapshotViewportState() {
+        currentSnapshotSvg = null;
+        snapshotZoom = 1;
+        snapshotPanX = 0;
+        snapshotPanY = 0;
+        activePanPointerId = null;
+        snapshotViewElement.classList.remove("is-interactive-svg", "is-panning");
+      }
+
+      function getSnapshotContentSize(svgElement) {
+        if (!svgElement) {
+          return null;
+        }
+
+        const viewBox = svgElement.viewBox && svgElement.viewBox.baseVal;
+        if (viewBox && viewBox.width > 0 && viewBox.height > 0) {
+          return { width: viewBox.width, height: viewBox.height };
+        }
+
+        try {
+          const bbox = svgElement.getBBox();
+          if (bbox.width > 0 && bbox.height > 0) {
+            return { width: bbox.width, height: bbox.height };
+          }
+        } catch (error) {
+          console.debug("Unable to compute SVG bounding box", error);
+        }
+
+        return null;
+      }
+
+      function applySnapshotViewport() {
+        if (!currentSnapshotSvg) {
+          return;
+        }
+
+        currentSnapshotSvg.style.transformOrigin = "top left";
+        currentSnapshotSvg.style.transform = (
+          `translate(${snapshotPanX}px, ${snapshotPanY}px) scale(${snapshotZoom})`
+        );
+      }
+
+      function fitSnapshotToView() {
+        if (!currentSnapshotSvg) {
+          return;
+        }
+
+        const contentSize = getSnapshotContentSize(currentSnapshotSvg);
+        if (!contentSize) {
+          snapshotZoom = 1;
+          snapshotPanX = 0;
+          snapshotPanY = 0;
+          applySnapshotViewport();
+          return;
+        }
+
+        const viewportWidth = snapshotViewElement.clientWidth;
+        const viewportHeight = snapshotViewElement.clientHeight;
+        if (viewportWidth <= 0 || viewportHeight <= 0) {
+          snapshotZoom = 1;
+          snapshotPanX = 0;
+          snapshotPanY = 0;
+          applySnapshotViewport();
+          return;
+        }
+
+        const scale = Math.min(
+          viewportWidth / contentSize.width,
+          viewportHeight / contentSize.height,
+        );
+        snapshotZoom = Math.min(Math.max(scale, 0.15), 8);
+        snapshotPanX = (viewportWidth - (contentSize.width * snapshotZoom)) / 2;
+        snapshotPanY = (viewportHeight - (contentSize.height * snapshotZoom)) / 2;
+        applySnapshotViewport();
+      }
+
+      function resetSnapshotZoom() {
+        if (!currentSnapshotSvg) {
+          return;
+        }
+
+        snapshotZoom = 1;
+        snapshotPanX = 0;
+        snapshotPanY = 0;
+        applySnapshotViewport();
+      }
+
+      function zoomSnapshot(factor, anchorX = null, anchorY = null) {
+        if (!currentSnapshotSvg) {
+          return;
+        }
+
+        const viewportRect = snapshotViewElement.getBoundingClientRect();
+        const resolvedAnchorX = anchorX ?? (viewportRect.width / 2);
+        const resolvedAnchorY = anchorY ?? (viewportRect.height / 2);
+        const nextZoom = Math.min(Math.max(snapshotZoom * factor, 0.15), 8);
+        if (nextZoom === snapshotZoom) {
+          return;
+        }
+
+        const contentAnchorX = (resolvedAnchorX - snapshotPanX) / snapshotZoom;
+        const contentAnchorY = (resolvedAnchorY - snapshotPanY) / snapshotZoom;
+        snapshotPanX = resolvedAnchorX - (contentAnchorX * nextZoom);
+        snapshotPanY = resolvedAnchorY - (contentAnchorY * nextZoom);
+        snapshotZoom = nextZoom;
+        applySnapshotViewport();
+      }
+
+      function beginSnapshotPan(event) {
+        if (!currentSnapshotSvg || event.button !== 0) {
+          return;
+        }
+        if (event.target.closest("g.node")) {
+          return;
+        }
+
+        activePanPointerId = event.pointerId;
+        lastPanClientX = event.clientX;
+        lastPanClientY = event.clientY;
+        snapshotViewElement.classList.add("is-panning");
+        if (typeof snapshotViewElement.setPointerCapture === "function") {
+          snapshotViewElement.setPointerCapture(event.pointerId);
+        }
+        event.preventDefault();
+      }
+
+      function continueSnapshotPan(event) {
+        if (activePanPointerId !== event.pointerId) {
+          return;
+        }
+
+        snapshotPanX += event.clientX - lastPanClientX;
+        snapshotPanY += event.clientY - lastPanClientY;
+        lastPanClientX = event.clientX;
+        lastPanClientY = event.clientY;
+        applySnapshotViewport();
+      }
+
+      function endSnapshotPan(event) {
+        if (activePanPointerId !== event.pointerId) {
+          return;
+        }
+
+        if (typeof snapshotViewElement.releasePointerCapture === "function") {
+          snapshotViewElement.releasePointerCapture(event.pointerId);
+        }
+        activePanPointerId = null;
+        snapshotViewElement.classList.remove("is-panning");
+      }
+
+      function handleSnapshotWheel(event) {
+        if (!currentSnapshotSvg) {
+          return;
+        }
+
+        event.preventDefault();
+        const viewportRect = snapshotViewElement.getBoundingClientRect();
+        const anchorX = event.clientX - viewportRect.left;
+        const anchorY = event.clientY - viewportRect.top;
+        zoomSnapshot(event.deltaY < 0 ? 1.1 : 1 / 1.1, anchorX, anchorY);
+      }
+
       function selectNode(nodeId) {
         if (!nodeExists(currentSnapshotMetadata, nodeId)) {
           return;
@@ -1233,6 +1446,7 @@ def render_replay_index_html() -> str:
       }
 
       function initializeGraphInteraction(svgElement) {
+        currentSnapshotSvg = svgElement;
         currentGraphNodeMap = new Map();
         currentGraphEdgeMap = new Map();
 
@@ -1262,6 +1476,7 @@ def render_replay_index_html() -> str:
 
         renderGraphSelection();
         renderGraphFocus();
+        fitSnapshotToView();
       }
 
       async function loadInlineSvg(snapshotFile) {
@@ -1274,8 +1489,13 @@ def render_replay_index_html() -> str:
 
       function renderInlineSvg(svgText) {
         snapshotViewElement.replaceChildren();
-        snapshotViewElement.innerHTML = svgText;
-        return snapshotViewElement.querySelector("svg");
+        clearSnapshotViewportState();
+        snapshotViewElement.classList.add("is-interactive-svg");
+        const canvas = document.createElement("div");
+        canvas.className = "snapshot-svg-canvas";
+        canvas.innerHTML = svgText;
+        snapshotViewElement.appendChild(canvas);
+        return canvas.querySelector("svg");
       }
 
       function renderNodeList() {
@@ -1360,6 +1580,7 @@ def render_replay_index_html() -> str:
           ));
 
         selectedNodeIdElement.textContent = node.node_id || "-";
+        selectedNodePlayerElement.textContent = node.player_label || "-";
         selectedNodeDepthElement.textContent = String(node.depth ?? "-");
         selectedNodeRootElement.textContent = node.node_id === currentSnapshotMetadata.root_id
           ? "yes"
@@ -1382,6 +1603,7 @@ def render_replay_index_html() -> str:
         if (!currentSnapshotMetadata) {
           nodeSelectionStatusElement.textContent = "No node selected";
           selectedNodeIdElement.textContent = "-";
+          selectedNodePlayerElement.textContent = "-";
           selectedNodeDepthElement.textContent = "-";
           selectedNodeRootElement.textContent = "-";
           selectedNodeStateTagElement.textContent = "-";
@@ -1400,6 +1622,7 @@ def render_replay_index_html() -> str:
         if (!selectedNodeId) {
           nodeSelectionStatusElement.textContent = "No node selected";
           selectedNodeIdElement.textContent = "-";
+          selectedNodePlayerElement.textContent = "-";
           selectedNodeDepthElement.textContent = "-";
           selectedNodeRootElement.textContent = "-";
           selectedNodeStateTagElement.textContent = "-";
@@ -1419,6 +1642,7 @@ def render_replay_index_html() -> str:
         if (!node) {
           nodeSelectionStatusElement.textContent = "No node selected";
           selectedNodeIdElement.textContent = "-";
+          selectedNodePlayerElement.textContent = "-";
           selectedNodeDepthElement.textContent = "-";
           selectedNodeRootElement.textContent = "-";
           selectedNodeStateTagElement.textContent = "-";
@@ -1613,6 +1837,7 @@ def render_replay_index_html() -> str:
         snapshotStatusElement.textContent = "No snapshot loaded";
         currentSnapshotMetadata = null;
         currentSnapshotMetadataFile = null;
+        clearSnapshotViewportState();
         currentGraphNodeMap = new Map();
         currentGraphEdgeMap = new Map();
         selectedNodeId = null;
@@ -1895,6 +2120,7 @@ def render_replay_index_html() -> str:
       async function renderSnapshot(entryIndex) {
         const snapshotEntry = nearestSnapshotAtOrBefore(entryIndex);
         snapshotViewElement.replaceChildren();
+        clearSnapshotViewportState();
 
         if (!snapshotEntry) {
           snapshotStatusElement.textContent = "No snapshot available yet";
@@ -1920,6 +2146,7 @@ def render_replay_index_html() -> str:
         if (snapshotEntry.snapshot_file.endsWith(".dot")) {
           currentGraphNodeMap = new Map();
           currentGraphEdgeMap = new Map();
+          snapshotViewElement.classList.remove("is-interactive-svg");
           const response = await fetch(snapshotEntry.snapshot_file, { cache: "no-store" });
           const dotSource = await response.text();
           const block = document.createElement("pre");
@@ -1935,6 +2162,7 @@ def render_replay_index_html() -> str:
         if (!svgElement) {
           currentGraphNodeMap = new Map();
           currentGraphEdgeMap = new Map();
+          clearSnapshotViewportState();
           const emptyMessage = document.createElement("div");
           emptyMessage.className = "empty";
           emptyMessage.textContent = "Unable to render inline SVG snapshot.";
@@ -2188,6 +2416,28 @@ def render_replay_index_html() -> str:
         dimUnrelatedGraph = dimUnrelatedGraphElement.checked;
         renderGraphFocus();
       });
+
+      zoomOutButton.addEventListener("click", () => {
+        zoomSnapshot(1 / 1.2);
+      });
+
+      zoomInButton.addEventListener("click", () => {
+        zoomSnapshot(1.2);
+      });
+
+      zoomFitButton.addEventListener("click", () => {
+        fitSnapshotToView();
+      });
+
+      zoomResetButton.addEventListener("click", () => {
+        resetSnapshotZoom();
+      });
+
+      snapshotViewElement.addEventListener("pointerdown", beginSnapshotPan);
+      snapshotViewElement.addEventListener("pointermove", continueSnapshotPan);
+      snapshotViewElement.addEventListener("pointerup", endSnapshotPan);
+      snapshotViewElement.addEventListener("pointercancel", endSnapshotPan);
+      snapshotViewElement.addEventListener("wheel", handleSnapshotWheel, { passive: false });
 
       autoFollowElement.addEventListener("change", async () => {
         if (autoFollowElement.checked && entries.length > 0 && !hasActiveTimelineFilters()) {

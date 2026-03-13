@@ -94,6 +94,7 @@ class TreeSnapshotAdapter:
                     parent_ids=parent_ids,
                     depth=node.tree_depth,
                     label=label,
+                    player_label=metadata.player_label,
                     state_tag=metadata.state_tag,
                     direct_value=metadata.direct_value,
                     backed_up_value=metadata.backed_up_value,

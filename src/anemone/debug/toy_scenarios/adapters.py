@@ -37,9 +37,6 @@ from anemone.node_evaluation.node_direct_evaluation.protocols import (
     MasterStateValueEvaluator,
     OverEventDetector,
 )
-from anemone.node_evaluation.node_max_evaluation_factory import (
-    NodeMaxEvaluationFactory,
-)
 from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
@@ -381,10 +378,17 @@ def _build_stopping_criterion_args(scenario_spec: ToyScenarioSpec) -> TreeBranch
 
 def _build_node_tree_evaluation_factory(
     scenario_spec: ToyScenarioSpec,
-) -> NodeTreeMinmaxEvaluationFactory[Any] | NodeMaxEvaluationFactory[Any]:
-    if _uses_adversarial_turns(scenario_spec):
-        return NodeTreeMinmaxEvaluationFactory()
-    return NodeMaxEvaluationFactory()
+) -> NodeTreeMinmaxEvaluationFactory[Any]:
+    """Return the tree-evaluation family compatible with Tree-and-Value search.
+
+    The production Tree-and-Value assembly path expects node evaluations with
+    branch bookkeeping such as ``branches_not_over``. ``NodeTreeMinmaxEvaluation``
+    provides that contract for both adversarial and single-agent toy domains.
+    Single-agent behavior still comes from the toy state's non-adversarial turn
+    assignments rather than from swapping to a different node-evaluation family.
+    """
+    del scenario_spec
+    return NodeTreeMinmaxEvaluationFactory()
 
 
 def _total_edge_count(scenario_spec: ToyScenarioSpec) -> int:

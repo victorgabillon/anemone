@@ -1,5 +1,6 @@
 """Tests for the debug snapshot and visualization helpers."""
 
+# pylint: disable=missing-class-docstring,missing-function-docstring,unused-import
 # ruff: noqa: D101, D102, D103
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from anemone.trees.tree_visualization import display, display_special
 @dataclass
 class FakeState:
     tag: str
+    turn: object | None = None
 
 
 @dataclass
@@ -117,6 +119,11 @@ class FakeDynamics:
         return f"move:{action}"
 
 
+@dataclass(frozen=True)
+class FakeTurn:
+    name: str
+
+
 def test_generic_value_family_inspector_summarizes_canonical_fields() -> None:
     evaluation = FakeEvaluation(
         direct_value=FakeValue(score=0.3, certainty="estimate"),
@@ -197,6 +204,34 @@ def test_dot_renderer_outputs_nodes_and_edge() -> None:
     assert "1 -> 2" in source
 
 
+def test_dot_renderer_styles_player_and_terminal_nodes() -> None:
+    root = FakeNode(
+        id_=1,
+        tree_depth_=0,
+        state_=FakeState(tag="root", turn=FakeTurn(name="WHITE")),
+    )
+    child = FakeNode(
+        id_=2,
+        tree_depth_=1,
+        state_=FakeState(tag="reply", turn=FakeTurn(name="BLACK")),
+        parent_nodes_={root: "a"},
+        tree_evaluation=FakeEvaluation(over_event=FakeOverEvent("done")),
+    )
+    root.branches_children_["a"] = child
+
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", root))
+    source = DotRenderer().render(snapshot).source
+
+    assert "player=MAX" in source
+    assert "player=MIN" in source
+    assert '1 [label="id=1\\ndepth=0\\nplayer=MAX\\nstate=root"' in source
+    assert 'fillcolor="#d8e7ff"' in source
+    assert 'color="#456fb3"' in source
+    assert '2 [label="id=2\\ndepth=1\\nplayer=MIN\\nstate=reply\\nover=done"' in source
+    assert 'fillcolor="#dcefd9"' in source
+    assert 'color="#2f6b2f"' in source
+
+
 def test_tree_snapshot_adapter_supports_dag_parent_links() -> None:
     root_a = FakeNode(id_=1, tree_depth_=0)
     root_b = FakeNode(id_=2, tree_depth_=0)
@@ -218,6 +253,19 @@ def test_tree_snapshot_adapter_includes_state_tag_when_present() -> None:
 
     assert snapshot.nodes[0].label == "id=4\ndepth=2\nstate=mid"
     assert snapshot.nodes[0].state_tag == "mid"
+
+
+def test_tree_snapshot_adapter_includes_player_label_when_turn_present() -> None:
+    node = FakeNode(
+        id_=5,
+        tree_depth_=1,
+        state_=FakeState(tag="mid", turn=FakeTurn(name="BLACK")),
+    )
+
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", node))
+
+    assert snapshot.nodes[0].label == "id=5\ndepth=1\nplayer=MIN\nstate=mid"
+    assert snapshot.nodes[0].player_label == "MIN"
 
 
 def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> None:

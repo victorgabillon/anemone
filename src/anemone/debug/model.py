@@ -18,6 +18,7 @@ class DebugNodeView:
     parent_ids: tuple[str, ...]
     depth: int
     label: str
+    player_label: str | None = None
     state_tag: str | None = None
     direct_value: str | None = None
     backed_up_value: str | None = None
