@@ -23,7 +23,7 @@ class TerminalOutcome(Enum):
 
 @dataclass(frozen=True, slots=True)
 class EvaluationOrdering:
-    """Define terminal projection and Value comparison semantics."""
+    """Define terminal projection and exact-Value comparison semantics."""
 
     win_score: float = 1.0
     draw_score: float = 0.0
@@ -39,7 +39,7 @@ class EvaluationOrdering:
         return self.loss_score
 
     def semantic_compare(self, a: Value, b: Value, *, side_to_move: Color) -> int:
-        """Compare values with terminal-aware semantic rules."""
+        """Compare values with terminal-outcome and exactness-aware rules."""
         a_outcome = self._terminal_outcome_or_none(a, perspective=side_to_move)
         b_outcome = self._terminal_outcome_or_none(b, perspective=side_to_move)
 
@@ -89,7 +89,7 @@ class EvaluationOrdering:
         *,
         perspective: Color,
     ) -> TerminalOutcome | None:
-        if not self._is_terminal_like(value):
+        if not self._is_exact_value_for_ordering(value):
             return None
 
         over_event = value.over_event
@@ -102,7 +102,12 @@ class EvaluationOrdering:
             return TerminalOutcome.WIN
         return TerminalOutcome.LOSS
 
-    def _is_terminal_like(self, value: Value) -> bool:
+    def _is_exact_value_for_ordering(self, value: Value) -> bool:
+        """Return True when ordering should treat the Value as exact.
+
+        This is an ordering-only notion: `FORCED` participates here even though
+        it does not mean the node's own state is terminal.
+        """
         return value.certainty in {Certainty.TERMINAL, Certainty.FORCED}
 
     def _terminal_vs_estimate(

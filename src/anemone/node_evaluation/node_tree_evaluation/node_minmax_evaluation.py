@@ -204,7 +204,7 @@ class NodeMinmaxEvaluation[
         )
 
     def is_terminal_candidate(self) -> bool:
-        """Return True when candidate Value is TERMINAL/FORCED and has ``over_event``."""
+        """Return True when the candidate Value is exact and has ``over_event``."""
         return canonical_value.is_terminal_candidate_value(self.get_value_candidate())
 
     def set_direct_terminal_value(

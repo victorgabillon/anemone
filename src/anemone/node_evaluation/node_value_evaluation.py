@@ -47,5 +47,9 @@ class NodeValueEvaluation(Protocol):
         ...
 
     def is_terminal_candidate(self) -> bool:
-        """Return whether the candidate Value is terminal/forced with over metadata."""
+        """Return whether the candidate Value is exact and carries over metadata.
+
+        This legacy helper is narrower than pure certainty checks: `FORCED`
+        without terminal metadata is still not considered a terminal candidate.
+        """
         ...

@@ -18,18 +18,18 @@ class SingleAgentMaxObjective[StateT: State = State]:
         return value.score
 
     def semantic_compare(self, left: Value, right: Value, state: StateT) -> int:
-        """Prefer larger scores, with terminal-like values winning exact-score ties."""
+        """Prefer larger scores, with exact values winning equal-score ties."""
         del state
         if left.score > right.score:
             return 1
         if left.score < right.score:
             return -1
 
-        left_terminal = self._is_terminal_like(left)
-        right_terminal = self._is_terminal_like(right)
-        if left_terminal and not right_terminal:
+        left_exact = self._is_exact_for_tie_break(left)
+        right_exact = self._is_exact_for_tie_break(right)
+        if left_exact and not right_exact:
             return 1
-        if right_terminal and not left_terminal:
+        if right_exact and not left_exact:
             return -1
         return 0
 
@@ -38,5 +38,10 @@ class SingleAgentMaxObjective[StateT: State = State]:
         del over_event, state
         return self.terminal_score_value
 
-    def _is_terminal_like(self, value: Value) -> bool:
+    def _is_exact_for_tie_break(self, value: Value) -> bool:
+        """Treat FORCED and TERMINAL equally as exact values for tie-breaking.
+
+        This does not say anything about whether the node's own state is
+        terminal; it is only about exactness in the objective ordering.
+        """
         return value.certainty in {Certainty.TERMINAL, Certainty.FORCED}

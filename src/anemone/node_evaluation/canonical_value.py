@@ -1,4 +1,14 @@
-"""Small shared helpers for canonical Value access across node-evaluation families."""
+"""Shared helpers for canonical Value access and certainty semantics.
+
+`Certainty` carries two related but distinct ideas:
+
+- `TERMINAL`: the node's own state is over and the value is exact.
+- `FORCED`: the node is not terminal, but its backed-up value is exact.
+- `ESTIMATE`: the value is still heuristic or otherwise not fully solved.
+
+The helpers below keep exactness checks separate from state-terminality checks so
+callers can be explicit about which notion they need.
+"""
 
 from valanga import OverEvent
 from valanga.evaluations import Certainty, Value
@@ -43,13 +53,36 @@ def get_score(
     ).score
 
 
-def is_terminal_candidate_value(value: Value | None) -> bool:
-    """Return True when a candidate Value is terminal/forced with over metadata."""
-    return (
-        value is not None
-        and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
-        and value.over_event is not None
+def is_exact_value(value: Value | None) -> bool:
+    """Return True when a Value is exact, whether forced or terminal."""
+    return value is not None and value.certainty in (
+        Certainty.FORCED,
+        Certainty.TERMINAL,
     )
+
+
+def is_forced_value(value: Value | None) -> bool:
+    """Return True when a Value is exact for a non-terminal node."""
+    return value is not None and value.certainty == Certainty.FORCED
+
+
+def is_terminal_value(value: Value | None) -> bool:
+    """Return True when a Value says the node's own state is terminal."""
+    return value is not None and value.certainty == Certainty.TERMINAL
+
+
+def is_terminal_candidate_value(value: Value | None) -> bool:
+    """Legacy compatibility helper for exact values carrying terminal metadata.
+
+    This helper does NOT mean the node's own state is terminal in the stronger
+    semantic sense used by the certainty model. PR A preserves its behavior for
+    existing callers that still rely on exact-value-plus-``over_event`` checks;
+    later refactors can narrow or replace those callers where true node
+    terminality is required.
+    """
+    if value is None:
+        return False
+    return is_exact_value(value) and value.over_event is not None
 
 
 def get_over_event_candidate(value: Value | None) -> OverEvent | None:

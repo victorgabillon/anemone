@@ -77,7 +77,7 @@ class NodeMaxEvaluation[StateT: State = State]:
         )
 
     def is_terminal_candidate(self) -> bool:
-        """Return True when candidate Value is terminal/forced and has over metadata."""
+        """Return True when the candidate Value is exact and has over metadata."""
         return canonical_value.is_terminal_candidate_value(self.get_value_candidate())
 
     @property
