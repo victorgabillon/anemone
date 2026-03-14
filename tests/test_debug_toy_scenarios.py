@@ -20,6 +20,7 @@ from anemone.debug.toy_scenarios import (
     build_single_agent_backup_scenario_spec,
     build_toy_tree_exploration,
 )
+from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
 from anemone.tree_exploration import TreeExploration
 
 if TYPE_CHECKING:
@@ -58,6 +59,19 @@ def test_build_toy_tree_exploration_uses_real_engine_collaborators() -> None:
     assert exploration.tree.root_node.state.tag == "root"
     assert exploration.tree.root_node.tree_evaluation.direct_value is not None
     assert exploration.tree.root_node.tree_evaluation.backed_up_value is None
+    assert isinstance(
+        exploration.tree.root_node.tree_evaluation.objective,
+        SingleAgentMaxObjective,
+    )
+
+
+def test_build_toy_tree_exploration_uses_adversarial_objective_for_minimax() -> None:
+    exploration = build_toy_tree_exploration(build_minimax_micro_scenario_spec())
+
+    assert isinstance(
+        exploration.tree.root_node.tree_evaluation.objective,
+        AdversarialZeroSumObjective,
+    )
 
 
 def test_build_live_toy_debug_environment_creates_live_environment(

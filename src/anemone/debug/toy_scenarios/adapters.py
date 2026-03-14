@@ -45,6 +45,7 @@ from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import OpeningType
 from anemone.node_selector.priority_check.noop_args import NoPriorityCheckArgs
 from anemone.node_selector.uniform.uniform import UniformArgs
+from anemone.objectives import SingleAgentMaxObjective
 from anemone.progress_monitor.progress_monitor import (
     StoppingCriterionTypes,
     TreeBranchLimitArgs,
@@ -384,11 +385,15 @@ def _build_node_tree_evaluation_factory(
     The production Tree-and-Value assembly path expects node evaluations with
     branch bookkeeping such as ``branches_not_over``. ``NodeTreeMinmaxEvaluation``
     provides that contract for both adversarial and single-agent toy domains.
-    Single-agent behavior still comes from the toy state's non-adversarial turn
-    assignments rather than from swapping to a different node-evaluation family.
+    Single-agent toy scenarios still need numeric max semantics, so they use the
+    same evaluation family with ``SingleAgentMaxObjective()`` instead of the
+    default adversarial objective.
     """
-    del scenario_spec
-    return NodeTreeMinmaxEvaluationFactory()
+    if _uses_adversarial_turns(scenario_spec):
+        return NodeTreeMinmaxEvaluationFactory()
+    return NodeTreeMinmaxEvaluationFactory(
+        objective=cast("Any", SingleAgentMaxObjective())
+    )
 
 
 def _total_edge_count(scenario_spec: ToyScenarioSpec) -> int:
