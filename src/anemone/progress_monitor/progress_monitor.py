@@ -123,13 +123,8 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """The general stopping criterion base class."""
 
     def should_we_continue(self, tree: trees.Tree[NodeT]) -> bool:
-        """Asking should we continue.
-
-        Returns:
-            boolean of should we continue
-
-        """
-        return not tree.root_node.tree_evaluation.is_terminal_candidate()
+        """Continue only while the root value is not solved exactly."""
+        return not tree.root_node.tree_evaluation.has_exact_value()
 
     def respectful_opening_instructions(
         self,

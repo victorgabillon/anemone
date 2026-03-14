@@ -64,13 +64,20 @@ class DotRenderer:
     def _node_attrs(self, node: object) -> dict[str, str]:
         """Return Graphviz styling attributes for one debug node."""
         player_label = getattr(node, "player_label", None)
-        over_event = getattr(node, "over_event", None)
+        is_exact = bool(getattr(node, "is_exact", False))
+        is_terminal = bool(getattr(node, "is_terminal", False))
 
-        if over_event is not None:
+        if is_terminal:
             return {
                 "style": "filled",
                 "fillcolor": "#dcefd9",
                 "color": "#2f6b2f",
+            }
+        if is_exact:
+            return {
+                "style": "filled",
+                "fillcolor": "#f3e5b1",
+                "color": "#8c6a12",
             }
         if player_label == "MAX":
             return {

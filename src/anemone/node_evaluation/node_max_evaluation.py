@@ -76,13 +76,21 @@ class NodeMaxEvaluation[StateT: State = State]:
             direct_value=self.direct_value,
         )
 
-    def is_terminal_candidate(self) -> bool:
-        """Return True when the candidate Value is exact and has over metadata."""
-        return canonical_value.is_terminal_candidate_value(self.get_value_candidate())
+    def has_exact_value(self) -> bool:
+        """Return True when the candidate Value is exact."""
+        return canonical_value.is_exact_value(self.get_value_candidate())
+
+    def is_terminal(self) -> bool:
+        """Return True when the candidate Value says this node's own state is terminal."""
+        return canonical_value.is_terminal_value(self.get_value_candidate())
+
+    def has_over_event(self) -> bool:
+        """Return True when the candidate Value carries exact outcome metadata."""
+        return canonical_value.has_over_event(self.get_value_candidate())
 
     @property
     def over_event(self) -> OverEvent | None:
-        """Return terminal metadata when present on the canonical candidate."""
+        """Return exact outcome metadata when present on the canonical candidate."""
         return canonical_value.get_over_event_candidate(self.get_value_candidate())
 
     def child_value_candidate(self, branch_key: BranchKey) -> Value | None:

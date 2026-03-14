@@ -74,7 +74,7 @@ class FakeChildEvaluation:
         canonical_value = Value(
             score=self.value_white,
             certainty=(
-                Certainty.FORCED if self.over_event.is_over() else Certainty.ESTIMATE
+                Certainty.TERMINAL if self.over_event.is_over() else Certainty.ESTIMATE
             ),
             over_event=self.over_event if self.over_event.is_over() else None,
         )
@@ -89,7 +89,7 @@ class FakeChildEvaluation:
         canonical_value = Value(
             score=score,
             certainty=(
-                Certainty.FORCED if self.over_event.is_over() else Certainty.ESTIMATE
+                Certainty.TERMINAL if self.over_event.is_over() else Certainty.ESTIMATE
             ),
             over_event=self.over_event if self.over_event.is_over() else None,
         )
@@ -109,13 +109,20 @@ class FakeChildEvaluation:
     def get_score(self) -> float:
         return self.get_value().score
 
-    def is_terminal_candidate(self) -> bool:
+    def has_exact_value(self) -> bool:
         value = self.get_value_candidate()
-        return (
-            value is not None
-            and value.certainty in (Certainty.TERMINAL, Certainty.FORCED)
-            and value.over_event is not None
+        return value is not None and value.certainty in (
+            Certainty.TERMINAL,
+            Certainty.FORCED,
         )
+
+    def is_terminal(self) -> bool:
+        value = self.get_value_candidate()
+        return value is not None and value.certainty == Certainty.TERMINAL
+
+    def has_over_event(self) -> bool:
+        value = self.get_value_candidate()
+        return value is not None and value.over_event is not None
 
     def _effective_over_event(self) -> FakeOverEvent | None:
         candidate = self.get_value_candidate()
@@ -144,4 +151,4 @@ class FakeChildNode:
         return SimpleNamespace(id=self.node_id)
 
     def is_over(self) -> bool:
-        return self.tree_evaluation.is_terminal_candidate()
+        return self.tree_evaluation.is_terminal()

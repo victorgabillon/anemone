@@ -91,7 +91,7 @@ class Uniform[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         nodes_to_consider_not_over: list[NodeT] = [
             node
             for node in nodes_to_consider
-            if not node.tree_evaluation.is_terminal_candidate()
+            if not node.tree_evaluation.has_exact_value()
         ]
 
         # sort them by search-priority projection for the root player perspective

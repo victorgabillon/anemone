@@ -8,6 +8,7 @@ from valanga import Color, OverEvent
 from valanga.over_event import HowOver
 
 from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
+    DirectValueInvariantError,
     EvaluationQueries,
     NodeDirectEvaluator,
 )
@@ -73,6 +74,36 @@ class _BatchValueEvaluator:
         ]
 
 
+class _InvalidEstimateWithOverBatchValueEvaluator(_BatchValueEvaluator):
+    def evaluate_batch_items(self, items: Sequence[Any]) -> list[Value]:
+        return [
+            Value(
+                score=node.state.base_score,
+                certainty=Certainty.ESTIMATE,
+                over_event=OverEvent(),
+            )
+            for node in items
+        ]
+
+
+class _InvalidTerminalBatchValueEvaluator(_BatchValueEvaluator):
+    def evaluate_batch_items(self, items: Sequence[Any]) -> list[Value]:
+        terminal = OverEvent()
+        terminal.becomes_over(
+            how_over=HowOver.WIN,
+            who_is_winner=Color.WHITE,
+            termination="invalid-direct-terminal",
+        )
+        return [
+            Value(
+                score=node.state.base_score,
+                certainty=Certainty.TERMINAL,
+                over_event=terminal,
+            )
+            for node in items
+        ]
+
+
 class _TerminalScoreObjective(Objective[Any]):
     def evaluate_value(self, value: Value, state: Any) -> float:
         del state
@@ -125,6 +156,40 @@ def test_non_terminal_evaluation_sets_direct_value() -> None:
     assert node.tree_evaluation.direct_value.over_event is None
 
 
+def test_non_terminal_batch_evaluation_rejects_estimate_with_over_event() -> None:
+    evaluator = NodeDirectEvaluator(
+        master_state_evaluator=_InvalidEstimateWithOverBatchValueEvaluator()
+    )
+    node = _make_node(node_id=6, turn=Color.WHITE, base_score=0.3, is_terminal=False)
+    queries = EvaluationQueries()
+
+    evaluator.add_evaluation_query(node, queries)
+
+    try:
+        evaluator.evaluate_all_queried_nodes(queries)
+    except DirectValueInvariantError as exc:
+        assert "ESTIMATE" in str(exc)
+    else:
+        raise AssertionError
+
+
+def test_non_terminal_batch_evaluation_rejects_terminal_certainty() -> None:
+    evaluator = NodeDirectEvaluator(
+        master_state_evaluator=_InvalidTerminalBatchValueEvaluator()
+    )
+    node = _make_node(node_id=7, turn=Color.WHITE, base_score=0.3, is_terminal=False)
+    queries = EvaluationQueries()
+
+    evaluator.add_evaluation_query(node, queries)
+
+    try:
+        evaluator.evaluate_all_queried_nodes(queries)
+    except DirectValueInvariantError as exc:
+        assert "TERMINAL" in str(exc)
+    else:
+        raise AssertionError
+
+
 def test_terminal_detection_sets_terminal_direct_value() -> None:
     """Terminal detection stores a terminal Value with over-event metadata."""
     evaluator = NodeDirectEvaluator(master_state_evaluator=_BatchValueEvaluator())
@@ -167,12 +232,12 @@ def test_terminal_query_routes_to_over_nodes_immediately() -> None:
 
 
 def test_add_query_does_not_require_algorithm_node_is_over() -> None:
-    """Queue routing uses Value-terminal candidate state, not AlgorithmNode.is_over()."""
+    """Queue routing uses node-local terminal Value semantics, not AlgorithmNode.is_over()."""
     evaluator = NodeDirectEvaluator(master_state_evaluator=_BatchValueEvaluator())
     node = _make_node(node_id=4, turn=Color.WHITE, base_score=0.0, is_terminal=True)
 
     def _legacy_is_over_should_not_be_called() -> bool:
-        raise AssertionError("add_evaluation_query should use is_terminal_candidate()")
+        raise AssertionError("add_evaluation_query should use is_terminal()")
 
     node.is_over = _legacy_is_over_should_not_be_called
     queries = EvaluationQueries()
@@ -183,13 +248,13 @@ def test_add_query_does_not_require_algorithm_node_is_over() -> None:
     assert queries.not_over_nodes == []
 
 
-def test_algorithm_node_is_over_uses_terminal_candidate(monkeypatch) -> None:
-    """AlgorithmNode.is_over is a compatibility wrapper over terminal candidate semantics."""
+def test_algorithm_node_is_over_uses_terminality(monkeypatch) -> None:
+    """AlgorithmNode.is_over is a compatibility wrapper over node-local terminality."""
     evaluator = NodeDirectEvaluator(master_state_evaluator=_BatchValueEvaluator())
     node = _make_node(node_id=5, turn=Color.WHITE, base_score=0.0, is_terminal=True)
 
     evaluator.check_obvious_over_events(node)
-    assert node.tree_evaluation.is_terminal_candidate()
+    assert node.tree_evaluation.is_terminal()
 
     def _legacy_tree_eval_is_over(self) -> bool:
         raise AssertionError(

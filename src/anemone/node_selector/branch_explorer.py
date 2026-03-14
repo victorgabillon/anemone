@@ -84,7 +84,7 @@ class ZipfBranchExplorer(BranchExplorer):
         sorted_not_over_branches: list[BranchKey] = cast(
             "NodeMinmaxEvaluation[Any, Any]",
             tree_node_to_sample_from.tree_evaluation,
-        ).sort_branches_not_over()
+        ).sort_branches_to_explore()
 
         return zipf_picks_random(
             ordered_list_elements=sorted_not_over_branches,

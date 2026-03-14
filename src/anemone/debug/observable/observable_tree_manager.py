@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
 from anemone.debug.events import (
@@ -9,6 +10,10 @@ from anemone.debug.events import (
     BackupStarted,
     ChildLinked,
     NodeOpeningPlanned,
+    SearchDebugEvent,
+)
+from anemone.debug.observable.observable_direct_evaluator import (
+    ObservableDirectEvaluator,
 )
 from anemone.debug.observable.state_diff import (
     collect_nodes_and_ancestors,
@@ -22,6 +27,11 @@ from anemone.debug.observable.state_diff import (
 from anemone.debug.sink import NullSearchDebugSink, SearchDebugSink
 
 
+def _empty_debug_events() -> list[SearchDebugEvent]:
+    """Return an empty typed buffer for replayable debug events."""
+    return []
+
+
 class ObservableAlgorithmNodeTreeManager:
     """Wrap an algorithm tree manager and emit best-effort structural/debug events."""
 
@@ -29,6 +39,7 @@ class ObservableAlgorithmNodeTreeManager:
         """Store the wrapped tree manager and the sink receiving observed events."""
         self._base = base
         self._debug_sink = debug_sink or NullSearchDebugSink()
+        _install_observable_direct_evaluator(self._base, debug_sink=self._debug_sink)
 
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown attributes to the wrapped tree manager."""
@@ -47,12 +58,25 @@ class ObservableAlgorithmNodeTreeManager:
         before_children_by_node = {
             id(node): snapshot_children(node) for node in nodes_to_open
         }
+        buffered_direct_value_events = _BufferedDebugSink()
+        observable_direct_evaluator = _find_observable_direct_evaluator(self._base)
+        original_direct_evaluator_sink: SearchDebugSink | None = None
+        if observable_direct_evaluator is not None:
+            original_direct_evaluator_sink = observable_direct_evaluator.debug_sink
+            observable_direct_evaluator.set_debug_sink(buffered_direct_value_events)
 
         self._emit_node_opening_planned_events(opening_instructions)
-        result = self._base.open_instructions(
-            tree=tree,
-            opening_instructions=opening_instructions,
-        )
+        try:
+            result = self._base.open_instructions(
+                tree=tree,
+                opening_instructions=opening_instructions,
+            )
+        finally:
+            if observable_direct_evaluator is not None:
+                assert original_direct_evaluator_sink is not None
+                observable_direct_evaluator.set_debug_sink(
+                    original_direct_evaluator_sink
+                )
 
         for node in nodes_to_open:
             before = before_children_by_node[id(node)]
@@ -67,6 +91,7 @@ class ObservableAlgorithmNodeTreeManager:
                     )
                 )
 
+        buffered_direct_value_events.flush_to(self._debug_sink)
         return result
 
     def update_indices(self, tree: Any) -> None:
@@ -120,3 +145,72 @@ class ObservableAlgorithmNodeTreeManager:
             self._debug_sink.emit(
                 NodeOpeningPlanned(node_id=node_id, branch_count=branch_count)
             )
+
+
+@dataclass(slots=True)
+class _BufferedDebugSink:
+    """Collect debug events and replay them later in the same order."""
+
+    events: list[SearchDebugEvent] = field(default_factory=_empty_debug_events)
+
+    def emit(self, event: SearchDebugEvent) -> None:
+        """Store one event for later replay."""
+        self.events.append(event)
+
+    def flush_to(self, sink: SearchDebugSink) -> None:
+        """Emit all buffered events to ``sink`` in FIFO order."""
+        for event in self.events:
+            sink.emit(event)
+        self.events.clear()
+
+
+def _install_observable_direct_evaluator(
+    tree_manager_like: Any,
+    *,
+    debug_sink: SearchDebugSink,
+) -> None:
+    """Wrap the underlying direct evaluator so direct-value events are emitted."""
+    manager_with_evaluator = _find_manager_with_node_evaluator(tree_manager_like)
+    if manager_with_evaluator is None:
+        return
+
+    node_evaluator = getattr(manager_with_evaluator, "node_evaluator", None)
+    if node_evaluator is None or isinstance(node_evaluator, ObservableDirectEvaluator):
+        return
+
+    manager_with_evaluator.node_evaluator = ObservableDirectEvaluator(
+        node_evaluator,
+        debug_sink=debug_sink,
+    )
+
+
+def _find_manager_with_node_evaluator(tree_manager_like: Any) -> Any | None:
+    """Return the first wrapped manager object that actually owns node_evaluator."""
+    current = tree_manager_like
+    seen_objects: set[int] = set()
+
+    while current is not None and id(current) not in seen_objects:
+        seen_objects.add(id(current))
+        current_attributes = getattr(current, "__dict__", None)
+        if (
+            isinstance(current_attributes, dict)
+            and "node_evaluator" in current_attributes
+        ):
+            return current
+        current = getattr(current, "_base", None)
+
+    return None
+
+
+def _find_observable_direct_evaluator(
+    tree_manager_like: Any,
+) -> ObservableDirectEvaluator | None:
+    """Return the installed observable direct evaluator when available."""
+    manager_with_evaluator = _find_manager_with_node_evaluator(tree_manager_like)
+    if manager_with_evaluator is None:
+        return None
+
+    node_evaluator = getattr(manager_with_evaluator, "node_evaluator", None)
+    if isinstance(node_evaluator, ObservableDirectEvaluator):
+        return node_evaluator
+    return None

@@ -124,3 +124,49 @@ def test_ordering_does_not_use_over_event_is_over() -> None:
 
     assert ordering.semantic_compare(forced_win, estimate, side_to_move=Color.WHITE) > 0
     assert ordering.search_sort_key(forced_win, side_to_move=Color.WHITE) == -1.0
+
+
+def test_semantic_compare_same_exact_win_uses_score_tie_break_for_white() -> None:
+    ordering = EvaluationOrdering()
+    smaller_win = Value(
+        score=2.0,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
+    larger_win = Value(
+        score=4.0,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
+
+    assert (
+        ordering.semantic_compare(
+            larger_win,
+            smaller_win,
+            side_to_move=Color.WHITE,
+        )
+        > 0
+    )
+
+
+def test_semantic_compare_same_exact_loss_uses_score_tie_break_for_black() -> None:
+    ordering = EvaluationOrdering()
+    smaller_loss = Value(
+        score=2.0,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
+    larger_loss = Value(
+        score=9.0,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
+
+    assert (
+        ordering.semantic_compare(
+            smaller_loss,
+            larger_loss,
+            side_to_move=Color.BLACK,
+        )
+        > 0
+    )

@@ -68,6 +68,32 @@ def _leaf(node_id: int, score: float) -> Any:
     return SimpleNamespace(tree_node=tree_node, tree_evaluation=tree_evaluation)
 
 
+def _exact_leaf(
+    node_id: int,
+    *,
+    turn: Color,
+    score: float,
+    over_event: _FakeOverEvent,
+    pv_length: int,
+) -> Any:
+    tree_node = SimpleNamespace(
+        id=node_id,
+        state=_state(turn),
+        branches_children={},
+        all_branches_generated=True,
+    )
+    tree_evaluation = NodeMinmaxEvaluation(tree_node=tree_node)
+    value = Value(
+        score=score,
+        certainty=Certainty.FORCED,
+        over_event=over_event,
+    )
+    tree_evaluation.direct_value = value
+    tree_evaluation.minmax_value = value
+    tree_evaluation.best_branch_sequence = list(range(pv_length))
+    return SimpleNamespace(tree_node=tree_node, tree_evaluation=tree_evaluation)
+
+
 def test_adversarial_objective_matches_existing_ordering_adapter() -> None:
     ordering = EvaluationOrdering(win_score=1.0, draw_score=0.0, loss_score=-1.0)
     objective = AdversarialZeroSumObjective(evaluation_ordering=ordering)
@@ -151,3 +177,61 @@ def test_minimax_best_branch_uses_injected_objective() -> None:
 
     assert parent.best_branch() == 1
     assert parent.minmax_value == Value(score=0.1, certainty=Certainty.ESTIMATE)
+
+
+def test_minimax_branch_order_prefers_shorter_exact_win_lines() -> None:
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=_state(Color.WHITE),
+        branches_children={
+            0: _exact_leaf(
+                1,
+                turn=Color.BLACK,
+                score=1.0,
+                over_event=_FakeOverEvent(winner=Color.WHITE),
+                pv_length=3,
+            ),
+            1: _exact_leaf(
+                2,
+                turn=Color.BLACK,
+                score=1.0,
+                over_event=_FakeOverEvent(winner=Color.WHITE),
+                pv_length=1,
+            ),
+        },
+        all_branches_generated=True,
+    )
+    parent = NodeMinmaxEvaluation(tree_node=parent_tree_node)
+
+    parent.update_branches_values({0, 1})
+
+    assert parent.best_branch() == 1
+
+
+def test_minimax_branch_order_prefers_longer_exact_loss_lines() -> None:
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=_state(Color.WHITE),
+        branches_children={
+            0: _exact_leaf(
+                1,
+                turn=Color.BLACK,
+                score=-1.0,
+                over_event=_FakeOverEvent(winner=Color.BLACK),
+                pv_length=1,
+            ),
+            1: _exact_leaf(
+                2,
+                turn=Color.BLACK,
+                score=-1.0,
+                over_event=_FakeOverEvent(winner=Color.BLACK),
+                pv_length=3,
+            ),
+        },
+        all_branches_generated=True,
+    )
+    parent = NodeMinmaxEvaluation(tree_node=parent_tree_node)
+
+    parent.update_branches_values({0, 1})
+
+    assert parent.best_branch() == 1

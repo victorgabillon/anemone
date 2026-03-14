@@ -124,13 +124,13 @@ class AlgorithmNode[StateT: State = State]:
         return self.tree_node.state
 
     def is_over(self) -> bool:
-        """Compatibility wrapper for terminal-state checks.
+        """Return whether this node's own state is terminal.
 
         Returns:
-            bool: True if the canonical Value candidate is terminal, False otherwise.
+            bool: True if the node is terminal, False otherwise.
 
         """
-        return self.tree_evaluation.is_terminal_candidate()
+        return self.tree_evaluation.is_terminal()
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: Self) -> None:
         """Add a parent node.

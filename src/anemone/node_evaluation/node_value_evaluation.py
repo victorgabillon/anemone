@@ -31,7 +31,7 @@ class NodeValueEvaluation(Protocol):
 
     @property
     def over_event(self) -> OverEvent | None:
-        """Return terminal metadata when present."""
+        """Return exact outcome metadata when present."""
         ...
 
     def get_value_candidate(self) -> Value | None:
@@ -46,10 +46,14 @@ class NodeValueEvaluation(Protocol):
         """Return canonical scalar score from the canonical Value."""
         ...
 
-    def is_terminal_candidate(self) -> bool:
-        """Return whether the candidate Value is exact and carries over metadata.
+    def has_exact_value(self) -> bool:
+        """Return whether the candidate Value is exact."""
+        ...
 
-        This legacy helper is narrower than pure certainty checks: `FORCED`
-        without terminal metadata is still not considered a terminal candidate.
-        """
+    def is_terminal(self) -> bool:
+        """Return whether the candidate Value says this node's own state is terminal."""
+        ...
+
+    def has_over_event(self) -> bool:
+        """Return whether the candidate Value carries exact outcome metadata."""
         ...

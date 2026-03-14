@@ -24,7 +24,6 @@ class ValueUpdateInstructionsFromOneNode:
     """Represents update instructions generated from a single node."""
 
     node_sending_update: AlgorithmNode
-    is_node_newly_over: bool
     new_value_for_node: bool
     new_best_branch_for_node: bool
 
@@ -38,9 +37,6 @@ def _new_branchkey_set() -> set[BranchKey]:
 class ValueUpdateInstructionsTowardsOneParentNode:
     """Represents a block of value-update instructions intended to a specific node in the algorithm tree."""
 
-    branches_with_updated_over: set[BranchKey] = field(
-        default_factory=_new_branchkey_set
-    )
     branches_with_updated_value: set[BranchKey] = field(
         default_factory=_new_branchkey_set
     )
@@ -60,8 +56,6 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             branch_from_parent_to_child (BranchKey): The branch key representing the branch from the parent to the child.
 
         """
-        if update_from_one_child_node.is_node_newly_over:
-            self.branches_with_updated_over.add(branch_from_parent_to_child)
         if update_from_one_child_node.new_value_for_node:
             self.branches_with_updated_value.add(branch_from_parent_to_child)
         if update_from_one_child_node.new_best_branch_for_node:
@@ -77,9 +71,6 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         self.branches_with_updated_value = (
             self.branches_with_updated_value
             | another_update.branches_with_updated_value
-        )
-        self.branches_with_updated_over = (
-            self.branches_with_updated_over | another_update.branches_with_updated_over
         )
         self.branches_with_updated_best_branch_seq = (
             self.branches_with_updated_best_branch_seq
@@ -109,14 +100,6 @@ class ValueUpdateInstructionsTowardsOneParentNode:
         )
         for branch in self.branches_with_updated_best_branch_seq:
             print(branch, end=" ")
-        print(
-            "\n",
-            len(self.branches_with_updated_over),
-            "branches_with_updated_over",
-            end=" ",
-        )
-        for branch in self.branches_with_updated_over:
-            print(branch, end=" ")
         print()
 
     def empty(self) -> bool:
@@ -126,8 +109,6 @@ class ValueUpdateInstructionsTowardsOneParentNode:
             bool: True if all components are empty, False otherwise.
 
         """
-        return (
-            not bool(self.branches_with_updated_value)
-            and not bool(self.branches_with_updated_best_branch_seq)
-            and not bool(self.branches_with_updated_over)
+        return not bool(self.branches_with_updated_value) and not bool(
+            self.branches_with_updated_best_branch_seq
         )

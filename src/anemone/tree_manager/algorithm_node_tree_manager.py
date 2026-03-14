@@ -83,9 +83,9 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         cast(
             "NodeMinmaxEvaluation[Any, Any]", parent_node.tree_evaluation
-        ).branches_not_over.append(
+        ).branches_to_explore.append(
             branch
-        )  # default action checks for over event are performed later
+        )  # default action checks for exactness are performed later
 
         return tree_expansion
 

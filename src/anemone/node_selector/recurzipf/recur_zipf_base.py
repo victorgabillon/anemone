@@ -90,8 +90,8 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         while cast(
             "NodeMinmaxEvaluation[Any, Any]", wandering_node.tree_evaluation
-        ).branches_not_over:
-            assert not wandering_node.tree_evaluation.is_terminal_candidate()
+        ).branches_to_explore:
+            assert not wandering_node.tree_evaluation.has_exact_value()
             branch = self.branch_explorer.sample_branch_to_explore(
                 tree_node_to_sample_from=wandering_node
             )

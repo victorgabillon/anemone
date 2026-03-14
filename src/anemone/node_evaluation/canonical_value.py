@@ -10,8 +10,66 @@ The helpers below keep exactness checks separate from state-terminality checks s
 callers can be explicit about which notion they need.
 """
 
-from valanga import OverEvent
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from valanga.evaluations import Certainty, Value
+
+if TYPE_CHECKING:
+    from valanga import OverEvent
+
+
+class ValueSemanticsError(ValueError):
+    """Raised when a Value violates Anemone's certainty/metadata contract."""
+
+    @classmethod
+    def missing_value(cls) -> ValueSemanticsError:
+        """Return the error for missing Value objects."""
+        return cls("Expected a Value, got None.")
+
+    @classmethod
+    def estimate_with_over_event(cls) -> ValueSemanticsError:
+        """Return the error for ESTIMATE values carrying terminal metadata."""
+        return cls("ESTIMATE values must not carry over_event metadata.")
+
+    @classmethod
+    def terminal_without_over_event(cls) -> ValueSemanticsError:
+        """Return the error for TERMINAL values missing terminal metadata."""
+        return cls("TERMINAL values must carry over_event metadata.")
+
+    @classmethod
+    def non_over_over_event(cls) -> ValueSemanticsError:
+        """Return the error for invalid over-event metadata."""
+        return cls("Values with over_event metadata must point to an over outcome.")
+
+
+def validate_value_semantics(value: Value) -> Value:
+    """Validate a Value against Anemone's certainty semantics."""
+    if value.certainty == Certainty.ESTIMATE and value.over_event is not None:
+        raise ValueSemanticsError.estimate_with_over_event()
+
+    if value.certainty == Certainty.TERMINAL and value.over_event is None:
+        raise ValueSemanticsError.terminal_without_over_event()
+
+    if value.over_event is not None and not value.over_event.is_over():
+        raise ValueSemanticsError.non_over_over_event()
+
+    return value
+
+
+def require_value(value: Value | None) -> Value:
+    """Return ``value`` once presence and semantics are both validated."""
+    if value is None:
+        raise ValueSemanticsError.missing_value()
+    return validate_value_semantics(value)
+
+
+def _validated_optional_value(value: Value | None) -> Value | None:
+    """Return ``value`` after semantic validation when present."""
+    if value is None:
+        return None
+    return validate_value_semantics(value)
 
 
 def get_value_candidate(
@@ -21,8 +79,8 @@ def get_value_candidate(
 ) -> Value | None:
     """Return backed-up value when available, else direct value."""
     if backed_up_value is not None:
-        return backed_up_value
-    return direct_value
+        return validate_value_semantics(backed_up_value)
+    return _validated_optional_value(direct_value)
 
 
 def get_value(
@@ -31,14 +89,12 @@ def get_value(
     direct_value: Value | None,
 ) -> Value:
     """Return the canonical Value for a node-evaluation family."""
-    candidate = get_value_candidate(
-        backed_up_value=backed_up_value,
-        direct_value=direct_value,
+    return require_value(
+        get_value_candidate(
+            backed_up_value=backed_up_value,
+            direct_value=direct_value,
+        )
     )
-    assert candidate is not None, (
-        "Node has no canonical Value: both backed_up_value and direct_value are None."
-    )
-    return candidate
 
 
 def get_score(
@@ -55,38 +111,94 @@ def get_score(
 
 def is_exact_value(value: Value | None) -> bool:
     """Return True when a Value is exact, whether forced or terminal."""
+    value = _validated_optional_value(value)
     return value is not None and value.certainty in (
         Certainty.FORCED,
         Certainty.TERMINAL,
     )
 
 
+def is_estimate_value(value: Value | None) -> bool:
+    """Return True when a Value is still heuristic or otherwise unsolved."""
+    value = _validated_optional_value(value)
+    return value is not None and value.certainty == Certainty.ESTIMATE
+
+
 def is_forced_value(value: Value | None) -> bool:
     """Return True when a Value is exact for a non-terminal node."""
+    value = _validated_optional_value(value)
     return value is not None and value.certainty == Certainty.FORCED
 
 
 def is_terminal_value(value: Value | None) -> bool:
     """Return True when a Value says the node's own state is terminal."""
+    value = _validated_optional_value(value)
     return value is not None and value.certainty == Certainty.TERMINAL
 
 
-def is_terminal_candidate_value(value: Value | None) -> bool:
-    """Legacy compatibility helper for exact values carrying terminal metadata.
+def has_over_event(value: Value | None) -> bool:
+    """Return True when a Value carries exact terminal-outcome metadata."""
+    value = _validated_optional_value(value)
+    return value is not None and value.over_event is not None
 
-    This helper does NOT mean the node's own state is terminal in the stronger
-    semantic sense used by the certainty model. PR A preserves its behavior for
-    existing callers that still rely on exact-value-plus-``over_event`` checks;
-    later refactors can narrow or replace those callers where true node
-    terminality is required.
+
+def make_estimate_value(*, score: float) -> Value:
+    """Create an unsolved estimate Value."""
+    return Value(
+        score=score,
+        certainty=Certainty.ESTIMATE,
+        over_event=None,
+    )
+
+
+def make_forced_value(*, score: float, over_event: OverEvent | None = None) -> Value:
+    """Create an exact non-terminal Value."""
+    return validate_value_semantics(
+        Value(
+            score=score,
+            certainty=Certainty.FORCED,
+            over_event=over_event,
+        )
+    )
+
+
+def make_terminal_value(*, score: float, over_event: OverEvent) -> Value:
+    """Create an exact Value for a node whose own state is terminal."""
+    return validate_value_semantics(
+        Value(
+            score=score,
+            certainty=Certainty.TERMINAL,
+            over_event=over_event,
+        )
+    )
+
+
+def make_backed_up_value(
+    *,
+    score: float,
+    exact: bool,
+    node_is_terminal: bool,
+    over_event: OverEvent | None,
+) -> Value:
+    """Construct a backed-up Value from parent-local terminality and exactness.
+
+    Important: exactness may propagate from children, but terminality never does.
+    Only a node whose own state is terminal may receive ``Certainty.TERMINAL``.
     """
-    if value is None:
-        return False
-    return is_exact_value(value) and value.over_event is not None
+    if node_is_terminal:
+        if over_event is None:
+            raise ValueSemanticsError.terminal_without_over_event()
+        return make_terminal_value(score=score, over_event=over_event)
+    if exact:
+        return make_forced_value(score=score, over_event=over_event)
+    if over_event is not None:
+        raise ValueSemanticsError.estimate_with_over_event()
+    return make_estimate_value(score=score)
 
 
 def get_over_event_candidate(value: Value | None) -> OverEvent | None:
-    """Return terminal metadata from a candidate Value when present."""
-    if value is None:
+    """Return exact outcome metadata from a candidate Value when present."""
+    validated_value = _validated_optional_value(value)
+    if validated_value is None:
         return None
-    return value.over_event
+    return validated_value.over_event

@@ -26,7 +26,9 @@ def run_live_scenario(
     snapshot_format: str = "svg",
 ) -> tuple[object, LiveDebugEnvironment]:
     """Run one tiny toy domain through the real Anemone engine."""
-    resolved_directory = Path(session_directory or (_DEFAULT_OUTPUT_ROOT / scenario_spec.name))
+    resolved_directory = Path(
+        session_directory or (_DEFAULT_OUTPUT_ROOT / scenario_spec.name)
+    )
     debug_environment = build_live_toy_debug_environment(
         scenario_spec,
         resolved_directory,
@@ -77,13 +79,15 @@ def print_scenario_summary(
     print(f"Session directory: {Path(session_directory)}")
 
 
-def print_serving_instructions(session_directory: str | Path, *, port: int = 8000) -> None:
+def print_serving_instructions(
+    session_directory: str | Path, *, port: int = 8000
+) -> None:
     """Print the recommended command for serving the resulting live session."""
     session_directory_str = str(Path(session_directory))
     python_literal = json.dumps(session_directory_str)
     print("Serve from another terminal with:")
     print(
-        'python -c '
+        "python -c "
         f'"from anemone.debug import serve_live_debug_session; '
         f'serve_live_debug_session({python_literal}, port={port})"'
     )
@@ -91,7 +95,9 @@ def print_serving_instructions(session_directory: str | Path, *, port: int = 800
 
 def scenario_specs_by_name() -> dict[str, ToyScenarioSpec]:
     """Return all built-in toy scenarios keyed by scenario name."""
-    return {scenario_spec.name: scenario_spec for scenario_spec in all_toy_scenario_specs()}
+    return {
+        scenario_spec.name: scenario_spec for scenario_spec in all_toy_scenario_specs()
+    }
 
 
 __all__ = [

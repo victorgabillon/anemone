@@ -50,6 +50,14 @@ class FakeEvaluation:
     backed_up_value: FakeValue | None = None
     best_branch_sequence: list[str] = field(default_factory=list)
     over_event: FakeOverEvent | None = None
+    exact: bool = False
+    terminal: bool = False
+
+    def has_exact_value(self) -> bool:
+        return self.exact
+
+    def is_terminal(self) -> bool:
+        return self.terminal
 
 
 @dataclass
@@ -58,9 +66,17 @@ class FakeMinmaxEvaluation:
     minmax_value: FakeValue | None = None
     best_branch_sequence: list[str] = field(default_factory=list)
     over_event_candidate: FakeOverEvent | None = None
+    exact: bool = False
+    terminal: bool = False
 
     def get_over_event_candidate(self) -> FakeOverEvent | None:
         return self.over_event_candidate
+
+    def has_exact_value(self) -> bool:
+        return self.exact
+
+    def is_terminal(self) -> bool:
+        return self.terminal
 
 
 @dataclass
@@ -70,6 +86,14 @@ class FakeHybridEvaluation:
     minmax_value: FakeValue | None = None
     best_branch_sequence: list[str] = field(default_factory=list)
     over_event: FakeOverEvent | None = None
+    exact: bool = False
+    terminal: bool = False
+
+    def has_exact_value(self) -> bool:
+        return self.exact
+
+    def is_terminal(self) -> bool:
+        return self.terminal
 
 
 @dataclass
@@ -215,7 +239,11 @@ def test_dot_renderer_styles_player_and_terminal_nodes() -> None:
         tree_depth_=1,
         state_=FakeState(tag="reply", turn=FakeTurn(name="BLACK")),
         parent_nodes_={root: "a"},
-        tree_evaluation=FakeEvaluation(over_event=FakeOverEvent("done")),
+        tree_evaluation=FakeEvaluation(
+            over_event=FakeOverEvent("done"),
+            exact=True,
+            terminal=True,
+        ),
     )
     root.branches_children_["a"] = child
 
@@ -224,12 +252,34 @@ def test_dot_renderer_styles_player_and_terminal_nodes() -> None:
 
     assert "player=MAX" in source
     assert "player=MIN" in source
-    assert '1 [label="id=1\\ndepth=0\\nplayer=MAX\\nstate=root"' in source
+    assert '1 [label="id=1\ndepth=0\nplayer=MAX\nstate=root"' in source
     assert 'fillcolor="#d8e7ff"' in source
     assert 'color="#456fb3"' in source
-    assert '2 [label="id=2\\ndepth=1\\nplayer=MIN\\nstate=reply\\nover=done"' in source
+    assert '2 [label="id=2\ndepth=1\nplayer=MIN\nstate=reply\nover=done"' in source
     assert 'fillcolor="#dcefd9"' in source
     assert 'color="#2f6b2f"' in source
+
+
+def test_dot_renderer_styles_forced_nodes_distinct_from_terminal_nodes() -> None:
+    node = FakeNode(
+        id_=3,
+        tree_depth_=0,
+        state_=FakeState(tag="forced", turn=FakeTurn(name="WHITE")),
+        tree_evaluation=FakeEvaluation(
+            over_event=FakeOverEvent("forced-win"),
+            exact=True,
+            terminal=False,
+        ),
+    )
+
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", node))
+    source = DotRenderer().render(snapshot).source
+
+    assert snapshot.nodes[0].is_exact is True
+    assert snapshot.nodes[0].is_terminal is False
+    assert 'fillcolor="#f3e5b1"' in source
+    assert 'color="#8c6a12"' in source
+    assert 'fillcolor="#dcefd9"' not in source
 
 
 def test_tree_snapshot_adapter_supports_dag_parent_links() -> None:

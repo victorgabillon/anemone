@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from anemone.backup_policies.common import SelectedValue, all_child_values_exact
 from anemone.backup_policies.types import BackupResult
+from anemone.node_evaluation import canonical_value
 from anemone.utils.my_value_sorted_dict import sort_dic
 
 if TYPE_CHECKING:
@@ -43,6 +45,7 @@ class ExplicitMinimaxBackupPolicy:
             )
 
         self._update_value_value_only(node_eval=node_eval)
+        node_eval.sync_branches_to_explore(branches_with_updated_value)
         best_branch_after_update = node_eval.best_branch()
 
         if best_branch_after_update is None:
@@ -127,8 +130,9 @@ class ExplicitMinimaxBackupPolicy:
         best_child_value = node_eval.child_value_candidate(best_branch_key)
         assert best_child_value is not None
 
+        selection: SelectedValue
         if node_eval.tree_node.all_branches_generated:
-            value_after_update = best_child_value
+            selection = SelectedValue(value=best_child_value, from_child=True)
         else:
             direct_value = self._direct_value_candidate(node_eval)
             assert direct_value is not None, (
@@ -139,11 +143,14 @@ class ExplicitMinimaxBackupPolicy:
                 direct_value,
                 side_to_move=node_eval.tree_node.state.turn,
             ):
-                value_after_update = best_child_value
+                selection = SelectedValue(value=best_child_value, from_child=True)
             else:
-                value_after_update = direct_value
+                selection = SelectedValue(value=direct_value, from_child=False)
 
-        node_eval.minmax_value = value_after_update
+        node_eval.minmax_value = self._build_backed_up_value(
+            node_eval=node_eval,
+            selection=selection,
+        )
 
     def _update_branches_values_value_only(
         self,
@@ -153,29 +160,12 @@ class ExplicitMinimaxBackupPolicy:
     ) -> None:
         """Update branch ordering keys using Value semantics instead of float-only keys."""
         for branch_key in branches_to_consider:
-            child = node_eval.tree_node.branches_children[branch_key]
-            assert child is not None
             child_value = node_eval.child_value_candidate(branch_key)
             if child_value is None:
                 continue
-
-            subjective_sort_value = node_eval.objective.evaluate_value(
-                child_value,
-                node_eval.tree_node.state,
+            node_eval.branches_sorted_by_value_[branch_key] = (
+                node_eval.branch_sort_value(branch_key)
             )
-
-            if node_eval.is_terminal_candidate():
-                node_eval.branches_sorted_by_value_[branch_key] = (
-                    subjective_sort_value,
-                    -len(child.tree_evaluation.best_branch_sequence),
-                    child.tree_node.id,
-                )
-            else:
-                node_eval.branches_sorted_by_value_[branch_key] = (
-                    subjective_sort_value,
-                    len(child.tree_evaluation.best_branch_sequence),
-                    child.tree_node.id,
-                )
 
         node_eval.branches_sorted_by_value_ = sort_dic(
             node_eval.branches_sorted_by_value_
@@ -187,23 +177,66 @@ class ExplicitMinimaxBackupPolicy:
     ) -> Value | None:
         return node_eval.direct_value
 
-    def _is_child_value_better_than_direct_value(
+    def _build_backed_up_value(
         self,
         *,
         node_eval: NodeMinmaxEvaluation[Any, Any],
-        child_value: Value | None,
-    ) -> bool:
-        """Return whether child value dominates direct eval for the side to move."""
-        if child_value is None:
-            return False
-        direct_value = self._direct_value_candidate(node_eval)
-        assert direct_value is not None, (
-            "Explicit minimax requires direct_value for partially expanded nodes."
+        selection: SelectedValue,
+    ) -> Value | None:  # pylint: disable=duplicate-code
+        chosen_value = selection.value
+        if chosen_value is None:
+            return None
+
+        if not selection.from_child:
+            return chosen_value
+
+        exact = self._selected_child_proves_exact_value(
+            node_eval=node_eval,
+            selected_child_value=chosen_value,
         )
-        return node_eval.child_is_better_than_direct(
-            child_value,
-            direct_value,
-            side_to_move=node_eval.tree_node.state.turn,
+        return canonical_value.make_backed_up_value(
+            score=chosen_value.score,
+            exact=exact,
+            node_is_terminal=False,
+            over_event=chosen_value.over_event if exact else None,
+        )
+
+    def _selected_child_proves_exact_value(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        selected_child_value: Value,
+    ) -> bool:
+        if not canonical_value.is_exact_value(selected_child_value):
+            return False
+
+        # Important: child certainty must never be copied directly to the parent.
+        # A non-terminal parent becomes FORCED only when the parent itself is now exact.
+        if self._selected_child_proves_parent_exact_value_by_choice(
+            node_eval=node_eval,
+            selected_child_value=selected_child_value,
+        ):
+            return True
+
+        if not node_eval.tree_node.all_branches_generated:
+            return False
+
+        return all_child_values_exact(node_eval)
+
+    def _selected_child_proves_parent_exact_value_by_choice(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        selected_child_value: Value,
+    ) -> bool:
+        """Return True when the chosen child alone proves the parent's exact value.
+
+        A current-player exact win is enough to solve the parent even before all
+        siblings are generated, because the player to move can choose that line.
+        """
+        over_event = selected_child_value.over_event
+        return over_event is not None and over_event.is_winner(
+            node_eval.tree_node.state.turn
         )
 
 

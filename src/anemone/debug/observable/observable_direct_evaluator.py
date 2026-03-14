@@ -22,6 +22,15 @@ class ObservableDirectEvaluator:
         self._base = base
         self._debug_sink = debug_sink or NullSearchDebugSink()
 
+    @property
+    def debug_sink(self) -> SearchDebugSink:
+        """Return the sink currently receiving inferred direct-value events."""
+        return self._debug_sink
+
+    def set_debug_sink(self, debug_sink: SearchDebugSink) -> None:
+        """Replace the sink used for inferred direct-value events."""
+        self._debug_sink = debug_sink
+
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown attributes to the wrapped evaluator."""
         return getattr(self._base, name)

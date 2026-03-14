@@ -44,7 +44,14 @@ class EvaluationOrdering:
         b_outcome = self._terminal_outcome_or_none(b, perspective=side_to_move)
 
         if a_outcome is not None and b_outcome is not None:
-            return _compare_terminal_outcomes(a_outcome, b_outcome)
+            outcome_comparison = _compare_terminal_outcomes(a_outcome, b_outcome)
+            if outcome_comparison != 0:
+                return outcome_comparison
+
+            # Exact values with the same terminal outcome still need their raw
+            # solved score to break ties. Otherwise two exact wins/losses look
+            # identical and branch order falls back to insertion order.
+            return _compare_scores(a.score, b.score, side_to_move=side_to_move)
 
         if a_outcome is not None:
             assert b_outcome is None

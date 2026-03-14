@@ -190,7 +190,7 @@ def test_explicit_max_backup_falls_back_to_direct_when_no_child_value_exists() -
     assert node.best_branch() is None
 
 
-def test_single_agent_terminal_candidate_is_value_based_without_turn() -> None:
+def test_single_agent_exact_value_and_terminality_are_distinct() -> None:
     node = _node(
         node_id=0,
         direct_value=Value(
@@ -200,5 +200,7 @@ def test_single_agent_terminal_candidate_is_value_based_without_turn() -> None:
         ),
     )
 
-    assert node.is_terminal_candidate()
+    assert node.has_exact_value()
+    assert not node.is_terminal()
+    assert node.has_over_event()
     assert node.over_event is not None

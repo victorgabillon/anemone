@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 from valanga import OverEvent, TurnState
 from valanga.evaluations import Certainty, Value
 
+from anemone.node_evaluation import canonical_value
 from anemone.nodes.algorithm_node import AlgorithmNode
 
 from .protocols import MasterStateValueEvaluator
@@ -96,12 +97,11 @@ class NodeDirectEvaluator[StateT: TurnState = TurnState]:
             evaluation=evaluation,
             canonical_over_event=over_event,
         )
-        node.tree_evaluation.direct_value = Value(
+        node.tree_evaluation.direct_value = canonical_value.make_terminal_value(
             score=terminal_score,
-            certainty=Certainty.TERMINAL,
             over_event=over_event,
         )
-        assert node.tree_evaluation.is_terminal_candidate()
+        assert node.tree_evaluation.is_terminal()
 
     def _terminal_score(
         self,
@@ -148,7 +148,7 @@ class NodeDirectEvaluator[StateT: TurnState = TurnState]:
         # Re-read into a local after the call: this breaks mypy's earlier narrowing.
         direct_value: Value | None = node.tree_evaluation.direct_value
 
-        if node.tree_evaluation.is_terminal_candidate():
+        if node.tree_evaluation.is_terminal():
             if direct_value is None:
                 raise DirectValueInvariantError(
                     node_id=node.tree_node.id,
@@ -165,11 +165,32 @@ class NodeDirectEvaluator[StateT: TurnState = TurnState]:
         """Evaluate all non-terminal nodes and store their evaluations."""
         values = self.master_state_value_evaluator.evaluate_batch_items(not_over_nodes)
         for node, value in zip(not_over_nodes, values, strict=True):
-            processed_value = Value(
-                score=self.process_evalution_not_over(value.score, node),
-                certainty=value.certainty,
-                over_event=value.over_event,
-            )
+            processed_score = self.process_evalution_not_over(value.score, node)
+            if value.certainty == Certainty.TERMINAL:
+                raise DirectValueInvariantError(
+                    node_id=node.tree_node.id,
+                    reason=(
+                        "non-terminal batch evaluation returned TERMINAL; "
+                        "terminal certainty must come from node-local over detection"
+                    ),
+                )
+            if value.certainty == Certainty.FORCED:
+                processed_value = canonical_value.make_forced_value(
+                    score=processed_score,
+                    over_event=value.over_event,
+                )
+            else:
+                if value.over_event is not None:
+                    raise DirectValueInvariantError(
+                        node_id=node.tree_node.id,
+                        reason=(
+                            "ESTIMATE direct evaluation must not carry over_event "
+                            "metadata"
+                        ),
+                    )
+                processed_value = canonical_value.make_estimate_value(
+                    score=processed_score
+                )
             node.tree_evaluation.direct_value = processed_value
             assert node.tree_evaluation.direct_value is not None, (
                 f"direct_value must be set for non-terminal node {node.tree_node.id}"

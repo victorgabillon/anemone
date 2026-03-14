@@ -24,6 +24,8 @@ class DebugNodeView:
     backed_up_value: str | None = None
     principal_variation: str | None = None
     over_event: str | None = None
+    is_exact: bool = False
+    is_terminal: bool = False
     index_fields: dict[str, str] = field(default_factory=_empty_string_dict)
     child_ids: tuple[str, ...] = ()
     edge_labels_by_child: dict[str, str] = field(default_factory=_empty_string_dict)

@@ -14,7 +14,9 @@ def main(argv: list[str]) -> int:
     """Run one named scenario or all scenarios when no name is given."""
     scenarios = scenario_specs_by_name()
     if len(argv) > 2:
-        print("Usage: python examples/debug_scenarios/run_all_scenarios.py [scenario-name]")
+        print(
+            "Usage: python examples/debug_scenarios/run_all_scenarios.py [scenario-name]"
+        )
         print("Available scenarios:", ", ".join(scenarios))
         return 1
 

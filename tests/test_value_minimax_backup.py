@@ -5,12 +5,12 @@ from types import SimpleNamespace
 from typing import Any
 
 from valanga import Color
-from valanga.evaluations import Value
 
 from anemone.backup_policies.explicit_minimax import (
     ExplicitMinimaxBackupPolicy,
     has_value_changed,
 )
+from anemone.node_evaluation.canonical_value import ValueSemanticsError
 from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -324,7 +324,11 @@ def test_terminal_value_syncs_parent_over_event_and_reports_over_changed() -> No
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.minmax_value == terminal
+    assert parent.minmax_value == Value(
+        score=0.2,
+        certainty=Certainty.FORCED,
+        over_event=terminal.over_event,
+    )
     assert parent.over_event == terminal.over_event
     assert result.over_changed
 
@@ -401,9 +405,7 @@ def test_branch_ordering_for_search_uses_projection_and_stable_tie_breakers() ->
     assert list(parent.branches_sorted_by_value.keys()) == [0, 1]
 
 
-def test_evaluate_does_not_emit_forced_outcome_for_non_terminal_estimate_with_over_event() -> (
-    None
-):
+def test_non_terminal_estimate_with_over_event_is_rejected() -> None:
     parent = _make_parent(
         turn=Color.WHITE,
         children={},
@@ -415,10 +417,12 @@ def test_evaluate_does_not_emit_forced_outcome_for_non_terminal_estimate_with_ov
         ),
     )
 
-    result = parent.get_value()
-
-    assert isinstance(result, Value)
-    assert result.score == 0.25
+    try:
+        parent.get_value()
+    except ValueSemanticsError as exc:
+        assert "ESTIMATE" in str(exc)
+    else:
+        raise AssertionError
 
 
 def test_best_branch_prefers_estimate_over_forced_loss() -> None:
@@ -485,3 +489,34 @@ def test_best_branch_draw_baseline_vs_estimate() -> None:
         branches_with_updated_best_branch_seq=set(),
     )
     assert parent_below.best_branch() == 0
+
+
+def test_exact_win_child_keeps_winning_over_event_on_forced_parent() -> None:
+    forced_draw = Value(
+        score=0.0,
+        certainty=Certainty.TERMINAL,
+        over_event=_FakeOverEvent(draw=True),
+    )
+    forced_win = Value(
+        score=0.0,
+        certainty=Certainty.TERMINAL,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: _make_leaf(1, forced_draw), 1: _make_leaf(2, forced_win)},
+        all_generated=True,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.best_branch() == 1
+    assert parent.minmax_value == Value(
+        score=0.0,
+        certainty=Certainty.FORCED,
+        over_event=forced_win.over_event,
+    )

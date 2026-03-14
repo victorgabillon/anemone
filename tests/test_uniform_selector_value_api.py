@@ -10,10 +10,10 @@ from valanga.evaluations import Certainty, Value
 @dataclass
 class _FakeEval:
     value: Value | None
-    terminal: bool = False
+    exact: bool = False
 
-    def is_terminal_candidate(self) -> bool:
-        return self.terminal
+    def has_exact_value(self) -> bool:
+        return self.exact
 
     def get_value(self) -> Value:
         assert self.value is not None
@@ -68,14 +68,14 @@ def test_uniform_selector_uses_projection_search_ordering() -> None:
     assert _instruction_node_ids(instructions) == [1, 2]
 
 
-def test_uniform_selector_skips_terminal_candidates() -> None:
+def test_uniform_selector_skips_exact_nodes() -> None:
     selector = Uniform(opening_instructor=_FakeOpeningInstructor())
 
     terminal = _FakeNode(
         id=10,
         tree_evaluation=_FakeEval(
             value=Value(score=0.0, certainty=Certainty.FORCED, over_event=None),
-            terminal=True,
+            exact=True,
         ),
     )
     live = _FakeNode(

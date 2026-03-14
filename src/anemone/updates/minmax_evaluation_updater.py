@@ -32,7 +32,6 @@ class MinMaxEvaluationUpdater:
         base_update_instructions: ValueUpdateInstructionsFromOneNode = (
             ValueUpdateInstructionsFromOneNode(
                 node_sending_update=new_node,
-                is_node_newly_over=new_node.tree_evaluation.is_terminal_candidate(),
                 new_value_for_node=True,
                 new_best_branch_for_node=False,
             )
@@ -69,18 +68,10 @@ class MinMaxEvaluationUpdater:
         has_value_changed = backup_result.value_changed
         has_best_node_seq_changed: bool = backup_result.pv_changed
 
-        # UPDATE OVER
-        is_newly_over = node_to_update.tree_evaluation.update_over(
-            updates_instructions_block.branches_with_updated_over
-        )
-
-        assert is_newly_over is not None
-
         # create the new instructions for the parents
         base_update_instructions_block: ValueUpdateInstructionsFromOneNode
         base_update_instructions_block = ValueUpdateInstructionsFromOneNode(
             node_sending_update=node_to_update,
-            is_node_newly_over=is_newly_over,
             new_value_for_node=has_value_changed,
             new_best_branch_for_node=has_best_node_seq_changed,
         )

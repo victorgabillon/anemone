@@ -15,7 +15,7 @@ from valanga import (
     OverEvent,
     TurnState,
 )
-from valanga.evaluations import Certainty, Value
+from valanga.evaluations import Value
 
 from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation import canonical_value
@@ -81,11 +81,11 @@ def make_branches_sorted_by_value_factory() -> dict[BranchKey, BranchSortValue]:
     return {}
 
 
-def make_branches_not_over_factory() -> list[BranchKey]:
-    """Create a factory for generating branches that are not over.
+def make_branches_to_explore_factory() -> list[BranchKey]:
+    """Create a factory for generating child branches that remain unresolved.
 
     Returns:
-        list[BranchKey]: An empty list that can be used to store branches that are not over.
+        list[BranchKey]: An empty list that can be used to store branches that can still affect search.
 
     """
     return []
@@ -146,11 +146,10 @@ class NodeMinmaxEvaluation[
     # convention of descending order, careful if changing read above!!
     best_index_for_value: int = 0
 
-    # the list of branches that have not yet be found to be over
-    # using atm a list instead of set as atm python set are not insertion ordered which adds randomness
-    # and makes debug harder
-    branches_not_over: list[BranchKey] = field(
-        default_factory=make_branches_not_over_factory
+    # Child branches that are still unresolved and therefore remain worth exploring.
+    # A list is used instead of a set so insertion order stays deterministic.
+    branches_to_explore: list[BranchKey] = field(
+        default_factory=make_branches_to_explore_factory
     )
 
     # policy used to orchestrate backup behavior from updated children
@@ -203,37 +202,17 @@ class NodeMinmaxEvaluation[
             direct_value=self.direct_value,
         )
 
-    def is_terminal_candidate(self) -> bool:
-        """Return True when the candidate Value is exact and has ``over_event``."""
-        return canonical_value.is_terminal_candidate_value(self.get_value_candidate())
+    def has_exact_value(self) -> bool:
+        """Return True when the candidate Value is exact."""
+        return canonical_value.is_exact_value(self.get_value_candidate())
 
-    def set_direct_terminal_value(
-        self,
-        *,
-        score: float,
-        over_event: OverEvent,
-        certainty: Certainty = Certainty.TERMINAL,
-    ) -> None:
-        """Set ``direct_value`` to an explicit terminal Value."""
-        self.direct_value = Value(
-            score=score,
-            certainty=certainty,
-            over_event=over_event,
-        )
+    def is_terminal(self) -> bool:
+        """Return True when the candidate Value says this node's own state is terminal."""
+        return canonical_value.is_terminal_value(self.get_value_candidate())
 
-    def set_minmax_terminal_value(
-        self,
-        *,
-        score: float,
-        over_event: OverEvent,
-        certainty: Certainty = Certainty.TERMINAL,
-    ) -> None:
-        """Set ``minmax_value`` to an explicit terminal Value."""
-        self.backed_up_value = Value(
-            score=score,
-            certainty=certainty,
-            over_event=over_event,
-        )
+    def has_over_event(self) -> bool:
+        """Return True when the candidate Value carries exact outcome metadata."""
+        return canonical_value.has_over_event(self.get_value_candidate())
 
     def child_is_better_than_direct(
         self, child: Value, direct: Value, *, side_to_move: Color
@@ -259,12 +238,10 @@ class NodeMinmaxEvaluation[
             return None
 
         child_eval = child.tree_evaluation
-        if child_eval.minmax_value is not None:
-            return child_eval.minmax_value
-
-        if child_eval.direct_value is not None:
-            return child_eval.direct_value
-        return None
+        return canonical_value.get_value_candidate(
+            backed_up_value=child_eval.minmax_value,
+            direct_value=child_eval.direct_value,
+        )
 
     def best_branch(self) -> BranchKey | None:
         """Return the best branch node based on the subjective value.
@@ -278,21 +255,21 @@ class NodeMinmaxEvaluation[
             return None
         return ordered[0]
 
-    def best_branch_not_over(self) -> BranchKey:
-        """Return the best branch that is not leading to a game-over.
+    def best_branch_to_explore(self) -> BranchKey:
+        """Return the best branch that remains unresolved.
 
         Returns:
-            The best branch that is not leading to a game-over.
+            The best branch that remains worth exploring.
 
         Raises:
-            Exception: If no branch is found that is not over.
+            Exception: If no unresolved branch is available.
 
         """
         branch_key: BranchKey
         for branch_key in self.branches_sorted_by_value:
             child = self.tree_node.branches_children[branch_key]
             assert child is not None
-            if not child.tree_evaluation.is_terminal_candidate():
+            if not child.tree_evaluation.has_exact_value():
                 return branch_key
         raise NoAvailableBranchError
 
@@ -354,40 +331,22 @@ class NodeMinmaxEvaluation[
         return [item[0] for item in sorted(candidates, key=cmp_to_key(_cmp))]
 
     def get_over_event_candidate(self) -> OverEvent | None:
-        """Return the candidate over event from the candidate Value, or ``None`` when non-terminal."""
+        """Return exact outcome metadata from the candidate Value when present."""
         return canonical_value.get_over_event_candidate(self.get_value_candidate())
 
     def is_over(self) -> bool:
-        """Check if the game is over.
-
-        Returns:
-            bool: True if the game is over, False otherwise.
-
-        """
-        over_event = self.get_over_event_candidate()
-        if over_event is not None:
-            return over_event.is_over()
-        return False
+        """Return True only when this node's own state is terminal."""
+        return self.is_terminal()
 
     def is_win(self) -> bool:
-        """Check if the current game state is a win.
-
-        Returns:
-            bool: True if the game state is a win, False otherwise.
-
-        """
+        """Return whether the exact candidate outcome is a win."""
         over_event = self.get_over_event_candidate()
         if over_event is not None:
             return over_event.is_win()
         return False
 
     def is_draw(self) -> bool:
-        """Check if the current game state is a draw.
-
-        Returns:
-            bool: True if the game state is a draw, False otherwise.
-
-        """
+        """Return whether the exact candidate outcome is a draw."""
         over_event = self.get_over_event_candidate()
         if over_event is not None:
             return over_event.is_draw()
@@ -395,11 +354,11 @@ class NodeMinmaxEvaluation[
 
     @property
     def over_event(self) -> OverEvent | None:
-        """Return the candidate over event, or ``None`` when non-terminal."""
+        """Return exact outcome metadata from the candidate Value when present."""
         return self.get_over_event_candidate()
 
     def is_winner(self, player: Color) -> bool:
-        """Determine if the specified player is the winner.
+        """Return whether the exact candidate outcome names ``player`` as winner.
 
         Args:
             player (Color): The color of the player to check.
@@ -466,20 +425,20 @@ class NodeMinmaxEvaluation[
             string_info += f" {branch_name} {subjective_sort_value[0]} $$ "
         anemone_logger.info(string_info)
 
-    def print_branches_not_over(self) -> None:
-        """Print the branches that are not over.
-
-        This method prints the branches that are not marked as 'over'.
-        It iterates over the `branches_not_over` list and prints each child's ID.
+    def print_branches_to_explore(self) -> None:
+        """Print the unresolved branches that remain worth exploring.
 
         Returns:
             None
 
         """
         print(
-            "here are the ", len(self.branches_not_over), " branch not over: ", end=" "
+            "here are the ",
+            len(self.branches_to_explore),
+            " unresolved branches: ",
+            end=" ",
         )
-        for branch in self.branches_not_over:
+        for branch in self.branches_to_explore:
             print(branch, end=" ")
         print(" ")
 
@@ -487,12 +446,12 @@ class NodeMinmaxEvaluation[
         """Print information about the node.
 
         This method prints the ID of the node, the branches of its children, the children sorted by value,
-        and the children that are not over.
+        and the unresolved children that remain worth exploring.
         """
         print("Soy el Node", self.tree_node.id)
         self.tree_node.print_branches_children()
         self.print_branches_sorted_by_value(dynamics=dynamics)
-        self.print_branches_not_over()
+        self.print_branches_to_explore()
         # TODO: probably more to print...
 
     def record_sort_value_of_child(self, branch_key: BranchKey) -> None:
@@ -518,25 +477,58 @@ class NodeMinmaxEvaluation[
             "Ensure children receive direct_value explicitly as a Value or "
             "minmax_value via backup before calling record_sort_value_of_child()."
         )
+        self.branches_sorted_by_value_[branch_key] = self.branch_sort_value(branch_key)
+
+    def branch_sort_value(self, branch_key: BranchKey) -> BranchSortValue:
+        """Return the search-order tuple for one child branch.
+
+        The first component is the objective's subjective sort value. The second
+        component is a PV-length tie-break that consumes exact outcome metadata
+        explicitly:
+
+        - exact wins prefer shorter lines
+        - exact losses prefer longer lines
+        - draws / estimates / exact values without outcome metadata keep the
+          default shorter-line preference
+        """
+        child = self.tree_node.branches_children[branch_key]
+        assert child is not None
+        child_value = self.child_value_candidate(branch_key)
+        assert child_value is not None, (
+            f"Cannot record sort value: child {branch_key} has no Value yet. "
+            "Ensure children receive direct_value explicitly as a Value or "
+            "minmax_value via backup before calling branch_sort_value()."
+        )
         subjective_value_of_child = self.objective.evaluate_value(
             child_value,
             self.tree_node.state,
         )
-        if self.is_terminal_candidate():
-            # the shorter the check the better now
-            self.branches_sorted_by_value_[branch_key] = (
-                subjective_value_of_child,
-                -len(child.tree_evaluation.best_branch_sequence),
-                child.tree_node.id,
-            )
+        return (
+            subjective_value_of_child,
+            self._pv_length_tie_break(child=child, child_value=child_value),
+            child.tree_node.id,
+        )
 
-        else:
-            # the longer the line the better now
-            self.branches_sorted_by_value_[branch_key] = (
-                subjective_value_of_child,
-                len(child.tree_evaluation.best_branch_sequence),
-                child.tree_node.id,
-            )
+    def _pv_length_tie_break(
+        self,
+        *,
+        child: NodeWithValueT,
+        child_value: Value,
+    ) -> int:
+        """Return the PV-length tie-break for one child.
+
+        This must be based on the child branch's exact outcome metadata, not on
+        whether the parent currently happens to expose ``over_event`` metadata.
+        """
+        pv_length = len(child.tree_evaluation.best_branch_sequence)
+        over_event = child_value.over_event
+
+        if over_event is not None and not over_event.is_draw():
+            if over_event.is_winner(self.tree_node.state.turn):
+                return pv_length
+            return -pv_length
+
+        return pv_length
 
     def are_equal_values[T](self, value_1: T, value_2: T) -> bool:
         """Check if two values are equal.
@@ -580,137 +572,6 @@ class NodeMinmaxEvaluation[
         epsilon = 0.01
         return value_1 > value_2 - epsilon and value_2 > value_1 - epsilon
 
-    def becoming_over_from_children(self) -> None:
-        """Switch the node to over status.
-
-        This method is called when the node is requested to switch to the "over" status. It performs the necessary
-        operations to update the node's status and determine the winner.
-
-        Raises:
-            AssertionError: If the node is already in the "over" status.
-
-        """
-        assert not self.is_terminal_candidate()
-
-        # becoming over triggers a full update record_sort_value_of_child
-        # where ties are now broken to reach over as fast as possible
-        # TODO: we should reach it asap if we are winning and think about what to ddo in other scenarios....
-        branch_key: BranchKey
-        for branch_key in self.tree_node.branches_children:
-            self.record_sort_value_of_child(branch_key=branch_key)
-
-        best_over_branch_key = self._pick_over_child_branch()
-        best_child = self.tree_node.branches_children[best_over_branch_key]
-        assert best_child is not None
-        best_child_value = best_child.tree_evaluation.get_value()
-        assert best_child.tree_evaluation.is_terminal_candidate()
-        assert best_child_value.over_event is not None
-        child_over_event = best_child_value.over_event
-
-        self.set_minmax_terminal_value(
-            score=best_child_value.score,
-            certainty=best_child_value.certainty,
-            over_event=child_over_event,
-        )
-
-    def _pick_over_child_branch(self) -> BranchKey:
-        """Pick the terminal child branch that determines this node over event.
-
-        Preference order is: winning over child for the current player, then draw,
-        then any remaining terminal child. If search-order metadata is unavailable,
-        fallback order is deterministic by branch key.
-
-        Returns:
-            BranchKey: The selected branch key.
-
-        Raises:
-            AssertionError: If no child is terminal while this method is called.
-
-        """
-        over_branches: list[BranchKey] = [
-            branch_key
-            for branch_key in self.branches_sorted_by_value
-            if (
-                (child := self.tree_node.branches_children[branch_key]) is not None
-                and child.tree_evaluation.is_terminal_candidate()
-            )
-        ]
-        if not over_branches:
-            over_branches = sorted(
-                [
-                    branch_key
-                    for branch_key, child in self.tree_node.branches_children.items()
-                    if child is not None
-                    and child.tree_evaluation.is_terminal_candidate()
-                ],
-                key=str,
-            )
-
-        assert over_branches, "becoming_over_from_children called with no over child"
-
-        branch_key: BranchKey
-        for branch_key in over_branches:
-            child = self.tree_node.branches_children[branch_key]
-            assert child is not None
-            if child.tree_evaluation.is_winner(self.tree_node.state.turn):
-                return branch_key
-
-        for branch_key in over_branches:
-            child = self.tree_node.branches_children[branch_key]
-            assert child is not None
-            if child.tree_evaluation.is_draw():
-                return branch_key
-
-        return over_branches[0]
-
-    def update_over(self, branches_with_updated_over: set[BranchKey]) -> bool:
-        """Update the over_event of the node based on notification of change of over_event in children.
-
-        Args:
-            branches_with_updated_over (set[BranchKey]): A set of branch keys linking to the children
-                nodes that have been updated with their over_event.
-
-        Returns:
-            bool: True if the node has become newly over, False otherwise.
-
-        """
-        is_newly_over = False
-
-        # Two cases can make this node (self) become over:
-        # 1. One of the children of this node is over and is a win for the node.player_to_branch.
-        # 2. All children are now over, then choose your best over event (choose draw if you can avoid a loss).
-
-        for branch in branches_with_updated_over:
-            child = self.tree_node.branches_children[branch]
-            assert child is not None
-            assert child.tree_evaluation.is_terminal_candidate()
-            if branch in self.branches_not_over:
-                self.branches_not_over.remove(branch)
-
-            # Check if child is already not in children_not_over.
-            if not self.is_terminal_candidate() and child.tree_evaluation.is_winner(
-                self.tree_node.state.turn
-            ):
-                self.becoming_over_from_children()
-                is_newly_over = True
-
-        # Check if all children are over but not winning for self.tree_node.player_to_branch.
-        has_non_over_child = any(
-            child is not None and not child.tree_evaluation.is_terminal_candidate()
-            for child in self.tree_node.branches_children.values()
-        )
-        if not has_non_over_child:
-            self.branches_not_over.clear()
-
-        if not self.is_terminal_candidate() and not has_non_over_child:
-            self.becoming_over_from_children()
-            is_newly_over = True
-
-        if is_newly_over:
-            assert self.is_terminal_candidate()
-
-        return is_newly_over
-
     def update_branches_values(self, branches_to_consider: set[BranchKey]) -> None:
         """Update the values of the branches based on the given set of branches to consider.
 
@@ -725,11 +586,28 @@ class NodeMinmaxEvaluation[
             self.record_sort_value_of_child(branch_key=branch_key)
         self.branches_sorted_by_value_ = sort_dic(self.branches_sorted_by_value_)
 
-    def sort_branches_not_over(self) -> list[BranchKey]:
-        """Sort the branches that are not over based on their value.
+    def sync_branches_to_explore(self, branches_to_refresh: set[BranchKey]) -> None:
+        """Refresh unresolved-branch bookkeeping from updated child values."""
+        if self.has_exact_value():
+            self.branches_to_explore.clear()
+            return
+
+        for branch_key in branches_to_refresh:
+            child = self.tree_node.branches_children.get(branch_key)
+            if child is None:
+                continue
+            if child.tree_evaluation.has_exact_value():
+                if branch_key in self.branches_to_explore:
+                    self.branches_to_explore.remove(branch_key)
+                continue
+            if branch_key not in self.branches_to_explore:
+                self.branches_to_explore.append(branch_key)
+
+    def sort_branches_to_explore(self) -> list[BranchKey]:
+        """Sort the unresolved branches based on their current value.
 
         Returns:
-            A sorted list of branches that are not over.
+            A sorted list of branches that remain worth exploring.
 
         """
         # TODO: looks like the determinism of the sort induces some determinisin the play like always
@@ -737,7 +615,7 @@ class NodeMinmaxEvaluation[
         return [
             branch
             for branch in self.branches_sorted_by_value
-            if branch in self.branches_not_over
+            if branch in self.branches_to_explore
         ]  # TODO: is this a fast way to do it?
 
     def update_best_branch_sequence(

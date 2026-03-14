@@ -50,7 +50,10 @@ class _FakeTreeEvaluation:
     over_event: object | None = None
     current_value: _FakeValue = field(default_factory=lambda: _FakeValue(score=0.0))
 
-    def is_terminal_candidate(self) -> bool:
+    def has_exact_value(self) -> bool:
+        return False
+
+    def is_terminal(self) -> bool:
         return False
 
     def get_value(self) -> _FakeValue:
@@ -257,6 +260,25 @@ class _FakeObservedOpenManager:
 
     def print_best_line(self, tree: Any) -> None:
         del tree
+
+
+class _FakeObservedOpenManagerWithEvaluation(_FakeObservedOpenManager):
+    def __init__(self) -> None:
+        super().__init__()
+        self.node_evaluator = _FakeDirectEvaluator()
+        self.evaluation_queries = _FakeEvaluationQueries()
+
+    def open_instructions(self, tree: Any, opening_instructions: Any) -> Any:
+        result = super().open_instructions(tree, opening_instructions)
+        for opening_instruction in opening_instructions.values():
+            child = opening_instruction.node_to_open.branches_children[
+                opening_instruction.branch
+            ]
+            assert child is not None
+            self.node_evaluator.add_evaluation_query(child, self.evaluation_queries)
+
+        self.node_evaluator.evaluate_all_queried_nodes(self.evaluation_queries)
+        return result
 
 
 class _FakeObservedUpdateManager:
@@ -575,6 +597,43 @@ def test_observable_tree_manager_open_instructions_delegates_and_emits_events() 
             was_already_present=False,
         ),
     ]
+
+
+def test_observable_tree_manager_wraps_direct_evaluator_for_opening_events() -> None:
+    root = _FakeNode(id=1, tree_depth=0, state=SimpleNamespace(tag="root"))
+    tree = SimpleNamespace(nodes_count=2)
+    manager = ObservableAlgorithmNodeTreeManager(
+        _FakeObservedOpenManagerWithEvaluation(),
+        debug_sink := RecordingDebugSink(),
+    )
+
+    manager.open_instructions(
+        tree=tree,
+        opening_instructions=_FakeOpeningInstructions(
+            [_FakeOpeningInstruction(root, 7)]
+        ),
+    )
+
+    assert (
+        DirectValueAssigned(
+            node_id="2",
+            value_repr="score=1.0, certainty=terminal",
+        )
+        in debug_sink.events
+    )
+    assert debug_sink.events.index(
+        ChildLinked(
+            parent_id="1",
+            child_id="2",
+            branch_key="7",
+            was_already_present=False,
+        )
+    ) < debug_sink.events.index(
+        DirectValueAssigned(
+            node_id="2",
+            value_repr="score=1.0, certainty=terminal",
+        )
+    )
 
 
 def test_observable_tree_manager_update_backward_delegates_and_emits_events() -> None:

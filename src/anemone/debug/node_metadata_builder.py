@@ -32,6 +32,8 @@ class NodeDebugMetadata:
     backed_up_value: str | None = None
     principal_variation: str | None = None
     over_event: str | None = None
+    is_exact: bool = False
+    is_terminal: bool = False
     index_fields: dict[str, str] = field(default_factory=_empty_string_dict)
 
 
@@ -48,6 +50,8 @@ class NodeDebugMetadataBuilder:
             backed_up_value=self._get_backed_up_value(evaluation),
             principal_variation=self._get_principal_variation(evaluation),
             over_event=self._get_over_event(evaluation),
+            is_exact=self._has_exact_value(evaluation),
+            is_terminal=self._is_terminal(evaluation),
             index_fields=self._get_index_fields(node),
         )
 
@@ -121,6 +125,40 @@ class NodeDebugMetadataBuilder:
         over_event = resolve_evaluation_over_event(evaluation)
         return None if over_event is None else format_over_event(over_event)
 
+    def _has_exact_value(self, evaluation: Any) -> bool:
+        """Return whether the evaluation exposes an exact candidate value."""
+        if evaluation is None:
+            return False
+
+        has_exact_value = safe_getattr(evaluation, "has_exact_value")
+        if callable(has_exact_value):
+            return bool(has_exact_value())
+
+        return _value_is_exact(self._get_candidate_value(evaluation))
+
+    def _is_terminal(self, evaluation: Any) -> bool:
+        """Return whether the evaluation exposes a terminal candidate value."""
+        if evaluation is None:
+            return False
+
+        is_terminal = safe_getattr(evaluation, "is_terminal")
+        if callable(is_terminal):
+            return bool(is_terminal())
+
+        return _value_is_terminal(self._get_candidate_value(evaluation))
+
+    def _get_candidate_value(self, evaluation: Any) -> Any | None:
+        """Return the best-effort canonical value candidate for debug purposes."""
+        backed_up_value = safe_getattr(evaluation, "backed_up_value")
+        if backed_up_value is not None:
+            return backed_up_value
+
+        minmax_value = safe_getattr(evaluation, "minmax_value")
+        if minmax_value is not None:
+            return minmax_value
+
+        return safe_getattr(evaluation, "direct_value")
+
     def _get_index_fields(self, node: Any) -> dict[str, str]:
         """Return structured exploration-index fields when available."""
         index_data = safe_getattr(node, "exploration_index_data")
@@ -130,3 +168,28 @@ class NodeDebugMetadataBuilder:
 
 
 __all__ = ["NodeDebugMetadata", "NodeDebugMetadataBuilder"]
+
+
+def _value_is_exact(value: Any | None) -> bool:
+    """Return whether a value-like object is exact from its certainty field."""
+    certainty_name = _certainty_name(value)
+    return certainty_name in {"FORCED", "TERMINAL"}
+
+
+def _value_is_terminal(value: Any | None) -> bool:
+    """Return whether a value-like object is terminal from its certainty field."""
+    return _certainty_name(value) == "TERMINAL"
+
+
+def _certainty_name(value: Any | None) -> str | None:
+    """Return a normalized certainty name from a value-like object."""
+    if value is None:
+        return None
+
+    certainty = safe_getattr(value, "certainty")
+    if certainty is None:
+        return None
+
+    certainty_name = safe_getattr(certainty, "name")
+    normalized = certainty_name if certainty_name is not None else certainty
+    return str(normalized).upper()

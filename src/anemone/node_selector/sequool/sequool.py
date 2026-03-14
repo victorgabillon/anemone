@@ -21,7 +21,7 @@ from anemone.node_selector.opening_instructions import (
 )
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.nodes.tree_traversal import (
-    get_descendants_candidate_not_over,
+    get_descendants_candidate_unresolved,
 )
 from anemone.trees.descendants import Descendants
 
@@ -184,7 +184,7 @@ def consider_nodes_from_all_lesser_tree_depths_in_sub_stree[N: AlgorithmNode[Any
         A list of nodes to consider.
 
     """
-    nodes_to_consider: list[N] = get_descendants_candidate_not_over(
+    nodes_to_consider: list[N] = get_descendants_candidate_unresolved(
         from_tree_node=from_node, max_depth=tree_depth_picked - from_node.tree_depth
     )
     return nodes_to_consider

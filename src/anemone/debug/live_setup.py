@@ -18,6 +18,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .events import (
+    BackupFinished,
+    ChildLinked,
+    DirectValueAssigned,
+    SearchDebugEvent,
+    SearchIterationCompleted,
+)
 from .live_control import ControlledTreeExploration, DebugSessionController
 from .live_session import LiveDebugSessionRecorder
 from .recording import SnapshotPolicy, make_tree_snapshot_provider
@@ -75,7 +82,7 @@ def build_live_debug_environment(
     recorder = LiveDebugSessionRecorder(
         resolved_session_directory,
         snapshot_provider=snapshot_provider,
-        snapshot_policy=snapshot_policy,
+        snapshot_policy=snapshot_policy or _default_live_snapshot_policy,
         snapshot_format=snapshot_format,
         controller=controller,
     )
@@ -96,6 +103,19 @@ def _get_tree_root(tree_exploration: Any) -> Any | None:
     """Return the current root node for ``tree_exploration`` when available."""
     tree = getattr(tree_exploration, "tree", None)
     return getattr(tree, "root_node", None)
+
+
+def _default_live_snapshot_policy(event: SearchDebugEvent) -> bool:
+    """Capture snapshots at meaningful post-mutation milestones in live sessions."""
+    return isinstance(
+        event,
+        (
+            ChildLinked,
+            DirectValueAssigned,
+            BackupFinished,
+            SearchIterationCompleted,
+        ),
+    )
 
 
 __all__ = ["LiveDebugEnvironment", "build_live_debug_environment"]

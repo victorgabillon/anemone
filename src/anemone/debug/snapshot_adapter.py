@@ -100,6 +100,8 @@ class TreeSnapshotAdapter:
                     backed_up_value=metadata.backed_up_value,
                     principal_variation=metadata.principal_variation,
                     over_event=metadata.over_event,
+                    is_exact=metadata.is_exact,
+                    is_terminal=metadata.is_terminal,
                     index_fields=metadata.index_fields,
                     child_ids=tuple(child_ids),
                     edge_labels_by_child=edge_labels_by_child,

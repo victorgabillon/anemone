@@ -22,6 +22,7 @@ from anemone.debug.toy_scenarios import (
 )
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
 from anemone.tree_exploration import TreeExploration
+from valanga.evaluations import Certainty
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -103,6 +104,12 @@ def test_single_agent_backup_scenario_runs_to_expected_result(tmp_path: Path) ->
     )
 
     root_evaluation = environment.controlled_exploration.tree.root_node.tree_evaluation
+    best_child = environment.controlled_exploration.tree.root_node.branches_children[
+        "A"
+    ]
+    assert best_child is not None
+    best_leaf = best_child.branches_children["A2"]
+    assert best_leaf is not None
 
     assert result.branch_recommendation.recommended_name == "A"
     assert environment.controlled_exploration.tree.nodes_count > 1
@@ -111,6 +118,9 @@ def test_single_agent_backup_scenario_runs_to_expected_result(tmp_path: Path) ->
     assert payload["is_complete"] is True
     assert root_evaluation.backed_up_value is not None
     assert root_evaluation.backed_up_value.score == scenario_spec.expected_root_value
+    assert root_evaluation.backed_up_value.certainty is Certainty.FORCED
+    assert best_leaf.tree_evaluation.direct_value is not None
+    assert best_leaf.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
     assert tuple(root_evaluation.best_branch_sequence) == scenario_spec.expected_pv
     _assert_tree_fully_explored(environment, scenario_spec)
 
@@ -129,13 +139,20 @@ def test_minimax_micro_scenario_runs_to_expected_result(tmp_path: Path) -> None:
 
     assert child_a is not None
     assert child_b is not None
+    leaf_a1 = child_a.branches_children["A1"]
+    assert leaf_a1 is not None
     assert result.branch_recommendation.recommended_name == "A"
     assert child_a.tree_evaluation.backed_up_value is not None
     assert child_b.tree_evaluation.backed_up_value is not None
     assert child_a.tree_evaluation.backed_up_value.score == 4.0
     assert child_b.tree_evaluation.backed_up_value.score == 2.0
+    assert child_a.tree_evaluation.backed_up_value.certainty is Certainty.FORCED
+    assert child_b.tree_evaluation.backed_up_value.certainty is Certainty.FORCED
     assert root_evaluation.backed_up_value is not None
     assert root_evaluation.backed_up_value.score == scenario_spec.expected_root_value
+    assert root_evaluation.backed_up_value.certainty is Certainty.FORCED
+    assert leaf_a1.tree_evaluation.direct_value is not None
+    assert leaf_a1.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
     assert tuple(root_evaluation.best_branch_sequence) == scenario_spec.expected_pv
     _assert_tree_fully_explored(environment, scenario_spec)
 

@@ -70,7 +70,7 @@ def test_canonical_value_semantics_align_across_families() -> None:
     assert single_agent.get_value() == direct
 
 
-def test_terminal_candidate_semantics_align_across_families() -> None:
+def test_exact_value_and_terminality_semantics_align_across_families() -> None:
     terminal_value = Value(
         score=1.0,
         certainty=Certainty.FORCED,
@@ -81,8 +81,10 @@ def test_terminal_candidate_semantics_align_across_families() -> None:
     adversarial.direct_value = terminal_value
     single_agent.direct_value = terminal_value
 
-    assert adversarial.is_terminal_candidate()
-    assert single_agent.is_terminal_candidate()
+    assert adversarial.has_exact_value()
+    assert single_agent.has_exact_value()
+    assert not adversarial.is_terminal()
+    assert not single_agent.is_terminal()
     assert adversarial.over_event is not None
     assert single_agent.over_event is not None
 

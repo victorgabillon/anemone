@@ -219,7 +219,7 @@ class ToyStateValueEvaluator(MasterStateValueEvaluator):
 
     def evaluate(self, state: State) -> Any:
         """Return a direct heuristic ``Value`` for one toy state."""
-        from valanga.evaluations import (  # type: ignore[attr-defined]  # pylint: disable=import-outside-toplevel,no-name-in-module
+        from valanga.evaluations import (  # pylint: disable=import-outside-toplevel,no-name-in-module
             Certainty,
             Value,
         )
@@ -265,9 +265,7 @@ class ToyDynamics(SearchDynamics[ToyState, str]):
         node_spec = self._scenario_spec.nodes[state.node_id]
         return ToyBranchKeyGenerator(tuple(node_spec.children))
 
-    def step(
-        self, state: ToyState, action: str, *, depth: int
-    ) -> Transition[ToyState]:
+    def step(self, state: ToyState, action: str, *, depth: int) -> Transition[ToyState]:
         """Apply one action and return the resulting transition."""
         del depth
         child_id = self._scenario_spec.nodes[state.node_id].children[action]
@@ -344,7 +342,9 @@ def create_real_tree_exploration_for_toy_scenario(
     )
 
 
-def _build_tree_and_value_args(scenario_spec: ToyScenarioSpec) -> TreeAndValuePlayerArgs:
+def _build_tree_and_value_args(
+    scenario_spec: ToyScenarioSpec,
+) -> TreeAndValuePlayerArgs:
     """Return the production search configuration used for toy-domain runs.
 
     The toy scenarios intentionally use one clear, documented real-engine policy:
@@ -370,7 +370,9 @@ def _build_tree_and_value_args(scenario_spec: ToyScenarioSpec) -> TreeAndValuePl
     )
 
 
-def _build_stopping_criterion_args(scenario_spec: ToyScenarioSpec) -> TreeBranchLimitArgs:
+def _build_stopping_criterion_args(
+    scenario_spec: ToyScenarioSpec,
+) -> TreeBranchLimitArgs:
     return TreeBranchLimitArgs(
         type=StoppingCriterionTypes.TREE_BRANCH_LIMIT,
         tree_branch_limit=_total_edge_count(scenario_spec),
@@ -383,7 +385,7 @@ def _build_node_tree_evaluation_factory(
     """Return the tree-evaluation family compatible with Tree-and-Value search.
 
     The production Tree-and-Value assembly path expects node evaluations with
-    branch bookkeeping such as ``branches_not_over``. ``NodeTreeMinmaxEvaluation``
+    branch bookkeeping such as ``branches_to_explore``. ``NodeTreeMinmaxEvaluation``
     provides that contract for both adversarial and single-agent toy domains.
     Single-agent toy scenarios still need numeric max semantics, so they use the
     same evaluation family with ``SingleAgentMaxObjective()`` instead of the

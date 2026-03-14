@@ -113,6 +113,41 @@ def test_build_live_debug_environment_happy_path(tmp_path: Path) -> None:
     assert environment.recorder.to_trace().entries
 
 
+def test_live_debug_environment_default_snapshot_policy_skips_pre_expansion_events(
+    tmp_path: Path,
+) -> None:
+    session_directory = tmp_path / "debug-session-snapshots"
+    exploration = _FakeExploration(
+        tree=SimpleNamespace(root_node=_FakeNode(id=1, state="root", tree_depth=0)),
+        tree_manager=_FakeTreeManager(),
+        stopping_criterion=_FakeStoppingCriterion(),
+    )
+
+    environment = build_live_debug_environment(
+        tree_exploration=exploration,
+        session_directory=session_directory,
+        snapshot_format="dot",
+    )
+    environment.controlled_exploration.explore(random_generator=Random(0))
+    environment.finalize()
+
+    payload = json.loads(
+        (session_directory / "session.json").read_text(encoding="utf-8")
+    )
+
+    first_snapshot_entry = next(
+        entry
+        for entry in payload["entries"]
+        if entry["snapshot_metadata_file"] is not None
+    )
+    assert first_snapshot_entry["event_type"] in {
+        "ChildLinked",
+        "DirectValueAssigned",
+        "BackupFinished",
+        "SearchIterationCompleted",
+    }
+
+
 def test_public_live_debug_api_shape(tmp_path: Path) -> None:
     exploration = _FakeExploration(
         tree=SimpleNamespace(root_node=_FakeNode(id=1, state="root", tree_depth=0)),

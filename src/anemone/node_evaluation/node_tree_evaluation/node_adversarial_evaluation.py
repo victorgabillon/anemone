@@ -41,10 +41,6 @@ class NodeAdversarialEvaluation[StateT: State = State](NodeValueEvaluation, Prot
         """Run adversarial backup after child updates."""
         ...
 
-    def update_over(self, branches_with_updated_over: set[BranchKey]) -> bool:
-        """Update terminal-state information from changed child branches."""
-        ...
-
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch key."""
         ...

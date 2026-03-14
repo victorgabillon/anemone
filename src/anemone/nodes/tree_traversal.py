@@ -39,19 +39,19 @@ def get_descendants[NodeT: ITreeNode[Any]](from_tree_node: NodeT) -> dict[NodeT,
 def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
     from_tree_node: NodeT, max_depth: int | None = None
 ) -> list[NodeT]:
-    """Get descendants of a given tree node that are not over.
+    """Get descendants of a given tree node that still remain unresolved.
 
     Args:
         from_tree_node (AlgorithmNode): The starting tree node.
         max_depth (int | None, optional): The maximum depth to traverse. Defaults to None.
 
     Returns:
-        list[AlgorithmNode]: A list of descendants that are not over.
+        list[AlgorithmNode]: A list of descendants that still remain unresolved.
 
     """
     if (
         not from_tree_node.all_branches_generated
-        and not from_tree_node.tree_evaluation.is_terminal_candidate()
+        and not from_tree_node.tree_evaluation.has_exact_value()
     ):
         # should use are_all_branches_and_children_opened() but its messy!
         # also using is_over is  messy as over_events are defined in a child class!!!
@@ -68,7 +68,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
         for node in generation:
             if (
                 not node.all_branches_generated
-                and not node.tree_evaluation.is_terminal_candidate()
+                and not node.tree_evaluation.has_exact_value()
             ):
                 des[node] = None
             for next_generation_child in node.branches_children.values():
@@ -78,20 +78,20 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
     return list(des.keys())
 
 
-def get_descendants_candidate_not_over[NodeT: AlgorithmNode[Any]](
+def get_descendants_candidate_unresolved[NodeT: AlgorithmNode[Any]](
     from_tree_node: NodeT, max_depth: int | None = None
 ) -> list[NodeT]:
-    """Get descendants of a given tree node that are not over.
+    """Get descendants of a given tree node that still remain unresolved.
 
     Args:
         from_tree_node (ITreeNode): The starting tree node.
         max_depth (int | None, optional): The maximum depth to traverse. Defaults to None.
 
     Returns:
-        list[ITreeNode]: A list of descendants that are not over.
+        list[ITreeNode]: A list of descendants that still remain unresolved.
 
     """
-    assert not from_tree_node.tree_evaluation.is_terminal_candidate()
+    assert not from_tree_node.tree_evaluation.has_exact_value()
     if not from_tree_node.branches_children:
         return [from_tree_node]
     des: dict[NodeT, None] = {}
@@ -104,7 +104,7 @@ def get_descendants_candidate_not_over[NodeT: AlgorithmNode[Any]](
     while generation and depth <= max_depth:
         next_depth_generation: set[NodeT] = set()
         for node in generation:
-            if not node.tree_evaluation.is_terminal_candidate():
+            if not node.tree_evaluation.has_exact_value():
                 des[node] = None
             for next_generation_child in node.branches_children.values():
                 if next_generation_child is not None:

@@ -160,7 +160,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         loop: int = 0
         while self.stopping_criterion.should_we_continue(tree=self.tree):
             loop = loop + 1
-            assert not self.tree.root_node.tree_evaluation.is_terminal_candidate()
+            # Search stops once the root value is exact, even if the root state is
+            # still non-terminal and some siblings remain unopened.
+            assert not self.tree.root_node.tree_evaluation.has_exact_value()
             # print info
             self.print_info_during_branch_computation(random_generator=random_generator)
 

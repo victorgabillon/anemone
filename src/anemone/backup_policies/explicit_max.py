@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from anemone.backup_policies.common import SelectedValue, all_child_values_exact
 from anemone.backup_policies.explicit_minimax import has_value_changed
 from anemone.backup_policies.types import BackupResult
+from anemone.node_evaluation import canonical_value
 
 if TYPE_CHECKING:
     from valanga import BranchKey
@@ -38,10 +40,14 @@ class ExplicitMaxBackupPolicy:
         )
         direct_value = node_eval.direct_value
 
-        value_after = self._select_value(
+        selection = self._select_value(
             node_eval=node_eval,
             best_child_value=best_child_value,
             direct_value=direct_value,
+        )
+        value_after = self._build_backed_up_value(
+            node_eval=node_eval,
+            selection=selection,
         )
         node_eval.backed_up_value = value_after
 
@@ -49,7 +55,7 @@ class ExplicitMaxBackupPolicy:
             node_eval=node_eval,
             best_branch_key=best_branch_key,
             best_child_value=best_child_value,
-            chosen_value=value_after,
+            selection=selection,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
         )
 
@@ -68,13 +74,13 @@ class ExplicitMaxBackupPolicy:
         node_eval: NodeMaxEvaluation[Any],
         best_child_value: Value | None,
         direct_value: Value | None,
-    ) -> Value | None:
+    ) -> SelectedValue:
         if best_child_value is None:
-            return direct_value
+            return SelectedValue(value=direct_value, from_child=False)
         if direct_value is None:
-            return best_child_value
+            return SelectedValue(value=best_child_value, from_child=True)
         if node_eval.tree_node.all_branches_generated:
-            return best_child_value
+            return SelectedValue(value=best_child_value, from_child=True)
         if (
             node_eval.objective.semantic_compare(
                 best_child_value,
@@ -83,8 +89,32 @@ class ExplicitMaxBackupPolicy:
             )
             >= 0
         ):
-            return best_child_value
-        return direct_value
+            return SelectedValue(value=best_child_value, from_child=True)
+        return SelectedValue(value=direct_value, from_child=False)
+
+    def _build_backed_up_value(
+        self,
+        *,
+        node_eval: NodeMaxEvaluation[Any],
+        selection: SelectedValue,
+    ) -> Value | None:  # pylint: disable=duplicate-code
+        chosen_value = selection.value  # pylint: disable=duplicate-code
+        if chosen_value is None:
+            return None
+
+        if not selection.from_child:
+            return chosen_value
+
+        exact_from_children = (
+            node_eval.tree_node.all_branches_generated
+            and all_child_values_exact(node_eval)
+        )
+        return canonical_value.make_backed_up_value(
+            score=chosen_value.score,
+            exact=exact_from_children,
+            node_is_terminal=False,
+            over_event=chosen_value.over_event if exact_from_children else None,
+        )
 
     def _update_pv(
         self,
@@ -92,13 +122,14 @@ class ExplicitMaxBackupPolicy:
         node_eval: NodeMaxEvaluation[Any],
         best_branch_key: BranchKey | None,
         best_child_value: Value | None,
-        chosen_value: Value | None,
+        selection: SelectedValue,
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> bool:
         if (
             best_branch_key is None
             or best_child_value is None
-            or chosen_value != best_child_value
+            or not selection.from_child
+            or selection.value != best_child_value
         ):
             return node_eval.set_best_branch_sequence([])
 

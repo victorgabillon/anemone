@@ -3,10 +3,12 @@
 from dataclasses import dataclass
 
 from anemone.node_evaluation.canonical_value import (
+    ValueSemanticsError,
+    has_over_event,
     is_exact_value,
     is_forced_value,
-    is_terminal_candidate_value,
     is_terminal_value,
+    validate_value_semantics,
 )
 from valanga.evaluations import Certainty, Value
 
@@ -54,7 +56,7 @@ def test_terminal_value_helper_only_accepts_true_terminal() -> None:
     estimate = Value(
         score=0.0,
         certainty=Certainty.ESTIMATE,
-        over_event=_FakeOverEvent(),
+        over_event=None,
     )
 
     assert is_terminal_value(terminal)
@@ -62,21 +64,43 @@ def test_terminal_value_helper_only_accepts_true_terminal() -> None:
     assert not is_terminal_value(estimate)
 
 
-def test_legacy_terminal_candidate_helper_accepts_forced_with_over_event() -> None:
+def test_over_event_helper_tracks_metadata_without_implying_terminality() -> None:
     forced_without_over = Value(score=0.0, certainty=Certainty.FORCED)
     forced_with_over = Value(
         score=0.0,
         certainty=Certainty.FORCED,
         over_event=_FakeOverEvent(),
     )
-    terminal_without_over = Value(score=0.0, certainty=Certainty.TERMINAL)
-    estimate_with_over = Value(
+    terminal_with_over = Value(
         score=0.0,
-        certainty=Certainty.ESTIMATE,
+        certainty=Certainty.TERMINAL,
         over_event=_FakeOverEvent(),
     )
 
-    assert not is_terminal_candidate_value(forced_without_over)
-    assert is_terminal_candidate_value(forced_with_over)
-    assert not is_terminal_candidate_value(terminal_without_over)
-    assert not is_terminal_candidate_value(estimate_with_over)
+    assert not has_over_event(forced_without_over)
+    assert has_over_event(forced_with_over)
+    assert has_over_event(terminal_with_over)
+
+
+def test_value_semantics_validation_rejects_invalid_over_event_combinations() -> None:
+    try:
+        validate_value_semantics(
+            Value(
+                score=0.0,
+                certainty=Certainty.ESTIMATE,
+                over_event=_FakeOverEvent(),
+            )
+        )
+    except ValueSemanticsError as exc:
+        assert "ESTIMATE" in str(exc)
+    else:
+        raise AssertionError
+
+    try:
+        validate_value_semantics(
+            Value(score=0.0, certainty=Certainty.TERMINAL, over_event=None)
+        )
+    except ValueSemanticsError as exc:
+        assert "TERMINAL" in str(exc)
+    else:
+        raise AssertionError

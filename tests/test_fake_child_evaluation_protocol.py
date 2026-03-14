@@ -1,6 +1,5 @@
 """Regression checks for shared tree-evaluation test doubles."""
 
-import pytest
 from valanga import Color
 
 from valanga.evaluations import Certainty, Value
@@ -21,7 +20,7 @@ def test_get_value_candidate_and_getters_return_value() -> None:
     assert fake.get_score() == 0.42
 
 
-def test_is_terminal_candidate_requires_forced_or_terminal_with_over_event() -> None:
+def test_fake_child_evaluation_exposes_exactness_and_terminality_separately() -> None:
     terminal = FakeChildEvaluation(
         value_white=0.0,
         minmax_value=Value(
@@ -34,21 +33,20 @@ def test_is_terminal_candidate_requires_forced_or_terminal_with_over_event() -> 
         value_white=0.0,
         minmax_value=Value(score=0.0, certainty=Certainty.FORCED, over_event=None),
     )
-    estimate_with_over = FakeChildEvaluation(
+    estimate_without_over = FakeChildEvaluation(
         value_white=0.0,
-        minmax_value=Value(
-            score=0.0,
-            certainty=Certainty.ESTIMATE,
-            over_event=FakeOverEvent(_is_over=True, who_is_winner=None),
-        ),
+        minmax_value=Value(score=0.0, certainty=Certainty.ESTIMATE, over_event=None),
     )
 
-    assert terminal.is_terminal_candidate()
-    assert not forced_without_over.is_terminal_candidate()
-    assert not estimate_with_over.is_terminal_candidate()
+    assert terminal.has_exact_value()
+    assert terminal.is_terminal()
+    assert forced_without_over.has_exact_value()
+    assert not forced_without_over.is_terminal()
+    assert not estimate_without_over.has_over_event()
+    assert not estimate_without_over.has_exact_value()
 
 
-def test_fake_child_node_is_over_uses_terminal_candidate_semantics() -> None:
+def test_fake_child_node_is_over_uses_true_terminality() -> None:
     eval_with_raw_over_only = FakeChildEvaluation(
         value_white=0.0,
         over_event=FakeOverEvent(_is_over=True, who_is_winner=Color.WHITE),

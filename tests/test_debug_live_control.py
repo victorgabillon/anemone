@@ -437,14 +437,15 @@ def test_build_live_debug_environment_records_exploration_smoke_test(
     )
     assert payload["entry_count"] == 2
     assert payload["entries"][0]["event_type"] == "SearchIterationStarted"
-    assert payload["entries"][0]["snapshot_file"] == (
-        "snapshots/0000_SearchIterationStarted.dot"
-    )
+    assert payload["entries"][0]["snapshot_file"] is None
     assert payload["entries"][1]["event_type"] == "SearchIterationCompleted"
+    assert payload["entries"][1]["snapshot_file"] == (
+        "snapshots/0001_SearchIterationCompleted.dot"
+    )
     assert (
         environment.session_directory
         / "snapshots"
-        / "0000_SearchIterationStarted.snapshot.json"
+        / "0001_SearchIterationCompleted.snapshot.json"
     ).exists()
 
 

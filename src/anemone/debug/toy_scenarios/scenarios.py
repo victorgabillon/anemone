@@ -56,8 +56,7 @@ def build_single_agent_backup_scenario_spec() -> ToyScenarioSpec:
         root_id="root",
         nodes=nodes,
         description=(
-            "Single-agent max backup where the best line should resolve to "
-            "A -> A2."
+            "Single-agent max backup where the best line should resolve to A -> A2."
         ),
         expected_root_value=8.0,
         expected_pv=("A", "A2"),
