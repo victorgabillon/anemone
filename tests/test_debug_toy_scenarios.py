@@ -108,6 +108,7 @@ def test_single_agent_backup_scenario_runs_to_expected_result(tmp_path: Path) ->
         "A"
     ]
     assert best_child is not None
+    best_child_evaluation = best_child.tree_evaluation
     best_leaf = best_child.branches_children["A2"]
     assert best_leaf is not None
 
@@ -119,6 +120,10 @@ def test_single_agent_backup_scenario_runs_to_expected_result(tmp_path: Path) ->
     assert root_evaluation.backed_up_value is not None
     assert root_evaluation.backed_up_value.score == scenario_spec.expected_root_value
     assert root_evaluation.backed_up_value.certainty is Certainty.FORCED
+    assert root_evaluation.has_exact_value()
+    assert not root_evaluation.is_terminal()
+    assert best_child_evaluation.backed_up_value is not None
+    assert best_child_evaluation.backed_up_value.certainty is Certainty.FORCED
     assert best_leaf.tree_evaluation.direct_value is not None
     assert best_leaf.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
     assert tuple(root_evaluation.best_branch_sequence) == scenario_spec.expected_pv
@@ -140,7 +145,9 @@ def test_minimax_micro_scenario_runs_to_expected_result(tmp_path: Path) -> None:
     assert child_a is not None
     assert child_b is not None
     leaf_a1 = child_a.branches_children["A1"]
+    leaf_b2 = child_b.branches_children["B2"]
     assert leaf_a1 is not None
+    assert leaf_b2 is not None
     assert result.branch_recommendation.recommended_name == "A"
     assert child_a.tree_evaluation.backed_up_value is not None
     assert child_b.tree_evaluation.backed_up_value is not None
@@ -151,8 +158,12 @@ def test_minimax_micro_scenario_runs_to_expected_result(tmp_path: Path) -> None:
     assert root_evaluation.backed_up_value is not None
     assert root_evaluation.backed_up_value.score == scenario_spec.expected_root_value
     assert root_evaluation.backed_up_value.certainty is Certainty.FORCED
+    assert root_evaluation.has_exact_value()
+    assert not root_evaluation.is_terminal()
     assert leaf_a1.tree_evaluation.direct_value is not None
     assert leaf_a1.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
+    assert leaf_b2.tree_evaluation.direct_value is not None
+    assert leaf_b2.tree_evaluation.direct_value.certainty is Certainty.TERMINAL
     assert tuple(root_evaluation.best_branch_sequence) == scenario_spec.expected_pv
     _assert_tree_fully_explored(environment, scenario_spec)
 
@@ -176,6 +187,7 @@ def test_deceptive_trap_scenario_runs_to_expected_result(tmp_path: Path) -> None
     assert result.branch_recommendation.recommended_name == "B"
     assert root_evaluation.backed_up_value is not None
     assert root_evaluation.backed_up_value.score == scenario_spec.expected_root_value
+    assert root_evaluation.backed_up_value.certainty is Certainty.FORCED
     assert tuple(root_evaluation.best_branch_sequence) == scenario_spec.expected_pv
     assert any(entry["event_fields"].get("value_changed") for entry in backup_events)
     assert any(entry["event_fields"].get("pv_changed") for entry in backup_events)
@@ -210,6 +222,8 @@ def test_same_tree_shape_differs_between_single_agent_and_minimax() -> None:
     assert minimax_root.backed_up_value is not None
     assert single_agent_root.backed_up_value.score == 9.0
     assert minimax_root.backed_up_value.score == 4.0
+    assert single_agent_root.backed_up_value.certainty is Certainty.FORCED
+    assert minimax_root.backed_up_value.certainty is Certainty.FORCED
     assert tuple(single_agent_root.best_branch_sequence) == ("B", "B2")
     assert tuple(minimax_root.best_branch_sequence) == ("A", "A1")
 
@@ -238,7 +252,9 @@ def test_real_search_events_and_snapshots_are_recorded_for_toy_domain(
         "NodeSelected",
         "ChildLinked",
         "DirectValueAssigned",
+        "BackupStarted",
         "BackupFinished",
+        "SearchIterationCompleted",
     }.issubset(event_types)
     assert event_order.index("NodeSelected") < event_order.index("ChildLinked")
     assert event_order.index("ChildLinked") < event_order.index("DirectValueAssigned")
@@ -247,6 +263,62 @@ def test_real_search_events_and_snapshots_are_recorded_for_toy_domain(
     )
     assert environment.recorder.to_trace().entries
     assert len(snapshot_metadata["nodes"]) > 1
+
+
+def test_final_snapshot_metadata_marks_forced_root_and_terminal_leaf(
+    tmp_path: Path,
+) -> None:
+    scenario_spec = build_single_agent_backup_scenario_spec()
+    _result, environment, payload = _run_scenario(
+        scenario_spec,
+        tmp_path / "final-snapshot-certainty",
+    )
+
+    snapshot_metadata = _load_last_snapshot_metadata(environment, payload)
+    root_node = _snapshot_node_by_state_tag(snapshot_metadata, "root")
+    forced_leaf_parent = _snapshot_node_by_state_tag(snapshot_metadata, "A")
+    terminal_leaf = _snapshot_node_by_state_tag(snapshot_metadata, "A2")
+
+    assert root_node["is_exact"] is True
+    assert root_node["is_terminal"] is False
+    assert "certainty=FORCED" in (root_node["backed_up_value"] or "")
+    assert root_node["over_event"] is not None
+
+    assert forced_leaf_parent["is_exact"] is True
+    assert forced_leaf_parent["is_terminal"] is False
+    assert "certainty=FORCED" in (forced_leaf_parent["backed_up_value"] or "")
+
+    assert terminal_leaf["is_exact"] is True
+    assert terminal_leaf["is_terminal"] is True
+    assert "certainty=TERMINAL" in (terminal_leaf["direct_value"] or "")
+    assert terminal_leaf["over_event"] is not None
+
+
+def test_minimax_final_snapshot_metadata_marks_forced_interior_nodes(
+    tmp_path: Path,
+) -> None:
+    scenario_spec = build_minimax_micro_scenario_spec()
+    _result, environment, payload = _run_scenario(
+        scenario_spec,
+        tmp_path / "minimax-final-snapshot-certainty",
+    )
+
+    snapshot_metadata = _load_last_snapshot_metadata(environment, payload)
+    root_node = _snapshot_node_by_state_tag(snapshot_metadata, "root")
+    interior_node = _snapshot_node_by_state_tag(snapshot_metadata, "A")
+    terminal_leaf = _snapshot_node_by_state_tag(snapshot_metadata, "A1")
+
+    assert root_node["is_exact"] is True
+    assert root_node["is_terminal"] is False
+    assert "certainty=FORCED" in (root_node["backed_up_value"] or "")
+
+    assert interior_node["is_exact"] is True
+    assert interior_node["is_terminal"] is False
+    assert "certainty=FORCED" in (interior_node["backed_up_value"] or "")
+
+    assert terminal_leaf["is_exact"] is True
+    assert terminal_leaf["is_terminal"] is True
+    assert "certainty=TERMINAL" in (terminal_leaf["direct_value"] or "")
 
 
 def _run_scenario(
@@ -278,3 +350,28 @@ def _assert_tree_fully_explored(
 
 def _scenario_edge_count(scenario_spec: ToyScenarioSpec) -> int:
     return sum(len(node_spec.children) for node_spec in scenario_spec.nodes.values())
+
+
+def _load_last_snapshot_metadata(
+    environment: LiveDebugEnvironment,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    metadata_file = next(
+        entry["snapshot_metadata_file"]
+        for entry in reversed(payload["entries"])
+        if entry["snapshot_metadata_file"] is not None
+    )
+    return json.loads(
+        (environment.session_directory / metadata_file).read_text(encoding="utf-8")
+    )
+
+
+def _snapshot_node_by_state_tag(
+    snapshot_metadata: dict[str, Any],
+    state_tag: str,
+) -> dict[str, Any]:
+    return next(
+        node
+        for node in snapshot_metadata["nodes"]
+        if node.get("state_tag") == state_tag
+    )

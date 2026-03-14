@@ -155,6 +155,7 @@ def test_minimax_partial_winning_child_makes_parent_forced_not_terminal() -> Non
     assert parent.minmax_value.over_event is not None
     assert parent.minmax_value.over_event.is_winner(Color.WHITE)
     assert not parent.is_terminal()
+    assert not parent.is_over()
     assert parent.has_exact_value()
     assert parent.branches_to_explore == []
 
@@ -222,3 +223,39 @@ def test_minimax_partial_information_keeps_parent_estimate() -> None:
     assert parent.minmax_value.certainty is Certainty.ESTIMATE
     assert parent.minmax_value.over_event is None
     assert not parent.has_exact_value()
+    assert not parent.is_terminal()
+    assert parent.branches_to_explore == ["live"]
+
+
+def test_minimax_partial_draw_child_keeps_parent_estimate_and_live_branch_open() -> (
+    None
+):
+    draw_child = _minimax_leaf(
+        1,
+        Value(
+            score=0.0,
+            certainty=Certainty.TERMINAL,
+            over_event=_FakeOverEvent(draw=True),
+        ),
+    )
+    live_child = _minimax_leaf(
+        2,
+        Value(score=0.4, certainty=Certainty.ESTIMATE),
+    )
+    parent = _minimax_parent(
+        turn=Color.WHITE,
+        children={"draw": draw_child, "live": live_child},
+        all_generated=False,
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={"draw", "live"},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.minmax_value is not None
+    assert parent.minmax_value.certainty is Certainty.ESTIMATE
+    assert parent.minmax_value.over_event is None
+    assert not parent.has_exact_value()
+    assert not parent.is_terminal()
+    assert parent.branches_to_explore == ["live"]
