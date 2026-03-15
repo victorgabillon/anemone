@@ -144,8 +144,8 @@ def test_live_debug_session_recorder_finalize_marks_session_complete(
 def test_render_replay_index_html_contains_live_polling_hooks() -> None:
     html = render_replay_index_html()
 
-    assert 'fetch("session.json"' in html
-    assert 'fetch("trace.json"' in html
+    assert 'buildCurrentSessionUrl("session.json")' in html
+    assert 'buildCurrentSessionUrl("trace.json")' in html
     assert "setInterval" in html
     assert 'id="auto-follow-latest"' in html
     assert 'id="timeline-search"' in html

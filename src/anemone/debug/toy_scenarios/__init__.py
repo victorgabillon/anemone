@@ -1,6 +1,11 @@
 """Public toy-scenario helpers for the Anemone debug GUI."""
 
-from .builders import build_live_toy_debug_environment, build_toy_tree_exploration
+from __future__ import annotations
+
+from ._lazy_builders import (
+    build_live_toy_debug_environment,
+    build_toy_tree_exploration,
+)
 from .model import ToyNodeSpec, ToyPlayerRole, ToyScenarioSpec
 from .registry import (
     ScenarioRegistryEntry,
@@ -19,11 +24,11 @@ from .scenarios import (
 )
 
 __all__ = [
+    "ScenarioRegistryEntry",
+    "ScenarioRunResult",
     "ToyNodeSpec",
     "ToyPlayerRole",
     "ToyScenarioSpec",
-    "ScenarioRegistryEntry",
-    "ScenarioRunResult",
     "all_toy_scenario_specs",
     "build_deceptive_trap_scenario_spec",
     "build_live_toy_debug_environment",

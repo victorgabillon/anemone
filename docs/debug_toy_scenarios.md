@@ -90,6 +90,25 @@ This scenario is useful for inspecting value flips, `BackupFinished` changes,
 and "next backed-up value change" navigation in the GUI while still using the
 production backup path.
 
+### `minimax_semantic_stress`
+
+Tree:
+
+- `root` is MAX
+  - `A` is a solved MIN branch with exact terminal children
+  - `B` is a partial MIN branch with one exact child and one heuristic child
+  - `C` is another partial MIN branch in a loss-leaning shape
+  - `D` is a solved losing MIN branch
+
+Expected outcome:
+
+- useful GUI contrast between `TERMINAL`, `FORCED`, and `ESTIMATE`
+- no single deterministic final root assertion is required
+
+This scenario is a semantics demo first. It is useful when you want one tree
+that visibly mixes solved interior nodes, unresolved interior nodes, and exact
+terminal leaves.
+
 ## Running the examples
 
 Run any scenario directly:
@@ -121,6 +140,19 @@ python -c "from anemone.debug import serve_live_debug_session; serve_live_debug_
 ```
 
 Then open the printed local URL in the browser.
+
+## Launching toy scenarios from the browser root
+
+If you want the browser itself to launch built-in toy scenarios, start the
+browser root instead of a single precomputed session:
+
+```bash
+PYTHONPATH=src:. python -c "from anemone.debug import serve_debug_browser; serve_debug_browser('runs/debug_browser', port=8000)"
+```
+
+Open the printed local URL, choose a built-in scenario from the dropdown, and
+click `Run scenario`. The browser will switch to the generated live session
+under `runs/debug_browser/sessions/<scenario-name>/`.
 
 ## What to inspect in the GUI
 

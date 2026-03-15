@@ -13,9 +13,13 @@ from .breakpoints import breakpoint_from_json
 from .html_templates import render_replay_index_html
 from .live_control import DebugCommand, DebugSessionController
 from .replay_bundle import export_replay_bundle
-from .toy_scenarios import run_registered_scenario, serialize_registered_scenarios
+from .toy_scenarios.registry import (
+    run_registered_scenario,
+    serialize_registered_scenarios,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from socket import socket
     from socketserver import BaseServer
 
@@ -192,13 +196,13 @@ class DebugSessionHTTPRequestHandler(SimpleHTTPRequestHandler):
             "session_directory": run_result.session_directory,
             "session_path": run_result.session_path,
             "message": run_result.message,
-            "error": run_result.error,
+            "error_code": run_result.error_code,
         }
         if run_result.ok:
             self._send_json_response(200, response_payload)
             return
 
-        status_code = 404 if run_result.error == "unknown_scenario" else 500
+        status_code = 404 if run_result.error_code == "unknown_scenario" else 500
         self._send_json_response(status_code, response_payload)
 
     def _read_request_payload(self) -> dict[str, object] | None:
@@ -269,7 +273,7 @@ class DebugSessionHTTPRequestHandler(SimpleHTTPRequestHandler):
     def _send_json_response(
         self,
         status_code: int,
-        payload: dict[str, object],
+        payload: Mapping[str, object],
     ) -> None:
         """Write one JSON response body."""
         response_body = json.dumps(payload).encode("utf-8")

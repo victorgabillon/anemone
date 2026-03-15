@@ -53,7 +53,7 @@ def test_run_registered_scenario_rejects_unknown_scenario(tmp_path: Path) -> Non
     )
 
     assert run_result.ok is False
-    assert run_result.error == "unknown_scenario"
+    assert run_result.error_code == "unknown_scenario"
     assert run_result.session_directory is None
     assert run_result.session_path is None
 
@@ -109,7 +109,58 @@ def test_debug_browser_api_rejects_unknown_scenario_name(tmp_path: Path) -> None
 
     assert status_code == 404
     assert payload["ok"] is False
-    assert payload["error"] == "unknown_scenario"
+    assert payload["error_code"] == "unknown_scenario"
+
+
+def test_debug_browser_api_can_launch_two_scenarios_and_control_each(
+    tmp_path: Path,
+) -> None:
+    with _running_browser_server(tmp_path) as address:
+        first_status, first_payload = _request_json(
+            address,
+            "POST",
+            "/api/run_scenario",
+            {"name": "single_agent_backup"},
+        )
+        second_status, second_payload = _request_json(
+            address,
+            "POST",
+            "/api/run_scenario",
+            {"name": "minimax_micro"},
+        )
+        first_session_status, first_session_payload = _request_json(
+            address,
+            "GET",
+            "/sessions/single_agent_backup/session.json",
+        )
+        second_session_status, second_session_payload = _request_json(
+            address,
+            "GET",
+            "/sessions/minimax_micro/session.json",
+        )
+        pause_status, _pause_body = _request(
+            address,
+            "POST",
+            "/sessions/single_agent_backup/command",
+            {"command": "pause"},
+        )
+        control_status, control_payload = _request_json(
+            address,
+            "GET",
+            "/sessions/single_agent_backup/control_state.json",
+        )
+
+    assert first_status == 200
+    assert second_status == 200
+    assert first_payload["session_path"] == "/sessions/single_agent_backup/"
+    assert second_payload["session_path"] == "/sessions/minimax_micro/"
+    assert first_session_status == 200
+    assert second_session_status == 200
+    assert first_session_payload["is_complete"] is True
+    assert second_session_payload["is_complete"] is True
+    assert pause_status == 204
+    assert control_status == 200
+    assert control_payload["paused"] is True
 
 
 class _BrowserServerContext:
@@ -150,6 +201,16 @@ def _request_json(
     path: str,
     payload: dict[str, Any] | None = None,
 ) -> tuple[int, dict[str, Any]]:
+    status_code, response_body = _request(address, method, path, payload)
+    return status_code, json.loads(response_body)
+
+
+def _request(
+    address: tuple[str, int],
+    method: str,
+    path: str,
+    payload: dict[str, Any] | None = None,
+) -> tuple[int, str]:
     connection = HTTPConnection(address[0], address[1], timeout=10)
     body = None if payload is None else json.dumps(payload)
     headers = {} if body is None else {"Content-Type": "application/json"}
@@ -157,4 +218,4 @@ def _request_json(
     response = connection.getresponse()
     response_body = response.read().decode("utf-8")
     connection.close()
-    return response.status, json.loads(response_body)
+    return response.status, response_body

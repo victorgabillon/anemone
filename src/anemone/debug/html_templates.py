@@ -875,7 +875,7 @@ def render_replay_index_html() -> str:
           });
           const payload = await response.json().catch(() => ({}));
           if (!response.ok) {
-            throw new Error(payload.message || payload.error || `HTTP ${response.status}`);
+            throw new Error(payload.message || payload.error_code || `HTTP ${response.status}`);
           }
 
           scenarioLaunchStatusElement.textContent = payload.message || `Loaded ${scenarioSelectElement.value}`;

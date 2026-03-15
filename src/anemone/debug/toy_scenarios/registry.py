@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Callable
 
 from anemone.utils.logger import anemone_logger
 
-from .builders import build_live_toy_debug_environment
+from ._lazy_builders import build_live_toy_debug_environment
 from .model import ToyScenarioSpec
 from .scenarios import (
     build_deceptive_trap_scenario_spec,
@@ -30,6 +30,7 @@ class ScenarioRegistryEntry:
 
     name: str
     label: str
+    description: str
     builder: ToyScenarioBuilder
 
     def build_spec(self) -> ToyScenarioSpec:
@@ -46,28 +47,42 @@ class ScenarioRunResult:
     session_directory: str | None
     session_path: str | None
     message: str
-    error: str | None = None
+    error_code: str | None = None
 
 
 _REGISTERED_SCENARIOS: tuple[ScenarioRegistryEntry, ...] = (
     ScenarioRegistryEntry(
         name="single_agent_backup",
         label="Single Agent Backup",
+        description="Single-agent max backup where the best line should resolve to A -> A2.",
         builder=build_single_agent_backup_scenario_spec,
     ),
     ScenarioRegistryEntry(
         name="minimax_micro",
         label="Minimax Micro",
+        description=(
+            "Tiny minimax tree where both children are MIN nodes and the root "
+            "should prefer A -> A1."
+        ),
         builder=build_minimax_micro_scenario_spec,
     ),
     ScenarioRegistryEntry(
         name="deceptive_trap",
         label="Deceptive Trap",
+        description=(
+            "Deceptive shallow heuristic where branch A starts attractive but "
+            "deeper expansion reveals branch B as the final best line."
+        ),
         builder=build_deceptive_trap_scenario_spec,
     ),
     ScenarioRegistryEntry(
         name="minimax_semantic_stress",
         label="Minimax Semantic Stress",
+        description=(
+            "Minimax stress scenario for certainty semantics. Shows TERMINAL "
+            "leaves, FORCED solved internal MIN nodes, and ESTIMATE partial "
+            "MIN nodes in one GUI tree."
+        ),
         builder=build_minimax_semantic_stress_scenario_spec,
     ),
 )
@@ -92,7 +107,7 @@ def serialize_registered_scenarios() -> list[dict[str, str]]:
         {
             "name": scenario_entry.name,
             "label": scenario_entry.label,
-            "description": scenario_entry.build_spec().description,
+            "description": scenario_entry.description,
         }
         for scenario_entry in _REGISTERED_SCENARIOS
     ]
@@ -113,7 +128,7 @@ def run_registered_scenario(
             session_directory=None,
             session_path=None,
             message=f"Unknown scenario: {scenario_name}",
-            error="unknown_scenario",
+            error_code="unknown_scenario",
         )
 
     session_root_directory = Path(output_root_directory)
@@ -121,8 +136,8 @@ def run_registered_scenario(
     session_path = f"/sessions/{scenario_entry.name}/"
 
     try:
-        _reset_scenario_session_directory(session_directory)
         session_root_directory.mkdir(parents=True, exist_ok=True)
+        _reset_scenario_session_directory(session_directory)
 
         scenario_spec = scenario_entry.build_spec()
         anemone_logger.info(
@@ -139,7 +154,7 @@ def run_registered_scenario(
             debug_environment.controlled_exploration.explore(random_generator=Random(0))
         finally:
             debug_environment.finalize()
-    except Exception as error:  # pragma: no cover - defensive logging path
+    except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
         anemone_logger.exception(
             "Failed to launch toy scenario %s into %s",
             scenario_entry.name,
@@ -151,7 +166,7 @@ def run_registered_scenario(
             session_directory=str(session_directory),
             session_path=session_path,
             message=f"Failed to run scenario {scenario_entry.name}.",
-            error=str(error),
+            error_code="run_failed",
         )
 
     anemone_logger.info(

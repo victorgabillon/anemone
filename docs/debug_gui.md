@@ -63,6 +63,8 @@ Browser modes:
 
 - `serve_live_debug_session(...)`: serve a mutable live session directory while
   exploration is running or after it completes.
+- `serve_debug_browser(...)`: serve a browser root that can launch built-in toy
+  scenarios directly from the GUI.
 - `serve_replay_bundle(...)`: serve a static replay/export bundle built from a
   finished trace.
 
@@ -114,6 +116,7 @@ browser-viewable directory.
 Recommended public entrypoints:
 
 - `build_live_debug_environment`
+- `serve_debug_browser`
 - `serve_live_debug_session`
 - `serve_replay_bundle`
 - `export_and_serve_trace`
