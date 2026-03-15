@@ -5,7 +5,9 @@ from types import SimpleNamespace
 from typing import Any
 
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
-from anemone.node_evaluation.node_max_evaluation import NodeMaxEvaluation
+from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
+    NodeMaxEvaluation,
+)
 from anemone.objectives import SingleAgentMaxObjective
 from valanga.evaluations import Certainty, Value
 

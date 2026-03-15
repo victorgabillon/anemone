@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
+
+_SCORE_FRAGMENT_PATTERN = re.compile(r"(score=)(-?\d+(?:\.\d+)?)")
 
 
 def safe_getattr(obj: Any, attribute_name: str) -> Any | None:
@@ -75,3 +78,16 @@ def format_value(value: Any) -> str:
         parts.append(f"over={format_over_event(over_event)}")
 
     return ", ".join(parts) if parts else str(value)
+
+
+def compact_value_display(value_repr: str) -> str:
+    """Round rendered score fragments to one decimal place for dense labels."""
+
+    def _replace_score(match: re.Match[str]) -> str:
+        try:
+            score = float(match.group(2))
+        except ValueError:
+            return match.group(0)
+        return f"{match.group(1)}{score:.1f}"
+
+    return _SCORE_FRAGMENT_PATTERN.sub(_replace_score, value_repr, count=1)

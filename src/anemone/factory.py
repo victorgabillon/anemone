@@ -12,11 +12,11 @@ from anemone import node_factory
 from anemone import search_factory as search_factories
 from anemone.dynamics import SearchDynamics, normalize_search_dynamics
 from anemone.hooks.search_hooks import SearchHooks
-from anemone.node_evaluation.node_direct_evaluation.factory import create_node_evaluator
-from anemone.node_evaluation.node_direct_evaluation.protocols import (
+from anemone.node_evaluation.direct.factory import create_node_evaluator
+from anemone.node_evaluation.direct.protocols import (
     MasterStateValueEvaluator,
 )
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+from anemone.node_evaluation.tree.factory import (
     NodeTreeEvaluationFactory,
     NodeTreeMinmaxEvaluationFactory,
 )
@@ -35,7 +35,7 @@ from .tree_and_value_branch_selector import TreeAndValueBranchSelector
 from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
-    from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
+    from anemone.node_evaluation.direct.node_direct_evaluator import (
         NodeDirectEvaluator,
     )
 

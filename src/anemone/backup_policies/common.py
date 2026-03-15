@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
-from anemone.node_evaluation import canonical_value
+from anemone.node_evaluation.common import canonical_value
 
 if TYPE_CHECKING:
     from valanga import BranchKey

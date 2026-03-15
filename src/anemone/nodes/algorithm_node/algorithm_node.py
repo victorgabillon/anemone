@@ -15,7 +15,7 @@ from valanga import (
 from valanga.evaluator_types import EvaluatorInput
 
 from anemone.indices.node_indices import NodeExplorationData
-from anemone.node_evaluation.node_tree_evaluation.node_adversarial_evaluation import (
+from anemone.node_evaluation.tree.adversarial.node_adversarial_evaluation import (
     NodeAdversarialEvaluation,
 )
 from anemone.nodes.tree_node import TreeNode

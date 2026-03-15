@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from valanga import State
 from valanga.evaluations import Certainty, EvalItem, Value
 
-from anemone.node_evaluation.node_direct_evaluation.protocols import (
+from anemone.node_evaluation.direct.protocols import (
     MasterStateValueEvaluator,
     OverEventDetector,
 )

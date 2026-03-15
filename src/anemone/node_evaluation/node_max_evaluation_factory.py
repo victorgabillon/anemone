@@ -6,7 +6,9 @@ from valanga import State
 
 from anemone.backup_policies import ExplicitMaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
-from anemone.node_evaluation.node_max_evaluation import NodeMaxEvaluation
+from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
+    NodeMaxEvaluation,
+)
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective, SingleAgentMaxObjective
 

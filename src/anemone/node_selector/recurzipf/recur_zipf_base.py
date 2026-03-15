@@ -23,7 +23,7 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 if TYPE_CHECKING:
     from anemone import tree_manager as tree_man
-    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
 

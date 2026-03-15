@@ -6,7 +6,7 @@ from typing import Any
 
 from valanga import Color
 
-from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from anemone.objectives import AdversarialZeroSumObjective

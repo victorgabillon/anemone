@@ -28,10 +28,10 @@ from anemone.indices.index_manager.node_exploration_manager import (
 from anemone.indices.node_indices.index_types import (
     IndexComputationType,
 )
-from anemone.node_evaluation.node_direct_evaluation.node_direct_evaluator import (
+from anemone.node_evaluation.direct.node_direct_evaluator import (
     NodeDirectEvaluator,
 )
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+from anemone.node_evaluation.tree.factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.node_selector.node_selector import NodeSelector

@@ -252,10 +252,16 @@ def test_dot_renderer_styles_player_and_terminal_nodes() -> None:
 
     assert "player=MAX" in source
     assert "player=MIN" in source
-    assert '1 [label="id=1\ndepth=0\nplayer=MAX\nstate=root"' in source
+    assert "color=WHITE" in source
+    assert "color=BLACK" in source
+    assert '1 [label="id=1\ndepth=0\nplayer=MAX\ncolor=WHITE\nstate=root"' in source
+    assert "shape=box" in source
     assert 'fillcolor="#d8e7ff"' in source
     assert 'color="#456fb3"' in source
-    assert '2 [label="id=2\ndepth=1\nplayer=MIN\nstate=reply\nover=done"' in source
+    assert (
+        '2 [label="id=2\ndepth=1\nplayer=MIN\ncolor=BLACK\nstate=reply\nover=done"'
+        in source
+    )
     assert 'fillcolor="#dcefd9"' in source
     assert 'color="#2f6b2f"' in source
 
@@ -314,7 +320,9 @@ def test_tree_snapshot_adapter_includes_player_label_when_turn_present() -> None
 
     snapshot = TreeSnapshotAdapter().snapshot(cast("Any", node))
 
-    assert snapshot.nodes[0].label == "id=5\ndepth=1\nplayer=MIN\nstate=mid"
+    assert snapshot.nodes[0].label == (
+        "id=5\ndepth=1\nplayer=MIN\ncolor=BLACK\nstate=mid"
+    )
     assert snapshot.nodes[0].player_label == "MIN"
 
 
@@ -342,7 +350,7 @@ def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> No
             "id=7",
             "depth=3",
             "state=state-tag",
-            "direct=score=0.75, certainty=high",
+            "direct=score=0.8, certainty=high",
             "backed_up=score=1.0, over=mate",
             "pv=a -> b",
             "over=terminal",
@@ -426,7 +434,7 @@ def test_tree_snapshot_adapter_uses_minmax_and_over_event_fallbacks() -> None:
     snapshot = TreeSnapshotAdapter().snapshot(cast("Any", node))
     label = snapshot.nodes[0].label
 
-    assert "direct=score=0.25" in label
+    assert "direct=score=0.2" in label
     assert "backed_up=score=0.5, certainty=forced" in label
     assert "pv=c" in label
     assert "over=forced-win" in label

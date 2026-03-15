@@ -42,7 +42,7 @@ from .trees.factory import ValueTreeFactory
 if TYPE_CHECKING:
     from valanga.policy import BranchPolicy
 
-    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
 

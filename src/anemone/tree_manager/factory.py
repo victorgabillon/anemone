@@ -16,7 +16,7 @@ from anemone.indices.index_manager import (
 from anemone.indices.node_indices.index_types import (
     IndexComputationType,
 )
-from anemone.node_evaluation.node_direct_evaluation import (
+from anemone.node_evaluation.direct import (
     EvaluationQueries,
     NodeDirectEvaluator,
 )

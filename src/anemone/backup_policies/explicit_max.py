@@ -7,13 +7,15 @@ from typing import TYPE_CHECKING, Any
 from anemone.backup_policies.common import SelectedValue, all_child_values_exact
 from anemone.backup_policies.explicit_minimax import has_value_changed
 from anemone.backup_policies.types import BackupResult
-from anemone.node_evaluation import canonical_value
+from anemone.node_evaluation.common import canonical_value
 
 if TYPE_CHECKING:
     from valanga import BranchKey
     from valanga.evaluations import Value
 
-    from anemone.node_evaluation.node_max_evaluation import NodeMaxEvaluation
+    from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
+        NodeMaxEvaluation,
+    )
 
 
 class ExplicitMaxBackupPolicy:

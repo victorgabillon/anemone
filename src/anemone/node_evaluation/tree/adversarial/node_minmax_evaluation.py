@@ -18,7 +18,7 @@ from valanga import (
 from valanga.evaluations import Value
 
 from anemone.dynamics import SearchDynamics
-from anemone.node_evaluation import canonical_value
+from anemone.node_evaluation.common import canonical_value
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective

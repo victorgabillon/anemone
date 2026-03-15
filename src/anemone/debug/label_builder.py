@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .formatting import safe_getattr
+from .formatting import compact_value_display, safe_getattr
 from .node_metadata_builder import NodeDebugMetadataBuilder
 
 
@@ -31,12 +31,15 @@ class NodeDebugLabelBuilder:
 
         if metadata.player_label is not None:
             lines.append(f"player={metadata.player_label}")
+        player_color_label = self._get_player_color_label(node)
+        if player_color_label is not None:
+            lines.append(f"color={player_color_label}")
         if metadata.state_tag is not None:
             lines.append(f"state={metadata.state_tag}")
         if metadata.direct_value is not None:
-            lines.append(f"direct={metadata.direct_value}")
+            lines.append(f"direct={compact_value_display(metadata.direct_value)}")
         if metadata.backed_up_value is not None:
-            lines.append(f"backed_up={metadata.backed_up_value}")
+            lines.append(f"backed_up={compact_value_display(metadata.backed_up_value)}")
         if metadata.principal_variation is not None:
             lines.append(f"pv={metadata.principal_variation}")
         if metadata.over_event is not None:
@@ -47,3 +50,18 @@ class NodeDebugLabelBuilder:
         )
 
         return "\n".join(lines)
+
+    def _get_player_color_label(self, node: Any) -> str | None:
+        """Return the state's concrete player color when available."""
+        state = safe_getattr(node, "state")
+        if state is None:
+            return None
+
+        turn = safe_getattr(state, "turn")
+        if turn is None:
+            return None
+
+        turn_name = safe_getattr(turn, "name")
+        if turn_name is not None:
+            return str(turn_name).upper()
+        return str(turn).upper()

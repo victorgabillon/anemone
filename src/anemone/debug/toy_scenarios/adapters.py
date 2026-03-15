@@ -33,11 +33,11 @@ from anemone.factory import (
     TreeAndValuePlayerArgs,
     create_tree_and_value_branch_selector_with_tree_eval_factory,
 )
-from anemone.node_evaluation.node_direct_evaluation.protocols import (
+from anemone.node_evaluation.direct.protocols import (
     MasterStateValueEvaluator,
     OverEventDetector,
 )
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+from anemone.node_evaluation.tree.factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.node_selector.composed.args import ComposedNodeSelectorArgs

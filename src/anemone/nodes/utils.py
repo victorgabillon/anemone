@@ -5,7 +5,7 @@ from typing import Any
 from valanga import BranchKey, Color, State
 
 from anemone.dynamics import SearchDynamics
-from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
+from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )

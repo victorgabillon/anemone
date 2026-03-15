@@ -6,12 +6,14 @@ from typing import Any
 from valanga import Color
 
 from anemone.backup_policies import ExplicitMaxBackupPolicy, ExplicitMinimaxBackupPolicy
-from anemone.node_evaluation.node_max_evaluation import NodeMaxEvaluation
+from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
+    NodeMaxEvaluation,
+)
 from anemone.node_evaluation.node_max_evaluation_factory import NodeMaxEvaluationFactory
-from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+from anemone.node_evaluation.tree.factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective

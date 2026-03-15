@@ -10,8 +10,8 @@ from anemone.backup_policies.explicit_minimax import (
     ExplicitMinimaxBackupPolicy,
     has_value_changed,
 )
-from anemone.node_evaluation.canonical_value import ValueSemanticsError
-from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+from anemone.node_evaluation.common.canonical_value import ValueSemanticsError
+from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from anemone.values import DEFAULT_EVALUATION_ORDERING

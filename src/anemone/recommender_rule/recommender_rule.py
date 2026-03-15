@@ -26,7 +26,7 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 from anemone.utils.small_tools import softmax
 
 if TYPE_CHECKING:
-    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
 

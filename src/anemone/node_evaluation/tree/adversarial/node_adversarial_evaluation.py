@@ -9,7 +9,7 @@ from valanga import (
 from valanga.evaluations import Value
 
 from anemone.backup_policies.types import BackupResult
-from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
+from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 
 
 class NodeAdversarialEvaluation[StateT: State = State](NodeValueEvaluation, Protocol):

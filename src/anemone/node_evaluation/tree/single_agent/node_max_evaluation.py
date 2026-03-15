@@ -9,7 +9,7 @@ from valanga.evaluations import Value
 
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
-from anemone.node_evaluation import canonical_value
+from anemone.node_evaluation.common import canonical_value
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective

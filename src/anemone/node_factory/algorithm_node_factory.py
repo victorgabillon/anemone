@@ -14,7 +14,7 @@ from valanga.evaluator_types import EvaluatorInput
 
 from anemone.basics import TreeDepth
 from anemone.indices import node_indices
-from anemone.node_evaluation.node_tree_evaluation.node_tree_evaluation_factory import (
+from anemone.node_evaluation.tree.factory import (
     NodeTreeEvaluationFactory,
 )
 from anemone.node_factory.base import TreeNodeFactory
@@ -24,7 +24,7 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 from anemone.nodes.tree_node import TreeNode
 
 if TYPE_CHECKING:
-    from anemone.node_evaluation.node_tree_evaluation.node_adversarial_evaluation import (
+    from anemone.node_evaluation.tree.adversarial.node_adversarial_evaluation import (
         NodeAdversarialEvaluation,
     )
 

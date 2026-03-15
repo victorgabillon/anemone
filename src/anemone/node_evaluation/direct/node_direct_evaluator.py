@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 from valanga import OverEvent, TurnState
 from valanga.evaluations import Certainty, Value
 
-from anemone.node_evaluation import canonical_value
+from anemone.node_evaluation.common import canonical_value
 from anemone.nodes.algorithm_node import AlgorithmNode
 
 from .protocols import MasterStateValueEvaluator
 
 if TYPE_CHECKING:
-    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
 

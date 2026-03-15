@@ -13,7 +13,7 @@ from anemone.indices.index_manager import (
 from anemone.indices.index_manager.node_exploration_manager import (
     update_all_indices,
 )
-from anemone.node_evaluation.node_direct_evaluation import (
+from anemone.node_evaluation.direct import (
     EvaluationQueries,
     NodeDirectEvaluator,
 )
@@ -33,7 +33,7 @@ from .tree_manager import TreeManager
 
 if TYPE_CHECKING:
     from anemone import node_selector as node_sel
-    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
 

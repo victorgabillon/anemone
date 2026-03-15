@@ -7,10 +7,10 @@ import valanga
 from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
 
 from anemone.dynamics import SearchDynamics
-from anemone.node_evaluation.node_direct_evaluation.protocols import (
+from anemone.node_evaluation.direct.protocols import (
     MasterStateValueEvaluator,
 )
-from anemone.node_evaluation.node_direct_evaluation.protocols import OverEventDetector
+from anemone.node_evaluation.direct.protocols import OverEventDetector
 from valanga.evaluations import Certainty, Value
 
 if TYPE_CHECKING:

@@ -23,10 +23,10 @@ from anemone.utils.small_tools import (
 
 if TYPE_CHECKING:
     from anemone.basics import TreeDepth
-    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+    from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
+    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
-    from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
     from anemone.trees.descendants import RangedDescendants
 
 

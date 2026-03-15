@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING, Any
 
 from anemone.backup_policies.common import SelectedValue, all_child_values_exact
 from anemone.backup_policies.types import BackupResult
-from anemone.node_evaluation import canonical_value
+from anemone.node_evaluation.common import canonical_value
 from anemone.utils.my_value_sorted_dict import sort_dic
 
 if TYPE_CHECKING:
     from valanga import BranchKey
     from valanga.evaluations import Value
 
-    from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
 

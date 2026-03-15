@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from anemone.node_evaluation.canonical_value import (
+from anemone.node_evaluation.common.canonical_value import (
     ValueSemanticsError,
     has_over_event,
     is_exact_value,

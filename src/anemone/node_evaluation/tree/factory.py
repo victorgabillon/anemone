@@ -6,10 +6,10 @@ from valanga import State, TurnState
 
 from anemone.backup_policies import ExplicitMinimaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
-from anemone.node_evaluation.node_tree_evaluation.node_adversarial_evaluation import (
+from anemone.node_evaluation.tree.adversarial.node_adversarial_evaluation import (
     NodeAdversarialEvaluation,
 )
-from anemone.node_evaluation.node_tree_evaluation.node_minmax_evaluation import (
+from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from anemone.nodes.tree_node import TreeNode

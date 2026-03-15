@@ -66,27 +66,32 @@ class DotRenderer:
         player_label = getattr(node, "player_label", None)
         is_exact = bool(getattr(node, "is_exact", False))
         is_terminal = bool(getattr(node, "is_terminal", False))
+        base_attrs = {"shape": "box"}
 
         if is_terminal:
             return {
+                **base_attrs,
                 "style": "filled",
                 "fillcolor": "#dcefd9",
                 "color": "#2f6b2f",
             }
         if is_exact:
             return {
+                **base_attrs,
                 "style": "filled",
                 "fillcolor": "#f3e5b1",
                 "color": "#8c6a12",
             }
         if player_label == "MAX":
             return {
+                **base_attrs,
                 "style": "filled",
                 "fillcolor": "#d8e7ff",
                 "color": "#456fb3",
             }
         if player_label == "MIN":
             return {
+                **base_attrs,
                 "style": "filled",
                 "fillcolor": "#f8d9d6",
                 "color": "#b04d43",

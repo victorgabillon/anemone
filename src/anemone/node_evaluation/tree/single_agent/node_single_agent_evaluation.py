@@ -5,7 +5,7 @@ from typing import Protocol
 from valanga import BranchKey, State
 
 from anemone.backup_policies.types import BackupResult
-from anemone.node_evaluation.node_value_evaluation import NodeValueEvaluation
+from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 
 
 class NodeSingleAgentEvaluation[StateT: State = State](NodeValueEvaluation, Protocol):
