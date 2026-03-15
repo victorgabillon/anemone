@@ -178,11 +178,17 @@ def test_export_replay_bundle_writes_expected_trace_json(tmp_path: Path) -> None
 def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     html = render_replay_index_html()
 
-    assert 'fetch("session.json"' in html
-    assert 'fetch("trace.json"' in html
-    assert 'fetch("control_state.json"' in html
-    assert 'fetch("/command"' in html
-    assert 'fetch("/breakpoints"' in html
+    assert 'id="scenario-select"' in html
+    assert 'id="run-scenario"' in html
+    assert 'id="scenario-description"' in html
+    assert 'id="scenario-launch-status"' in html
+    assert 'fetch("/api/scenarios"' in html
+    assert 'fetch("/api/run_scenario"' in html
+    assert 'buildCurrentSessionUrl("session.json")' in html
+    assert 'buildCurrentSessionUrl("trace.json")' in html
+    assert 'buildCurrentSessionUrl("control_state.json")' in html
+    assert 'buildCurrentSessionUrl("command")' in html
+    assert 'buildCurrentSessionUrl("breakpoints")' in html
     assert 'id="timeline"' in html
     assert 'id="timeline-search"' in html
     assert 'id="timeline-event-filter"' in html
@@ -252,6 +258,10 @@ def test_render_replay_index_html_contains_expected_viewer_hooks() -> None:
     assert "entryMatchesSearch" in html
     assert "entryMatchesEventTypeFilter" in html
     assert "computeVisibleEntries" in html
+    assert "loadAvailableScenarios" in html
+    assert "runSelectedScenario" in html
+    assert "populateScenarioSelect" in html
+    assert "renderScenarioDescription" in html
     assert "jumpToEntryIndex" in html
     assert "jumpToNextBreakpointHit" in html
     assert "jumpToNextPvChange" in html

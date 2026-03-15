@@ -456,6 +456,23 @@ def render_replay_index_html() -> str:
       </aside>
       <main class="detail-pane">
         <section class="card">
+          <div class="detail-header">
+            <h2 class="heading">Toy Scenario Launcher</h2>
+            <p class="subheading" id="scenario-description">
+              Built-in toy scenarios appear here when this page is served by the live debug browser.
+            </p>
+          </div>
+          <div class="controls">
+            <select id="scenario-select" disabled>
+              <option value="">Loading scenarios...</option>
+            </select>
+            <button id="run-scenario" type="button" disabled>Run scenario</button>
+            <span class="meta" id="scenario-launch-status">
+              Scenario launcher unavailable.
+            </span>
+          </div>
+        </section>
+        <section class="card">
           <div class="controls">
             <button id="previous-entry" type="button">Previous</button>
             <button id="next-entry" type="button">Next</button>
@@ -659,6 +676,10 @@ def render_replay_index_html() -> str:
       const jumpNextValueChangeButton = document.getElementById("jump-next-value-change");
       const jumpNextSelectedNodeEventButton = document.getElementById("jump-next-selected-node-event");
       const timelineFilterStatusElement = document.getElementById("timeline-filter-status");
+      const scenarioSelectElement = document.getElementById("scenario-select");
+      const runScenarioButton = document.getElementById("run-scenario");
+      const scenarioDescriptionElement = document.getElementById("scenario-description");
+      const scenarioLaunchStatusElement = document.getElementById("scenario-launch-status");
       const previousButton = document.getElementById("previous-entry");
       const nextButton = document.getElementById("next-entry");
       const pauseButton = document.getElementById("pause-search");
@@ -719,9 +740,11 @@ def render_replay_index_html() -> str:
 
       let entries = [];
       let visibleEntries = [];
+      let availableScenarios = [];
       let selectedIndex = 0;
       let pollHandle = null;
       let isRefreshing = false;
+      let isRunningScenario = false;
       let currentPayload = null;
       let currentControlState = null;
       let currentSnapshotMetadata = null;
@@ -757,6 +780,120 @@ def render_replay_index_html() -> str:
 
       function hasActiveTimelineFilters() {
         return searchQuery.trim() !== "" || selectedEventTypeFilter !== "all";
+      }
+
+      function buildCurrentSessionUrl(path) {
+        return new URL(path, window.location.href).toString();
+      }
+
+      function populateScenarioSelect() {
+        scenarioSelectElement.replaceChildren();
+
+        if (availableScenarios.length === 0) {
+          const emptyOption = document.createElement("option");
+          emptyOption.value = "";
+          emptyOption.textContent = "No scenarios available";
+          scenarioSelectElement.appendChild(emptyOption);
+          scenarioSelectElement.value = "";
+          return;
+        }
+
+        availableScenarios.forEach((scenario) => {
+          const option = document.createElement("option");
+          option.value = scenario.name;
+          option.textContent = scenario.label || scenario.name;
+          scenarioSelectElement.appendChild(option);
+        });
+
+        if (!availableScenarios.some((scenario) => scenario.name === scenarioSelectElement.value)) {
+          scenarioSelectElement.value = availableScenarios[0].name;
+        }
+      }
+
+      function renderScenarioDescription() {
+        const selectedScenario = availableScenarios.find(
+          (scenario) => scenario.name === scenarioSelectElement.value
+        );
+        scenarioDescriptionElement.textContent = selectedScenario
+          ? selectedScenario.description || "No description available."
+          : "Built-in toy scenarios appear here when this page is served by the live debug browser.";
+      }
+
+      function updateScenarioLauncherControls() {
+        const hasScenarios = availableScenarios.length > 0;
+        scenarioSelectElement.disabled = !hasScenarios || isRunningScenario;
+        runScenarioButton.disabled = !hasScenarios || !scenarioSelectElement.value || isRunningScenario;
+      }
+
+      async function loadAvailableScenarios() {
+        try {
+          const response = await fetch("/api/scenarios", { cache: "no-store" });
+          if (response.status === 404) {
+            availableScenarios = [];
+            scenarioLaunchStatusElement.textContent = "Scenario launcher unavailable on this server.";
+            populateScenarioSelect();
+            renderScenarioDescription();
+            updateScenarioLauncherControls();
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const payload = await response.json();
+          availableScenarios = Array.isArray(payload.scenarios) ? payload.scenarios : [];
+          populateScenarioSelect();
+          renderScenarioDescription();
+          scenarioLaunchStatusElement.textContent = availableScenarios.length > 0
+            ? "Choose a built-in toy scenario and launch it."
+            : "No built-in toy scenarios are registered.";
+        } catch (error) {
+          availableScenarios = [];
+          scenarioLaunchStatusElement.textContent = `Scenario launcher unavailable: ${error}`;
+          populateScenarioSelect();
+          renderScenarioDescription();
+        }
+
+        updateScenarioLauncherControls();
+      }
+
+      async function runSelectedScenario() {
+        if (!scenarioSelectElement.value || isRunningScenario) {
+          return;
+        }
+
+        isRunningScenario = true;
+        updateScenarioLauncherControls();
+        scenarioLaunchStatusElement.textContent = `Running ${scenarioSelectElement.value}...`;
+
+        try {
+          const response = await fetch("/api/run_scenario", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: scenarioSelectElement.value }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.message || payload.error || `HTTP ${response.status}`);
+          }
+
+          scenarioLaunchStatusElement.textContent = payload.message || `Loaded ${scenarioSelectElement.value}`;
+          if (typeof payload.session_path !== "string" || payload.session_path.length === 0) {
+            throw new Error("Scenario run did not return a session path.");
+          }
+
+          const targetUrl = new URL(payload.session_path, window.location.origin);
+          if (targetUrl.pathname === window.location.pathname) {
+            window.location.reload();
+            return;
+          }
+          window.location.assign(payload.session_path);
+        } catch (error) {
+          scenarioLaunchStatusElement.textContent = `Scenario run failed: ${error}`;
+          isRunningScenario = false;
+          updateScenarioLauncherControls();
+        }
       }
 
       function entryMatchesSearch(entry, query) {
@@ -1880,6 +2017,11 @@ def render_replay_index_html() -> str:
       }
 
       function renderTimelineMeta(payload) {
+        if (!payload) {
+          timelineMetaElement.textContent = "No session loaded yet | launch a built-in toy scenario";
+          return;
+        }
+
         const entryCount = payload && Number.isInteger(payload.entry_count)
           ? payload.entry_count
           : entries.length;
@@ -1932,7 +2074,7 @@ def render_replay_index_html() -> str:
 
       async function sendCommand(commandName, payload = {}) {
         try {
-          const response = await fetch("/command", {
+          const response = await fetch(buildCurrentSessionUrl("command"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1957,7 +2099,7 @@ def render_replay_index_html() -> str:
 
       async function addBreakpoint(payload) {
         try {
-          const response = await fetch("/breakpoints", {
+          const response = await fetch(buildCurrentSessionUrl("breakpoints"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1977,7 +2119,7 @@ def render_replay_index_html() -> str:
 
       async function clearBreakpoints() {
         try {
-          const response = await fetch("/breakpoints", {
+          const response = await fetch(buildCurrentSessionUrl("breakpoints"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "clear" }),
@@ -2206,7 +2348,9 @@ def render_replay_index_html() -> str:
       }
 
       async function fetchSessionPayload() {
-        const sessionResponse = await fetch("session.json", { cache: "no-store" });
+        const sessionResponse = await fetch(buildCurrentSessionUrl("session.json"), {
+          cache: "no-store",
+        });
         if (sessionResponse.ok) {
           return await sessionResponse.json();
         }
@@ -2214,15 +2358,22 @@ def render_replay_index_html() -> str:
           throw new Error(`HTTP ${sessionResponse.status}`);
         }
 
-        const traceResponse = await fetch("trace.json", { cache: "no-store" });
+        const traceResponse = await fetch(buildCurrentSessionUrl("trace.json"), {
+          cache: "no-store",
+        });
         if (!traceResponse.ok) {
+          if (traceResponse.status === 404) {
+            return null;
+          }
           throw new Error(`HTTP ${traceResponse.status}`);
         }
         return await traceResponse.json();
       }
 
       async function fetchControlState() {
-        const response = await fetch("control_state.json", { cache: "no-store" });
+        const response = await fetch(buildCurrentSessionUrl("control_state.json"), {
+          cache: "no-store",
+        });
         if (response.ok) {
           return await response.json();
         }
@@ -2240,6 +2391,19 @@ def render_replay_index_html() -> str:
         isRefreshing = true;
         try {
           const payload = await fetchSessionPayload();
+          if (!payload) {
+            stopPolling();
+            currentPayload = null;
+            currentControlState = null;
+            entries = [];
+            renderTimelineMeta(null);
+            renderCommandStatus(null);
+            renderControlState(null);
+            applyTimelineFilters();
+            renderEmptyDetails("Choose a built-in toy scenario to start a live session.");
+            return;
+          }
+
           const controlState = await fetchControlState();
           currentPayload = payload;
           entries = Array.isArray(payload.entries) ? payload.entries : [];
@@ -2314,6 +2478,15 @@ def render_replay_index_html() -> str:
         searchQuery = timelineSearchElement.value.trim();
         clearTimelineStatusMessage();
         await refreshTimelineViewFromControls();
+      });
+
+      scenarioSelectElement.addEventListener("change", () => {
+        renderScenarioDescription();
+        updateScenarioLauncherControls();
+      });
+
+      runScenarioButton.addEventListener("click", async () => {
+        await runSelectedScenario();
       });
 
       timelineEventFilterElement.addEventListener("change", async () => {
@@ -2508,6 +2681,7 @@ def render_replay_index_html() -> str:
         await clearBreakpoints();
       });
 
+      void loadAvailableScenarios();
       void refreshTrace();
     </script>
   </body>

@@ -26,6 +26,7 @@ from .breakpoints import (
 )
 from .browser import (
     export_and_serve_trace,
+    serve_debug_browser,
     serve_live_debug_session,
     serve_replay_bundle,
 )
@@ -106,6 +107,7 @@ __all__ = [
     # Primary public entrypoints
     "LiveDebugEnvironment",
     "build_live_debug_environment",
+    "serve_debug_browser",
     "serve_live_debug_session",
     "serve_replay_bundle",
     "export_and_serve_trace",

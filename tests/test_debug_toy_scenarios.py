@@ -17,6 +17,7 @@ from anemone.debug.toy_scenarios import (
     build_deceptive_trap_scenario_spec,
     build_live_toy_debug_environment,
     build_minimax_micro_scenario_spec,
+    build_minimax_semantic_stress_scenario_spec,
     build_single_agent_backup_scenario_spec,
     build_toy_tree_exploration,
 )
@@ -37,6 +38,7 @@ def test_toy_scenario_specs_encode_expected_outcomes() -> None:
         "single_agent_backup",
         "minimax_micro",
         "deceptive_trap",
+        "minimax_semantic_stress",
     }
     assert scenario_specs["single_agent_backup"].expected_root_value == 8.0
     assert scenario_specs["single_agent_backup"].expected_pv == ("A", "A2")
@@ -44,6 +46,8 @@ def test_toy_scenario_specs_encode_expected_outcomes() -> None:
     assert scenario_specs["minimax_micro"].expected_pv == ("A", "A1")
     assert scenario_specs["deceptive_trap"].expected_root_value == 6.0
     assert scenario_specs["deceptive_trap"].expected_pv == ("B", "B1")
+    assert scenario_specs["minimax_semantic_stress"].expected_root_value is None
+    assert scenario_specs["minimax_semantic_stress"].expected_pv == ()
 
 
 def test_build_toy_tree_exploration_uses_real_engine_collaborators() -> None:
@@ -68,6 +72,17 @@ def test_build_toy_tree_exploration_uses_real_engine_collaborators() -> None:
 
 def test_build_toy_tree_exploration_uses_adversarial_objective_for_minimax() -> None:
     exploration = build_toy_tree_exploration(build_minimax_micro_scenario_spec())
+
+    assert isinstance(
+        exploration.tree.root_node.tree_evaluation.objective,
+        AdversarialZeroSumObjective,
+    )
+
+
+def test_build_toy_tree_exploration_supports_semantic_stress_minimax() -> None:
+    exploration = build_toy_tree_exploration(
+        build_minimax_semantic_stress_scenario_spec()
+    )
 
     assert isinstance(
         exploration.tree.root_node.tree_evaluation.objective,

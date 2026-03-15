@@ -122,6 +122,102 @@ def build_minimax_micro_scenario_spec() -> ToyScenarioSpec:
     )
 
 
+def build_minimax_semantic_stress_scenario_spec() -> ToyScenarioSpec:
+    """Return a minimax toy tree that exercises certainty corner cases."""
+    nodes = {
+        "root": ToyNodeSpec(
+            node_id="root",
+            player="max",
+            children={"A": "A", "B": "B", "C": "C", "D": "D"},
+            state_tag="root",
+        ),
+        "A": ToyNodeSpec(
+            node_id="A",
+            player="min",
+            children={"A1": "A1", "A2": "A2"},
+            state_tag="A_solved_min",
+        ),
+        "A1": ToyNodeSpec(
+            node_id="A1",
+            player="single",
+            terminal_value=4.0,
+            state_tag="A1_terminal_4",
+        ),
+        "A2": ToyNodeSpec(
+            node_id="A2",
+            player="single",
+            terminal_value=7.0,
+            state_tag="A2_terminal_7",
+        ),
+        "B": ToyNodeSpec(
+            node_id="B",
+            player="min",
+            children={"B1": "B1", "B2": "B2"},
+            state_tag="B_partial_draw_case",
+        ),
+        "B1": ToyNodeSpec(
+            node_id="B1",
+            player="single",
+            terminal_value=0.0,
+            state_tag="B1_terminal_drawish_0",
+        ),
+        "B2": ToyNodeSpec(
+            node_id="B2",
+            player="single",
+            heuristic_value=6.0,
+            state_tag="B2_heuristic_6",
+        ),
+        "C": ToyNodeSpec(
+            node_id="C",
+            player="min",
+            children={"C1": "C1", "C2": "C2"},
+            state_tag="C_partial_loss_case",
+        ),
+        "C1": ToyNodeSpec(
+            node_id="C1",
+            player="single",
+            terminal_value=-3.0,
+            state_tag="C1_terminal_minus3",
+        ),
+        "C2": ToyNodeSpec(
+            node_id="C2",
+            player="single",
+            heuristic_value=5.0,
+            state_tag="C2_heuristic_5",
+        ),
+        "D": ToyNodeSpec(
+            node_id="D",
+            player="min",
+            children={"D1": "D1", "D2": "D2"},
+            state_tag="D_solved_bad_branch",
+        ),
+        "D1": ToyNodeSpec(
+            node_id="D1",
+            player="single",
+            terminal_value=-2.0,
+            state_tag="D1_terminal_minus2",
+        ),
+        "D2": ToyNodeSpec(
+            node_id="D2",
+            player="single",
+            terminal_value=-6.0,
+            state_tag="D2_terminal_minus6",
+        ),
+    }
+    return ToyScenarioSpec(
+        name="minimax_semantic_stress",
+        root_id="root",
+        nodes=nodes,
+        description=(
+            "Minimax stress scenario for certainty semantics. Shows TERMINAL "
+            "leaves, FORCED solved internal MIN nodes, and ESTIMATE partial "
+            "MIN nodes in one GUI tree."
+        ),
+        expected_root_value=None,
+        expected_pv=(),
+    )
+
+
 def build_deceptive_trap_scenario_spec() -> ToyScenarioSpec:
     """Return a scenario whose best branch flips after deeper backup."""
     nodes = {
@@ -188,6 +284,7 @@ def all_toy_scenario_specs() -> tuple[ToyScenarioSpec, ...]:
     return (
         build_single_agent_backup_scenario_spec(),
         build_minimax_micro_scenario_spec(),
+        build_minimax_semantic_stress_scenario_spec(),
         build_deceptive_trap_scenario_spec(),
     )
 
@@ -196,5 +293,6 @@ __all__ = [
     "all_toy_scenario_specs",
     "build_deceptive_trap_scenario_spec",
     "build_minimax_micro_scenario_spec",
+    "build_minimax_semantic_stress_scenario_spec",
     "build_single_agent_backup_scenario_spec",
 ]
