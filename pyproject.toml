@@ -18,8 +18,7 @@ dependencies = [
     "atomheart>=0.1.9",
     "rich",
     "sortedcollections>=2.1.0",
-    "graphviz",
-      "PyYAML>=6.0",
+    "PyYAML>=6.0",
 ]
 
 license = "GPL-3.0-only"
@@ -32,6 +31,10 @@ authors = [
 ]
 
 [project.optional-dependencies]
+debug = [
+  "graphviz",
+]
+
 test = [
   "pytest>=9.0.2",
   "coverage",
@@ -268,7 +271,7 @@ base_python = ["python3.13"]
 # ----------------
 [tool.tox.env.py313]
 description = "Run tests"
-extras = ["test"]
+extras = ["test", "debug"]
 commands = [["pytest", "{posargs}"]]
 
 # ----------------

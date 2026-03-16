@@ -4,20 +4,20 @@ from types import SimpleNamespace
 from typing import Any
 
 from valanga import Color
+from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies import ExplicitMaxBackupPolicy, ExplicitMinimaxBackupPolicy
-from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
-    NodeMaxEvaluation,
-)
-from anemone.node_evaluation.node_max_evaluation_factory import NodeMaxEvaluationFactory
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from anemone.node_evaluation.tree.factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
+from anemone.node_evaluation.tree.single_agent.factory import NodeMaxEvaluationFactory
+from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
+    NodeMaxEvaluation,
+)
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
-from valanga.evaluations import Certainty, Value
 
 
 class _FakeOverEvent:

@@ -16,10 +16,10 @@ if TYPE_CHECKING:
         OverEventDetector,
         create_node_evaluator,
     )
-    from .node_max_evaluation_factory import NodeMaxEvaluationFactory
     from .tree.adversarial.node_adversarial_evaluation import NodeAdversarialEvaluation
     from .tree.adversarial.node_minmax_evaluation import NodeMinmaxEvaluation
     from .tree.factory import NodeTreeEvaluationFactory, NodeTreeMinmaxEvaluationFactory
+    from .tree.single_agent.factory import NodeMaxEvaluationFactory
     from .tree.single_agent.node_max_evaluation import NodeMaxEvaluation
     from .tree.single_agent.node_single_agent_evaluation import (
         NodeSingleAgentEvaluation,
@@ -40,7 +40,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
         "NodeMaxEvaluation",
     ),
     "NodeMaxEvaluationFactory": (
-        ".node_max_evaluation_factory",
+        ".tree.single_agent.factory",
         "NodeMaxEvaluationFactory",
     ),
     "NodeMinmaxEvaluation": (

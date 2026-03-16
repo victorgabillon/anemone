@@ -25,6 +25,18 @@ Optional torch integration:
 pip install anemone[nn]
 ```
 
+Optional debug tooling:
+
+```bash
+pip install anemone[debug]
+```
+
+Debug snapshot export and the debug browser's SVG rendering also require the
+system Graphviz executable (`dot`) to be installed.
+
+- Ubuntu: `sudo apt install graphviz`
+- macOS: `brew install graphviz`
+
 ## Quick start
 
 `anemone` exposes factory helpers to build a branch selector configured with your
