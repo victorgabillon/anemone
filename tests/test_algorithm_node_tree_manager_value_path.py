@@ -90,7 +90,9 @@ def test_update_backward_routes_expansion_children_through_value_propagator() ->
     assert value_propagator.calls == [[created_child, existing_child]]
 
 
-def test_update_indices_remains_a_separate_explicit_step(monkeypatch: Any) -> None:
+def test_refresh_exploration_indices_remains_a_separate_explicit_step(
+    monkeypatch: Any,
+) -> None:
     value_propagator = _SpyValuePropagator()
     manager = _build_manager(value_propagator=value_propagator)
     recorded_calls: list[tuple[object, object]] = []
@@ -107,6 +109,6 @@ def test_update_indices_remains_a_separate_explicit_step(monkeypatch: Any) -> No
     assert recorded_calls == []
 
     tree = object()
-    manager.update_indices(tree=tree)
+    manager.refresh_exploration_indices(tree=tree)
 
     assert recorded_calls == [(manager.index_manager, tree)]

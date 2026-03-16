@@ -511,10 +511,18 @@ class _ControlledTreeManager:
             raise AttributeError(name)
         return getattr(self._base, name)
 
-    def update_indices(self, *, tree: Any) -> None:
-        """Delegate index updates and consume a pending single-step."""
-        self._base.update_indices(tree=tree)
+    def refresh_exploration_indices(self, *, tree: Any) -> None:
+        """Delegate index refresh and consume a pending single-step."""
+        refresh = getattr(self._base, "refresh_exploration_indices", None)
+        if refresh is not None:
+            refresh(tree=tree)
+        else:
+            self._base.update_indices(tree=tree)
         self._controller.complete_iteration()
+
+    def update_indices(self, *, tree: Any) -> None:
+        """Backward-compatible alias for ``refresh_exploration_indices``."""
+        self.refresh_exploration_indices(tree=tree)
 
 
 class _ControlledNodeSelector:

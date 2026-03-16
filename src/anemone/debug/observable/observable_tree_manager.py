@@ -94,9 +94,17 @@ class ObservableAlgorithmNodeTreeManager:
         buffered_direct_value_events.flush_to(self._debug_sink)
         return result
 
-    def update_indices(self, tree: Any) -> None:
-        """Delegate index updates to the wrapped tree manager."""
+    def refresh_exploration_indices(self, tree: Any) -> None:
+        """Delegate the explicit index-refresh phase to the wrapped manager."""
+        refresh = getattr(self._base, "refresh_exploration_indices", None)
+        if refresh is not None:
+            refresh(tree=tree)
+            return
         self._base.update_indices(tree=tree)
+
+    def update_indices(self, tree: Any) -> None:
+        """Backward-compatible alias for ``refresh_exploration_indices``."""
+        self.refresh_exploration_indices(tree=tree)
 
     def update_backward(self, tree_expansions: Any) -> Any:
         """Delegate backward updates and infer best-effort backup events."""

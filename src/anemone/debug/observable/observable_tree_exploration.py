@@ -79,9 +79,13 @@ class _IterationObservingTreeManager:
         """Delegate unknown attributes to the wrapped tree manager."""
         return getattr(self._base, name)
 
-    def update_indices(self, *, tree: Any) -> None:
-        """Delegate index updates and emit one completion event per started iteration."""
-        self._base.update_indices(tree=tree)
+    def refresh_exploration_indices(self, *, tree: Any) -> None:
+        """Delegate index refresh and emit one completion event per iteration."""
+        refresh = getattr(self._base, "refresh_exploration_indices", None)
+        if refresh is not None:
+            refresh(tree=tree)
+        else:
+            self._base.update_indices(tree=tree)
 
         if (
             self._iteration_state.completed_iteration
@@ -95,6 +99,10 @@ class _IterationObservingTreeManager:
                 iteration_index=self._iteration_state.completed_iteration
             )
         )
+
+    def update_indices(self, *, tree: Any) -> None:
+        """Backward-compatible alias for ``refresh_exploration_indices``."""
+        self.refresh_exploration_indices(tree=tree)
 
 
 class ObservableTreeExploration:

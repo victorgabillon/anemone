@@ -188,7 +188,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             # Propagate value changes upward from the newly changed/opened nodes.
             self.tree_manager.update_backward(tree_expansions=tree_expansions)
             # Refresh exploration indices separately after value propagation.
-            self.tree_manager.update_indices(tree=self.tree)
+            self.tree_manager.refresh_exploration_indices(tree=self.tree)
 
             if loop % 10 == 0:
                 self.stopping_criterion.notify_percent_progress(

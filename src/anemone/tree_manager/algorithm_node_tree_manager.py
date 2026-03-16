@@ -141,17 +141,19 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         return tree_expansions
 
-    def update_indices(self, tree: trees.Tree[NodeT]) -> None:
-        """Update the indices of the nodes in the given tree.
+    def refresh_exploration_indices(self, tree: trees.Tree[NodeT]) -> None:
+        """Refresh exploration indices as a phase distinct from value propagation.
 
-        Args:
-            tree: The tree whose indices need to be updated.
-
-        Returns:
-            None
-
+        Value propagation and index refresh are intentionally separate phases.
+        Value propagation is incremental and upward, while index refresh remains
+        delegated to the repository's dedicated index logic because index
+        dependencies here are heterogeneous and not uniformly backward.
         """
         update_all_indices(index_manager=self.index_manager, tree=tree)
+
+    def update_indices(self, tree: trees.Tree[NodeT]) -> None:
+        """Backward-compatible alias for ``refresh_exploration_indices``."""
+        self.refresh_exploration_indices(tree=tree)
 
     def update_backward(self, tree_expansions: TreeExpansions[NodeT]) -> None:
         """Propagate value changes upward from the latest structural expansions.
