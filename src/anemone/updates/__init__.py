@@ -1,32 +1,9 @@
-"""Provide classes and functions for updating tree values in the branch selector.
+"""Internal update helpers.
 
-Classes:
-- AlgorithmNodeUpdater: A class for updating algorithm nodes in the tree.
-- MinMaxEvaluationUpdater: A class for updating min-max evaluation values in the tree.
-
-Functions:
-- create_algorithm_node_updater: A function for creating an instance of AlgorithmNodeUpdater.
-
-Other:
-- UpdateInstructions: A class representing update instructions for a single node.
-- UpdateInstructionsBatch: A class representing a batch of update instructions.
-
+Value propagation now routes through ``anemone.updates.value_propagator``.
+Descendant-depth propagation lives in
+``anemone.updates.depth_index_propagator``.
+Exploration-index refresh is orchestrated separately by tree-manager code.
 """
 
-from .algorithm_node_updater import AlgorithmNodeUpdater
-from .factory import create_algorithm_node_updater
-from .minmax_evaluation_updater import MinMaxEvaluationUpdater
-from .updates_file import (
-    UpdateInstructionsFromOneNode,
-    UpdateInstructionsTowardsMultipleNodes,
-    UpdateInstructionsTowardsOneParentNode,
-)
-
-__all__ = [
-    "AlgorithmNodeUpdater",
-    "MinMaxEvaluationUpdater",
-    "UpdateInstructionsFromOneNode",
-    "UpdateInstructionsTowardsMultipleNodes",
-    "UpdateInstructionsTowardsOneParentNode",
-    "create_algorithm_node_updater",
-]
+__all__: list[str] = []

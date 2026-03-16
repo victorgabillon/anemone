@@ -106,6 +106,13 @@ class ObservableAlgorithmNodeTreeManager:
         """Backward-compatible alias for ``refresh_exploration_indices``."""
         self.refresh_exploration_indices(tree=tree)
 
+    def propagate_depth_index(self, tree_expansions: Any) -> Any:
+        """Delegate descendant-depth propagation when the base manager has it."""
+        propagate = getattr(self._base, "propagate_depth_index", None)
+        if propagate is None:
+            return None
+        return propagate(tree_expansions=tree_expansions)
+
     def update_backward(self, tree_expansions: Any) -> Any:
         """Delegate backward updates and infer best-effort backup events."""
         observed_nodes = collect_nodes_and_ancestors(

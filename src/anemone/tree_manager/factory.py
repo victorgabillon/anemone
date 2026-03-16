@@ -1,13 +1,7 @@
-"""Provide a factory function for creating an AlgorithmNodeTreeManager object.
-
-The AlgorithmNodeTreeManager is responsible for managing the tree structure of algorithm nodes,
-performing updates on the nodes, and handling evaluation queries.
-
-"""
+"""Provide a factory function for creating an AlgorithmNodeTreeManager object."""
 
 from typing import Any
 
-from anemone import updates as upda
 from anemone.dynamics import SearchDynamics
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
@@ -24,7 +18,7 @@ from anemone.node_factory import (
     AlgorithmNodeFactory,
 )
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-from anemone.updates.index_updater import IndexUpdater
+from anemone.updates.depth_index_propagator import DepthIndexPropagator
 
 from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from .tree_manager import TreeManager
@@ -35,7 +29,7 @@ def create_algorithm_node_tree_manager(
     algorithm_node_factory: AlgorithmNodeFactory[Any],
     dynamics: SearchDynamics[Any, Any],
     index_computation: IndexComputationType | None,
-    index_updater: IndexUpdater | None,
+    depth_index: bool = False,
 ) -> AlgorithmNodeTreeManager:
     """Create an AlgorithmNodeTreeManager object.
 
@@ -43,8 +37,8 @@ def create_algorithm_node_tree_manager(
         node_direct_evaluator: The NodeDirectEvaluator used for evaluating nodes in the tree.
         algorithm_node_factory: The AlgorithmNodeFactory object used for creating algorithm nodes.
         index_computation: The type of index computation to be used.
-        index_updater: The IndexUpdater object used for updating the indices.
         dynamics: The SearchDynamics object used for labeling the edges in the visualization.
+        depth_index: Whether to maintain descendant-depth metadata incrementally.
 
     Returns:
         An AlgorithmNodeTreeManager object.
@@ -53,10 +47,6 @@ def create_algorithm_node_tree_manager(
     tree_manager: TreeManager[AlgorithmNode] = TreeManager[AlgorithmNode](
         node_factory=algorithm_node_factory,
         dynamics=dynamics,
-    )
-
-    algorithm_node_updater: upda.AlgorithmNodeUpdater = (
-        upda.create_algorithm_node_updater(index_updater=index_updater)
     )
 
     evaluation_queries: EvaluationQueries = EvaluationQueries()
@@ -68,10 +58,12 @@ def create_algorithm_node_tree_manager(
     algorithm_node_tree_manager: AlgorithmNodeTreeManager = AlgorithmNodeTreeManager(
         node_evaluator=node_direct_evaluator,
         tree_manager=tree_manager,
-        algorithm_node_updater=algorithm_node_updater,
         algorithm_tree_node_factory=algorithm_node_factory,
         evaluation_queries=evaluation_queries,
         index_manager=exploration_index_manager,
+        depth_index_propagator=(
+            DepthIndexPropagator() if depth_index else None
+        ),
     )
 
     return algorithm_node_tree_manager

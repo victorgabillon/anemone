@@ -1,22 +1,21 @@
 """Provide the implementation of the SearchFactory abstract factory.
 
 The SearchFactory class creates
-dependent factories for selecting nodes to open, creating indices, and updating indices. These factories need to
+dependent factories for selecting nodes to open and creating indices. These factories need to
 operate on the same data, so they are created in a coherent way.
 
-The SearchFactory class provides methods to create the node selector factory, the index updater, and to create
-node indices for a given tree node.
+The SearchFactory class provides methods to create the node selector factory and
+to create node indices for a given tree node.
 
 Classes:
 - SearchFactory: An abstract factory for creating dependent factories for selecting nodes to open, creating indices,
-and updating indices.
+and exploring them coherently.
 
 Protocols:
 - SearchFactoryP: A protocol that defines the abstract methods for the SearchFactory class.
 
 Functions:
 - create_node_selector_factory: A function that creates the node selector factory.
-- create_node_index_updater: A function that creates the index updater.
 - node_index_create: A function that creates node indices for a given tree node.
 """
 
@@ -46,18 +45,17 @@ from anemone.node_selector.sequool.factory import (
     SequoolArgs,
 )
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-from anemone.updates.index_updater import IndexUpdater
 
 NodeSelectorFactory = Callable[[], node_selectors.NodeSelector]
 
 
 class SearchFactoryP(Protocol):
-    """Create dependent factories for node selection and index updates.
+    """Create dependent factories for node selection and node-index creation.
 
     - the node selector
     - the index creator
-    - the index updater
-    These three classes need to operate on the same data, so they must be created coherently.
+    These collaborators need to operate on the same data, so they must be
+    created coherently.
     """
 
     def create_node_selector_factory(self) -> NodeSelectorFactory:
@@ -65,15 +63,6 @@ class SearchFactoryP(Protocol):
 
         Returns:
             NodeSelectorFactory: The created NodeSelectorFactory object.
-
-        """
-        ...
-
-    def create_node_index_updater(self) -> IndexUpdater | None:
-        """Create and return an IndexUpdater instance for updating the node index.
-
-        Returns:
-            IndexUpdater | None: An instance of the IndexUpdater class if successful, None otherwise.
 
         """
         ...
@@ -104,12 +93,12 @@ def _base_selector_args(args: Any) -> Any:
 
 @dataclass
 class SearchFactory:
-    """Create dependent factories for node selection and index updates.
+    """Create dependent factories for node selection and node-index creation.
 
     - the node selector
     - the index creator
-    - the index updater
-    These three classes need to operate on the same data, so they must be created coherently.
+    These collaborators need to operate on the same data, so they must be
+    created coherently.
     """
 
     node_selector_args: ComposedNodeSelectorArgs | None
@@ -170,17 +159,6 @@ class SearchFactory:
             hooks=self.hooks,
         )
         return node_selector_create
-
-    def create_node_index_updater(self) -> IndexUpdater | None:
-        """Create the index updater.
-
-        Returns:
-            An instance of the IndexUpdater class if depth indexing is enabled, otherwise None.
-
-        """
-        index_updater: IndexUpdater | None
-        index_updater = IndexUpdater() if self.depth_index else None
-        return index_updater
 
     def node_index_create[StateT: State](
         self,

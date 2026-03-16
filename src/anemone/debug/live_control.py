@@ -524,6 +524,13 @@ class _ControlledTreeManager:
         """Backward-compatible alias for ``refresh_exploration_indices``."""
         self.refresh_exploration_indices(tree=tree)
 
+    def propagate_depth_index(self, *, tree_expansions: Any) -> Any:
+        """Delegate descendant-depth propagation when the base manager has it."""
+        propagate = getattr(self._base, "propagate_depth_index", None)
+        if propagate is None:
+            return None
+        return propagate(tree_expansions=tree_expansions)
+
 
 class _ControlledNodeSelector:
     """Wrap a node selector and optionally force one node expansion.

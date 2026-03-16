@@ -21,12 +21,7 @@ from anemone.node_factory.algorithm_node_factory import AlgorithmNodeFactory
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-from anemone.updates.algorithm_node_updater import AlgorithmNodeUpdater
-from anemone.updates.updates_file import (
-    UpdateInstructionsFromOneNode,
-    UpdateInstructionsTowardsMultipleNodes,
-    UpdateInstructionsTowardsOneParentNode,
-)
+from anemone.updates.depth_index_propagator import DepthIndexPropagator
 from anemone.updates.value_propagator import ValuePropagator
 
 from .tree_expander import TreeExpansion, TreeExpansions, record_tree_expansion
@@ -41,20 +36,21 @@ if TYPE_CHECKING:
 
 @dataclass
 class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """Manage an algorithm tree by opening nodes, evaluating new leaves, and updating indices.
+    """Manage expansion, evaluation, upward propagation, and index refresh.
 
-    This class wraps :class:`TreeManager` to add AlgorithmNode-specific behavior such as
-    evaluation queries, value updates, and exploration index updates.
+    This class wraps :class:`TreeManager` to add AlgorithmNode-specific behavior
+    such as evaluation queries, value propagation, descendant-depth
+    propagation, and exploration-index refresh.
     """
 
     tree_manager: TreeManager[NodeT]
     algorithm_tree_node_factory: AlgorithmNodeFactory
 
-    algorithm_node_updater: AlgorithmNodeUpdater
     evaluation_queries: EvaluationQueries
     node_evaluator: NodeDirectEvaluator | None
     index_manager: NodeExplorationIndexManager
     value_propagator: ValuePropagator = field(default_factory=ValuePropagator)
+    depth_index_propagator: DepthIndexPropagator | None = None
 
     @property
     def dynamics(self) -> SearchDynamics[Any, Any]:
@@ -144,10 +140,11 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def refresh_exploration_indices(self, tree: trees.Tree[NodeT]) -> None:
         """Refresh exploration indices as a phase distinct from value propagation.
 
-        Value propagation and index refresh are intentionally separate phases.
-        Value propagation is incremental and upward, while index refresh remains
-        delegated to the repository's dedicated index logic because index
-        dependencies here are heterogeneous and not uniformly backward.
+        Value propagation, descendant-depth propagation, and index refresh are
+        intentionally separate phases. The upward propagation steps are
+        incremental, while index refresh remains delegated to the repository's
+        dedicated index logic because index dependencies here are heterogeneous
+        and not uniformly backward.
         """
         update_all_indices(index_manager=self.index_manager, tree=tree)
 
@@ -176,12 +173,31 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         # value-only propagation pass.
         self.value_propagator.propagate_from_changed_nodes(changed_nodes)
 
+    def propagate_depth_index(self, tree_expansions: TreeExpansions[NodeT]) -> None:
+        """Propagate descendant-depth metadata separately from value updates.
+
+        ``MaxDepthDescendants`` is an upward structural summary, not part of
+        value propagation and not part of the top-down exploration-index refresh
+        phase. This hook keeps that metadata alive without restoring the removed
+        mixed updater pipeline.
+        """
+        if self.depth_index_propagator is None:
+            return
+
+        changed_nodes = self._collect_changed_nodes_from_expansions(
+            tree_expansions=tree_expansions
+        )
+        if not changed_nodes:
+            return
+
+        self.depth_index_propagator.propagate_from_changed_nodes(changed_nodes)
+
     def _collect_changed_nodes_from_expansions(
         self,
         *,
         tree_expansions: TreeExpansions[NodeT],
     ) -> list[NodeT]:
-        """Return the nodes that seed the next value-propagation wave.
+        """Return the nodes that seed the next upward propagation wave.
 
         Newly created children have just received direct evaluation in
         ``open_instructions``. Existing children can also appear here when a new
@@ -191,46 +207,12 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         This mirrors the old ``generate_update_instructions(...)`` seeding
         behavior: each ``tree_expansion.child_node`` was treated as an initial
-        "new value" source without additional semantic filtering.
+        "new value" source without additional semantic filtering. The same seed
+        rule is also correct for descendant-depth propagation because a newly
+        linked or newly created child is the structural fact its parents must
+        observe.
         """
         return [tree_expansion.child_node for tree_expansion in tree_expansions]
-
-    def update_node(
-        self,
-        node_to_update: NodeT,
-        update_instructions: UpdateInstructionsTowardsOneParentNode,
-    ) -> UpdateInstructionsTowardsMultipleNodes[NodeT]:
-        """Update a node using the provided update instructions.
-
-        Args:
-            node_to_update: The node to be updated.
-            update_instructions: The instructions for updating the node.
-
-        Returns:
-            A batch of update instructions for the parent nodes of the updated node.
-
-        """
-        # UPDATES
-        new_update_instructions: UpdateInstructionsFromOneNode = (
-            self.algorithm_node_updater.perform_updates(
-                node_to_update=node_to_update, update_instructions=update_instructions
-            )
-        )
-
-        update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[NodeT]
-        update_instructions_batch = UpdateInstructionsTowardsMultipleNodes()
-        parent_node: NodeT
-        branch_from_parent: BranchKey
-        for parent_node, branch_from_parent in node_to_update.parent_nodes.items():
-            # there was a test for emptiness here of new updates instructions remove this comment if no bug appear
-            assert parent_node not in update_instructions_batch.one_node_instructions
-            update_instructions_batch.add_update_from_one_child_node(
-                update_from_child_node=new_update_instructions,
-                parent_node=parent_node,
-                branch_from_parent=branch_from_parent,
-            )
-
-        return update_instructions_batch
 
     def print_some_stats(self, tree: trees.Tree[NodeT]) -> None:
         """Print statistics about the given tree.

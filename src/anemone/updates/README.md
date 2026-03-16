@@ -1,14 +1,19 @@
 # Update pipeline
 
-This folder hosts the logic for propagating updates after node expansions.
+This folder hosts the remaining helpers for propagating updates after node
+expansions.
 
 ## Key pieces
 
-- `algorithm_node_updater.py`: Updates algorithm nodes after expansions.
-- `minmax_evaluation_updater.py`: Propagates minmax values up the tree.
-- `value_propagator.py`: New additive value-only dirty-ancestor propagator.
-- `index_updater.py`: Updates exploration indices when depth indexing is enabled.
-- `updates_file.py` and `index_block.py`: Instruction objects describing which
-  nodes/branches need updates.
+- `value_propagator.py`: depth-batched dirty-ancestor propagation for value-only
+  updates.
+- `depth_index_propagator.py`: depth-batched dirty-ancestor propagation for
+  `MaxDepthDescendants` metadata when depth indexing is enabled.
 
-These updates are triggered by `tree_manager` after new nodes are opened.
+The active architecture is:
+
+- structural expansion
+- direct evaluation
+- value propagation via `ValuePropagator`
+- descendant-depth propagation via `DepthIndexPropagator` when needed
+- exploration-index refresh as a separate explicit phase in `tree_manager`

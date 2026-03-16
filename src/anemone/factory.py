@@ -159,7 +159,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[
         dynamics=search_dynamics,
         node_direct_evaluator=node_evaluator,
         index_computation=args.index_computation,
-        index_updater=search_factory.create_node_index_updater(),
+        depth_index=search_factory.depth_index,
     )
 
     tree_branch_selector: TreeAndValueBranchSelector[StateT] = (

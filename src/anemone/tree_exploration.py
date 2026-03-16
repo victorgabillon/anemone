@@ -187,7 +187,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
             # Propagate value changes upward from the newly changed/opened nodes.
             self.tree_manager.update_backward(tree_expansions=tree_expansions)
-            # Refresh exploration indices separately after value propagation.
+            # Maintain descendant-depth metadata as its own upward phase.
+            self.tree_manager.propagate_depth_index(tree_expansions=tree_expansions)
+            # Refresh exploration indices separately after the upward phases.
             self.tree_manager.refresh_exploration_indices(tree=self.tree)
 
             if loop % 10 == 0:

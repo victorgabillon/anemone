@@ -41,19 +41,35 @@ class _SpyIndexManager:
     """Marker object used to assert index refresh is separate."""
 
 
+class _SpyDepthIndexPropagator:
+    """Capture the exact seed set given to depth-index propagation."""
+
+    def __init__(self) -> None:
+        self.calls: list[list[_FakeNode]] = []
+
+    def propagate_from_changed_nodes(
+        self,
+        changed_nodes: list[_FakeNode],
+    ) -> set[_FakeNode]:
+        """Record one propagation request."""
+        self.calls.append(list(changed_nodes))
+        return set()
+
+
 def _build_manager(
     *,
     value_propagator: _SpyValuePropagator,
+    depth_index_propagator: _SpyDepthIndexPropagator | None = None,
 ) -> AlgorithmNodeTreeManager[Any]:
     """Create a manager with only the dependencies this test needs."""
     return AlgorithmNodeTreeManager(
         tree_manager=SimpleNamespace(dynamics=SimpleNamespace()),
         algorithm_tree_node_factory=SimpleNamespace(),
-        algorithm_node_updater=SimpleNamespace(),
         evaluation_queries=SimpleNamespace(),
         node_evaluator=None,
         index_manager=_SpyIndexManager(),
         value_propagator=value_propagator,
+        depth_index_propagator=depth_index_propagator,
     )
 
 
@@ -88,6 +104,42 @@ def test_update_backward_routes_expansion_children_through_value_propagator() ->
     manager.update_backward(tree_expansions=tree_expansions)
 
     assert value_propagator.calls == [[created_child, existing_child]]
+
+
+def test_propagate_depth_index_routes_expansion_children_through_depth_propagator() -> None:
+    root = _FakeNode(id=1, tree_depth=0)
+    created_child = _FakeNode(id=2, tree_depth=1)
+    existing_child = _FakeNode(id=3, tree_depth=1)
+
+    tree_expansions = TreeExpansions()
+    tree_expansions.add_creation(
+        TreeExpansion(
+            child_node=created_child,
+            parent_node=root,
+            state_modifications=None,
+            creation_child_node=True,
+            branch_key=0,
+        )
+    )
+    tree_expansions.add_connection(
+        TreeExpansion(
+            child_node=existing_child,
+            parent_node=root,
+            state_modifications=None,
+            creation_child_node=False,
+            branch_key=1,
+        )
+    )
+
+    depth_index_propagator = _SpyDepthIndexPropagator()
+    manager = _build_manager(
+        value_propagator=_SpyValuePropagator(),
+        depth_index_propagator=depth_index_propagator,
+    )
+
+    manager.propagate_depth_index(tree_expansions=tree_expansions)
+
+    assert depth_index_propagator.calls == [[created_child, existing_child]]
 
 
 def test_refresh_exploration_indices_remains_a_separate_explicit_step(

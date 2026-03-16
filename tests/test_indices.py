@@ -175,7 +175,6 @@ def build_tree_from_yaml_clean(
         node_direct_evaluator=node_direct_eval,
         dynamics=dyn,
         index_computation=index_computation,
-        index_updater=search_factory.create_node_index_updater(),
     )
 
     root_state = FakeYamlState(

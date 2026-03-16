@@ -5,7 +5,6 @@ configuration:
 
 - Node selectors (`node_selector/`).
 - Exploration index data (`indices/`).
-- Index update helpers (`updates/`).
 
 `search_factory.py` exposes `SearchFactory` and `SearchFactoryP` to keep selector,
-index creation, and index updates in sync.
+index creation, and search configuration in sync.
