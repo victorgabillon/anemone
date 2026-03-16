@@ -55,7 +55,7 @@ def _connect(parent: _FakeNode, branch: int, child: _FakeNode) -> None:
 
 def _as_algorithm_node(node: _FakeNode) -> AlgorithmNode[Any]:
     """Cast a fake node to the production node type used by the propagator."""
-    return cast(AlgorithmNode[Any], node)
+    return cast("AlgorithmNode[Any]", node)
 
 
 def test_single_changed_child_recomputes_parent() -> None:
@@ -66,7 +66,7 @@ def test_single_changed_child_recomputes_parent() -> None:
     recompute_calls: list[str] = []
 
     def recompute(node: AlgorithmNode[Any]) -> bool:
-        recompute_calls.append(cast(_FakeNode, node).name)
+        recompute_calls.append(cast("_FakeNode", node).name)
         return False
 
     propagator = ValuePropagator(recompute_node_value=recompute)
@@ -88,7 +88,7 @@ def test_two_changed_siblings_recompute_parent_once_before_grandparent() -> None
     recompute_calls: list[str] = []
 
     def recompute(node: AlgorithmNode[Any]) -> bool:
-        fake_node = cast(_FakeNode, node)
+        fake_node = cast("_FakeNode", node)
         recompute_calls.append(fake_node.name)
         return fake_node is parent
 
@@ -111,7 +111,7 @@ def test_changed_child_with_two_parents_schedules_both_parents() -> None:
     recompute_calls: list[str] = []
 
     def recompute(node: AlgorithmNode[Any]) -> bool:
-        recompute_calls.append(cast(_FakeNode, node).name)
+        recompute_calls.append(cast("_FakeNode", node).name)
         return False
 
     propagator = ValuePropagator(recompute_node_value=recompute)
@@ -136,7 +136,7 @@ def test_depth_waves_process_deeper_dirty_nodes_before_shallower_ancestors() -> 
     recompute_calls: list[str] = []
 
     def recompute(node: AlgorithmNode[Any]) -> bool:
-        fake_node = cast(_FakeNode, node)
+        fake_node = cast("_FakeNode", node)
         recompute_calls.append(fake_node.name)
         return fake_node in {lower_parent, upper_parent}
 
@@ -152,9 +152,7 @@ def test_default_recompute_uses_full_current_child_snapshot() -> None:
     sibling = _FakeNode(name="sibling", tree_depth=2)
     parent = _FakeNode(name="parent", tree_depth=1)
     parent.tree_evaluation = _FakeEvaluation(
-        results=[
-            BackupResult(value_changed=True, pv_changed=False, over_changed=False)
-        ]
+        results=[BackupResult(value_changed=True, pv_changed=False, over_changed=False)]
     )
     _connect(parent, branch=0, child=changed_child)
     _connect(parent, branch=1, child=sibling)

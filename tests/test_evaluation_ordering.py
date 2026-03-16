@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 
 from valanga import Color
+from valanga.evaluations import Certainty, Value
 
 from anemone.values import EvaluationOrdering
-from valanga.evaluations import Certainty, Value
 
 
 @dataclass(frozen=True)

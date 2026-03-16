@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 
 from valanga import Color
+from valanga.evaluations import Certainty, Value
 
 from anemone.node_selector.uniform.uniform import Uniform
-from valanga.evaluations import Certainty, Value
 
 
 @dataclass

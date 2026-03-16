@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from valanga.evaluations import Certainty, Value
+
 from anemone.node_evaluation.common.canonical_value import (
     ValueSemanticsError,
     has_over_event,
@@ -10,7 +12,6 @@ from anemone.node_evaluation.common.canonical_value import (
     is_terminal_value,
     validate_value_semantics,
 )
-from valanga.evaluations import Certainty, Value
 
 
 @dataclass(frozen=True)

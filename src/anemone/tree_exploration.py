@@ -185,7 +185,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 tree=self.tree, opening_instructions=opening_instructions_subset
             )
 
+            # Propagate value changes upward from the newly changed/opened nodes.
             self.tree_manager.update_backward(tree_expansions=tree_expansions)
+            # Refresh exploration indices separately after value propagation.
             self.tree_manager.update_indices(tree=self.tree)
 
             if loop % 10 == 0:

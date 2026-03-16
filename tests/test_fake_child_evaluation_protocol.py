@@ -1,8 +1,8 @@
 """Regression checks for shared tree-evaluation test doubles."""
 
 from valanga import Color
-
 from valanga.evaluations import Certainty, Value
+
 from tests.fakes_tree_evaluation import (
     FakeChildEvaluation,
     FakeChildNode,

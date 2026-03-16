@@ -48,8 +48,7 @@ class ValuePropagator:
         whether the change is parent-relevant.
         """
         self._recompute_node_value_impl = (
-            recompute_node_value
-            or self._recompute_node_value_from_full_child_snapshot
+            recompute_node_value or self._recompute_node_value_from_full_child_snapshot
         )
 
     def propagate_from_changed_nodes(
@@ -64,6 +63,7 @@ class ValuePropagator:
         Returns:
             The set of ancestor nodes touched/recomputed during propagation.
             This is intentionally broader than "actually changed nodes".
+
         """
         dirty_by_depth: dict[int, set[AlgorithmNode[Any]]] = {}
         touched_nodes: set[AlgorithmNode[Any]] = set()

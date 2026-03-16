@@ -10,6 +10,8 @@ from dataclasses import replace
 from random import Random
 from typing import TYPE_CHECKING, Any
 
+from valanga.evaluations import Certainty
+
 from anemone.debug import LiveDebugEnvironment
 from anemone.debug.toy_scenarios import (
     ToyScenarioSpec,
@@ -23,7 +25,6 @@ from anemone.debug.toy_scenarios import (
 )
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
 from anemone.tree_exploration import TreeExploration
-from valanga.evaluations import Certainty
 
 if TYPE_CHECKING:
     from pathlib import Path

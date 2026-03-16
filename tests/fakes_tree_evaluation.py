@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from typing import Any
 
 from valanga import Color
-
 from valanga.evaluations import Certainty, Value
 
 

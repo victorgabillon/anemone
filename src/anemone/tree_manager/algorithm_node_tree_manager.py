@@ -1,6 +1,6 @@
 """Defining the AlgorithmNodeTreeManager class."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey
@@ -27,6 +27,7 @@ from anemone.updates.updates_file import (
     UpdateInstructionsTowardsMultipleNodes,
     UpdateInstructionsTowardsOneParentNode,
 )
+from anemone.updates.value_propagator import ValuePropagator
 
 from .tree_expander import TreeExpansion, TreeExpansions, record_tree_expansion
 from .tree_manager import TreeManager
@@ -53,6 +54,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     evaluation_queries: EvaluationQueries
     node_evaluator: NodeDirectEvaluator | None
     index_manager: NodeExplorationIndexManager
+    value_propagator: ValuePropagator = field(default_factory=ValuePropagator)
 
     @property
     def dynamics(self) -> SearchDynamics[Any, Any]:
@@ -152,7 +154,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         update_all_indices(index_manager=self.index_manager, tree=tree)
 
     def update_backward(self, tree_expansions: TreeExpansions[NodeT]) -> None:
-        """Update algorithm nodes by propagating updates from recent expansions.
+        """Propagate value changes upward from the latest structural expansions.
 
         Args:
             tree_expansions: The expansions that triggered the updates.
@@ -161,33 +163,35 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             None
 
         """
-        update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[NodeT]
-        update_instructions_batch = (
-            self.algorithm_node_updater.generate_update_instructions(
-                tree_expansions=tree_expansions
-            )
+        changed_nodes = self._collect_changed_nodes_from_expansions(
+            tree_expansions=tree_expansions
         )
+        if not changed_nodes:
+            return
 
-        while update_instructions_batch:
-            node_to_update: NodeT
-            update_instructions: UpdateInstructionsTowardsOneParentNode
-            node_to_update, update_instructions = update_instructions_batch.pop_item()
-            extra_update_instructions_batch: UpdateInstructionsTowardsMultipleNodes[
-                NodeT
-            ]
-            extra_update_instructions_batch = self.update_node(
-                node_to_update=node_to_update, update_instructions=update_instructions
-            )
-            # merge
-            while extra_update_instructions_batch.one_node_instructions:
-                parent_node_to_update: NodeT
-                update: UpdateInstructionsTowardsOneParentNode
-                parent_node_to_update, update = (
-                    extra_update_instructions_batch.pop_item()
-                )
-                update_instructions_batch.add_updates_towards_one_parent_node(
-                    parent_node=parent_node_to_update, update_from_child_node=update
-                )
+        # Value propagation is intentionally separate from exploration-index
+        # refresh. The caller performs the explicit index refresh step after this
+        # value-only propagation pass.
+        self.value_propagator.propagate_from_changed_nodes(changed_nodes)
+
+    def _collect_changed_nodes_from_expansions(
+        self,
+        *,
+        tree_expansions: TreeExpansions[NodeT],
+    ) -> list[NodeT]:
+        """Return the nodes that seed the next value-propagation wave.
+
+        Newly created children have just received direct evaluation in
+        ``open_instructions``. Existing children can also appear here when a new
+        structural link is added to an already-known node. In both cases, the
+        expanded child node is the smallest accurate seed for marking parents
+        dirty without preemptively seeding arbitrary ancestors.
+
+        This mirrors the old ``generate_update_instructions(...)`` seeding
+        behavior: each ``tree_expansion.child_node`` was treated as an initial
+        "new value" source without additional semantic filtering.
+        """
+        return [tree_expansion.child_node for tree_expansion in tree_expansions]
 
     def update_node(
         self,

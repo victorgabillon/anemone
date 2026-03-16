@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 
 from valanga import Color
+from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
@@ -12,7 +13,6 @@ from anemone.node_evaluation.tree.factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.objectives import AdversarialZeroSumObjective
-from valanga.evaluations import Certainty, Value
 
 
 def _leaf(score: float) -> SimpleNamespace:

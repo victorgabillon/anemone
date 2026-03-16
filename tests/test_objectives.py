@@ -5,13 +5,13 @@ from types import SimpleNamespace
 from typing import Any
 
 from valanga import Color
+from valanga.evaluations import Certainty, Value
 
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from anemone.objectives import AdversarialZeroSumObjective
 from anemone.values import EvaluationOrdering
-from valanga.evaluations import Certainty, Value
 
 
 @dataclass(frozen=True)

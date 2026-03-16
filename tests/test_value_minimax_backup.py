@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from valanga import Color
+from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies.explicit_minimax import (
     ExplicitMinimaxBackupPolicy,
@@ -15,7 +16,6 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from anemone.values import DEFAULT_EVALUATION_ORDERING
-from valanga.evaluations import Certainty, Value
 
 
 @dataclass(frozen=True)

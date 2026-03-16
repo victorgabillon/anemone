@@ -28,7 +28,7 @@ def _build_parent_eval(
         branches_children=children,
         all_branches_generated=all_generated,
     )
-    evaluation = NodeMinmaxEvaluation(tree_node=cast(Any, parent_tree_node))
+    evaluation = NodeMinmaxEvaluation(tree_node=cast("Any", parent_tree_node))
     set_estimate_value(evaluation, score=parent_eval_value)
     return evaluation
 

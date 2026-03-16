@@ -7,11 +7,11 @@ from valanga import Color
 from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
-from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
-    NodeMaxEvaluation,
-)
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
+)
+from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
+    NodeMaxEvaluation,
 )
 
 

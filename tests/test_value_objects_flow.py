@@ -5,8 +5,10 @@ from types import SimpleNamespace
 from typing import Any
 
 from valanga import Color, OverEvent
+from valanga.evaluations import Certainty, Value
 from valanga.over_event import HowOver
 
+from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 from anemone.node_evaluation.direct.node_direct_evaluator import (
     DirectValueInvariantError,
     EvaluationQueries,
@@ -15,9 +17,7 @@ from anemone.node_evaluation.direct.node_direct_evaluator import (
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 from anemone.objectives import Objective
-from valanga.evaluations import Certainty, Value
 
 
 class _OverDetector:

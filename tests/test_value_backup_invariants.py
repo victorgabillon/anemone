@@ -4,11 +4,11 @@ from types import SimpleNamespace
 from typing import Any
 
 from valanga import Color
+from valanga.evaluations import Certainty
 
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from valanga.evaluations import Certainty
 from tests.fakes_tree_evaluation import (
     FakeChildEvaluation,
     FakeChildNode,
