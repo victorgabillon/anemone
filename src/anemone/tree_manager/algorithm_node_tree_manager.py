@@ -17,6 +17,9 @@ from anemone.node_evaluation.direct import (
     EvaluationQueries,
     NodeDirectEvaluator,
 )
+from anemone.node_evaluation.common.branch_frontier import (
+    require_branch_frontier_aware,
+)
 from anemone.node_factory.algorithm_node_factory import AlgorithmNodeFactory
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
@@ -29,9 +32,6 @@ from .tree_manager import TreeManager
 
 if TYPE_CHECKING:
     from anemone import node_selector as node_sel
-    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
-        NodeMinmaxEvaluation,
-    )
 
 
 @dataclass
@@ -79,9 +79,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             tree=tree, parent_node=parent_node, branch=branch
         )
 
-        cast(
-            "NodeMinmaxEvaluation[Any, Any]", parent_node.tree_evaluation
-        ).branches_to_explore.append(
+        require_branch_frontier_aware(parent_node.tree_evaluation).on_branch_opened(
             branch
         )  # default action checks for exactness are performed later
 

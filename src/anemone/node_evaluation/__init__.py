@@ -4,6 +4,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from .common.branch_frontier import BranchFrontierAware, BranchFrontierState
     from .common import canonical_value
     from .common.canonical_value import ValueSemanticsError
     from .common.node_value_evaluation import NodeValueEvaluation
@@ -26,6 +27,8 @@ if TYPE_CHECKING:
     )
 
 _EXPORTS: dict[str, tuple[str, str | None]] = {
+    "BranchFrontierAware": (".common.branch_frontier", "BranchFrontierAware"),
+    "BranchFrontierState": (".common.branch_frontier", "BranchFrontierState"),
     "DirectValueInvariantError": (".direct", "DirectValueInvariantError"),
     "EvaluationQueries": (".direct", "EvaluationQueries"),
     "MasterStateValueEvaluator": (".direct", "MasterStateValueEvaluator"),
@@ -64,6 +67,8 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
 }
 
 __all__ = [
+    "BranchFrontierAware",
+    "BranchFrontierState",
     "DirectValueInvariantError",
     "EvaluationQueries",
     "MasterStateValueEvaluator",

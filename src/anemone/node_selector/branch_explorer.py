@@ -5,19 +5,17 @@ BranchExplorer is responsible for exploring branches in a game tree.
 
 from enum import StrEnum
 from random import Random
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
 from valanga import BranchKey
 
+from anemone.node_evaluation.common.branch_frontier import (
+    require_branch_frontier_aware,
+)
 from anemone.node_selector.notations_and_statics import (
     zipf_picks_random,
 )
 from anemone.nodes.algorithm_node import AlgorithmNode
-
-if TYPE_CHECKING:
-    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
-        NodeMinmaxEvaluation,
-    )
 
 
 class SamplingPriorities(StrEnum):
@@ -81,10 +79,10 @@ class ZipfBranchExplorer(BranchExplorer):
             AlgorithmNode: The sampled child node to explore.
 
         """
-        sorted_not_over_branches: list[BranchKey] = cast(
-            "NodeMinmaxEvaluation[Any, Any]",
-            tree_node_to_sample_from.tree_evaluation,
-        ).sort_branches_to_explore()
+        frontier_aware = require_branch_frontier_aware(
+            tree_node_to_sample_from.tree_evaluation
+        )
+        sorted_not_over_branches = frontier_aware.frontier_branches_in_order()
 
         return zipf_picks_random(
             ordered_list_elements=sorted_not_over_branches,

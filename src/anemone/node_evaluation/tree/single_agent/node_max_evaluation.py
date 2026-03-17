@@ -10,6 +10,7 @@ from valanga.evaluations import Value
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.common import canonical_value
+from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective
@@ -30,6 +31,11 @@ def make_default_backup_policy() -> ExplicitMaxBackupPolicy:
     return ExplicitMaxBackupPolicy()
 
 
+def make_branch_frontier_factory() -> BranchFrontierState:
+    """Create the generic frontier bookkeeping helper for one node."""
+    return BranchFrontierState()
+
+
 @dataclass(slots=True)
 class NodeMaxEvaluation[StateT: State = State]:
     """Canonical Value-based node evaluation for single-agent max search."""
@@ -43,6 +49,9 @@ class NodeMaxEvaluation[StateT: State = State]:
     objective: Objective[StateT] = field(default_factory=make_default_objective)
     backup_policy: BackupPolicy["NodeMaxEvaluation[StateT]"] = field(
         default_factory=make_default_backup_policy
+    )
+    branch_frontier: BranchFrontierState = field(
+        default_factory=make_branch_frontier_factory
     )
 
     @property
@@ -100,8 +109,8 @@ class NodeMaxEvaluation[StateT: State = State]:
             return None
         return cast("Value | None", child.tree_evaluation.get_value_candidate())
 
-    def best_branch(self) -> BranchKey | None:
-        """Return the best currently-valued child branch."""
+    def _decision_ordered_branches(self) -> list[BranchKey]:
+        """Return child branches ordered by the current single-agent preference."""
         candidates: list[tuple[BranchKey, Value, int]] = []
         for branch_key, child in self.tree_node.branches_children.items():
             if child is None:
@@ -112,7 +121,7 @@ class NodeMaxEvaluation[StateT: State = State]:
             candidates.append((branch_key, child_value, child.tree_node.id))
 
         if not candidates:
-            return None
+            return []
 
         def _cmp(
             left: tuple[BranchKey, Value, int],
@@ -137,7 +146,47 @@ class NodeMaxEvaluation[StateT: State = State]:
                 else (1 if str(left[0]) > str(right[0]) else 0)
             )
 
-        return sorted(candidates, key=cmp_to_key(_cmp))[0][0]
+        return [
+            branch_key
+            for branch_key, _, _ in sorted(candidates, key=cmp_to_key(_cmp))
+        ]
+
+    def best_branch(self) -> BranchKey | None:
+        """Return the best currently-valued child branch."""
+        ordered = self._decision_ordered_branches()
+        if not ordered:
+            return None
+        return ordered[0]
+
+    def on_branch_opened(self, branch: BranchKey) -> None:
+        """Record that a child branch has entered the frontier."""
+        self.branch_frontier.on_branch_opened(branch)
+
+    def has_frontier_branches(self) -> bool:
+        """Return whether some child branches remain search-relevant."""
+        return self.branch_frontier.has_frontier_branches()
+
+    def frontier_branches_in_order(self) -> list[BranchKey]:
+        """Return frontier branches ordered by current child-preference semantics."""
+        return self.branch_frontier.ordered_frontier_branches(
+            (*self._decision_ordered_branches(), *self.tree_node.branches_children)
+        )
+
+    def _branch_is_frontier_relevant(self, branch_key: BranchKey) -> bool:
+        """Return whether a child branch can still affect future search results."""
+        child = self.tree_node.branches_children.get(branch_key)
+        return child is not None and not child.tree_evaluation.has_exact_value()
+
+    def sync_branch_frontier(self, branches_to_refresh: set[BranchKey]) -> None:
+        """Refresh frontier bookkeeping from updated child values."""
+        if self.has_exact_value():
+            self.branch_frontier.clear()
+            return
+
+        self.branch_frontier.sync_with_current_state(
+            branches_to_refresh=branches_to_refresh,
+            should_remain_in_frontier=self._branch_is_frontier_relevant,
+        )
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]

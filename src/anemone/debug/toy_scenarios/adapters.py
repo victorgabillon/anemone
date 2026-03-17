@@ -385,8 +385,8 @@ def _build_node_tree_evaluation_factory(
     """Return the tree-evaluation family compatible with Tree-and-Value search.
 
     The production Tree-and-Value assembly path expects node evaluations with
-    branch bookkeeping such as ``branches_to_explore``. ``NodeTreeMinmaxEvaluation``
-    provides that contract for both adversarial and single-agent toy domains.
+    branch-frontier bookkeeping. ``NodeTreeMinmaxEvaluation`` provides that
+    contract for both adversarial and single-agent toy domains.
     Single-agent toy scenarios still need numeric max semantics, so they use the
     same evaluation family with ``SingleAgentMaxObjective()`` instead of the
     default adversarial objective.

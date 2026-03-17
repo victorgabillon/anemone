@@ -19,6 +19,7 @@ from valanga.evaluations import Value
 
 from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation.common import canonical_value
+from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
@@ -81,14 +82,9 @@ def make_branches_sorted_by_value_factory() -> dict[BranchKey, BranchSortValue]:
     return {}
 
 
-def make_branches_to_explore_factory() -> list[BranchKey]:
-    """Create a factory for generating child branches that remain unresolved.
-
-    Returns:
-        list[BranchKey]: An empty list that can be used to store branches that can still affect search.
-
-    """
-    return []
+def make_branch_frontier_factory() -> BranchFrontierState:
+    """Create the generic frontier bookkeeping helper for one node."""
+    return BranchFrontierState()
 
 
 def make_default_objective() -> Objective[TurnState]:
@@ -146,10 +142,9 @@ class NodeMinmaxEvaluation[
     # convention of descending order, careful if changing read above!!
     best_index_for_value: int = 0
 
-    # Child branches that are still unresolved and therefore remain worth exploring.
-    # A list is used instead of a set so insertion order stays deterministic.
-    branches_to_explore: list[BranchKey] = field(
-        default_factory=make_branches_to_explore_factory
+    # Child branches that remain relevant to future search.
+    branch_frontier: BranchFrontierState = field(
+        default_factory=make_branch_frontier_factory
     )
 
     # policy used to orchestrate backup behavior from updated children
@@ -171,6 +166,11 @@ class NodeMinmaxEvaluation[
 
         """
         return self.branches_sorted_by_value_
+
+    @property
+    def branches_to_explore(self) -> list[BranchKey]:
+        """Backward-compatible ordered view of the current branch frontier."""
+        return self.frontier_branches_in_order()
 
     def get_value(self) -> Value:
         """Return the canonical value for this node.
@@ -426,19 +426,24 @@ class NodeMinmaxEvaluation[
         anemone_logger.info(string_info)
 
     def print_branches_to_explore(self) -> None:
+        """Backward-compatible wrapper for printing frontier branches."""
+        self.print_frontier_branches()
+
+    def print_frontier_branches(self) -> None:
         """Print the unresolved branches that remain worth exploring.
 
         Returns:
             None
 
         """
+        frontier_branches = self.frontier_branches_in_order()
         print(
             "here are the ",
-            len(self.branches_to_explore),
-            " unresolved branches: ",
+            len(frontier_branches),
+            " frontier branches: ",
             end=" ",
         )
-        for branch in self.branches_to_explore:
+        for branch in frontier_branches:
             print(branch, end=" ")
         print(" ")
 
@@ -451,7 +456,7 @@ class NodeMinmaxEvaluation[
         print("Soy el Node", self.tree_node.id)
         self.tree_node.print_branches_children()
         self.print_branches_sorted_by_value(dynamics=dynamics)
-        self.print_branches_to_explore()
+        self.print_frontier_branches()
         # TODO: probably more to print...
 
     def record_sort_value_of_child(self, branch_key: BranchKey) -> None:
@@ -586,37 +591,48 @@ class NodeMinmaxEvaluation[
             self.record_sort_value_of_child(branch_key=branch_key)
         self.branches_sorted_by_value_ = sort_dic(self.branches_sorted_by_value_)
 
-    def sync_branches_to_explore(self, branches_to_refresh: set[BranchKey]) -> None:
-        """Refresh unresolved-branch bookkeeping from updated child values."""
+    def on_branch_opened(self, branch: BranchKey) -> None:
+        """Record that a child branch has entered the frontier."""
+        self.branch_frontier.on_branch_opened(branch)
+
+    def has_frontier_branches(self) -> bool:
+        """Return whether some child branches remain search-relevant."""
+        return self.branch_frontier.has_frontier_branches()
+
+    def frontier_branches_in_order(self) -> list[BranchKey]:
+        """Return frontier branches ordered by current child-preference semantics."""
+        return self.branch_frontier.ordered_frontier_branches(
+            (*self.branches_sorted_by_value, *self.tree_node.branches_children)
+        )
+
+    def _branch_is_frontier_relevant(self, branch_key: BranchKey) -> bool:
+        """Return whether a child branch can still affect future search results."""
+        child = self.tree_node.branches_children.get(branch_key)
+        return child is not None and not child.tree_evaluation.has_exact_value()
+
+    def sync_branch_frontier(self, branches_to_refresh: set[BranchKey]) -> None:
+        """Refresh frontier bookkeeping from updated child values."""
         if self.has_exact_value():
-            self.branches_to_explore.clear()
+            self.branch_frontier.clear()
             return
 
-        for branch_key in branches_to_refresh:
-            child = self.tree_node.branches_children.get(branch_key)
-            if child is None:
-                continue
-            if child.tree_evaluation.has_exact_value():
-                if branch_key in self.branches_to_explore:
-                    self.branches_to_explore.remove(branch_key)
-                continue
-            if branch_key not in self.branches_to_explore:
-                self.branches_to_explore.append(branch_key)
+        self.branch_frontier.sync_with_current_state(
+            branches_to_refresh=branches_to_refresh,
+            should_remain_in_frontier=self._branch_is_frontier_relevant,
+        )
+
+    def sync_branches_to_explore(self, branches_to_refresh: set[BranchKey]) -> None:
+        """Backward-compatible wrapper for frontier synchronization."""
+        self.sync_branch_frontier(branches_to_refresh)
 
     def sort_branches_to_explore(self) -> list[BranchKey]:
-        """Sort the unresolved branches based on their current value.
+        """Backward-compatible wrapper returning ordered frontier branches.
 
         Returns:
             A sorted list of branches that remain worth exploring.
 
         """
-        # TODO: looks like the determinism of the sort induces some determinisin the play like always
-        #  playing the same actions when a lot of them have equal value: introduce some randomness?
-        return [
-            branch
-            for branch in self.branches_sorted_by_value
-            if branch in self.branches_to_explore
-        ]  # TODO: is this a fast way to do it?
+        return self.frontier_branches_in_order()
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]

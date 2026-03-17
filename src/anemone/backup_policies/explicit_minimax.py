@@ -45,7 +45,7 @@ class ExplicitMinimaxBackupPolicy:
             )
 
         self._update_value_value_only(node_eval=node_eval)
-        node_eval.sync_branches_to_explore(branches_with_updated_value)
+        node_eval.sync_branch_frontier(branches_with_updated_value)
         best_branch_after_update = node_eval.best_branch()
 
         if best_branch_after_update is None:

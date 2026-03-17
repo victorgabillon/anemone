@@ -28,8 +28,6 @@ class ExplicitMaxBackupPolicy:
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Recompute backed-up value and PV from child values."""
-        del branches_with_updated_value
-
         value_before = node_eval.backed_up_value
         pv_before = node_eval.best_branch_sequence.copy()
         over_before = node_eval.over_event
@@ -52,6 +50,7 @@ class ExplicitMaxBackupPolicy:
             selection=selection,
         )
         node_eval.backed_up_value = value_after
+        node_eval.sync_branch_frontier(branches_with_updated_value)
 
         pv_changed = self._update_pv(
             node_eval=node_eval,

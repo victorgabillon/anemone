@@ -159,7 +159,7 @@ def test_minimax_partial_winning_child_makes_parent_forced_not_terminal() -> Non
     assert not parent.is_terminal()
     assert not parent.is_over()
     assert parent.has_exact_value()
-    assert parent.branches_to_explore == []
+    assert parent.frontier_branches_in_order() == []
 
 
 def test_minimax_all_terminal_children_make_parent_forced_with_best_outcome() -> None:
@@ -226,7 +226,7 @@ def test_minimax_partial_information_keeps_parent_estimate() -> None:
     assert parent.minmax_value.over_event is None
     assert not parent.has_exact_value()
     assert not parent.is_terminal()
-    assert parent.branches_to_explore == ["live"]
+    assert parent.frontier_branches_in_order() == ["live"]
 
 
 def test_minimax_partial_draw_child_keeps_parent_estimate_and_live_branch_open() -> (
@@ -260,4 +260,4 @@ def test_minimax_partial_draw_child_keeps_parent_estimate_and_live_branch_open()
     assert parent.minmax_value.over_event is None
     assert not parent.has_exact_value()
     assert not parent.is_terminal()
-    assert parent.branches_to_explore == ["live"]
+    assert parent.frontier_branches_in_order() == ["live"]

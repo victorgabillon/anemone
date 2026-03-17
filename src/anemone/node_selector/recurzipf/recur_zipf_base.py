@@ -9,9 +9,12 @@ Classes:
 
 from dataclasses import dataclass
 from random import Random
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal
 
 from anemone import trees
+from anemone.node_evaluation.common.branch_frontier import (
+    require_branch_frontier_aware,
+)
 from anemone.node_selector.branch_explorer import SamplingPriorities, ZipfBranchExplorer
 from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import (
@@ -23,9 +26,6 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 if TYPE_CHECKING:
     from anemone import tree_manager as tree_man
-    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
-        NodeMinmaxEvaluation,
-    )
 
 
 @dataclass
@@ -88,9 +88,9 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         wandering_node: NodeT = tree.root_node
 
-        while cast(
-            "NodeMinmaxEvaluation[Any, Any]", wandering_node.tree_evaluation
-        ).branches_to_explore:
+        while require_branch_frontier_aware(
+            wandering_node.tree_evaluation
+        ).has_frontier_branches():
             assert not wandering_node.tree_evaluation.has_exact_value()
             branch = self.branch_explorer.sample_branch_to_explore(
                 tree_node_to_sample_from=wandering_node
