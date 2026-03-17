@@ -94,13 +94,13 @@ def test_changed_child_with_two_parents_schedules_both_parents() -> None:
     assert affected == {parent_a, parent_b}
     assert (
         cast(
-            MaxDepthDescendants[Any, Any], parent_a.exploration_index_data
+            "MaxDepthDescendants[Any, Any]", parent_a.exploration_index_data
         ).max_depth_descendants
         == 1
     )
     assert (
         cast(
-            MaxDepthDescendants[Any, Any], parent_b.exploration_index_data
+            "MaxDepthDescendants[Any, Any]", parent_b.exploration_index_data
         ).max_depth_descendants
         == 1
     )
@@ -144,13 +144,13 @@ def test_default_recompute_uses_full_current_child_snapshot() -> None:
     assert affected == {changed_child, parent}
     assert (
         cast(
-            MaxDepthDescendants[Any, Any], changed_child.exploration_index_data
+            "MaxDepthDescendants[Any, Any]", changed_child.exploration_index_data
         ).max_depth_descendants
         == 1
     )
     assert (
         cast(
-            MaxDepthDescendants[Any, Any], parent.exploration_index_data
+            "MaxDepthDescendants[Any, Any]", parent.exploration_index_data
         ).max_depth_descendants
         == 2
     )

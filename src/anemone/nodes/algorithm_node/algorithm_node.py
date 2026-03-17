@@ -1,6 +1,6 @@
 """Define the AlgorithmNode class used by the tree and value algorithm.
 
-It wraps tree nodes with values, minimax computation, and exploration tools.
+It wraps tree nodes with tree-search evaluations and exploration tools.
 """
 
 from collections.abc import MutableMapping
@@ -15,8 +15,8 @@ from valanga import (
 from valanga.evaluator_types import EvaluatorInput
 
 from anemone.indices.node_indices import NodeExplorationData
-from anemone.node_evaluation.tree.adversarial.node_adversarial_evaluation import (
-    NodeAdversarialEvaluation,
+from anemone.node_evaluation.tree.node_tree_evaluation import (
+    NodeTreeEvaluation,
 )
 from anemone.nodes.tree_node import TreeNode
 
@@ -24,12 +24,12 @@ from anemone.nodes.tree_node import TreeNode
 class AlgorithmNode[StateT: State = State]:
     """The generic node used by the tree and value algorithm.
 
-    It wraps tree nodes with values, minimax computation, and exploration tools.
+    It wraps tree nodes with tree-search evaluations and exploration tools.
     """
 
     tree_node: TreeNode[Self, StateT]
     # the reference to the tree node that is wrapped pointing to other AlgorithmNodes
-    tree_evaluation: NodeAdversarialEvaluation[StateT]
+    tree_evaluation: NodeTreeEvaluation[StateT]
     exploration_index_data: (
         NodeExplorationData[Self, StateT] | None
     )  # the object storing the information to help the algorithm decide the next nodes to explore
@@ -47,7 +47,7 @@ class AlgorithmNode[StateT: State = State]:
     def __init__(
         self,
         tree_node: TreeNode[Self, StateT],
-        tree_evaluation: NodeAdversarialEvaluation[StateT],
+        tree_evaluation: NodeTreeEvaluation[StateT],
         exploration_index_data: NodeExplorationData[Self, StateT] | None,
         state_representation: ContentRepresentation[StateT, EvaluatorInput] | None,
     ) -> None:
@@ -55,7 +55,7 @@ class AlgorithmNode[StateT: State = State]:
 
         Args:
             tree_node (TreeNode): The tree node that is wrapped.
-            tree_evaluation (NodeAdversarialEvaluation): The object computing adversarial value and branch decisions.
+            tree_evaluation (NodeTreeEvaluation): The object computing tree-search value and branch decisions.
             exploration_index_data (NodeExplorationData | None): The object storing the information to help the algorithm decide the next nodes to explore.
             state_representation (ContentRepresentation | None): The state representation used for evaluation.
 

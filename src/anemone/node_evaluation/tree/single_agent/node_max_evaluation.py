@@ -147,8 +147,7 @@ class NodeMaxEvaluation[StateT: State = State]:
             )
 
         return [
-            branch_key
-            for branch_key, _, _ in sorted(candidates, key=cmp_to_key(_cmp))
+            branch_key for branch_key, _, _ in sorted(candidates, key=cmp_to_key(_cmp))
         ]
 
     def best_branch(self) -> BranchKey | None:

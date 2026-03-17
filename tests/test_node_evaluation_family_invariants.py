@@ -13,6 +13,7 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
 from anemone.node_evaluation.tree.factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
+from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
 from anemone.node_evaluation.tree.single_agent.factory import NodeMaxEvaluationFactory
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
@@ -48,6 +49,10 @@ def _single_agent_tree_node() -> Any:
         branches_children={},
         all_branches_generated=True,
     )
+
+
+def _best_branch(eval_like: NodeTreeEvaluation[Any]) -> Any:
+    return eval_like.best_branch()
 
 
 def test_canonical_value_semantics_align_across_families() -> None:
@@ -126,3 +131,13 @@ def test_family_specific_objective_semantics_remain_distinct() -> None:
         )
         < 0
     )
+
+
+def test_generic_tree_evaluation_protocol_aligns_across_families() -> None:
+    adversarial = NodeMinmaxEvaluation(tree_node=_adversarial_tree_node())
+    single_agent = NodeMaxEvaluation(tree_node=_single_agent_tree_node())
+
+    assert _best_branch(adversarial) is None
+    assert _best_branch(single_agent) is None
+    assert adversarial.best_branch_sequence == []
+    assert single_agent.best_branch_sequence == []

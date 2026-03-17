@@ -75,7 +75,7 @@ def _connect(parent: _FakeNode, branch: int, child: _FakeNode) -> None:
 
 def _as_algorithm_node(node: _FakeNode) -> AlgorithmNode[Any]:
     """Cast a fake node into the production node protocol the propagator uses."""
-    return cast(AlgorithmNode[Any], node)
+    return cast("AlgorithmNode[Any]", node)
 
 
 def test_value_propagator_uses_injected_backup_policy_for_parent_recompute() -> None:

@@ -4,8 +4,8 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .common.branch_frontier import BranchFrontierAware, BranchFrontierState
     from .common import canonical_value
+    from .common.branch_frontier import BranchFrontierAware, BranchFrontierState
     from .common.canonical_value import ValueSemanticsError
     from .common.node_value_evaluation import NodeValueEvaluation
     from .direct import (
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from .tree.adversarial.node_adversarial_evaluation import NodeAdversarialEvaluation
     from .tree.adversarial.node_minmax_evaluation import NodeMinmaxEvaluation
     from .tree.factory import NodeTreeEvaluationFactory, NodeTreeMinmaxEvaluationFactory
+    from .tree.node_tree_evaluation import NodeTreeEvaluation
     from .tree.single_agent.factory import NodeMaxEvaluationFactory
     from .tree.single_agent.node_max_evaluation import NodeMaxEvaluation
     from .tree.single_agent.node_single_agent_evaluation import (
@@ -55,6 +56,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
         "NodeSingleAgentEvaluation",
     ),
     "NodeTreeEvaluationFactory": (".tree.factory", "NodeTreeEvaluationFactory"),
+    "NodeTreeEvaluation": (".tree.node_tree_evaluation", "NodeTreeEvaluation"),
     "NodeTreeMinmaxEvaluationFactory": (
         ".tree.factory",
         "NodeTreeMinmaxEvaluationFactory",
@@ -79,6 +81,7 @@ __all__ = [
     "NodeMaxEvaluationFactory",
     "NodeMinmaxEvaluation",
     "NodeSingleAgentEvaluation",
+    "NodeTreeEvaluation",
     "NodeTreeEvaluationFactory",
     "NodeTreeMinmaxEvaluationFactory",
     "NodeValueEvaluation",

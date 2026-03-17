@@ -7,6 +7,11 @@ from typing import Protocol, runtime_checkable
 from valanga import BranchKey
 
 
+def make_frontier_branches_factory() -> set[BranchKey]:
+    """Create the default typed frontier-membership container."""
+    return set()
+
+
 @runtime_checkable
 class BranchFrontierAware(Protocol):
     """Evaluation capability exposing search-relevant child branches."""
@@ -28,11 +33,23 @@ class BranchFrontierAware(Protocol):
         ...
 
 
+class BranchFrontierCapabilityError(TypeError):
+    """Raised when generic search code receives an evaluation without frontier support."""
+
+    def __init__(self, node_evaluation: object) -> None:
+        """Initialize the error with the unsupported evaluation type."""
+        super().__init__(
+            f"Expected a BranchFrontierAware evaluation, got {type(node_evaluation)!r}."
+        )
+
+
 @dataclass(slots=True)
 class BranchFrontierState:
     """Reusable set-based bookkeeping for search-relevant child branches."""
 
-    frontier_branches: set[BranchKey] = field(default_factory=set)
+    frontier_branches: set[BranchKey] = field(
+        default_factory=make_frontier_branches_factory
+    )
 
     def on_branch_opened(self, branch: BranchKey) -> None:
         """Add a newly opened child branch to the frontier."""
@@ -85,7 +102,5 @@ class BranchFrontierState:
 def require_branch_frontier_aware(node_evaluation: object) -> BranchFrontierAware:
     """Return a branch-frontier-aware evaluation or raise a clear type error."""
     if not isinstance(node_evaluation, BranchFrontierAware):
-        raise TypeError(
-            f"Expected a BranchFrontierAware evaluation, got {type(node_evaluation)!r}."
-        )
+        raise BranchFrontierCapabilityError(node_evaluation)
     return node_evaluation

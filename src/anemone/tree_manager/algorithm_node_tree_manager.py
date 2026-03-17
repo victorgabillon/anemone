@@ -1,7 +1,7 @@
 """Defining the AlgorithmNodeTreeManager class."""
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from valanga import BranchKey
 
@@ -13,12 +13,12 @@ from anemone.indices.index_manager import (
 from anemone.indices.index_manager.node_exploration_manager import (
     update_all_indices,
 )
+from anemone.node_evaluation.common.branch_frontier import (
+    require_branch_frontier_aware,
+)
 from anemone.node_evaluation.direct import (
     EvaluationQueries,
     NodeDirectEvaluator,
-)
-from anemone.node_evaluation.common.branch_frontier import (
-    require_branch_frontier_aware,
 )
 from anemone.node_factory.algorithm_node_factory import AlgorithmNodeFactory
 from anemone.nodes.algorithm_node.algorithm_node import (
@@ -32,6 +32,14 @@ from .tree_manager import TreeManager
 
 if TYPE_CHECKING:
     from anemone import node_selector as node_sel
+
+
+class BestLinePrintable(Protocol):
+    """Evaluation capability for rendering the current best line."""
+
+    def print_best_line(self) -> None:
+        """Print the best line from the current node."""
+        ...
 
 
 @dataclass
@@ -231,6 +239,4 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             tree: The tree containing branches and their evaluations.
 
         """
-        cast(
-            "NodeMinmaxEvaluation[Any, Any]", tree.root_node.tree_evaluation
-        ).print_best_line()
+        cast("BestLinePrintable", tree.root_node.tree_evaluation).print_best_line()

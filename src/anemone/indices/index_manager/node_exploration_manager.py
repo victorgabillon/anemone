@@ -11,6 +11,9 @@ from anemone.indices.node_indices.index_data import (
     NodeExplorationData,
     RecurZipfQuoolExplorationData,
 )
+from anemone.node_evaluation.common.branch_ordering import (
+    require_second_best_branch_aware,
+)
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
@@ -383,15 +386,16 @@ class UpdateIndexLocalMinChange:
                 local_index = parent_node_exploration_index_data.index
                 inter_level_interval = parent_node_exploration_index_data.interval
             else:
+                top_two_branches = require_second_best_branch_aware(
+                    parent_node.tree_evaluation
+                )
                 if parent_node_state.turn == Color.WHITE:
-                    best_branch: BranchKey | None = (
-                        parent_node.tree_evaluation.best_branch()
-                    )
+                    best_branch: BranchKey | None = top_two_branches.best_branch()
                     assert best_branch is not None
                     best_child = parent_node.branches_children[best_branch]
                     assert isinstance(best_child, AlgorithmNode)
                     second_best_branch: BranchKey | None = (
-                        parent_node.tree_evaluation.second_best_branch()
+                        top_two_branches.second_best_branch()
                     )
                     assert second_best_branch is not None
                     second_best_child = parent_node.branches_children[
@@ -417,13 +421,11 @@ class UpdateIndexLocalMinChange:
                     else:
                         local_index = None
                 if parent_node_state.turn == Color.BLACK:
-                    best_branch_black: BranchKey | None = (
-                        parent_node.tree_evaluation.best_branch()
-                    )
+                    best_branch_black: BranchKey | None = top_two_branches.best_branch()
                     assert best_branch_black is not None
                     best_child = parent_node.branches_children[best_branch_black]
                     second_best_branch_black: BranchKey | None = (
-                        parent_node.tree_evaluation.second_best_branch()
+                        top_two_branches.second_best_branch()
                     )
                     assert second_best_branch_black is not None
                     second_best_child = parent_node.branches_children[

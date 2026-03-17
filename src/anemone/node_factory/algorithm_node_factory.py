@@ -24,8 +24,8 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 from anemone.nodes.tree_node import TreeNode
 
 if TYPE_CHECKING:
-    from anemone.node_evaluation.tree.adversarial.node_adversarial_evaluation import (
-        NodeAdversarialEvaluation,
+    from anemone.node_evaluation.tree.node_tree_evaluation import (
+        NodeTreeEvaluation,
     )
 
 
@@ -49,7 +49,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
         modifications: StateModifications | None,
     ) -> AlgorithmNode[StateT]:
         """Build an AlgorithmNode from an existing TreeNode."""
-        tree_evaluation: NodeAdversarialEvaluation[StateT] = (
+        tree_evaluation: NodeTreeEvaluation[StateT] = (
             self.node_tree_evaluation_factory.create(
                 tree_node=tree_node,
             )

@@ -6,18 +6,16 @@ from valanga import State, TurnState
 
 from anemone.backup_policies import ExplicitMinimaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
-from anemone.node_evaluation.tree.adversarial.node_adversarial_evaluation import (
-    NodeAdversarialEvaluation,
-)
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
+from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
 
 
 class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
-    """The class creating Node Evaluations including children."""
+    """Create minimax node evaluations with explicit default dependencies."""
 
     def __init__(
         self,
@@ -55,11 +53,11 @@ class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
 
 
 class NodeTreeEvaluationFactory[T: State = State](Protocol):
-    """The class creating adversarial node evaluations including children."""
+    """Factory protocol for generic tree-search node evaluations."""
 
     def create(
         self,
         tree_node: TreeNode[Any, T],
-    ) -> NodeAdversarialEvaluation[T]:
-        """Create an adversarial node evaluation instance for the given node."""
+    ) -> NodeTreeEvaluation[T]:
+        """Create a tree-search evaluation instance for the given node."""
         ...

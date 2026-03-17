@@ -5,6 +5,8 @@ backed-up values for search nodes.
 
 ## Key pieces
 
+- `node_tree_evaluation.py`: `NodeTreeEvaluation` protocol shared by generic
+  tree-search orchestration across evaluation families.
 - `single_agent/node_single_agent_evaluation.py`: `NodeSingleAgentEvaluation`
   protocol for the single-agent family.
 - `single_agent/node_max_evaluation.py`: Single-agent max implementation that
