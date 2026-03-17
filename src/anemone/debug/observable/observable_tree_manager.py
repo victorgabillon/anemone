@@ -25,6 +25,12 @@ from anemone.debug.observable.state_diff import (
     summarize_node_evaluation,
 )
 from anemone.debug.sink import NullSearchDebugSink, SearchDebugSink
+from anemone.debug.tree_manager_delegate import (
+    propagate_depth_index as delegate_depth_index,
+)
+from anemone.debug.tree_manager_delegate import (
+    refresh_exploration_indices as delegate_refresh_exploration_indices,
+)
 
 
 def _empty_debug_events() -> list[SearchDebugEvent]:
@@ -96,11 +102,7 @@ class ObservableAlgorithmNodeTreeManager:
 
     def refresh_exploration_indices(self, tree: Any) -> None:
         """Delegate the explicit index-refresh phase to the wrapped manager."""
-        refresh = getattr(self._base, "refresh_exploration_indices", None)
-        if refresh is not None:
-            refresh(tree=tree)
-            return
-        self._base.update_indices(tree=tree)
+        delegate_refresh_exploration_indices(self._base, tree=tree)
 
     def update_indices(self, tree: Any) -> None:
         """Backward-compatible alias for ``refresh_exploration_indices``."""
@@ -108,10 +110,7 @@ class ObservableAlgorithmNodeTreeManager:
 
     def propagate_depth_index(self, tree_expansions: Any) -> Any:
         """Delegate descendant-depth propagation when the base manager has it."""
-        propagate = getattr(self._base, "propagate_depth_index", None)
-        if propagate is None:
-            return None
-        return propagate(tree_expansions=tree_expansions)
+        return delegate_depth_index(self._base, tree_expansions=tree_expansions)
 
     def update_backward(self, tree_expansions: Any) -> Any:
         """Delegate backward updates and infer best-effort backup events."""

@@ -12,6 +12,12 @@ from anemone.debug.observable.observable_tree_manager import (
     ObservableAlgorithmNodeTreeManager,
 )
 from anemone.debug.sink import NullSearchDebugSink, SearchDebugSink
+from anemone.debug.tree_manager_delegate import (
+    propagate_depth_index as delegate_depth_index,
+)
+from anemone.debug.tree_manager_delegate import (
+    refresh_exploration_indices as delegate_refresh_exploration_indices,
+)
 
 if TYPE_CHECKING:
     from random import Random
@@ -81,11 +87,7 @@ class _IterationObservingTreeManager:
 
     def refresh_exploration_indices(self, *, tree: Any) -> None:
         """Delegate index refresh and emit one completion event per iteration."""
-        refresh = getattr(self._base, "refresh_exploration_indices", None)
-        if refresh is not None:
-            refresh(tree=tree)
-        else:
-            self._base.update_indices(tree=tree)
+        delegate_refresh_exploration_indices(self._base, tree=tree)
 
         if (
             self._iteration_state.completed_iteration
@@ -106,10 +108,7 @@ class _IterationObservingTreeManager:
 
     def propagate_depth_index(self, *, tree_expansions: Any) -> Any:
         """Delegate descendant-depth propagation when the base manager has it."""
-        propagate = getattr(self._base, "propagate_depth_index", None)
-        if propagate is None:
-            return None
-        return propagate(tree_expansions=tree_expansions)
+        return delegate_depth_index(self._base, tree_expansions=tree_expansions)
 
 
 class ObservableTreeExploration:

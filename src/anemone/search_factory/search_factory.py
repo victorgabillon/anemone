@@ -58,6 +58,8 @@ class SearchFactoryP(Protocol):
     created coherently.
     """
 
+    depth_index: bool
+
     def create_node_selector_factory(self) -> NodeSelectorFactory:
         """Create a NodeSelectorFactory object.
 

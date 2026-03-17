@@ -23,6 +23,7 @@ from typing import Any
 
 from anemone.indices.node_indices.index_data import MaxDepthDescendants
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.updates.ancestor_wave import propagate_dirty_ancestors
 
 RecomputeDepthIndex = Callable[[AlgorithmNode[Any]], bool]
 
@@ -55,45 +56,10 @@ class DepthIndexPropagator:
             The set of ancestor nodes touched/recomputed during propagation.
 
         """
-        dirty_by_depth: dict[int, set[AlgorithmNode[Any]]] = {}
-        touched_nodes: set[AlgorithmNode[Any]] = set()
-
-        for changed_node in changed_nodes:
-            self._mark_parents_dirty(
-                changed_node=changed_node,
-                dirty_by_depth=dirty_by_depth,
-            )
-
-        # Process deeper dirty nodes first so shallower parents observe already
-        # stabilized descendant-depth metadata from the current wave.
-        while dirty_by_depth:
-            deepest_depth = max(dirty_by_depth)
-            dirty_nodes_at_depth = dirty_by_depth.pop(deepest_depth)
-            changed_this_wave: set[AlgorithmNode[Any]] = set()
-
-            for node in dirty_nodes_at_depth:
-                touched_nodes.add(node)
-                if self._recompute_node_depth_index_impl(node):
-                    changed_this_wave.add(node)
-
-            for node in changed_this_wave:
-                self._mark_parents_dirty(
-                    changed_node=node,
-                    dirty_by_depth=dirty_by_depth,
-                )
-
-        return touched_nodes
-
-    def _mark_parents_dirty(
-        self,
-        *,
-        changed_node: AlgorithmNode[Any],
-        dirty_by_depth: dict[int, set[AlgorithmNode[Any]]],
-    ) -> None:
-        """Mark each parent dirty in the bucket matching the parent's depth."""
-        parent_node: AlgorithmNode[Any]
-        for parent_node in changed_node.parent_nodes:
-            dirty_by_depth.setdefault(parent_node.tree_depth, set()).add(parent_node)
+        return propagate_dirty_ancestors(
+            changed_nodes,
+            recompute_node=self._recompute_node_depth_index_impl,
+        )
 
     def _recompute_node_depth_index_from_full_child_snapshot(
         self,

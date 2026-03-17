@@ -43,6 +43,12 @@ from .breakpoints import (
 )
 from .exploration_clone import clone_exploration
 from .observable.observable_tree_exploration import ObservableTreeExploration
+from .tree_manager_delegate import (
+    propagate_depth_index as delegate_depth_index,
+)
+from .tree_manager_delegate import (
+    refresh_exploration_indices as delegate_refresh_exploration_indices,
+)
 
 if TYPE_CHECKING:
     from random import Random
@@ -513,11 +519,7 @@ class _ControlledTreeManager:
 
     def refresh_exploration_indices(self, *, tree: Any) -> None:
         """Delegate index refresh and consume a pending single-step."""
-        refresh = getattr(self._base, "refresh_exploration_indices", None)
-        if refresh is not None:
-            refresh(tree=tree)
-        else:
-            self._base.update_indices(tree=tree)
+        delegate_refresh_exploration_indices(self._base, tree=tree)
         self._controller.complete_iteration()
 
     def update_indices(self, *, tree: Any) -> None:
@@ -526,10 +528,7 @@ class _ControlledTreeManager:
 
     def propagate_depth_index(self, *, tree_expansions: Any) -> Any:
         """Delegate descendant-depth propagation when the base manager has it."""
-        propagate = getattr(self._base, "propagate_depth_index", None)
-        if propagate is None:
-            return None
-        return propagate(tree_expansions=tree_expansions)
+        return delegate_depth_index(self._base, tree_expansions=tree_expansions)
 
 
 class _ControlledNodeSelector:

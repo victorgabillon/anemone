@@ -106,7 +106,9 @@ def test_update_backward_routes_expansion_children_through_value_propagator() ->
     assert value_propagator.calls == [[created_child, existing_child]]
 
 
-def test_propagate_depth_index_routes_expansion_children_through_depth_propagator() -> None:
+def test_propagate_depth_index_routes_expansion_children_through_depth_propagator() -> (
+    None
+):
     root = _FakeNode(id=1, tree_depth=0)
     created_child = _FakeNode(id=2, tree_depth=1)
     existing_child = _FakeNode(id=3, tree_depth=1)
