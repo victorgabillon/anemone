@@ -15,7 +15,6 @@ classifiers = [
 requires-python = ">=3.13"
 dependencies = [
     "valanga>=0.2.2",
-    "atomheart>=0.1.9",
     "rich",
     "sortedcollections>=2.1.0",
     "PyYAML>=6.0",
@@ -39,6 +38,7 @@ test = [
   "pytest>=9.0.2",
   "coverage",
   "pytest-cov>=6.0.0",
+  "atomheart>=0.2.3",
 ]
 
 lint = [
@@ -283,7 +283,6 @@ package = "skip"
 deps = [
   # runtime deps needed for pylint imports (match [project].dependencies)
     "valanga>=0.2.2",
-    "atomheart>=0.1.9",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",
@@ -308,7 +307,6 @@ package = "skip"
 deps = [
   # runtime deps for import resolution
     "valanga>=0.2.2",
-    "atomheart>=0.1.9",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",
