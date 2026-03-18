@@ -10,8 +10,8 @@ from anemone.backup_policies.common import (
     ProofClassification,
     SelectedValue,
     all_child_values_exact,
-    make_value_from_selection_and_proof,
-    run_backup_pipeline,
+    finalize_selection_with_proof,
+    select_value_from_best_child_and_direct,
 )
 from anemone.node_evaluation.common import canonical_value
 
@@ -53,14 +53,10 @@ class ExplicitMinimaxBackupPolicy:
             node_eval=node_eval,
             selection=selection,
         )
-        value_after = make_value_from_selection_and_proof(
+        return finalize_selection_with_proof(
+            node_eval=node_eval,
             selection=selection,
             proof=proof,
-        )
-
-        return run_backup_pipeline(
-            node_eval=node_eval,
-            value_after=value_after,
             branches_with_updated_value=branches_with_updated_value,
             update_pv=lambda: self._refresh_pv(
                 node_eval=node_eval,
@@ -78,15 +74,8 @@ class ExplicitMinimaxBackupPolicy:
         node_eval: NodeMinmaxEvaluation[Any, Any],
     ) -> SelectedValue:
         """Choose the generic backed-up-value candidate for this minimax node."""
-        best_branch_key = node_eval.best_branch()
-        if best_branch_key is None and node_eval.tree_node.branches_children:
-            self._update_branches_values_value_only(
-                node_eval=node_eval,
-                branches_to_consider=set(node_eval.tree_node.branches_children),
-            )
-            best_branch_key = node_eval.best_branch()
-
-        if best_branch_key is None:
+        best_child_value = self._best_child_value_for_selection(node_eval=node_eval)
+        if best_child_value is None:
             assert node_eval.tree_node.branches_children, (
                 "Cannot compute minimax value: no children."
             )
@@ -96,23 +85,45 @@ class ExplicitMinimaxBackupPolicy:
             )
             return SelectedValue(value=direct_value, from_child=False)
 
+        direct_value = self._direct_value_candidate(node_eval)
+        if not node_eval.tree_node.all_branches_generated:
+            assert direct_value is not None, (
+                "Explicit minimax requires direct_value for partially expanded nodes."
+            )
+
+        return select_value_from_best_child_and_direct(
+            best_child_value=best_child_value,
+            direct_value=direct_value,
+            all_branches_generated=node_eval.tree_node.all_branches_generated,
+            child_beats_direct=lambda child, direct: (
+                node_eval.child_is_better_than_direct(
+                    child,
+                    direct,
+                    side_to_move=node_eval.tree_node.state.turn,
+                )
+            ),
+        )
+
+    def _best_child_value_for_selection(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+    ) -> Value | None:
+        """Return the current best child candidate, refreshing ordering if needed."""
+        best_branch_key = node_eval.best_branch()
+        if best_branch_key is None and node_eval.tree_node.branches_children:
+            self._update_branches_values_value_only(
+                node_eval=node_eval,
+                branches_to_consider=set(node_eval.tree_node.branches_children),
+            )
+            best_branch_key = node_eval.best_branch()
+
+        if best_branch_key is None:
+            return None
+
         best_child_value = node_eval.child_value_candidate(best_branch_key)
         assert best_child_value is not None
-
-        if node_eval.tree_node.all_branches_generated:
-            return SelectedValue(value=best_child_value, from_child=True)
-
-        direct_value = self._direct_value_candidate(node_eval)
-        assert direct_value is not None, (
-            "Explicit minimax requires direct_value for partially expanded nodes."
-        )
-        if node_eval.child_is_better_than_direct(
-            best_child_value,
-            direct_value,
-            side_to_move=node_eval.tree_node.state.turn,
-        ):
-            return SelectedValue(value=best_child_value, from_child=True)
-        return SelectedValue(value=direct_value, from_child=False)
+        return best_child_value
 
     def _update_branches_values_value_only(
         self,

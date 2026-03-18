@@ -1,5 +1,6 @@
 """Explicit max backup policy for single-agent node evaluation."""
 
+# pylint: disable=duplicate-code
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -10,8 +11,8 @@ from anemone.backup_policies.common import (
     ProofClassification,
     SelectedValue,
     all_child_values_exact,
-    make_value_from_selection_and_proof,
-    run_backup_pipeline,
+    finalize_selection_with_proof,
+    select_value_from_best_child_and_direct,
 )
 
 if TYPE_CHECKING:
@@ -51,14 +52,10 @@ class ExplicitMaxBackupPolicy:
             node_eval=node_eval,
             selection=selection,
         )
-        value_after = make_value_from_selection_and_proof(
+        return finalize_selection_with_proof(
+            node_eval=node_eval,
             selection=selection,
             proof=proof,
-        )
-
-        return run_backup_pipeline(
-            node_eval=node_eval,
-            value_after=value_after,
             branches_with_updated_value=branches_with_updated_value,
             update_pv=lambda: self._update_pv(
                 node_eval=node_eval,
@@ -78,22 +75,20 @@ class ExplicitMaxBackupPolicy:
         best_child_value: Value | None,
         direct_value: Value | None,
     ) -> SelectedValue:
-        if best_child_value is None:
-            return SelectedValue(value=direct_value, from_child=False)
-        if direct_value is None:
-            return SelectedValue(value=best_child_value, from_child=True)
-        if node_eval.tree_node.all_branches_generated:
-            return SelectedValue(value=best_child_value, from_child=True)
-        if (
-            node_eval.objective.semantic_compare(
-                best_child_value,
-                direct_value,
-                node_eval.tree_node.state,
-            )
-            >= 0
-        ):
-            return SelectedValue(value=best_child_value, from_child=True)
-        return SelectedValue(value=direct_value, from_child=False)
+        """Resolve the parent candidate by competing best child against direct value."""
+        return select_value_from_best_child_and_direct(
+            best_child_value=best_child_value,
+            direct_value=direct_value,
+            all_branches_generated=node_eval.tree_node.all_branches_generated,
+            child_beats_direct=lambda child, direct: (
+                node_eval.objective.semantic_compare(
+                    child,
+                    direct,
+                    node_eval.tree_node.state,
+                )
+                >= 0
+            ),
+        )
 
     def _classify_selected_value(
         self,

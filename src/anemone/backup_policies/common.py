@@ -61,6 +61,30 @@ def all_child_values_exact(node_eval: ChildValueReader) -> bool:
     return True
 
 
+def select_value_from_best_child_and_direct(
+    *,
+    best_child_value: Value | None,
+    direct_value: Value | None,
+    all_branches_generated: bool,
+    child_beats_direct: Callable[[Value, Value], bool],
+) -> SelectedValue:
+    """Select the winning parent candidate from the best child and direct value.
+
+    This helper owns only the generic child-vs-direct competition shape.
+    Each family still owns how the best child is found and how child/direct
+    comparison semantics are defined.
+    """
+    if best_child_value is None:
+        return SelectedValue(value=direct_value, from_child=False)
+    if direct_value is None:
+        return SelectedValue(value=best_child_value, from_child=True)
+    if all_branches_generated:
+        return SelectedValue(value=best_child_value, from_child=True)
+    if child_beats_direct(best_child_value, direct_value):
+        return SelectedValue(value=best_child_value, from_child=True)
+    return SelectedValue(value=direct_value, from_child=False)
+
+
 def has_value_changed(*, value_before: Value | None, value_after: Value | None) -> bool:
     """Return whether effective value semantics changed between two values.
 
@@ -90,9 +114,11 @@ def make_value_from_proof_classification(
             over_event=proof.over_event,
         )
     if proof.certainty == Certainty.TERMINAL:
+        over_event = proof.over_event
+        assert over_event is not None, "TERMINAL values must carry an OverEvent."
         return canonical_value.make_terminal_value(
             score=score,
-            over_event=proof.over_event,
+            over_event=over_event,
         )
     assert_never(proof.certainty)
 
@@ -180,4 +206,25 @@ def run_backup_pipeline(
         pv_changed=pv_changed
         or snapshot.pv_before != tuple(node_eval.best_branch_sequence),
         over_changed=snapshot.over_before != node_eval.over_event,
+    )
+
+
+def finalize_selection_with_proof(
+    *,
+    node_eval: BackupPipelineNode,
+    selection: SelectedValue,
+    proof: ProofClassification | None,
+    branches_with_updated_value: set[BranchKey],
+    update_pv: Callable[[], bool],
+) -> BackupResult:
+    """Finalize one selected candidate once proof classification is known."""
+    value_after = make_value_from_selection_and_proof(
+        selection=selection,
+        proof=proof,
+    )
+    return run_backup_pipeline(
+        node_eval=node_eval,
+        value_after=value_after,
+        branches_with_updated_value=branches_with_updated_value,
+        update_pv=update_pv,
     )
