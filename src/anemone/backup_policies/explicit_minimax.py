@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from valanga.evaluations import Certainty
+
 from anemone.backup_policies.common import (
+    ProofClassification,
     SelectedValue,
     all_child_values_exact,
+    make_value_from_selection_and_proof,
     run_backup_pipeline,
 )
 from anemone.node_evaluation.common import canonical_value
@@ -45,9 +49,13 @@ class ExplicitMinimaxBackupPolicy:
             )
 
         selection = self._select_value(node_eval=node_eval)
-        value_after = self._build_backed_up_value(
+        proof = self._classify_selected_value(
             node_eval=node_eval,
             selection=selection,
+        )
+        value_after = make_value_from_selection_and_proof(
+            selection=selection,
+            proof=proof,
         )
 
         return run_backup_pipeline(
@@ -128,27 +136,26 @@ class ExplicitMinimaxBackupPolicy:
         """Return the local direct-evaluator candidate used in partial expansion."""
         return node_eval.direct_value
 
-    def _build_backed_up_value(
+    def _classify_selected_value(
         self,
         *,
         node_eval: NodeMinmaxEvaluation[Any, Any],
         selection: SelectedValue,
-    ) -> Value | None:  # pylint: disable=duplicate-code
+    ) -> ProofClassification | None:
+        """Classify certainty/outcome for the selected parent value."""
         chosen_value = selection.value
         if chosen_value is None:
             return None
 
         if not selection.from_child:
-            return chosen_value
+            return ProofClassification.from_value(chosen_value)
 
         exact = self._selected_child_proves_exact_value(
             node_eval=node_eval,
             selected_child_value=chosen_value,
         )
-        return canonical_value.make_backed_up_value(
-            score=chosen_value.score,
-            exact=exact,
-            node_is_terminal=False,
+        return ProofClassification(
+            certainty=Certainty.FORCED if exact else Certainty.ESTIMATE,
             over_event=chosen_value.over_event if exact else None,
         )
 

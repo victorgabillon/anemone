@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, assert_never
+
+from valanga.evaluations import Certainty
 
 from anemone.backup_policies.types import BackupResult
 from anemone.node_evaluation.common import canonical_value
@@ -21,6 +23,22 @@ class SelectedValue:
 
     value: Value | None
     from_child: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ProofClassification:
+    """Exactness/outcome classification for the resulting parent value."""
+
+    certainty: Certainty
+    over_event: OverEvent | None
+
+    @classmethod
+    def from_value(cls, value: Value) -> ProofClassification:
+        """Mirror the certainty/outcome already carried by an existing Value."""
+        return cls(
+            certainty=value.certainty,
+            over_event=value.over_event,
+        )
 
 
 class ChildValueReader(Protocol):
@@ -55,6 +73,42 @@ def has_value_changed(*, value_before: Value | None, value_after: Value | None) 
         value_before.score != value_after.score
         or value_before.certainty != value_after.certainty
         or value_before.over_event != value_after.over_event
+    )
+
+
+def make_value_from_proof_classification(
+    *,
+    score: float,
+    proof: ProofClassification,
+) -> Value:
+    """Construct a Value from one score and one proof/exactness classification."""
+    if proof.certainty == Certainty.ESTIMATE:
+        return canonical_value.make_estimate_value(score=score)
+    if proof.certainty == Certainty.FORCED:
+        return canonical_value.make_forced_value(
+            score=score,
+            over_event=proof.over_event,
+        )
+    if proof.certainty == Certainty.TERMINAL:
+        return canonical_value.make_terminal_value(
+            score=score,
+            over_event=proof.over_event,
+        )
+    assert_never(proof.certainty)
+
+
+def make_value_from_selection_and_proof(
+    *,
+    selection: SelectedValue,
+    proof: ProofClassification | None,
+) -> Value | None:
+    """Construct the resulting parent value from selection plus proof classification."""
+    chosen_value = selection.value
+    if chosen_value is None or proof is None:
+        return None
+    return make_value_from_proof_classification(
+        score=chosen_value.score,
+        proof=proof,
     )
 
 

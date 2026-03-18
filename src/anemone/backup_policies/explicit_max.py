@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from valanga.evaluations import Certainty
+
 from anemone.backup_policies.common import (
+    ProofClassification,
     SelectedValue,
     all_child_values_exact,
+    make_value_from_selection_and_proof,
     run_backup_pipeline,
 )
-from anemone.node_evaluation.common import canonical_value
 
 if TYPE_CHECKING:
     from valanga import BranchKey
@@ -44,9 +47,13 @@ class ExplicitMaxBackupPolicy:
             best_child_value=best_child_value,
             direct_value=direct_value,
         )
-        value_after = self._build_backed_up_value(
+        proof = self._classify_selected_value(
             node_eval=node_eval,
             selection=selection,
+        )
+        value_after = make_value_from_selection_and_proof(
+            selection=selection,
+            proof=proof,
         )
 
         return run_backup_pipeline(
@@ -88,27 +95,26 @@ class ExplicitMaxBackupPolicy:
             return SelectedValue(value=best_child_value, from_child=True)
         return SelectedValue(value=direct_value, from_child=False)
 
-    def _build_backed_up_value(
+    def _classify_selected_value(
         self,
         *,
         node_eval: NodeMaxEvaluation[Any],
         selection: SelectedValue,
-    ) -> Value | None:  # pylint: disable=duplicate-code
-        chosen_value = selection.value  # pylint: disable=duplicate-code
+    ) -> ProofClassification | None:
+        """Classify certainty/outcome for the selected parent value."""
+        chosen_value = selection.value
         if chosen_value is None:
             return None
 
         if not selection.from_child:
-            return chosen_value
+            return ProofClassification.from_value(chosen_value)
 
         exact_from_children = (
             node_eval.tree_node.all_branches_generated
             and all_child_values_exact(node_eval)
         )
-        return canonical_value.make_backed_up_value(
-            score=chosen_value.score,
-            exact=exact_from_children,
-            node_is_terminal=False,
+        return ProofClassification(
+            certainty=Certainty.FORCED if exact_from_children else Certainty.ESTIMATE,
             over_event=chosen_value.over_event if exact_from_children else None,
         )
 
