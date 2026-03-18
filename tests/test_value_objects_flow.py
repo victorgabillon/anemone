@@ -138,7 +138,7 @@ def _make_node(
         tree_node=tree_node,
         tree_evaluation=tree_evaluation,
         tree_depth=0,
-        is_over=tree_evaluation.is_over,
+        is_over=tree_evaluation.is_terminal,
     )
 
 

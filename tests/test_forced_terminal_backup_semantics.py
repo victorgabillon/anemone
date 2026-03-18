@@ -157,7 +157,6 @@ def test_minimax_partial_winning_child_makes_parent_forced_not_terminal() -> Non
     assert parent.minmax_value.over_event is not None
     assert parent.minmax_value.over_event.is_winner(Color.WHITE)
     assert not parent.is_terminal()
-    assert not parent.is_over()
     assert parent.has_exact_value()
     assert parent.frontier_branches_in_order() == []
 

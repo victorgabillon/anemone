@@ -1,8 +1,6 @@
 """Provide Value-first NodeMinmaxEvaluation implementation for minimax search."""
 # pylint: disable=duplicate-code
 
-# TODO: maybe further split values from over?
-
 from dataclasses import dataclass, field
 from math import log
 from random import choice
@@ -30,22 +28,10 @@ from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
 from anemone.utils.logger import anemone_logger
-from anemone.values import (
-    DEFAULT_EVALUATION_ORDERING,
-    EvaluationOrdering,
-)
 
 if TYPE_CHECKING:
     from anemone.backup_policies.protocols import BackupPolicy
     from anemone.backup_policies.types import BackupResult
-
-
-class NoAvailableBranchError(RuntimeError):
-    """Raised when no non-terminal branch is available."""
-
-    def __init__(self) -> None:
-        """Initialize the error for missing non-terminal branches."""
-        super().__init__("No non-terminal branch is available.")
 
 
 @runtime_checkable
@@ -127,9 +113,6 @@ class NodeMinmaxEvaluation[
     # policy used to orchestrate backup behavior from updated children
     backup_policy: "BackupPolicy[Any] | None" = None
 
-    # ordering policy for comparing/projecting Value objects
-    evaluation_ordering: EvaluationOrdering = DEFAULT_EVALUATION_ORDERING
-
     # objective responsible for semantic interpretation of Value objects at this node
     objective: Objective[StateT] = field(default_factory=make_default_objective)
 
@@ -143,11 +126,6 @@ class NodeMinmaxEvaluation[
 
         """
         return self.decision_ordering.branches_sorted_by_value
-
-    @property
-    def branches_to_explore(self) -> list[BranchKey]:
-        """Backward-compatible ordered view of the current branch frontier."""
-        return self.frontier_branches_in_order()
 
     @property
     def best_branch_sequence(self) -> list[BranchKey]:
@@ -242,36 +220,6 @@ class NodeMinmaxEvaluation[
             semantic_compare=self._decision_semantic_compare,
         )
 
-    def best_branch_to_explore(self) -> BranchKey:
-        """Return the best branch that remains unresolved.
-
-        Returns:
-            The best branch that remains worth exploring.
-
-        Raises:
-            Exception: If no unresolved branch is available.
-
-        """
-        branch_key: BranchKey
-        for branch_key in self.branches_sorted_by_value:
-            child = self.tree_node.branches_children[branch_key]
-            assert child is not None
-            if not child.tree_evaluation.has_exact_value():
-                return branch_key
-        raise NoAvailableBranchError
-
-    def best_branch_value(self) -> BranchSortValue | None:
-        """Return the value of the best branch.
-
-        If the `branches_sorted_by_value` dictionary is not empty, it returns the value of the first child node with
-        the highest subjective value. Otherwise, it returns None.
-
-        Returns:
-            BranchSortValue | None: The sort value of the best branch, or None if there are no opened branches.
-
-        """
-        return self.decision_ordering.best_branch_value()
-
     def second_best_branch(self) -> BranchKey:
         """Return the second-best branch based on the subjective value.
 
@@ -295,70 +243,10 @@ class NodeMinmaxEvaluation[
         """Return exact outcome metadata from the candidate Value when present."""
         return canonical_value.get_over_event_candidate(self.get_value_candidate())
 
-    def is_over(self) -> bool:
-        """Return True only when this node's own state is terminal."""
-        return self.is_terminal()
-
-    def is_win(self) -> bool:
-        """Return whether the exact candidate outcome is a win."""
-        over_event = self.get_over_event_candidate()
-        if over_event is not None:
-            return over_event.is_win()
-        return False
-
-    def is_draw(self) -> bool:
-        """Return whether the exact candidate outcome is a draw."""
-        over_event = self.get_over_event_candidate()
-        if over_event is not None:
-            return over_event.is_draw()
-        return False
-
     @property
     def over_event(self) -> OverEvent | None:
         """Return exact outcome metadata from the candidate Value when present."""
         return self.get_over_event_candidate()
-
-    def is_winner(self, player: Color) -> bool:
-        """Return whether the exact candidate outcome names ``player`` as winner.
-
-        Args:
-            player (Color): The color of the player to check.
-
-        Returns:
-            bool: True if the player is the winner, False otherwise.
-
-        """
-        over_event = self.get_over_event_candidate()
-        if over_event is not None:
-            return over_event.is_winner(player)
-        return False
-
-    def print_branches_sorted_by_value(
-        self, dynamics: SearchDynamics[Any, Any]
-    ) -> None:
-        """Print the branches sorted by their subjective sort value.
-
-        The method iterates over the branch_sorted_by_value dictionary and prints each branch along with its
-        subjective sort value. The output is formatted as follows:
-        "<branch>: <subjective_sort_value> $$"
-
-        Returns:
-            None
-
-        """
-        print(
-            "here are the ",
-            len(self.branches_sorted_by_value),
-            " branch sorted by value: ",
-        )
-        branch_key: BranchKey
-        for branch_key, subjective_sort_value in self.branches_sorted_by_value.items():
-            print(
-                dynamics.action_name(self.tree_node.state, branch_key),
-                subjective_sort_value[0],
-                end=" $$ ",
-            )
-        print("")
 
     def print_branches_sorted_by_value_and_exploration(
         self, dynamics: SearchDynamics[Any, Any]
@@ -385,68 +273,6 @@ class NodeMinmaxEvaluation[
             branch_name = dynamics.action_name(self.tree_node.state, branch_key)
             string_info += f" {branch_name} {subjective_sort_value[0]} $$ "
         anemone_logger.info(string_info)
-
-    def print_branches_to_explore(self) -> None:
-        """Backward-compatible wrapper for printing frontier branches."""
-        self.print_frontier_branches()
-
-    def print_frontier_branches(self) -> None:
-        """Print the unresolved branches that remain worth exploring.
-
-        Returns:
-            None
-
-        """
-        frontier_branches = self.frontier_branches_in_order()
-        print(
-            "here are the ",
-            len(frontier_branches),
-            " frontier branches: ",
-            end=" ",
-        )
-        for branch in frontier_branches:
-            print(branch, end=" ")
-        print(" ")
-
-    def print_info(self, dynamics: SearchDynamics[Any, Any]) -> None:
-        """Print information about the node.
-
-        This method prints the ID of the node, the branches of its children, the children sorted by value,
-        and the unresolved children that remain worth exploring.
-        """
-        print("Soy el Node", self.tree_node.id)
-        self.tree_node.print_branches_children()
-        self.print_branches_sorted_by_value(dynamics=dynamics)
-        self.print_frontier_branches()
-        # TODO: probably more to print...
-
-    def record_sort_value_of_child(self, branch_key: BranchKey) -> None:
-        """Store the subjective value of the branch in self.branches_sorted_by_value (automatically sorted).
-
-        Args:
-            branch_key (BranchKey): The branch key whose value needs to be recorded.
-
-        Returns:
-            None
-
-        """
-        # - branches_sorted_by_value records subjective value of branches by descending order
-        # therefore we have to convert the value_white of children into a subjective value that depends
-        # on the player to branch
-        # - subjective best branch/children is at index 0 however sortedValueDict are sorted ascending (best index: -1),
-        # therefore for white we have negative values
-        child = self.tree_node.branches_children[branch_key]
-        assert child is not None
-        child_value = self.child_value_candidate(branch_key)
-        assert child_value is not None, (
-            f"Cannot record sort value: child {branch_key} has no Value yet. "
-            "Ensure children receive direct_value explicitly as a Value or "
-            "minmax_value via backup before calling record_sort_value_of_child()."
-        )
-        self.decision_ordering.record_sort_value_of_child(
-            branch_key,
-            branch_sort_value_getter=self.branch_sort_value,
-        )
 
     def branch_sort_value(self, branch_key: BranchKey) -> BranchSortValue:
         """Return the search-order tuple for one child branch.
@@ -609,19 +435,6 @@ class NodeMinmaxEvaluation[
             should_remain_in_frontier=self._branch_is_frontier_relevant,
         )
 
-    def sync_branches_to_explore(self, branches_to_refresh: set[BranchKey]) -> None:
-        """Backward-compatible wrapper for frontier synchronization."""
-        self.sync_branch_frontier(branches_to_refresh)
-
-    def sort_branches_to_explore(self) -> list[BranchKey]:
-        """Backward-compatible wrapper returning ordered frontier branches.
-
-        Returns:
-            A sorted list of branches that remain worth exploring.
-
-        """
-        return self.frontier_branches_in_order()
-
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
     ) -> bool:
@@ -722,23 +535,6 @@ class NodeMinmaxEvaluation[
         )
         assert self.best_branch_sequence
         return has_best_branch_seq_changed
-
-    def is_value_subjectively_better_than_evaluation(self, value: Value) -> bool:
-        """Check if the given value_white is subjectively better than the value_white_evaluator.
-
-        Args:
-            value (Value): The value to compare with the direct evaluator value.
-
-        Returns:
-            bool: True if the value_white is subjectively better than the value_white_evaluator, False otherwise.
-
-        """
-        assert self.direct_value is not None
-        return self.child_is_better_than_direct(
-            value,
-            self.direct_value,
-            side_to_move=self.tree_node.state.turn,
-        )
 
     def backup_from_children(
         self,
