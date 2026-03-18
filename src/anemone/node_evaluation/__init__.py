@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .common import canonical_value
     from .common.branch_frontier import BranchFrontierAware, BranchFrontierState
+    from .common.branch_ordering import DecisionOrderedEvaluation
     from .common.canonical_value import ValueSemanticsError
     from .common.node_value_evaluation import NodeValueEvaluation
     from .common.principal_variation import PrincipalVariationState
@@ -29,6 +30,10 @@ if TYPE_CHECKING:
     )
 
 _EXPORTS: dict[str, tuple[str, str | None]] = {
+    "DecisionOrderedEvaluation": (
+        ".common.branch_ordering",
+        "DecisionOrderedEvaluation",
+    ),
     "BranchFrontierAware": (".common.branch_frontier", "BranchFrontierAware"),
     "BranchFrontierState": (".common.branch_frontier", "BranchFrontierState"),
     "PrincipalVariationState": (
@@ -76,6 +81,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
 __all__ = [
     "BranchFrontierAware",
     "BranchFrontierState",
+    "DecisionOrderedEvaluation",
     "DirectValueInvariantError",
     "EvaluationQueries",
     "MasterStateValueEvaluator",

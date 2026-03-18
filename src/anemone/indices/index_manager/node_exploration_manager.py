@@ -506,7 +506,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
                 "NodeMinmaxEvaluation[Any, Any]",
                 parent_node.tree_evaluation,
             )
-            for branch_rank, branch in enumerate(tree_eval.branches_sorted_by_value_):
+            for branch_rank, branch in enumerate(tree_eval.branches_sorted_by_value):
                 child_node = parent_node.branches_children[branch]
                 if child_node is None:
                     continue

@@ -127,7 +127,7 @@ class NodeMaxEvaluation[StateT: State = State]:
             return None
         return cast("Value | None", child.tree_evaluation.get_value_candidate())
 
-    def _decision_ordered_branches(self) -> list[BranchKey]:
+    def decision_ordered_branches(self) -> list[BranchKey]:
         """Return child branches ordered by the current single-agent preference."""
         candidates: list[tuple[BranchKey, Value, int]] = []
         for branch_key, child in self.tree_node.branches_children.items():
@@ -170,7 +170,7 @@ class NodeMaxEvaluation[StateT: State = State]:
 
     def best_branch(self) -> BranchKey | None:
         """Return the best currently-valued child branch."""
-        ordered = self._decision_ordered_branches()
+        ordered = self.decision_ordered_branches()
         if not ordered:
             return None
         return ordered[0]
@@ -186,7 +186,7 @@ class NodeMaxEvaluation[StateT: State = State]:
     def frontier_branches_in_order(self) -> list[BranchKey]:
         """Return frontier branches ordered by current child-preference semantics."""
         return self.branch_frontier.ordered_frontier_branches(
-            (*self._decision_ordered_branches(), *self.tree_node.branches_children)
+            (*self.decision_ordered_branches(), *self.tree_node.branches_children)
         )
 
     def _branch_is_frontier_relevant(self, branch_key: BranchKey) -> bool:

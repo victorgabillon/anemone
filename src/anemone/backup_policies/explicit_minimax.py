@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 from anemone.backup_policies.common import SelectedValue, all_child_values_exact
 from anemone.backup_policies.types import BackupResult
 from anemone.node_evaluation.common import canonical_value
-from anemone.utils.my_value_sorted_dict import sort_dic
 
 if TYPE_CHECKING:
     from valanga import BranchKey
@@ -159,16 +158,12 @@ class ExplicitMinimaxBackupPolicy:
         branches_to_consider: set[BranchKey],
     ) -> None:
         """Update branch ordering keys using Value semantics instead of float-only keys."""
-        for branch_key in branches_to_consider:
-            child_value = node_eval.child_value_candidate(branch_key)
-            if child_value is None:
-                continue
-            node_eval.branches_sorted_by_value_[branch_key] = (
-                node_eval.branch_sort_value(branch_key)
-            )
-
-        node_eval.branches_sorted_by_value_ = sort_dic(
-            node_eval.branches_sorted_by_value_
+        node_eval.update_branches_values(
+            {
+                branch_key
+                for branch_key in branches_to_consider
+                if node_eval.child_value_candidate(branch_key) is not None
+            }
         )
 
     def _direct_value_candidate(

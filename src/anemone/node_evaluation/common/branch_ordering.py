@@ -1,4 +1,4 @@
-"""Provide narrow branch-ordering capabilities for search-specific call sites."""
+"""Provide branch decision-ordering capabilities for tree-search evaluations."""
 
 from typing import Protocol, runtime_checkable
 
@@ -6,12 +6,21 @@ from valanga import BranchKey
 
 
 @runtime_checkable
-class SecondBestBranchAware(Protocol):
-    """Evaluation capability exposing the current top-two branch ordering."""
+class DecisionOrderedEvaluation(Protocol):
+    """Evaluation capability exposing family-specific child decision ordering."""
+
+    def decision_ordered_branches(self) -> list[BranchKey]:
+        """Return child branches ordered by current decision semantics."""
+        ...
 
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch key."""
         ...
+
+
+@runtime_checkable
+class SecondBestBranchAware(DecisionOrderedEvaluation, Protocol):
+    """Evaluation capability exposing the current top-two branch ordering."""
 
     def second_best_branch(self) -> BranchKey:
         """Return the current second-best branch key."""

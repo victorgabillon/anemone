@@ -7,6 +7,7 @@ from valanga import Color
 from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies import ExplicitMaxBackupPolicy, ExplicitMinimaxBackupPolicy
+from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -141,3 +142,13 @@ def test_generic_tree_evaluation_protocol_aligns_across_families() -> None:
     assert _best_branch(single_agent) is None
     assert adversarial.best_branch_sequence == []
     assert single_agent.best_branch_sequence == []
+
+
+def test_decision_ordered_capability_aligns_across_families() -> None:
+    adversarial = NodeMinmaxEvaluation(tree_node=_adversarial_tree_node())
+    single_agent = NodeMaxEvaluation(tree_node=_single_agent_tree_node())
+
+    assert isinstance(adversarial, DecisionOrderedEvaluation)
+    assert isinstance(single_agent, DecisionOrderedEvaluation)
+    assert adversarial.decision_ordered_branches() == []
+    assert single_agent.decision_ordered_branches() == []

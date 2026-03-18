@@ -195,6 +195,19 @@ def test_explicit_max_backup_falls_back_to_direct_when_no_child_value_exists() -
     assert node.best_branch() is None
 
 
+def test_single_agent_decision_ordered_branches_are_public_and_deterministic() -> None:
+    node = _node(
+        node_id=0,
+        children={
+            0: _child(20, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+            1: _child(10, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+        },
+    )
+
+    assert node.decision_ordered_branches() == [1, 0]
+    assert node.best_branch() == node.decision_ordered_branches()[0]
+
+
 def test_single_agent_exact_value_and_terminality_are_distinct() -> None:
     node = _node(
         node_id=0,

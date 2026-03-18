@@ -4,7 +4,6 @@
 # TODO: maybe further split values from over?
 
 from dataclasses import dataclass, field
-from functools import cmp_to_key
 from math import log
 from random import choice
 from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
@@ -23,11 +22,14 @@ from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
 from anemone.node_evaluation.common.principal_variation import (
     PrincipalVariationState,
 )
+from anemone.node_evaluation.tree.adversarial.minmax_decision_ordering import (
+    BranchSortValue,
+    MinmaxDecisionOrderingState,
+)
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
 from anemone.utils.logger import anemone_logger
-from anemone.utils.my_value_sorted_dict import sort_dic
 from anemone.values import (
     DEFAULT_EVALUATION_ORDERING,
     EvaluationOrdering,
@@ -36,8 +38,6 @@ from anemone.values import (
 if TYPE_CHECKING:
     from anemone.backup_policies.protocols import BackupPolicy
     from anemone.backup_policies.types import BackupResult
-
-type BranchSortValue = tuple[float, int, int]
 
 
 class NoAvailableBranchError(RuntimeError):
@@ -65,16 +65,6 @@ class NodeWithValue(ITreeNode[TurnState], Protocol):
     tree_node: TreeNode[Self, TurnState]
 
 
-def make_branches_sorted_by_value_factory() -> dict[BranchKey, BranchSortValue]:
-    """Create a factory for generating branches sorted by value.
-
-    Returns:
-        dict[BranchKey, BranchSortValue]: An empty dictionary that can be used to store branches sorted by their values.
-
-    """
-    return {}
-
-
 def make_branch_frontier_factory() -> BranchFrontierState:
     """Create the generic frontier bookkeeping helper for one node."""
     return BranchFrontierState()
@@ -83,6 +73,11 @@ def make_branch_frontier_factory() -> BranchFrontierState:
 def make_principal_variation_state_factory() -> PrincipalVariationState:
     """Create the generic principal-variation bookkeeping helper for one node."""
     return PrincipalVariationState()
+
+
+def make_minmax_decision_ordering_factory() -> MinmaxDecisionOrderingState:
+    """Create the minimax child-ordering bookkeeping helper for one node."""
+    return MinmaxDecisionOrderingState()
 
 
 def make_default_objective() -> Objective[TurnState]:
@@ -120,19 +115,9 @@ class NodeMinmaxEvaluation[
     pv_state: PrincipalVariationState = field(
         default_factory=make_principal_variation_state_factory
     )
-
-    # the children of the tree node are kept in a dictionary that can be sorted by their evaluations ()
-
-    # children_sorted_by_value records subjective values of children by descending order
-    # subjective value means the values is from the point of view of player_to_branch
-    # careful, I have hard coded in the self.best_child() function the descending order for
-    # fast access to the best element, so please do not change!
-    branches_sorted_by_value_: dict[BranchKey, BranchSortValue] = field(
-        default_factory=make_branches_sorted_by_value_factory
+    decision_ordering: MinmaxDecisionOrderingState = field(
+        default_factory=make_minmax_decision_ordering_factory
     )
-
-    # convention of descending order, careful if changing read above!!
-    best_index_for_value: int = 0
 
     # Child branches that remain relevant to future search.
     branch_frontier: BranchFrontierState = field(
@@ -157,7 +142,7 @@ class NodeMinmaxEvaluation[
             the values are the corresponding sort values.
 
         """
-        return self.branches_sorted_by_value_
+        return self.decision_ordering.branches_sorted_by_value
 
     @property
     def branches_to_explore(self) -> list[BranchKey]:
@@ -252,10 +237,10 @@ class NodeMinmaxEvaluation[
             The best branch based on the subjective value, or None if there are no branch open.
 
         """
-        ordered = self._decision_ordered_branches()
-        if not ordered:
-            return None
-        return ordered[0]
+        return self.decision_ordering.best_branch(
+            child_value_candidate_getter=self.child_value_candidate,
+            semantic_compare=self._decision_semantic_compare,
+        )
 
     def best_branch_to_explore(self) -> BranchKey:
         """Return the best branch that remains unresolved.
@@ -285,13 +270,7 @@ class NodeMinmaxEvaluation[
             BranchSortValue | None: The sort value of the best branch, or None if there are no opened branches.
 
         """
-        best_value: BranchSortValue | None
-        # fast way to access first key with the highest subjective value
-        if self.branches_sorted_by_value:
-            best_value = next(iter(self.branches_sorted_by_value.values()))
-        else:
-            best_value = None
-        return best_value
+        return self.decision_ordering.best_branch_value()
 
     def second_best_branch(self) -> BranchKey:
         """Return the second-best branch based on the subjective value.
@@ -300,37 +279,17 @@ class NodeMinmaxEvaluation[
             The second-best branch.
 
         """
-        ordered = self._decision_ordered_branches()
-        assert len(ordered) >= 2
-        return ordered[1]
+        return self.decision_ordering.second_best_branch(
+            child_value_candidate_getter=self.child_value_candidate,
+            semantic_compare=self._decision_semantic_compare,
+        )
 
-    def _decision_ordered_branches(self) -> list[BranchKey]:
-        """Return branches ordered for best-choice decisions.
-
-        Uses semantic_compare on Value for correctness, with previous search-order
-        tuple as deterministic tie-breaker.
-        """
-        candidates: list[tuple[BranchKey, Value, BranchSortValue]] = []
-        for branch_key, sort_value in self.branches_sorted_by_value.items():
-            child_value = self.child_value_candidate(branch_key)
-            if child_value is None:
-                continue
-            candidates.append((branch_key, child_value, sort_value))
-
-        def _cmp(
-            a: tuple[BranchKey, Value, BranchSortValue],
-            b: tuple[BranchKey, Value, BranchSortValue],
-        ) -> int:
-            sem = self.objective.semantic_compare(a[1], b[1], self.tree_node.state)
-            if sem != 0:
-                return -sem
-            if a[2] < b[2]:
-                return -1
-            if a[2] > b[2]:
-                return 1
-            return -1 if str(a[0]) < str(b[0]) else (1 if str(a[0]) > str(b[0]) else 0)
-
-        return [item[0] for item in sorted(candidates, key=cmp_to_key(_cmp))]
+    def decision_ordered_branches(self) -> list[BranchKey]:
+        """Return child branches ordered by current minimax decision semantics."""
+        return self.decision_ordering.decision_ordered_branches(
+            child_value_candidate_getter=self.child_value_candidate,
+            semantic_compare=self._decision_semantic_compare,
+        )
 
     def get_over_event_candidate(self) -> OverEvent | None:
         """Return exact outcome metadata from the candidate Value when present."""
@@ -484,7 +443,10 @@ class NodeMinmaxEvaluation[
             "Ensure children receive direct_value explicitly as a Value or "
             "minmax_value via backup before calling record_sort_value_of_child()."
         )
-        self.branches_sorted_by_value_[branch_key] = self.branch_sort_value(branch_key)
+        self.decision_ordering.record_sort_value_of_child(
+            branch_key,
+            branch_sort_value_getter=self.branch_sort_value,
+        )
 
     def branch_sort_value(self, branch_key: BranchKey) -> BranchSortValue:
         """Return the search-order tuple for one child branch.
@@ -589,9 +551,10 @@ class NodeMinmaxEvaluation[
             None
 
         """
-        for branch_key in branches_to_consider:
-            self.record_sort_value_of_child(branch_key=branch_key)
-        self.branches_sorted_by_value_ = sort_dic(self.branches_sorted_by_value_)
+        self.decision_ordering.update_branches_values(
+            branches_to_consider,
+            branch_sort_value_getter=self.branch_sort_value,
+        )
 
     def on_branch_opened(self, branch: BranchKey) -> None:
         """Record that a child branch has entered the frontier."""
@@ -606,6 +569,10 @@ class NodeMinmaxEvaluation[
         return self.branch_frontier.ordered_frontier_branches(
             (*self.branches_sorted_by_value, *self.tree_node.branches_children)
         )
+
+    def _decision_semantic_compare(self, left: Value, right: Value) -> int:
+        """Compare child values using current minimax decision semantics."""
+        return self.objective.semantic_compare(left, right, self.tree_node.state)
 
     def _branch_is_frontier_relevant(self, branch_key: BranchKey) -> bool:
         """Return whether a child branch can still affect future search results."""

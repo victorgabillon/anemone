@@ -403,6 +403,38 @@ def test_branch_ordering_for_search_uses_projection_and_stable_tie_breakers() ->
     )
 
     assert list(parent.branches_sorted_by_value.keys()) == [0, 1]
+    assert parent.decision_ordered_branches() == [0, 1]
+    assert parent.second_best_branch() == 1
+
+
+def test_minimax_decision_ordering_refreshes_when_child_value_changes() -> None:
+    child_a = _make_leaf(1, Value(score=0.2, certainty=Certainty.ESTIMATE))
+    child_b = _make_leaf(2, Value(score=0.7, certainty=Certainty.ESTIMATE))
+
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: child_a, 1: child_b},
+        all_generated=True,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    parent.update_branches_values({0, 1})
+    assert parent.decision_ordered_branches() == [1, 0]
+    assert parent.best_branch() == 1
+
+    child_a.tree_evaluation.direct_value = Value(
+        score=0.9,
+        certainty=Certainty.ESTIMATE,
+    )
+    child_a.tree_evaluation.minmax_value = Value(
+        score=0.9,
+        certainty=Certainty.ESTIMATE,
+    )
+
+    parent.update_branches_values({0})
+
+    assert parent.decision_ordered_branches() == [0, 1]
+    assert parent.best_branch() == 0
 
 
 def test_non_terminal_estimate_with_over_event_is_rejected() -> None:
