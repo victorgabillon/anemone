@@ -1,8 +1,48 @@
 """Provide branch decision-ordering capabilities for tree-search evaluations."""
 
-from typing import Protocol, runtime_checkable
+from collections.abc import Callable, Iterable
+from functools import cmp_to_key
+from typing import Any, Protocol, runtime_checkable
 
 from valanga import BranchKey
+from valanga.evaluations import Value
+
+
+class _Orderable(Protocol):
+    def __lt__(self, other: Any, /) -> bool:
+        """Return whether this tie-break value is less than another one."""
+        ...
+
+    def __gt__(self, other: Any, /) -> bool:
+        """Return whether this tie-break value is greater than another one."""
+        ...
+
+
+def ordered_branches_from_candidates[T: _Orderable](
+    candidates: Iterable[tuple[BranchKey, Value, T]],
+    *,
+    semantic_compare: Callable[[Value, Value], int],
+) -> list[BranchKey]:
+    """Return branches ordered by semantic value, tie-break data, then branch key."""
+
+    def _cmp(
+        left: tuple[BranchKey, Value, T],
+        right: tuple[BranchKey, Value, T],
+    ) -> int:
+        semantic = semantic_compare(left[1], right[1])
+        if semantic != 0:
+            return -semantic
+        if left[2] < right[2]:
+            return -1
+        if left[2] > right[2]:
+            return 1
+        return (
+            -1
+            if str(left[0]) < str(right[0])
+            else (1 if str(left[0]) > str(right[0]) else 0)
+        )
+
+    return [branch_key for branch_key, _, _ in sorted(candidates, key=cmp_to_key(_cmp))]
 
 
 @runtime_checkable

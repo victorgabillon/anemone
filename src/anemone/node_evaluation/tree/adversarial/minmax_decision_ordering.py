@@ -2,11 +2,13 @@
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from functools import cmp_to_key
 
 from valanga import BranchKey
 from valanga.evaluations import Value
 
+from anemone.node_evaluation.common.branch_ordering import (
+    ordered_branches_from_candidates,
+)
 from anemone.utils.my_value_sorted_dict import sort_dic
 
 type BranchSortValue = tuple[float, int, int]
@@ -70,27 +72,10 @@ class MinmaxDecisionOrderingState:
             if child_value is None:
                 continue
             candidates.append((branch_key, child_value, sort_value))
-
-        def _cmp(
-            left: tuple[BranchKey, Value, BranchSortValue],
-            right: tuple[BranchKey, Value, BranchSortValue],
-        ) -> int:
-            semantic = semantic_compare(left[1], right[1])
-            if semantic != 0:
-                return -semantic
-            if left[2] < right[2]:
-                return -1
-            if left[2] > right[2]:
-                return 1
-            return (
-                -1
-                if str(left[0]) < str(right[0])
-                else (1 if str(left[0]) > str(right[0]) else 0)
-            )
-
-        return [
-            branch_key for branch_key, _, _ in sorted(candidates, key=cmp_to_key(_cmp))
-        ]
+        return ordered_branches_from_candidates(
+            candidates,
+            semantic_compare=semantic_compare,
+        )
 
     def best_branch(
         self,

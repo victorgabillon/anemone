@@ -1,7 +1,6 @@
 """Provide a small single-agent max node evaluation implementation."""
 
 from dataclasses import dataclass, field
-from functools import cmp_to_key
 from typing import Any, cast
 
 from valanga import BranchKey, OverEvent, State
@@ -11,6 +10,9 @@ from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
+from anemone.node_evaluation.common.branch_ordering import (
+    ordered_branches_from_candidates,
+)
 from anemone.node_evaluation.common.principal_variation import (
     PrincipalVariationState,
 )
@@ -138,35 +140,14 @@ class NodeMaxEvaluation[StateT: State = State]:
                 continue
             candidates.append((branch_key, child_value, child.tree_node.id))
 
-        if not candidates:
-            return []
-
-        def _cmp(
-            left: tuple[BranchKey, Value, int],
-            right: tuple[BranchKey, Value, int],
-        ) -> int:
-            semantic = self.objective.semantic_compare(
-                left[1],
-                right[1],
+        return ordered_branches_from_candidates(
+            candidates,
+            semantic_compare=lambda left, right: self.objective.semantic_compare(
+                left,
+                right,
                 self.tree_node.state,
-            )
-            if semantic > 0:
-                return -1
-            if semantic < 0:
-                return 1
-            if left[2] < right[2]:
-                return -1
-            if left[2] > right[2]:
-                return 1
-            return (
-                -1
-                if str(left[0]) < str(right[0])
-                else (1 if str(left[0]) > str(right[0]) else 0)
-            )
-
-        return [
-            branch_key for branch_key, _, _ in sorted(candidates, key=cmp_to_key(_cmp))
-        ]
+            ),
+        )
 
     def best_branch(self) -> BranchKey | None:
         """Return the best currently-valued child branch."""
