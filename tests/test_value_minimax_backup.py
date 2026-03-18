@@ -7,10 +7,8 @@ from typing import Any
 from valanga import Color
 from valanga.evaluations import Certainty, Value
 
-from anemone.backup_policies.explicit_minimax import (
-    ExplicitMinimaxBackupPolicy,
-    has_value_changed,
-)
+from anemone.backup_policies.common import has_value_changed
+from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.common.canonical_value import ValueSemanticsError
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,

@@ -4,14 +4,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from anemone.backup_policies.common import SelectedValue, all_child_values_exact
-from anemone.backup_policies.types import BackupResult
+from anemone.backup_policies.common import (
+    SelectedValue,
+    all_child_values_exact,
+    run_backup_pipeline,
+)
 from anemone.node_evaluation.common import canonical_value
 
 if TYPE_CHECKING:
     from valanga import BranchKey
     from valanga.evaluations import Value
 
+    from anemone.backup_policies.types import BackupResult
     from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
@@ -32,9 +36,6 @@ class ExplicitMinimaxBackupPolicy:
             or node_eval.tree_node.branches_children
         ), "Cannot compute minimax value: no children."
 
-        value_before_update = node_eval.minmax_value
-        pv_before_update = node_eval.best_branch_sequence.copy()
-        over_before_update = node_eval.over_event
         best_branch_before_update = node_eval.best_branch()
 
         if branches_with_updated_value:
@@ -43,70 +44,32 @@ class ExplicitMinimaxBackupPolicy:
                 branches_to_consider=branches_with_updated_value,
             )
 
-        self._update_value_value_only(node_eval=node_eval)
-        node_eval.sync_branch_frontier(branches_with_updated_value)
-        best_branch_after_update = node_eval.best_branch()
-
-        if best_branch_after_update is None:
-            node_eval.clear_best_branch_sequence()
-        elif node_eval.tree_node.all_branches_generated:
-            should_rebuild = (
-                best_branch_before_update != best_branch_after_update
-                or not node_eval.best_branch_sequence
-                or node_eval.best_branch_sequence[0] != best_branch_after_update
-                or best_branch_after_update in branches_with_updated_best_branch_seq
-            )
-            if should_rebuild:
-                node_eval.one_of_best_children_becomes_best_next_node()
-        else:
-            direct_value = self._direct_value_candidate(node_eval)
-            assert direct_value is not None, (
-                "Explicit minimax requires direct_value for partially expanded nodes."
-            )
-            best_child_value = node_eval.child_value_candidate(best_branch_after_update)
-            assert best_child_value is not None
-            if node_eval.child_is_better_than_direct(
-                best_child_value,
-                direct_value,
-                side_to_move=node_eval.tree_node.state.turn,
-            ):
-                should_rebuild = (
-                    best_branch_before_update != best_branch_after_update
-                    or not node_eval.best_branch_sequence
-                    or node_eval.best_branch_sequence[0] != best_branch_after_update
-                    or best_branch_after_update in branches_with_updated_best_branch_seq
-                )
-                if should_rebuild:
-                    node_eval.one_of_best_children_becomes_best_next_node()
-            else:
-                node_eval.clear_best_branch_sequence()
-
-        if (
-            best_branch_after_update is not None
-            and node_eval.best_branch_sequence
-            and node_eval.best_branch_sequence[0] == best_branch_after_update
-            and branches_with_updated_best_branch_seq
-        ):
-            node_eval.update_best_branch_sequence(branches_with_updated_best_branch_seq)
-
-        value_changed = has_value_changed(
-            value_before=value_before_update,
-            value_after=node_eval.minmax_value,
-        )
-        pv_changed = pv_before_update != node_eval.best_branch_sequence
-        over_changed = over_before_update != node_eval.over_event
-
-        return BackupResult(
-            value_changed=value_changed,
-            pv_changed=pv_changed,
-            over_changed=over_changed,
+        selection = self._select_value(node_eval=node_eval)
+        value_after = self._build_backed_up_value(
+            node_eval=node_eval,
+            selection=selection,
         )
 
-    def _update_value_value_only(
+        return run_backup_pipeline(
+            node_eval=node_eval,
+            value_after=value_after,
+            branches_with_updated_value=branches_with_updated_value,
+            update_pv=lambda: self._refresh_pv(
+                node_eval=node_eval,
+                best_branch_before_update=best_branch_before_update,
+                selection=selection,
+                branches_with_updated_best_branch_seq=(
+                    branches_with_updated_best_branch_seq
+                ),
+            ),
+        )
+
+    def _select_value(
         self,
+        *,
         node_eval: NodeMinmaxEvaluation[Any, Any],
-    ) -> None:
-        """Update ``minmax_value`` from Value-first branch ordering semantics."""
+    ) -> SelectedValue:
+        """Choose the generic backed-up-value candidate for this minimax node."""
         best_branch_key = node_eval.best_branch()
         if best_branch_key is None and node_eval.tree_node.branches_children:
             self._update_branches_values_value_only(
@@ -123,33 +86,25 @@ class ExplicitMinimaxBackupPolicy:
             assert direct_value is not None, (
                 "Explicit minimax requires direct_value for partially expanded nodes."
             )
-            node_eval.minmax_value = direct_value
-            return
+            return SelectedValue(value=direct_value, from_child=False)
 
         best_child_value = node_eval.child_value_candidate(best_branch_key)
         assert best_child_value is not None
 
-        selection: SelectedValue
         if node_eval.tree_node.all_branches_generated:
-            selection = SelectedValue(value=best_child_value, from_child=True)
-        else:
-            direct_value = self._direct_value_candidate(node_eval)
-            assert direct_value is not None, (
-                "Explicit minimax requires direct_value for partially expanded nodes."
-            )
-            if node_eval.child_is_better_than_direct(
-                best_child_value,
-                direct_value,
-                side_to_move=node_eval.tree_node.state.turn,
-            ):
-                selection = SelectedValue(value=best_child_value, from_child=True)
-            else:
-                selection = SelectedValue(value=direct_value, from_child=False)
+            return SelectedValue(value=best_child_value, from_child=True)
 
-        node_eval.minmax_value = self._build_backed_up_value(
-            node_eval=node_eval,
-            selection=selection,
+        direct_value = self._direct_value_candidate(node_eval)
+        assert direct_value is not None, (
+            "Explicit minimax requires direct_value for partially expanded nodes."
         )
+        if node_eval.child_is_better_than_direct(
+            best_child_value,
+            direct_value,
+            side_to_move=node_eval.tree_node.state.turn,
+        ):
+            return SelectedValue(value=best_child_value, from_child=True)
+        return SelectedValue(value=direct_value, from_child=False)
 
     def _update_branches_values_value_only(
         self,
@@ -170,6 +125,7 @@ class ExplicitMinimaxBackupPolicy:
         self,
         node_eval: NodeMinmaxEvaluation[Any, Any],
     ) -> Value | None:
+        """Return the local direct-evaluator candidate used in partial expansion."""
         return node_eval.direct_value
 
     def _build_backed_up_value(
@@ -234,13 +190,53 @@ class ExplicitMinimaxBackupPolicy:
             node_eval.tree_node.state.turn
         )
 
+    def _refresh_pv(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        best_branch_before_update: BranchKey | None,
+        selection: SelectedValue,
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> bool:
+        """Refresh minimax PV after the shared backed-up-value update is applied."""
+        best_branch_after_update = node_eval.best_branch()
+        if best_branch_after_update is None or not selection.from_child:
+            return node_eval.clear_best_branch_sequence()
 
-def has_value_changed(*, value_before: Value | None, value_after: Value | None) -> bool:
-    """Return whether score/certainty/over metadata changed between two values."""
-    if value_before is None or value_after is None:
-        return value_before != value_after
-    return (
-        value_before.score != value_after.score
-        or value_before.certainty != value_after.certainty
-        or value_before.over_event != value_after.over_event
-    )
+        pv_changed = False
+        if self._should_rebuild_pv_from_best_branch(
+            node_eval=node_eval,
+            best_branch_before_update=best_branch_before_update,
+            best_branch_after_update=best_branch_after_update,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+        ):
+            pv_changed = node_eval.one_of_best_children_becomes_best_next_node()
+
+        if (
+            node_eval.best_branch_sequence
+            and node_eval.best_branch_sequence[0] == best_branch_after_update
+            and branches_with_updated_best_branch_seq
+        ):
+            pv_changed = (
+                node_eval.update_best_branch_sequence(
+                    branches_with_updated_best_branch_seq
+                )
+                or pv_changed
+            )
+        return pv_changed
+
+    def _should_rebuild_pv_from_best_branch(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        best_branch_before_update: BranchKey | None,
+        best_branch_after_update: BranchKey,
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> bool:
+        """Return whether minimax should rebuild the PV head from the best child."""
+        return (
+            best_branch_before_update != best_branch_after_update
+            or not node_eval.best_branch_sequence
+            or node_eval.best_branch_sequence[0] != best_branch_after_update
+            or best_branch_after_update in branches_with_updated_best_branch_seq
+        )

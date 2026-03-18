@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from anemone.backup_policies.common import SelectedValue, all_child_values_exact
-from anemone.backup_policies.explicit_minimax import has_value_changed
-from anemone.backup_policies.types import BackupResult
+from anemone.backup_policies.common import (
+    SelectedValue,
+    all_child_values_exact,
+    run_backup_pipeline,
+)
 from anemone.node_evaluation.common import canonical_value
 
 if TYPE_CHECKING:
     from valanga import BranchKey
     from valanga.evaluations import Value
 
+    from anemone.backup_policies.types import BackupResult
     from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
         NodeMaxEvaluation,
     )
@@ -28,10 +31,6 @@ class ExplicitMaxBackupPolicy:
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Recompute backed-up value and PV from child values."""
-        value_before = node_eval.backed_up_value
-        pv_before = node_eval.best_branch_sequence.copy()
-        over_before = node_eval.over_event
-
         best_branch_key = node_eval.best_branch()
         best_child_value = (
             node_eval.child_value_candidate(best_branch_key)
@@ -49,24 +48,20 @@ class ExplicitMaxBackupPolicy:
             node_eval=node_eval,
             selection=selection,
         )
-        node_eval.backed_up_value = value_after
-        node_eval.sync_branch_frontier(branches_with_updated_value)
 
-        pv_changed = self._update_pv(
+        return run_backup_pipeline(
             node_eval=node_eval,
-            best_branch_key=best_branch_key,
-            best_child_value=best_child_value,
-            selection=selection,
-            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
-        )
-
-        return BackupResult(
-            value_changed=has_value_changed(
-                value_before=value_before,
-                value_after=node_eval.backed_up_value,
+            value_after=value_after,
+            branches_with_updated_value=branches_with_updated_value,
+            update_pv=lambda: self._update_pv(
+                node_eval=node_eval,
+                best_branch_key=best_branch_key,
+                best_child_value=best_child_value,
+                selection=selection,
+                branches_with_updated_best_branch_seq=(
+                    branches_with_updated_best_branch_seq
+                ),
             ),
-            pv_changed=pv_changed or pv_before != node_eval.best_branch_sequence,
-            over_changed=over_before != node_eval.over_event,
         )
 
     def _select_value(

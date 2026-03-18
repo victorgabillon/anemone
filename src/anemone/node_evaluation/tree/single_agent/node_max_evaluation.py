@@ -8,6 +8,7 @@ from valanga.evaluations import Value
 
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
+from anemone.backup_policies.types import BackupResult
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
 from anemone.node_evaluation.common.branch_ordering import (
@@ -238,7 +239,7 @@ class NodeMaxEvaluation[StateT: State = State]:
         self,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> Any:
+    ) -> BackupResult:
         """Delegate backup work to the configured single-agent backup policy."""
         return self.backup_policy.backup_from_children(
             node_eval=self,

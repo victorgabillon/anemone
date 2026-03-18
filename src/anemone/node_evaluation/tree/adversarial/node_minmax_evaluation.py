@@ -84,7 +84,8 @@ class NodeMinmaxEvaluation[
     # canonical state-evaluator value
     direct_value: Value | None = None
 
-    # canonical minimax value computed from descendants
+    # family-specific storage name for the generic backed-up value computed
+    # from descendants
     minmax_value: Value | None = None
 
     @property
@@ -175,6 +176,10 @@ class NodeMinmaxEvaluation[
         """Return True when the candidate Value says this node's own state is terminal."""
         return canonical_value.is_terminal_value(self.get_value_candidate())
 
+    def is_over(self) -> bool:
+        """Temporary compatibility alias for callers that still use legacy naming."""
+        return self.is_terminal()
+
     def has_over_event(self) -> bool:
         """Return True when the candidate Value carries exact outcome metadata."""
         return canonical_value.has_over_event(self.get_value_candidate())
@@ -196,17 +201,14 @@ class NodeMinmaxEvaluation[
     def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
         """Return the best available Value candidate for a child branch.
 
-        Internal helper shared with backup policies during Step 7 migration.
+        ``minmax_value`` is this family's storage name for the generic
+        ``backed_up_value`` concept, so child lookup goes through the child
+        evaluation's generic candidate API.
         """
         child = self.tree_node.branches_children[branch_key]
         if child is None:
             return None
-
-        child_eval = child.tree_evaluation
-        return canonical_value.get_value_candidate(
-            backed_up_value=child_eval.minmax_value,
-            direct_value=child_eval.direct_value,
-        )
+        return child.tree_evaluation.get_value_candidate()
 
     def best_branch(self) -> BranchKey | None:
         """Return the best branch node based on the subjective value.
