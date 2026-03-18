@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from .common.branch_frontier import BranchFrontierAware, BranchFrontierState
     from .common.canonical_value import ValueSemanticsError
     from .common.node_value_evaluation import NodeValueEvaluation
+    from .common.principal_variation import PrincipalVariationState
     from .direct import (
         DirectValueInvariantError,
         EvaluationQueries,
@@ -30,6 +31,10 @@ if TYPE_CHECKING:
 _EXPORTS: dict[str, tuple[str, str | None]] = {
     "BranchFrontierAware": (".common.branch_frontier", "BranchFrontierAware"),
     "BranchFrontierState": (".common.branch_frontier", "BranchFrontierState"),
+    "PrincipalVariationState": (
+        ".common.principal_variation",
+        "PrincipalVariationState",
+    ),
     "DirectValueInvariantError": (".direct", "DirectValueInvariantError"),
     "EvaluationQueries": (".direct", "EvaluationQueries"),
     "MasterStateValueEvaluator": (".direct", "MasterStateValueEvaluator"),
@@ -86,6 +91,7 @@ __all__ = [
     "NodeTreeMinmaxEvaluationFactory",
     "NodeValueEvaluation",
     "OverEventDetector",
+    "PrincipalVariationState",
     "ValueSemanticsError",
     "canonical_value",
     "create_node_evaluator",

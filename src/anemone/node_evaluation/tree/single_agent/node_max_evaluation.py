@@ -11,14 +11,12 @@ from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
+from anemone.node_evaluation.common.principal_variation import (
+    PrincipalVariationState,
+)
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective
-
-
-def make_branch_sequence_factory() -> list[BranchKey]:
-    """Create a factory for best-branch sequences."""
-    return []
 
 
 def make_default_objective() -> Objective[State]:
@@ -36,6 +34,11 @@ def make_branch_frontier_factory() -> BranchFrontierState:
     return BranchFrontierState()
 
 
+def make_principal_variation_state_factory() -> PrincipalVariationState:
+    """Create the generic principal-variation bookkeeping helper for one node."""
+    return PrincipalVariationState()
+
+
 @dataclass(slots=True)
 class NodeMaxEvaluation[StateT: State = State]:
     """Canonical Value-based node evaluation for single-agent max search."""
@@ -43,8 +46,8 @@ class NodeMaxEvaluation[StateT: State = State]:
     tree_node: TreeNode[Any, StateT]
     direct_value: Value | None = None
     _backed_up_value: Value | None = None
-    best_branch_sequence: list[BranchKey] = field(
-        default_factory=make_branch_sequence_factory
+    pv_state: PrincipalVariationState = field(
+        default_factory=make_principal_variation_state_factory
     )
     objective: Objective[StateT] = field(default_factory=make_default_objective)
     backup_policy: BackupPolicy["NodeMaxEvaluation[StateT]"] = field(
@@ -63,6 +66,21 @@ class NodeMaxEvaluation[StateT: State = State]:
     def backed_up_value(self, value: Value | None) -> None:
         """Set the canonical backed-up value for this node."""
         self._backed_up_value = value
+
+    @property
+    def best_branch_sequence(self) -> list[BranchKey]:
+        """Return the current principal-variation branch sequence."""
+        return self.pv_state.best_branch_sequence
+
+    @property
+    def pv_version(self) -> int:
+        """Return the version of the current PV content."""
+        return self.pv_state.pv_version
+
+    @property
+    def pv_cached_best_child_version(self) -> int | None:
+        """Cached pv_version of the best child when PV was last materialized."""
+        return self.pv_state.cached_best_child_version
 
     def get_value_candidate(self) -> Value | None:
         """Return backed-up value when available, else direct value."""
@@ -176,6 +194,25 @@ class NodeMaxEvaluation[StateT: State = State]:
         child = self.tree_node.branches_children.get(branch_key)
         return child is not None and not child.tree_evaluation.has_exact_value()
 
+    def _child_pv_version(self, child: Any) -> int:
+        """Return one child's PV version with a conservative fallback."""
+        return int(getattr(child.tree_evaluation, "pv_version", 0))
+
+    def _child_best_branch_sequence(self, child: Any) -> list[BranchKey]:
+        """Return one child's current PV sequence."""
+        return list(child.tree_evaluation.best_branch_sequence)
+
+    def _pv_child_version_for_sequence(self, sequence: list[BranchKey]) -> int | None:
+        """Return the cached best-child PV version for a given PV sequence head."""
+        if not sequence:
+            return None
+
+        best_child = self.tree_node.branches_children.get(sequence[0])
+        if best_child is None:
+            return None
+
+        return self._child_pv_version(best_child)
+
     def sync_branch_frontier(self, branches_to_refresh: set[BranchKey]) -> None:
         """Refresh frontier bookkeeping from updated child values."""
         if self.has_exact_value():
@@ -192,28 +229,29 @@ class NodeMaxEvaluation[StateT: State = State]:
     ) -> bool:
         """Update the current principal variation from the best child when needed."""
         best_branch_key = self.best_branch()
-        if best_branch_key is None:
-            return self.set_best_branch_sequence([])
-
-        if (
-            best_branch_key not in branches_with_updated_best_branch_seq
-            and self.best_branch_sequence
-            and self.best_branch_sequence[0] == best_branch_key
-        ):
-            return False
-
-        best_child = self.tree_node.branches_children[best_branch_key]
-        assert best_child is not None
-        return self.set_best_branch_sequence(
-            [best_branch_key, *best_child.tree_evaluation.best_branch_sequence]
+        best_child = (
+            self.tree_node.branches_children.get(best_branch_key)
+            if best_branch_key is not None
+            else None
+        )
+        return self.pv_state.try_update_from_best_child(
+            best_branch_key=best_branch_key,
+            best_child=best_child,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+            child_pv_version_getter=self._child_pv_version,
+            child_best_branch_sequence_getter=self._child_best_branch_sequence,
         )
 
     def set_best_branch_sequence(self, new_seq: list[BranchKey]) -> bool:
-        """Replace the stored principal variation content."""
-        if self.best_branch_sequence == new_seq:
-            return False
-        self.best_branch_sequence = new_seq.copy()
-        return True
+        """Replace PV content and update child-version tracking when it changes."""
+        return self.pv_state.set_sequence(
+            new_seq,
+            current_best_child_version=self._pv_child_version_for_sequence(new_seq),
+        )
+
+    def clear_best_branch_sequence(self) -> bool:
+        """Clear the stored principal variation content."""
+        return self.pv_state.clear()
 
     def backup_from_children(
         self,

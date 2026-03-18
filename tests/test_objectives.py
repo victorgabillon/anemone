@@ -90,7 +90,7 @@ def _exact_leaf(
     )
     tree_evaluation.direct_value = value
     tree_evaluation.minmax_value = value
-    tree_evaluation.best_branch_sequence = list(range(pv_length))
+    tree_evaluation.set_best_branch_sequence(list(range(pv_length)))
     return SimpleNamespace(tree_node=tree_node, tree_evaluation=tree_evaluation)
 
 

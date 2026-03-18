@@ -35,7 +35,7 @@ class NodeTreeMinmaxEvaluationFactory[StateT: TurnState]:
     def create(
         self,
         tree_node: TreeNode[Any, StateT],
-    ) -> NodeMinmaxEvaluation[Any, StateT]:
+    ) -> NodeTreeEvaluation[StateT]:
         """Create a new NodeEvaluationIncludingChildren object.
 
         Args:

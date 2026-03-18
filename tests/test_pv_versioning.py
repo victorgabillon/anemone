@@ -1,3 +1,5 @@
+"""Regression tests for principal-variation versioning behavior."""
+
 # ruff: noqa: D103
 from __future__ import annotations
 
@@ -149,27 +151,6 @@ def test_parent_pv_rebuilds_from_empty_parent_pv_on_best_child_notification() ->
 
     assert result.pv_changed
     assert parent.best_branch_sequence == [0, 88]
-
-
-def test_parent_pv_rebuilds_on_best_child_pv_update_notification_without_version_bump() -> (
-    None
-):
-    parent, children = _make_parent_eval()
-    parent.backup_from_children(
-        branches_with_updated_value={0, 1},
-        branches_with_updated_best_branch_seq=set(),
-    )
-
-    # Simulate legacy/direct assignment path that bypasses set_best_branch_sequence.
-    children[0].tree_evaluation.best_branch_sequence = [123]
-
-    result = parent.backup_from_children(
-        branches_with_updated_value=set(),
-        branches_with_updated_best_branch_seq={0},
-    )
-
-    assert result.pv_changed
-    assert parent.best_branch_sequence == [0, 123]
 
 
 def test_update_best_branch_sequence_does_not_fix_corrupted_head() -> None:

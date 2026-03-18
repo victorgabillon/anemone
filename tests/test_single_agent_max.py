@@ -1,5 +1,7 @@
 """Tests for the single-agent max evaluation family."""
 
+# ruff: noqa: D103
+
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
@@ -62,7 +64,7 @@ def _child(
     evaluation = NodeMaxEvaluation(tree_node=tree_node)
     evaluation.direct_value = value
     evaluation.backed_up_value = value
-    evaluation.best_branch_sequence = list(best_branch_sequence or [])
+    evaluation.set_best_branch_sequence(list(best_branch_sequence or []))
     return SimpleNamespace(tree_node=tree_node, tree_evaluation=evaluation)
 
 
@@ -207,3 +209,60 @@ def test_single_agent_exact_value_and_terminality_are_distinct() -> None:
     assert not node.is_terminal()
     assert node.has_over_event()
     assert node.over_event is not None
+
+
+def test_single_agent_pv_state_tracks_version_and_cache() -> None:
+    children = {
+        1: _child(
+            11,
+            Value(score=0.9, certainty=Certainty.ESTIMATE),
+            best_branch_sequence=[8, 9],
+        ),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    assert node.set_best_branch_sequence([1, 8, 9])
+    assert node.pv_version == 1
+    assert node.pv_cached_best_child_version == children[1].tree_evaluation.pv_version
+
+    assert not node.set_best_branch_sequence([1, 8, 9])
+    assert node.pv_version == 1
+
+    assert node.clear_best_branch_sequence()
+    assert node.best_branch_sequence == []
+    assert node.pv_version == 2
+    assert node.pv_cached_best_child_version is None
+
+
+def test_single_agent_incremental_pv_update_uses_shared_state() -> None:
+    children = {
+        1: _child(
+            11,
+            Value(score=0.9, certainty=Certainty.ESTIMATE),
+            best_branch_sequence=[8, 9],
+        ),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    assert node.set_best_branch_sequence([1, 8, 9])
+    version_before = node.pv_version
+
+    assert not node.update_best_branch_sequence(set())
+    assert node.pv_version == version_before
+
+    children[1].tree_evaluation.set_best_branch_sequence([10, 11])
+
+    assert node.update_best_branch_sequence({1})
+    assert node.best_branch_sequence == [1, 10, 11]
+    assert node.pv_version == version_before + 1
+    assert node.pv_cached_best_child_version == children[1].tree_evaluation.pv_version

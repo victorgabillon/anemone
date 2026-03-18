@@ -11,7 +11,10 @@ from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvalua
 class NodeTreeEvaluation[StateT: State = State](NodeValueEvaluation, Protocol):
     """Shared tree-search evaluation surface used by generic search orchestration."""
 
-    best_branch_sequence: list[BranchKey]
+    @property
+    def best_branch_sequence(self) -> list[BranchKey]:
+        """Return the current principal-variation branch sequence."""
+        ...
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]

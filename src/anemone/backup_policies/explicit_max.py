@@ -132,7 +132,7 @@ class ExplicitMaxBackupPolicy:
             or not selection.from_child
             or selection.value != best_child_value
         ):
-            return node_eval.set_best_branch_sequence([])
+            return node_eval.clear_best_branch_sequence()
 
         best_child = node_eval.tree_node.branches_children[best_branch_key]
         assert best_child is not None
