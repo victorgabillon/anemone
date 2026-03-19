@@ -7,7 +7,11 @@ from typing import Any
 from valanga import BranchKey, Color
 from valanga.evaluations import Certainty, Value
 
-from anemone.backup_policies.common import SelectedValue, has_value_changed
+from anemone.backup_policies.common import (
+    ProofClassification,
+    SelectedValue,
+    has_value_changed,
+)
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.common.canonical_value import ValueSemanticsError
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
@@ -44,6 +48,25 @@ class _SelectDirectAggregationPolicy:
         self.calls += 1
         assert branches_with_updated_value
         return SelectedValue(value=node_eval.direct_value, from_child=False)
+
+
+class _ForcedProofPolicy:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def classify_selected_value(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        selection: SelectedValue,
+    ) -> ProofClassification | None:
+        self.calls += 1
+        del node_eval
+        assert selection.value is not None
+        return ProofClassification(
+            certainty=Certainty.FORCED,
+            over_event=_FakeOverEvent(winner=Color.WHITE),
+        )
 
 
 def _make_leaf(node_id: int, value: Value) -> Any:
@@ -196,6 +219,34 @@ def test_explicit_minimax_backup_uses_injected_aggregation_policy() -> None:
 
     assert aggregation_policy.calls == 1
     assert parent.minmax_value == Value(score=0.1, certainty=Certainty.ESTIMATE)
+    assert parent.best_branch_sequence == []
+
+
+def test_explicit_minimax_backup_uses_injected_proof_policy() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: _make_leaf(1, Value(score=0.9, certainty=Certainty.ESTIMATE))},
+        all_generated=True,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+    )
+    aggregation_policy = _SelectDirectAggregationPolicy()
+    proof_policy = _ForcedProofPolicy()
+    parent.backup_policy = ExplicitMinimaxBackupPolicy(
+        aggregation_policy=aggregation_policy,
+        proof_policy=proof_policy,
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert proof_policy.calls == 1
+    assert parent.minmax_value == Value(
+        score=0.1,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
     assert parent.best_branch_sequence == []
 
 

@@ -9,7 +9,9 @@ from anemone.backup_policies import (
     ExplicitMaxBackupPolicy,
     ExplicitMinimaxBackupPolicy,
     MaxAggregationPolicy,
+    MaxProofPolicy,
     MinimaxAggregationPolicy,
+    MinimaxProofPolicy,
 )
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
@@ -62,12 +64,14 @@ def test_factory_defaults_to_explicit_policy() -> None:
     assert isinstance(explicit_eval.objective, AdversarialZeroSumObjective)
 
 
-def test_explicit_backup_policies_default_to_family_aggregation_policies() -> None:
-    """Explicit backup policies should install the matching aggregation policy."""
+def test_explicit_backup_policies_default_to_family_policy_objects() -> None:
+    """Explicit backup policies should install the matching aggregation/proof policies."""
     assert isinstance(
         ExplicitMaxBackupPolicy().aggregation_policy, MaxAggregationPolicy
     )
+    assert isinstance(ExplicitMaxBackupPolicy().proof_policy, MaxProofPolicy)
     assert isinstance(
         ExplicitMinimaxBackupPolicy().aggregation_policy,
         MinimaxAggregationPolicy,
     )
+    assert isinstance(ExplicitMinimaxBackupPolicy().proof_policy, MinimaxProofPolicy)

@@ -4,18 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from valanga.evaluations import Certainty
-
 from anemone.backup_policies.aggregation import (
     AggregationPolicy,
     MaxAggregationPolicy,
 )
 from anemone.backup_policies.common import (
-    ProofClassification,
     SelectedValue,
-    all_child_values_exact,
     finalize_selection_with_proof,
 )
+from anemone.backup_policies.proof import MaxProofPolicy, ProofPolicy
 
 if TYPE_CHECKING:
     from valanga import BranchKey
@@ -31,15 +28,20 @@ class ExplicitMaxBackupPolicy:
     """Backup policy that computes single-agent max value and PV from Value."""
 
     aggregation_policy: AggregationPolicy[NodeMaxEvaluation[Any]]
+    proof_policy: ProofPolicy[NodeMaxEvaluation[Any]]
 
     def __init__(
         self,
         aggregation_policy: AggregationPolicy[NodeMaxEvaluation[Any]] | None = None,
+        proof_policy: ProofPolicy[NodeMaxEvaluation[Any]] | None = None,
     ) -> None:
-        """Initialize the backup policy with one injectable aggregation strategy."""
+        """Initialize the backup policy with injectable aggregation/proof strategies."""
         if aggregation_policy is None:
             aggregation_policy = MaxAggregationPolicy()
+        if proof_policy is None:
+            proof_policy = MaxProofPolicy()
         self.aggregation_policy = aggregation_policy
+        self.proof_policy = proof_policy
 
     def backup_from_children(
         self,
@@ -60,7 +62,7 @@ class ExplicitMaxBackupPolicy:
             node_eval=node_eval,
             branches_with_updated_value=branches_with_updated_value,
         )
-        proof = self._classify_selected_value(
+        proof = self.proof_policy.classify_selected_value(
             node_eval=node_eval,
             selection=selection,
         )
@@ -78,30 +80,6 @@ class ExplicitMaxBackupPolicy:
                     branches_with_updated_best_branch_seq
                 ),
             ),
-        )
-
-    def _classify_selected_value(
-        self,
-        *,
-        node_eval: NodeMaxEvaluation[Any],
-        selection: SelectedValue,
-    ) -> ProofClassification | None:
-        """Classify certainty/outcome for the selected parent value."""
-        # pylint: disable=duplicate-code
-        chosen_value = selection.value
-        if chosen_value is None:
-            return None
-
-        if not selection.from_child:
-            return ProofClassification.from_value(chosen_value)
-
-        exact_from_children = (
-            node_eval.tree_node.all_branches_generated
-            and all_child_values_exact(node_eval)
-        )
-        return ProofClassification(
-            certainty=Certainty.FORCED if exact_from_children else Certainty.ESTIMATE,
-            over_event=chosen_value.over_event if exact_from_children else None,
         )
 
     def _update_pv(

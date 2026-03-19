@@ -4,23 +4,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from valanga.evaluations import Certainty
-
 from anemone.backup_policies.aggregation import (
     AggregationPolicy,
     MinimaxAggregationPolicy,
 )
 from anemone.backup_policies.common import (
-    ProofClassification,
     SelectedValue,
-    all_child_values_exact,
     finalize_selection_with_proof,
 )
-from anemone.node_evaluation.common import canonical_value
+from anemone.backup_policies.proof import MinimaxProofPolicy, ProofPolicy
 
 if TYPE_CHECKING:
     from valanga import BranchKey
-    from valanga.evaluations import Value
 
     from anemone.backup_policies.types import BackupResult
     from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
@@ -32,16 +27,21 @@ class ExplicitMinimaxBackupPolicy:
     """Backup policy that computes adversarial minimax value/PV/over from Value."""
 
     aggregation_policy: AggregationPolicy[NodeMinmaxEvaluation[Any, Any]]
+    proof_policy: ProofPolicy[NodeMinmaxEvaluation[Any, Any]]
 
     def __init__(
         self,
         aggregation_policy: AggregationPolicy[NodeMinmaxEvaluation[Any, Any]]
         | None = None,
+        proof_policy: ProofPolicy[NodeMinmaxEvaluation[Any, Any]] | None = None,
     ) -> None:
-        """Initialize the backup policy with one injectable aggregation strategy."""
+        """Initialize the backup policy with injectable aggregation/proof strategies."""
         if aggregation_policy is None:
             aggregation_policy = MinimaxAggregationPolicy()
+        if proof_policy is None:
+            proof_policy = MinimaxProofPolicy()
         self.aggregation_policy = aggregation_policy
+        self.proof_policy = proof_policy
 
     def backup_from_children(
         self,
@@ -61,7 +61,7 @@ class ExplicitMinimaxBackupPolicy:
             node_eval=node_eval,
             branches_with_updated_value=branches_with_updated_value,
         )
-        proof = self._classify_selected_value(
+        proof = self.proof_policy.classify_selected_value(
             node_eval=node_eval,
             selection=selection,
         )
@@ -78,68 +78,6 @@ class ExplicitMinimaxBackupPolicy:
                     branches_with_updated_best_branch_seq
                 ),
             ),
-        )
-
-    def _classify_selected_value(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-        selection: SelectedValue,
-    ) -> ProofClassification | None:
-        """Classify certainty/outcome for the selected parent value."""
-        # pylint: disable=duplicate-code
-        chosen_value = selection.value
-        if chosen_value is None:
-            return None
-
-        if not selection.from_child:
-            return ProofClassification.from_value(chosen_value)
-
-        exact = self._selected_child_proves_exact_value(
-            node_eval=node_eval,
-            selected_child_value=chosen_value,
-        )
-        return ProofClassification(
-            certainty=Certainty.FORCED if exact else Certainty.ESTIMATE,
-            over_event=chosen_value.over_event if exact else None,
-        )
-
-    def _selected_child_proves_exact_value(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-        selected_child_value: Value,
-    ) -> bool:
-        if not canonical_value.is_exact_value(selected_child_value):
-            return False
-
-        # Important: child certainty must never be copied directly to the parent.
-        # A non-terminal parent becomes FORCED only when the parent itself is now exact.
-        if self._selected_child_proves_parent_exact_value_by_choice(
-            node_eval=node_eval,
-            selected_child_value=selected_child_value,
-        ):
-            return True
-
-        if not node_eval.tree_node.all_branches_generated:
-            return False
-
-        return all_child_values_exact(node_eval)
-
-    def _selected_child_proves_parent_exact_value_by_choice(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-        selected_child_value: Value,
-    ) -> bool:
-        """Return True when the chosen child alone proves the parent's exact value.
-
-        A current-player exact win is enough to solve the parent even before all
-        siblings are generated, because the player to move can choose that line.
-        """
-        over_event = selected_child_value.over_event
-        return over_event is not None and over_event.is_winner(
-            node_eval.tree_node.state.turn
         )
 
     def _refresh_pv(
