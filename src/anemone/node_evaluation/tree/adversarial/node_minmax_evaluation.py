@@ -19,6 +19,7 @@ from anemone.node_evaluation.tree.adversarial.minmax_decision_ordering import (
     MinmaxDecisionOrderingState,
 )
 from anemone.node_evaluation.tree.node_tree_evaluation import (
+    BestBranchEquivalenceMode,
     NodeTreeEvaluationState,
     TreeEvaluationChild,
 )
@@ -297,9 +298,38 @@ class NodeMinmaxEvaluation[
         """Return frontier candidates in cached minimax search order."""
         return (*self.branches_sorted_by_value, *self.tree_node.branches_children)
 
+    def _ordered_candidate_branches_for_best_equivalence(
+        self,
+    ) -> tuple[BranchKey, ...]:
+        """Return candidate branches in cached minimax search order."""
+        return tuple(self.branches_sorted_by_value)
+
     def _decision_semantic_compare(self, left: Value, right: Value) -> int:
         """Compare child values using current minimax decision semantics."""
         return self.objective.semantic_compare(left, right, self.tree_node.state)
+
+    def _branch_is_equivalent_to_best(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+        mode: BestBranchEquivalenceMode,
+    ) -> bool:
+        """Apply minimax-specific best-branch equivalence semantics."""
+        branch_value = self.branches_sorted_by_value[branch]
+        best_value = self.branches_sorted_by_value[best_branch]
+
+        if mode is BestBranchEquivalenceMode.EQUAL:
+            return self.are_equal_values(branch_value, best_value)
+        if mode is BestBranchEquivalenceMode.CONSIDERED_EQUAL:
+            return self.are_considered_equal_values(branch_value, best_value)
+        if mode is BestBranchEquivalenceMode.ALMOST_EQUAL:
+            return self.are_almost_equal_values(branch_value[0], best_value[0])
+        if mode is BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC:
+            best_value_logit = self.my_logit(best_value[0] * 0.5 + 0.5)
+            child_value_logit = self.my_logit(branch_value[0] * 0.5 + 0.5)
+            return self.are_almost_equal_values(child_value_logit, best_value_logit)
+        return False
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Triggered when the value of the current best branch does not match the best value.
@@ -313,12 +343,11 @@ class NodeMinmaxEvaluation[
             AssertionError: If the `best_node_sequence` attribute is empty after updating.
 
         """
-        how_equal_: str = "equal"
-        best_branches: list[BranchKey] = self.get_all_of_the_best_branches(
-            how_equal=how_equal_
+        mode = BestBranchEquivalenceMode.EQUAL
+        best_branches: list[BranchKey] = self.best_equivalent_branches(
+            mode=mode
         )
-        if how_equal_ == "equal":
-            assert len(best_branches) == 1
+        assert len(best_branches) == 1
         best_branch_key = choice(best_branches)
         has_best_branch_seq_changed = self.set_best_branch_sequence(
             self.best_branch_line_from_child(best_branch_key)
@@ -358,38 +387,13 @@ class NodeMinmaxEvaluation[
         )  # the * min(1,x) is a hack to prioritize game over
 
     def get_all_of_the_best_branches(
-        self, how_equal: str | None = None
+        self,
+        how_equal: BestBranchEquivalenceMode | str | None = None,
     ) -> list[BranchKey]:
-        """Return a list of all the best branches based on the specified equality criteria.
-
-        Args:
-            how_equal (str | None): The equality criteria to determine the best branches.
-                Possible values are 'equal', 'considered_equal', 'almost_equal', 'almost_equal_logistic'.
-                Defaults to None.
-
-        Returns:
-            list[Ibranch]: A list of Ibranch representing the best branches.
-
-        """
-        best_branches: list[BranchKey] = []
-        best_branch: BranchKey | None = self.best_branch()
-        assert best_branch is not None
-        best_value = self.branches_sorted_by_value[best_branch]
-        branch_key: BranchKey
-        for branch_key, branch_value in self.branches_sorted_by_value.items():
-            if how_equal == "equal":
-                if self.are_equal_values(branch_value, best_value):
-                    best_branches.append(branch_key)
-                    assert len(best_branches) == 1
-            elif how_equal == "considered_equal":
-                if self.are_considered_equal_values(branch_value, best_value):
-                    best_branches.append(branch_key)
-            elif how_equal == "almost_equal":
-                if self.are_almost_equal_values(branch_value[0], best_value[0]):
-                    best_branches.append(branch_key)
-            elif how_equal == "almost_equal_logistic":
-                best_value_logit = self.my_logit(best_value[0] * 0.5 + 0.5)
-                child_value_logit = self.my_logit(branch_value[0] * 0.5 + 0.5)
-                if self.are_almost_equal_values(child_value_logit, best_value_logit):
-                    best_branches.append(branch_key)
-        return best_branches
+        """Compatibility wrapper for the new generic best-branch equivalence API."""
+        mode = (
+            BestBranchEquivalenceMode.EQUAL
+            if how_equal is None
+            else BestBranchEquivalenceMode(how_equal)
+        )
+        return self.best_equivalent_branches(mode=mode)

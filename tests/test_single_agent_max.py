@@ -11,10 +11,14 @@ from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies.common import ProofClassification, SelectedValue
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
+from anemone.node_evaluation.tree.node_tree_evaluation import (
+    BestBranchEquivalenceMode,
+)
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
 from anemone.objectives import SingleAgentMaxObjective
+from anemone.recommender_rule.recommender_rule import AlmostEqualLogistic
 
 
 @dataclass(frozen=True)
@@ -296,6 +300,50 @@ def test_single_agent_decision_ordered_branches_are_public_and_deterministic() -
 
     assert node.decision_ordered_branches() == [1, 0]
     assert node.best_branch() == node.decision_ordered_branches()[0]
+
+
+def test_single_agent_best_equivalent_branches_support_generic_modes() -> None:
+    node = _node(
+        node_id=0,
+        children={
+            0: _child(10, Value(score=0.9, certainty=Certainty.ESTIMATE)),
+            1: _child(11, Value(score=0.9, certainty=Certainty.ESTIMATE)),
+            2: _child(12, Value(score=0.895, certainty=Certainty.ESTIMATE)),
+        },
+    )
+
+    assert node.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0, 1]
+    assert node.best_equivalent_branches(
+        BestBranchEquivalenceMode.CONSIDERED_EQUAL
+    ) == [0, 1]
+    assert node.best_equivalent_branches(BestBranchEquivalenceMode.ALMOST_EQUAL) == [
+        0,
+        1,
+        2,
+    ]
+    assert node.best_equivalent_branches(
+        BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
+    ) == [0, 1, 2]
+
+
+def test_almost_equal_logistic_recommender_uses_generic_evaluation_capability() -> None:
+    tree_evaluation = _node(
+        node_id=0,
+        children={
+            0: _child(10, Value(score=0.9, certainty=Certainty.ESTIMATE)),
+            1: _child(11, Value(score=0.895, certainty=Certainty.ESTIMATE)),
+            2: _child(12, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+        },
+    )
+    root_node = SimpleNamespace(
+        tree_evaluation=tree_evaluation,
+        branches_children=tree_evaluation.tree_node.branches_children,
+    )
+    rule = AlmostEqualLogistic(type="almost_equal_logistic", temperature=1.0)
+
+    policy = rule.policy(root_node)
+
+    assert policy.probs == {0: 0.5, 1: 0.5}
 
 
 def test_single_agent_exact_value_and_terminality_are_distinct() -> None:

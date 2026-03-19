@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga import BranchKey, OverEvent, State
@@ -34,6 +35,15 @@ def make_branch_frontier_factory() -> BranchFrontierState:
 def make_principal_variation_state_factory() -> PrincipalVariationState:
     """Create the generic principal-variation bookkeeping helper for one node."""
     return PrincipalVariationState()
+
+
+class BestBranchEquivalenceMode(StrEnum):
+    """Modes for collecting branches considered equivalent to the best branch."""
+
+    EQUAL = "equal"
+    CONSIDERED_EQUAL = "considered_equal"
+    ALMOST_EQUAL = "almost_equal"
+    ALMOST_EQUAL_LOGISTIC = "almost_equal_logistic"
 
 
 class TreeEvaluationChild[StateT: State = State](ITreeNode[StateT], Protocol):
@@ -249,6 +259,41 @@ class NodeTreeEvaluationState[
         """
         raise NotImplementedError
 
+    def best_equivalent_branches(
+        self,
+        mode: BestBranchEquivalenceMode = BestBranchEquivalenceMode.EQUAL,
+    ) -> list[BranchKey]:
+        """Return branches equivalent to the current best branch under one mode."""
+        best_branch_key = self.best_branch()
+        if best_branch_key is None:
+            return []
+
+        best_branches: list[BranchKey] = []
+        for branch in self._ordered_candidate_branches_for_best_equivalence():
+            if self._branch_is_equivalent_to_best(
+                branch=branch,
+                best_branch=best_branch_key,
+                mode=mode,
+            ):
+                best_branches.append(branch)
+        return best_branches
+
+    def _ordered_candidate_branches_for_best_equivalence(
+        self,
+    ) -> Iterable[BranchKey]:
+        """Return candidate branches in family-defined best-equivalence order."""
+        raise NotImplementedError
+
+    def _branch_is_equivalent_to_best(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+        mode: BestBranchEquivalenceMode,
+    ) -> bool:
+        """Return whether one branch is equivalent to the best branch under one mode."""
+        raise NotImplementedError
+
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
     ) -> bool:
@@ -327,6 +372,13 @@ class NodeTreeEvaluation[StateT: State = State](
         self, branches_with_updated_best_branch_seq: set[BranchKey]
     ) -> bool:
         """Update the principal variation from changed child branches."""
+        ...
+
+    def best_equivalent_branches(
+        self,
+        mode: BestBranchEquivalenceMode = BestBranchEquivalenceMode.EQUAL,
+    ) -> list[BranchKey]:
+        """Return branches equivalent to the best branch under one mode."""
         ...
 
     def backup_from_children(

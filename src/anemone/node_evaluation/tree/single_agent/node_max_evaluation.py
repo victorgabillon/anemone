@@ -11,7 +11,10 @@ from anemone.backup_policies.types import BackupResult
 from anemone.node_evaluation.common.branch_ordering import (
     ordered_branches_from_candidates,
 )
-from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluationState
+from anemone.node_evaluation.tree.node_tree_evaluation import (
+    BestBranchEquivalenceMode,
+    NodeTreeEvaluationState,
+)
 from anemone.objectives import Objective
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective
 
@@ -68,6 +71,51 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
     def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
         """Return frontier candidates in current single-agent search order."""
         return (*self.decision_ordered_branches(), *self.tree_node.branches_children)
+
+    def _ordered_candidate_branches_for_best_equivalence(
+        self,
+    ) -> tuple[BranchKey, ...]:
+        """Return candidate branches in current single-agent decision order."""
+        return tuple(self.decision_ordered_branches())
+
+    def _branch_is_equivalent_to_best(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+        mode: BestBranchEquivalenceMode,
+    ) -> bool:
+        """Apply single-agent max semantics for best-branch equivalence."""
+        branch_value = self.child_value_candidate(branch)
+        best_value = self.child_value_candidate(best_branch)
+        assert branch_value is not None
+        assert best_value is not None
+
+        if mode is BestBranchEquivalenceMode.EQUAL:
+            return branch_value == best_value
+        if mode is BestBranchEquivalenceMode.CONSIDERED_EQUAL:
+            return (
+                self.objective.semantic_compare(
+                    branch_value,
+                    best_value,
+                    self.tree_node.state,
+                )
+                == 0
+            )
+        if mode in (
+            BestBranchEquivalenceMode.ALMOST_EQUAL,
+            BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC,
+        ):
+            return self._are_almost_equal_scores(
+                branch_value.score,
+                best_value.score,
+            )
+        return False
+
+    def _are_almost_equal_scores(self, left: float, right: float) -> bool:
+        """Return whether two single-agent scores are close enough to treat as tied."""
+        epsilon = 0.01
+        return left > right - epsilon and right > left - epsilon
 
     def backup_from_children(
         self,

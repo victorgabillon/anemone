@@ -14,6 +14,9 @@ from anemone.backup_policies.common import (
 )
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.common.canonical_value import ValueSemanticsError
+from anemone.node_evaluation.tree.node_tree_evaluation import (
+    BestBranchEquivalenceMode,
+)
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -289,6 +292,39 @@ def test_search_ordering_remains_projection_based_for_large_estimate() -> None:
     ordered_branches = list(parent.branches_sorted_by_value.keys())
     assert ordered_branches.index(1) < ordered_branches.index(0)
     assert parent.best_branch() == 0
+
+
+def test_minimax_best_equivalent_branches_preserve_existing_modes() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={
+            0: _make_leaf(1, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+            1: _make_leaf(2, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+            2: _make_leaf(3, Value(score=0.497, certainty=Certainty.ESTIMATE)),
+        },
+        all_generated=True,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    parent.update_branches_values({0, 1, 2})
+
+    assert parent.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0]
+    assert parent.best_equivalent_branches(
+        BestBranchEquivalenceMode.CONSIDERED_EQUAL
+    ) == [0, 1]
+    assert parent.best_equivalent_branches(BestBranchEquivalenceMode.ALMOST_EQUAL) == [
+        0,
+        1,
+        2,
+    ]
+    assert parent.best_equivalent_branches(
+        BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
+    ) == [0, 1, 2]
+    assert parent.get_all_of_the_best_branches(
+        how_equal="almost_equal_logistic"
+    ) == parent.best_equivalent_branches(
+        BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
+    )
 
 
 def test_backup_result_value_changed_tracks_score_certainty_and_over_event() -> None:

@@ -15,6 +15,7 @@ from anemone.node_evaluation.tree.factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
 from anemone.node_evaluation.tree.node_tree_evaluation import (
+    BestBranchEquivalenceMode,
     NodeTreeEvaluation,
     NodeTreeEvaluationState,
 )
@@ -145,6 +146,8 @@ def test_generic_tree_evaluation_protocol_aligns_across_families() -> None:
     assert _best_branch(single_agent) is None
     assert adversarial.best_branch_sequence == []
     assert single_agent.best_branch_sequence == []
+    assert adversarial.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == []
+    assert single_agent.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == []
 
 
 def test_families_share_concrete_tree_evaluation_state_base() -> None:

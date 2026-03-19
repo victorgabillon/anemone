@@ -22,7 +22,11 @@ if TYPE_CHECKING:
     from .tree.adversarial.node_adversarial_evaluation import NodeAdversarialEvaluation
     from .tree.adversarial.node_minmax_evaluation import NodeMinmaxEvaluation
     from .tree.factory import NodeTreeEvaluationFactory, NodeTreeMinmaxEvaluationFactory
-    from .tree.node_tree_evaluation import NodeTreeEvaluation, NodeTreeEvaluationState
+    from .tree.node_tree_evaluation import (
+        BestBranchEquivalenceMode,
+        NodeTreeEvaluation,
+        NodeTreeEvaluationState,
+    )
     from .tree.single_agent.factory import NodeMaxEvaluationFactory
     from .tree.single_agent.node_max_evaluation import NodeMaxEvaluation
     from .tree.single_agent.node_single_agent_evaluation import (
@@ -36,6 +40,10 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     ),
     "BranchFrontierAware": (".common.branch_frontier", "BranchFrontierAware"),
     "BranchFrontierState": (".common.branch_frontier", "BranchFrontierState"),
+    "BestBranchEquivalenceMode": (
+        ".tree.node_tree_evaluation",
+        "BestBranchEquivalenceMode",
+    ),
     "PrincipalVariationState": (
         ".common.principal_variation",
         "PrincipalVariationState",
@@ -85,6 +93,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
 __all__ = [
     "BranchFrontierAware",
     "BranchFrontierState",
+    "BestBranchEquivalenceMode",
     "DecisionOrderedEvaluation",
     "DirectValueInvariantError",
     "EvaluationQueries",
