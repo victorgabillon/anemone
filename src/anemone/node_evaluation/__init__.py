@@ -91,9 +91,9 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
 }
 
 __all__ = [
+    "BestBranchEquivalenceMode",
     "BranchFrontierAware",
     "BranchFrontierState",
-    "BestBranchEquivalenceMode",
     "DecisionOrderedEvaluation",
     "DirectValueInvariantError",
     "EvaluationQueries",

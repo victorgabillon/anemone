@@ -12,7 +12,6 @@ from anemone.node_evaluation.common.branch_ordering import (
     ordered_branches_from_candidates,
 )
 from anemone.node_evaluation.tree.node_tree_evaluation import (
-    BestBranchEquivalenceMode,
     NodeTreeEvaluationState,
 )
 from anemone.objectives import Objective
@@ -78,44 +77,44 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
         """Return candidate branches in current single-agent decision order."""
         return tuple(self.decision_ordered_branches())
 
-    def _branch_is_equivalent_to_best(
+    def _branch_values_are_equal(
         self,
         *,
         branch: BranchKey,
         best_branch: BranchKey,
-        mode: BestBranchEquivalenceMode,
     ) -> bool:
-        """Apply single-agent max semantics for best-branch equivalence."""
+        """Return whether two single-agent child values are exactly equal."""
         branch_value = self.child_value_candidate(branch)
         best_value = self.child_value_candidate(best_branch)
         assert branch_value is not None
         assert best_value is not None
+        return branch_value == best_value
 
-        if mode is BestBranchEquivalenceMode.EQUAL:
-            return branch_value == best_value
-        if mode is BestBranchEquivalenceMode.CONSIDERED_EQUAL:
-            return (
-                self.objective.semantic_compare(
-                    branch_value,
-                    best_value,
-                    self.tree_node.state,
-                )
-                == 0
+    def _branch_values_are_considered_equal(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+    ) -> bool:
+        """Return whether two child values are semantically tied for this node."""
+        branch_value = self.child_value_candidate(branch)
+        best_value = self.child_value_candidate(best_branch)
+        assert branch_value is not None
+        assert best_value is not None
+        return (
+            self.objective.semantic_compare(
+                branch_value,
+                best_value,
+                self.tree_node.state,
             )
-        if mode in (
-            BestBranchEquivalenceMode.ALMOST_EQUAL,
-            BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC,
-        ):
-            return self._are_almost_equal_scores(
-                branch_value.score,
-                best_value.score,
-            )
-        return False
+            == 0
+        )
 
-    def _are_almost_equal_scores(self, left: float, right: float) -> bool:
-        """Return whether two single-agent scores are close enough to treat as tied."""
-        epsilon = 0.01
-        return left > right - epsilon and right > left - epsilon
+    def _branch_equivalence_score(self, branch: BranchKey) -> float:
+        """Return the scalar score used for single-agent branch equivalence."""
+        branch_value = self.child_value_candidate(branch)
+        assert branch_value is not None
+        return branch_value.score
 
     def backup_from_children(
         self,

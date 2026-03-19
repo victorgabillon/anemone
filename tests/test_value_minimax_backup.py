@@ -320,11 +320,9 @@ def test_minimax_best_equivalent_branches_preserve_existing_modes() -> None:
     assert parent.best_equivalent_branches(
         BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
     ) == [0, 1, 2]
-    assert parent.get_all_of_the_best_branches(
-        how_equal="almost_equal_logistic"
-    ) == parent.best_equivalent_branches(
+    assert parent.best_equivalent_branches(
         BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
-    )
+    ) == [0, 1, 2]
 
 
 def test_backup_result_value_changed_tracks_score_certainty_and_over_event() -> None:

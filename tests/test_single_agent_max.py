@@ -323,7 +323,7 @@ def test_single_agent_best_equivalent_branches_support_generic_modes() -> None:
     ]
     assert node.best_equivalent_branches(
         BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
-    ) == [0, 1, 2]
+    ) == [0, 1]
 
 
 def test_almost_equal_logistic_recommender_uses_generic_evaluation_capability() -> None:
@@ -343,7 +343,7 @@ def test_almost_equal_logistic_recommender_uses_generic_evaluation_capability() 
 
     policy = rule.policy(root_node)
 
-    assert policy.probs == {0: 0.5, 1: 0.5}
+    assert policy.probs == {0: 1.0}
 
 
 def test_single_agent_exact_value_and_terminality_are_distinct() -> None:

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Protocol
+from math import log
+from typing import TYPE_CHECKING, Any, Protocol, assert_never
 
 from valanga import BranchKey, OverEvent, State
 
@@ -81,8 +82,8 @@ class NodeTreeEvaluationState[
 
     This class owns only the family-neutral state and helper methods that both
     current tree-evaluation families already share. Decision ordering,
-    family-specific backup entrypoints, and other semantic helpers remain in the
-    concrete families for now.
+    family-specific backup entrypoints, and the value semantics behind
+    best-branch equivalence remain in the concrete families.
     """
 
     tree_node: TreeNode[NodeT, StateT]
@@ -268,15 +269,15 @@ class NodeTreeEvaluationState[
         if best_branch_key is None:
             return []
 
-        best_branches: list[BranchKey] = []
-        for branch in self._ordered_candidate_branches_for_best_equivalence():
+        return [
+            branch
+            for branch in self._ordered_candidate_branches_for_best_equivalence()
             if self._branch_is_equivalent_to_best(
                 branch=branch,
                 best_branch=best_branch_key,
                 mode=mode,
-            ):
-                best_branches.append(branch)
-        return best_branches
+            )
+        ]
 
     def _ordered_candidate_branches_for_best_equivalence(
         self,
@@ -292,7 +293,66 @@ class NodeTreeEvaluationState[
         mode: BestBranchEquivalenceMode,
     ) -> bool:
         """Return whether one branch is equivalent to the best branch under one mode."""
+        if mode is BestBranchEquivalenceMode.EQUAL:
+            return self._branch_values_are_equal(
+                branch=branch,
+                best_branch=best_branch,
+            )
+        if mode is BestBranchEquivalenceMode.CONSIDERED_EQUAL:
+            return self._branch_values_are_considered_equal(
+                branch=branch,
+                best_branch=best_branch,
+            )
+        if mode is BestBranchEquivalenceMode.ALMOST_EQUAL:
+            return self._are_almost_equal_scores(
+                self._branch_equivalence_score(branch),
+                self._branch_equivalence_score(best_branch),
+            )
+        if mode is BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC:
+            return self._are_almost_equal_scores(
+                self._branch_logistic_equivalence_score(branch),
+                self._branch_logistic_equivalence_score(best_branch),
+            )
+        assert_never(mode)
+
+    def _branch_values_are_equal(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+    ) -> bool:
+        """Return whether two branches are exactly equal under family semantics."""
         raise NotImplementedError
+
+    def _branch_values_are_considered_equal(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+    ) -> bool:
+        """Return whether two branches are semantically tied under family semantics."""
+        raise NotImplementedError
+
+    def _branch_equivalence_score(self, branch: BranchKey) -> float:
+        """Return the family's primary scalar score for branch equivalence."""
+        raise NotImplementedError
+
+    def _branch_logistic_equivalence_score(self, branch: BranchKey) -> float:
+        """Return the score used by logistic-style best-branch equivalence."""
+        return self._logistic_equivalence_score(self._branch_equivalence_score(branch))
+
+    def _are_almost_equal_scores(self, left: float, right: float) -> bool:
+        """Return whether two scalar branch-equivalence scores are close enough."""
+        epsilon = 0.01
+        return left > right - epsilon and right > left - epsilon
+
+    def _logistic_equivalence_score(self, x: float) -> float:
+        """Apply the shared logistic-style transform used for branch equivalence."""
+        y = min(max(x * 0.5 + 0.5, 0.000000000000000000000001), 0.9999999999999999)
+        return log(y / (1 - y)) * max(
+            1,
+            abs(x),
+        )  # the * min(1,x) is a hack to prioritize game over
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]

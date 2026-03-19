@@ -2,7 +2,6 @@
 # pylint: disable=duplicate-code
 
 from dataclasses import dataclass, field
-from math import log
 from random import choice
 from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 
@@ -28,9 +27,9 @@ from anemone.objectives import AdversarialZeroSumObjective, Objective
 from anemone.utils.logger import anemone_logger
 
 if TYPE_CHECKING:
+    from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
     from anemone.backup_policies.protocols import BackupPolicy
     from anemone.backup_policies.types import BackupResult
-    from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 
 
 @runtime_checkable
@@ -237,48 +236,6 @@ class NodeMinmaxEvaluation[
 
         return pv_length
 
-    def are_equal_values[T](self, value_1: T, value_2: T) -> bool:
-        """Check if two values are equal.
-
-        Args:
-            value_1 (T): The first value to compare.
-            value_2 (T): The second value to compare.
-
-        Returns:
-            bool: True if the values are equal, False otherwise.
-
-        """
-        return value_1 == value_2
-
-    def are_considered_equal_values[T](
-        self, value_1: tuple[T, ...], value_2: tuple[T, ...]
-    ) -> bool:
-        """Check if two values are considered equal.
-
-        Args:
-            value_1 (tuple[T]): The first value to compare.
-            value_2 (tuple[T]): The second value to compare.
-
-        Returns:
-            bool: True if the values are considered equal, False otherwise.
-
-        """
-        return value_1[:2] == value_2[:2]
-
-    def are_almost_equal_values(self, value_1: float, value_2: float) -> bool:
-        """Check if two float values are almost equal within a small epsilon.
-
-        Args:
-            value_1 (float): The first value to compare.
-            value_2 (float): The second value to compare.
-
-        Returns:
-            bool: True if the values are almost equal, False otherwise.
-
-        """
-        epsilon = 0.01
-        return value_1 > value_2 - epsilon and value_2 > value_1 - epsilon
-
     def update_branches_values(self, branches_to_consider: set[BranchKey]) -> None:
         """Update the values of the branches based on the given set of branches to consider.
 
@@ -308,28 +265,33 @@ class NodeMinmaxEvaluation[
         """Compare child values using current minimax decision semantics."""
         return self.objective.semantic_compare(left, right, self.tree_node.state)
 
-    def _branch_is_equivalent_to_best(
+    def _branch_values_are_equal(
         self,
         *,
         branch: BranchKey,
         best_branch: BranchKey,
-        mode: BestBranchEquivalenceMode,
     ) -> bool:
-        """Apply minimax-specific best-branch equivalence semantics."""
-        branch_value = self.branches_sorted_by_value[branch]
-        best_value = self.branches_sorted_by_value[best_branch]
+        """Return whether two minimax branch ordering keys are exactly equal."""
+        return (
+            self.branches_sorted_by_value[branch]
+            == self.branches_sorted_by_value[best_branch]
+        )
 
-        if mode is BestBranchEquivalenceMode.EQUAL:
-            return self.are_equal_values(branch_value, best_value)
-        if mode is BestBranchEquivalenceMode.CONSIDERED_EQUAL:
-            return self.are_considered_equal_values(branch_value, best_value)
-        if mode is BestBranchEquivalenceMode.ALMOST_EQUAL:
-            return self.are_almost_equal_values(branch_value[0], best_value[0])
-        if mode is BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC:
-            best_value_logit = self.my_logit(best_value[0] * 0.5 + 0.5)
-            child_value_logit = self.my_logit(branch_value[0] * 0.5 + 0.5)
-            return self.are_almost_equal_values(child_value_logit, best_value_logit)
-        return False
+    def _branch_values_are_considered_equal(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+    ) -> bool:
+        """Return whether two minimax branch ordering keys are equal up to tie-breaks."""
+        return (
+            self.branches_sorted_by_value[branch][:2]
+            == self.branches_sorted_by_value[best_branch][:2]
+        )
+
+    def _branch_equivalence_score(self, branch: BranchKey) -> float:
+        """Return the primary scalar score from the family-specific ordering key."""
+        return self.branches_sorted_by_value[branch][0]
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Triggered when the value of the current best branch does not match the best value.
@@ -344,9 +306,7 @@ class NodeMinmaxEvaluation[
 
         """
         mode = BestBranchEquivalenceMode.EQUAL
-        best_branches: list[BranchKey] = self.best_equivalent_branches(
-            mode=mode
-        )
+        best_branches: list[BranchKey] = self.best_equivalent_branches(mode=mode)
         assert len(best_branches) == 1
         best_branch_key = choice(best_branches)
         has_best_branch_seq_changed = self.set_best_branch_sequence(
@@ -370,30 +330,3 @@ class NodeMinmaxEvaluation[
             branches_with_updated_value=branches_with_updated_value,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
         )
-
-    def my_logit(self, x: float) -> float:
-        """Apply the logit function to the input value.
-
-        Args:
-            x (float): The input value.
-
-        Returns:
-            float: The result of applying the logit function to the input value.
-
-        """
-        y = min(max(x, 0.000000000000000000000001), 0.9999999999999999)
-        return log(y / (1 - y)) * max(
-            1, abs(x)
-        )  # the * min(1,x) is a hack to prioritize game over
-
-    def get_all_of_the_best_branches(
-        self,
-        how_equal: BestBranchEquivalenceMode | str | None = None,
-    ) -> list[BranchKey]:
-        """Compatibility wrapper for the new generic best-branch equivalence API."""
-        mode = (
-            BestBranchEquivalenceMode.EQUAL
-            if how_equal is None
-            else BestBranchEquivalenceMode(how_equal)
-        )
-        return self.best_equivalent_branches(mode=mode)

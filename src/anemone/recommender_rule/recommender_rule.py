@@ -75,7 +75,9 @@ class AlmostEqualLogistic:
     """Almost Equal Logistic recommender rule that selects branches with nearly equal evaluations."""
 
     type: Literal["almost_equal_logistic"]
-    temperature: float  # kept for config compatibility; rule uses evaluation equivalence
+    temperature: (
+        float  # kept for config compatibility; rule uses evaluation equivalence
+    )
 
     def policy[StateT: State](self, root_node: AlgorithmNode[StateT]) -> BranchPolicy:
         """Compute a policy based on near-equal best branches."""
