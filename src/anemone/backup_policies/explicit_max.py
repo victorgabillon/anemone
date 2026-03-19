@@ -99,12 +99,7 @@ class ExplicitMaxBackupPolicy:
         ):
             return node_eval.clear_best_branch_sequence()
 
-        best_child = node_eval.tree_node.branches_children[best_branch_key]
-        assert best_child is not None
-        new_sequence = [
-            best_branch_key,
-            *best_child.tree_evaluation.best_branch_sequence,
-        ]
+        new_sequence = node_eval.best_branch_line_from_child(best_branch_key)
         if (
             not node_eval.best_branch_sequence
             or node_eval.best_branch_sequence[0] != best_branch_key

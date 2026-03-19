@@ -65,11 +65,9 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
             return None
         return ordered[0]
 
-    def frontier_branches_in_order(self) -> list[BranchKey]:
-        """Return frontier branches ordered by current child-preference semantics."""
-        return self.ordered_frontier_branches_from(
-            (*self.decision_ordered_branches(), *self.tree_node.branches_children)
-        )
+    def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
+        """Return frontier candidates in current single-agent search order."""
+        return (*self.decision_ordered_branches(), *self.tree_node.branches_children)
 
     def backup_from_children(
         self,

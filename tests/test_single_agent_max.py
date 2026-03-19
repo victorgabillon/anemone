@@ -369,3 +369,23 @@ def test_single_agent_incremental_pv_update_uses_shared_state() -> None:
     assert node.best_branch_sequence == [1, 10, 11]
     assert node.pv_version == version_before + 1
     assert node.pv_cached_best_child_version == children[1].tree_evaluation.pv_version
+
+
+def test_single_agent_pv_invariant_helper_is_available_from_shared_state() -> None:
+    children = {
+        1: _child(
+            11,
+            Value(score=0.9, certainty=Certainty.ESTIMATE),
+            best_branch_sequence=[8, 9],
+        ),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    node.set_best_branch_sequence([1, 8, 9])
+
+    node.assert_pv_invariants()

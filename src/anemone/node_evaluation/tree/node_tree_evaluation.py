@@ -15,6 +15,7 @@ from anemone.node_evaluation.common.principal_variation import (
     PrincipalVariationState,
 )
 from anemone.nodes.itree_node import ITreeNode
+from anemone.utils.logger import anemone_logger
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -153,10 +154,28 @@ class NodeTreeEvaluationState[
 
     def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
         """Return the best available Value candidate for a child branch."""
-        child = self.tree_node.branches_children[branch_key]
+        child_tree_evaluation = self.child_tree_evaluation(branch_key)
+        if child_tree_evaluation is None:
+            return None
+        return child_tree_evaluation.get_value_candidate()
+
+    def child_tree_evaluation(
+        self,
+        branch_key: BranchKey,
+    ) -> ChildTreeEvaluation | None:
+        """Return one child evaluation when the branch currently exists."""
+        child = self.tree_node.branches_children.get(branch_key)
         if child is None:
             return None
-        return child.tree_evaluation.get_value_candidate()
+        return child.tree_evaluation
+
+    def best_branch_line_from_child(self, branch_key: BranchKey) -> list[BranchKey]:
+        """Return the PV line that starts by taking one concrete child branch."""
+        child_tree_evaluation = self.child_tree_evaluation(branch_key)
+        assert child_tree_evaluation is not None, (
+            f"Cannot build PV line: missing child for branch {branch_key!r}."
+        )
+        return [branch_key, *child_tree_evaluation.best_branch_sequence]
 
     def on_branch_opened(self, branch: BranchKey) -> None:
         """Record that a child branch has entered the frontier."""
@@ -177,8 +196,11 @@ class NodeTreeEvaluationState[
 
     def _branch_is_frontier_relevant(self, branch_key: BranchKey) -> bool:
         """Return whether a child branch can still affect future search results."""
-        child = self.tree_node.branches_children.get(branch_key)
-        return child is not None and not child.tree_evaluation.has_exact_value()
+        child_tree_evaluation = self.child_tree_evaluation(branch_key)
+        return (
+            child_tree_evaluation is not None
+            and not child_tree_evaluation.has_exact_value()
+        )
 
     def _child_pv_version(self, child: Any) -> int:
         """Return one child's PV version with a conservative fallback."""
@@ -193,11 +215,11 @@ class NodeTreeEvaluationState[
         if not sequence:
             return None
 
-        best_child = self.tree_node.branches_children.get(sequence[0])
-        if best_child is None:
+        best_child_tree_evaluation = self.child_tree_evaluation(sequence[0])
+        if best_child_tree_evaluation is None:
             return None
 
-        return self._child_pv_version(best_child)
+        return int(getattr(best_child_tree_evaluation, "pv_version", 0))
 
     def sync_branch_frontier(self, branches_to_refresh: set[BranchKey]) -> None:
         """Refresh frontier bookkeeping from updated child values."""
@@ -209,6 +231,16 @@ class NodeTreeEvaluationState[
             branches_to_refresh=branches_to_refresh,
             should_remain_in_frontier=self._branch_is_frontier_relevant,
         )
+
+    def frontier_branches_in_order(self) -> list[BranchKey]:
+        """Return frontier branches ordered by family-defined search semantics."""
+        return self.ordered_frontier_branches_from(
+            self._ordered_candidate_branches_for_frontier()
+        )
+
+    def _ordered_candidate_branches_for_frontier(self) -> Iterable[BranchKey]:
+        """Return candidate branches in the family's current search order."""
+        raise NotImplementedError
 
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch.
@@ -245,6 +277,38 @@ class NodeTreeEvaluationState[
     def clear_best_branch_sequence(self) -> bool:
         """Clear the stored principal variation content."""
         return self.pv_state.clear()
+
+    def assert_pv_invariants(self) -> None:
+        """Assert family-neutral principal-variation invariants."""
+        best_branch_key = self.best_branch()
+
+        if best_branch_key is None:
+            assert not self.best_branch_sequence, (
+                "PV must be empty when no best branch exists."
+            )
+            return
+
+        if self.best_branch_sequence:
+            assert self.best_branch_sequence[0] == best_branch_key, (
+                "PV head must match best_branch()."
+            )
+            child_tree_evaluation = self.child_tree_evaluation(best_branch_key)
+            assert child_tree_evaluation is not None, (
+                "PV is non-empty but best child is missing from branches_children."
+            )
+
+        # NOTE: partial-expansion PV/value policy is owned by backup policies.
+
+    def print_best_line(self) -> None:
+        """Log the current best line by following the stored PV through children."""
+        info_string = f"Best line from node {self.tree_node.id!s}: "
+        node_eval: Any = self
+        for branch in self.best_branch_sequence:
+            child = node_eval.tree_node.branches_children[branch]
+            assert child is not None
+            info_string += f"{branch} ({child.tree_node.id!s}) "
+            node_eval = child.tree_evaluation
+        anemone_logger.info(info_string)
 
 
 class NodeTreeEvaluation[StateT: State = State](

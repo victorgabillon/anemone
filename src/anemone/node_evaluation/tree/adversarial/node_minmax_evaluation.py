@@ -283,39 +283,13 @@ class NodeMinmaxEvaluation[
             branch_sort_value_getter=self.branch_sort_value,
         )
 
-    def frontier_branches_in_order(self) -> list[BranchKey]:
-        """Return frontier branches ordered by current child-preference semantics."""
-        return self.ordered_frontier_branches_from(
-            (*self.branches_sorted_by_value, *self.tree_node.branches_children)
-        )
+    def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
+        """Return frontier candidates in cached minimax search order."""
+        return (*self.branches_sorted_by_value, *self.tree_node.branches_children)
 
     def _decision_semantic_compare(self, left: Value, right: Value) -> int:
         """Compare child values using current minimax decision semantics."""
         return self.objective.semantic_compare(left, right, self.tree_node.state)
-
-    def assert_pv_invariants(self) -> None:
-        """Assert core principal-variation invariants.
-
-        Intended for tests and debugging guardrails.
-        """
-        best_branch_key = self.best_branch()
-
-        if best_branch_key is None:
-            assert not self.best_branch_sequence, (
-                "PV must be empty when no best branch exists."
-            )
-            return
-
-        if self.best_branch_sequence:
-            assert self.best_branch_sequence[0] == best_branch_key, (
-                "PV head must match best_branch()."
-            )
-            best_child = self.tree_node.branches_children.get(best_branch_key)
-            assert best_child is not None, (
-                "PV is non-empty but best child is missing from branches_children."
-            )
-
-        # NOTE: partial-expansion PV/value policy is owned by backup policies.
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Triggered when the value of the current best branch does not match the best value.
@@ -336,13 +310,8 @@ class NodeMinmaxEvaluation[
         if how_equal_ == "equal":
             assert len(best_branches) == 1
         best_branch_key = choice(best_branches)
-        best_child = self.tree_node.branches_children[best_branch_key]
-        assert best_child is not None
         has_best_branch_seq_changed = self.set_best_branch_sequence(
-            [
-                best_branch_key,
-                *best_child.tree_evaluation.best_branch_sequence,
-            ]
+            self.best_branch_line_from_child(best_branch_key)
         )
         assert self.best_branch_sequence
         return has_best_branch_seq_changed
@@ -366,25 +335,6 @@ class NodeMinmaxEvaluation[
             branches_with_updated_value=branches_with_updated_value,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
         )
-
-    def print_best_line(self) -> None:
-        """Print the best line from the current node to the leaf node.
-
-        The best line is determined by following the sequence of child nodes with the highest values.
-        Each child node is printed along with its corresponding branch and node ID.
-
-        Returns:
-            None
-
-        """
-        info_string: str = f"Best line from node {self.tree_node.id!s}: "
-        minmax: Any = self
-        for branch in self.best_branch_sequence:
-            child = minmax.tree_node.branches_children[branch]
-            assert child is not None
-            info_string += f"{branch} ({child.tree_node.id!s}) "
-            minmax = child.tree_evaluation
-        anemone_logger.info(info_string)
 
     def my_logit(self, x: float) -> float:
         """Apply the logit function to the input value.
