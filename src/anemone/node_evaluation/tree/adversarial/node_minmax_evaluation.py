@@ -9,21 +9,16 @@ from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 from valanga import (
     BranchKey,
     Color,
-    OverEvent,
     TurnState,
 )
 from valanga.evaluations import Value
 
 from anemone.dynamics import SearchDynamics
-from anemone.node_evaluation.common import canonical_value
-from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
-from anemone.node_evaluation.common.principal_variation import (
-    PrincipalVariationState,
-)
 from anemone.node_evaluation.tree.adversarial.minmax_decision_ordering import (
     BranchSortValue,
     MinmaxDecisionOrderingState,
 )
+from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluationState
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
@@ -51,16 +46,6 @@ class NodeWithValue(ITreeNode[TurnState], Protocol):
     tree_node: TreeNode[Self, TurnState]
 
 
-def make_branch_frontier_factory() -> BranchFrontierState:
-    """Create the generic frontier bookkeeping helper for one node."""
-    return BranchFrontierState()
-
-
-def make_principal_variation_state_factory() -> PrincipalVariationState:
-    """Create the generic principal-variation bookkeeping helper for one node."""
-    return PrincipalVariationState()
-
-
 def make_minmax_decision_ordering_factory() -> MinmaxDecisionOrderingState:
     """Create the minimax child-ordering bookkeeping helper for one node."""
     return MinmaxDecisionOrderingState()
@@ -75,40 +60,11 @@ def make_default_objective() -> Objective[TurnState]:
 class NodeMinmaxEvaluation[
     NodeWithValueT: NodeWithValue = NodeWithValue,
     StateT: TurnState = TurnState,
-]:
+](NodeTreeEvaluationState[NodeWithValueT, StateT]):
     r"""Value-first minimax evaluation attached to a tree node."""
 
-    # a reference to the original tree node that is evaluated
-    tree_node: TreeNode[NodeWithValueT, StateT]
-
-    # canonical state-evaluator value
-    direct_value: Value | None = None
-
-    # family-specific storage name for the generic backed-up value computed
-    # from descendants
-    minmax_value: Value | None = None
-
-    @property
-    def backed_up_value(self) -> Value | None:
-        """Return the generic backed-up Value alias used by game-agnostic APIs."""
-        return self.minmax_value
-
-    @backed_up_value.setter
-    def backed_up_value(self, value: Value | None) -> None:
-        """Set the generic backed-up Value alias used by game-agnostic APIs."""
-        self.minmax_value = value
-
-    # principal-variation content and incremental change-tracking metadata
-    pv_state: PrincipalVariationState = field(
-        default_factory=make_principal_variation_state_factory
-    )
     decision_ordering: MinmaxDecisionOrderingState = field(
         default_factory=make_minmax_decision_ordering_factory
-    )
-
-    # Child branches that remain relevant to future search.
-    branch_frontier: BranchFrontierState = field(
-        default_factory=make_branch_frontier_factory
     )
 
     # policy used to orchestrate backup behavior from updated children
@@ -116,6 +72,16 @@ class NodeMinmaxEvaluation[
 
     # objective responsible for semantic interpretation of Value objects at this node
     objective: Objective[StateT] = field(default_factory=make_default_objective)
+
+    @property
+    def minmax_value(self) -> Value | None:
+        """Return this family's storage-name alias for generic backed_up_value."""
+        return self.backed_up_value
+
+    @minmax_value.setter
+    def minmax_value(self, value: Value | None) -> None:
+        """Set this family's storage-name alias for generic backed_up_value."""
+        self.backed_up_value = value
 
     @property
     def branches_sorted_by_value(self) -> dict[BranchKey, BranchSortValue]:
@@ -128,61 +94,9 @@ class NodeMinmaxEvaluation[
         """
         return self.decision_ordering.branches_sorted_by_value
 
-    @property
-    def best_branch_sequence(self) -> list[BranchKey]:
-        """Return the current principal-variation branch sequence."""
-        return self.pv_state.best_branch_sequence
-
-    @property
-    def pv_version(self) -> int:
-        """Return the version of the current PV content."""
-        return self.pv_state.pv_version
-
-    def get_value(self) -> Value:
-        """Return the canonical value for this node.
-
-        Returns:
-            Value: The backed-up value when available, otherwise direct value.
-
-        """
-        return canonical_value.get_value(
-            backed_up_value=self.backed_up_value,
-            direct_value=self.direct_value,
-        )
-
-    def get_score(self) -> float:
-        """Return the canonical scalar score for this node.
-
-        Consumer code should use this and ``get_value_candidate``/``get_value``.
-        Use this for scalar access to canonical Value.
-        """
-        return canonical_value.get_score(
-            backed_up_value=self.backed_up_value,
-            direct_value=self.direct_value,
-        )
-
-    def get_value_candidate(self) -> Value | None:
-        """Return backed-up value when available, else direct Value, or ``None``."""
-        return canonical_value.get_value_candidate(
-            backed_up_value=self.backed_up_value,
-            direct_value=self.direct_value,
-        )
-
-    def has_exact_value(self) -> bool:
-        """Return True when the candidate Value is exact."""
-        return canonical_value.is_exact_value(self.get_value_candidate())
-
-    def is_terminal(self) -> bool:
-        """Return True when the candidate Value says this node's own state is terminal."""
-        return canonical_value.is_terminal_value(self.get_value_candidate())
-
     def is_over(self) -> bool:
         """Temporary compatibility alias for callers that still use legacy naming."""
         return self.is_terminal()
-
-    def has_over_event(self) -> bool:
-        """Return True when the candidate Value carries exact outcome metadata."""
-        return canonical_value.has_over_event(self.get_value_candidate())
 
     def child_is_better_than_direct(
         self, child: Value, direct: Value, *, side_to_move: Color
@@ -197,18 +111,6 @@ class NodeMinmaxEvaluation[
             )
             >= 0
         )
-
-    def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
-        """Return the best available Value candidate for a child branch.
-
-        ``minmax_value`` is this family's storage name for the generic
-        ``backed_up_value`` concept, so child lookup goes through the child
-        evaluation's generic candidate API.
-        """
-        child = self.tree_node.branches_children[branch_key]
-        if child is None:
-            return None
-        return child.tree_evaluation.get_value_candidate()
 
     def best_branch(self) -> BranchKey | None:
         """Return the best branch node based on the subjective value.
@@ -240,15 +142,6 @@ class NodeMinmaxEvaluation[
             child_value_candidate_getter=self.child_value_candidate,
             semantic_compare=self._decision_semantic_compare,
         )
-
-    def get_over_event_candidate(self) -> OverEvent | None:
-        """Return exact outcome metadata from the candidate Value when present."""
-        return canonical_value.get_over_event_candidate(self.get_value_candidate())
-
-    @property
-    def over_event(self) -> OverEvent | None:
-        """Return exact outcome metadata from the candidate Value when present."""
-        return self.get_over_event_candidate()
 
     def print_branches_sorted_by_value_and_exploration(
         self, dynamics: SearchDynamics[Any, Any]
@@ -384,14 +277,6 @@ class NodeMinmaxEvaluation[
             branch_sort_value_getter=self.branch_sort_value,
         )
 
-    def on_branch_opened(self, branch: BranchKey) -> None:
-        """Record that a child branch has entered the frontier."""
-        self.branch_frontier.on_branch_opened(branch)
-
-    def has_frontier_branches(self) -> bool:
-        """Return whether some child branches remain search-relevant."""
-        return self.branch_frontier.has_frontier_branches()
-
     def frontier_branches_in_order(self) -> list[BranchKey]:
         """Return frontier branches ordered by current child-preference semantics."""
         return self.branch_frontier.ordered_frontier_branches(
@@ -401,88 +286,6 @@ class NodeMinmaxEvaluation[
     def _decision_semantic_compare(self, left: Value, right: Value) -> int:
         """Compare child values using current minimax decision semantics."""
         return self.objective.semantic_compare(left, right, self.tree_node.state)
-
-    def _branch_is_frontier_relevant(self, branch_key: BranchKey) -> bool:
-        """Return whether a child branch can still affect future search results."""
-        child = self.tree_node.branches_children.get(branch_key)
-        return child is not None and not child.tree_evaluation.has_exact_value()
-
-    def _child_pv_version(self, child: NodeWithValueT) -> int:
-        """Return one child's PV version with a conservative fallback."""
-        return int(getattr(child.tree_evaluation, "pv_version", 0))
-
-    def _child_best_branch_sequence(self, child: NodeWithValueT) -> list[BranchKey]:
-        """Return one child's current PV sequence."""
-        return list(child.tree_evaluation.best_branch_sequence)
-
-    def _pv_child_version_for_sequence(self, sequence: list[BranchKey]) -> int | None:
-        """Return the cached best-child PV version for a given PV sequence head."""
-        if not sequence:
-            return None
-
-        best_child = self.tree_node.branches_children.get(sequence[0])
-        if best_child is None:
-            return None
-
-        return self._child_pv_version(best_child)
-
-    def sync_branch_frontier(self, branches_to_refresh: set[BranchKey]) -> None:
-        """Refresh frontier bookkeeping from updated child values."""
-        if self.has_exact_value():
-            self.branch_frontier.clear()
-            return
-
-        self.branch_frontier.sync_with_current_state(
-            branches_to_refresh=branches_to_refresh,
-            should_remain_in_frontier=self._branch_is_frontier_relevant,
-        )
-
-    def update_best_branch_sequence(
-        self, branches_with_updated_best_branch_seq: set[BranchKey]
-    ) -> bool:
-        """Update the best branch sequence based on notifications from children nodes.
-
-        This uses the branch keys that identify children which updated their best-branch sequence.
-        It only propagates a tail update when the current PV head already matches
-        ``best_branch()``; otherwise this method is a no-op.
-
-        Args:
-            branches_with_updated_best_branch_seq (set[Ibranch]): A set of branch that have
-                notified an updated best-branch sequence.
-
-        Returns:
-            bool: True if self.best_branch_sequence is modified, False otherwise.
-
-        """
-        best_branch_key = self.best_branch()
-        best_node = (
-            self.tree_node.branches_children.get(best_branch_key)
-            if best_branch_key is not None
-            else None
-        )
-        return self.pv_state.try_update_from_best_child(
-            best_branch_key=best_branch_key,
-            best_child=best_node,
-            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
-            child_pv_version_getter=self._child_pv_version,
-            child_best_branch_sequence_getter=self._child_best_branch_sequence,
-        )
-
-    def set_best_branch_sequence(self, new_seq: list[BranchKey]) -> bool:
-        """Public PV setter for backup policies/tests. Bumps pv_version only on content change."""
-        return self.pv_state.set_sequence(
-            new_seq,
-            current_best_child_version=self._pv_child_version_for_sequence(new_seq),
-        )
-
-    def clear_best_branch_sequence(self) -> bool:
-        """Public PV clearer for backup policies/tests."""
-        return self.pv_state.clear()
-
-    @property
-    def pv_cached_best_child_version(self) -> int | None:
-        """Cached pv_version of the best child when PV was last materialized."""
-        return self.pv_state.cached_best_child_version
 
     def assert_pv_invariants(self) -> None:
         """Assert core principal-variation invariants.

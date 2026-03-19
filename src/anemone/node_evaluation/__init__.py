@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from .tree.adversarial.node_adversarial_evaluation import NodeAdversarialEvaluation
     from .tree.adversarial.node_minmax_evaluation import NodeMinmaxEvaluation
     from .tree.factory import NodeTreeEvaluationFactory, NodeTreeMinmaxEvaluationFactory
-    from .tree.node_tree_evaluation import NodeTreeEvaluation
+    from .tree.node_tree_evaluation import NodeTreeEvaluation, NodeTreeEvaluationState
     from .tree.single_agent.factory import NodeMaxEvaluationFactory
     from .tree.single_agent.node_max_evaluation import NodeMaxEvaluation
     from .tree.single_agent.node_single_agent_evaluation import (
@@ -67,6 +67,10 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     ),
     "NodeTreeEvaluationFactory": (".tree.factory", "NodeTreeEvaluationFactory"),
     "NodeTreeEvaluation": (".tree.node_tree_evaluation", "NodeTreeEvaluation"),
+    "NodeTreeEvaluationState": (
+        ".tree.node_tree_evaluation",
+        "NodeTreeEvaluationState",
+    ),
     "NodeTreeMinmaxEvaluationFactory": (
         ".tree.factory",
         "NodeTreeMinmaxEvaluationFactory",
@@ -94,6 +98,7 @@ __all__ = [
     "NodeSingleAgentEvaluation",
     "NodeTreeEvaluation",
     "NodeTreeEvaluationFactory",
+    "NodeTreeEvaluationState",
     "NodeTreeMinmaxEvaluationFactory",
     "NodeValueEvaluation",
     "OverEventDetector",
