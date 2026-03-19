@@ -29,6 +29,7 @@ from anemone.utils.logger import anemone_logger
 if TYPE_CHECKING:
     from anemone.backup_policies.protocols import BackupPolicy
     from anemone.backup_policies.types import BackupResult
+    from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 
 
 @runtime_checkable
@@ -60,6 +61,15 @@ def make_minmax_decision_ordering_factory() -> MinmaxDecisionOrderingState:
 def make_default_objective() -> Objective[TurnState]:
     """Create the default objective preserving current adversarial semantics."""
     return AdversarialZeroSumObjective()
+
+
+def make_default_backup_policy() -> "ExplicitMinimaxBackupPolicy":
+    """Create the default explicit minimax backup policy."""
+    from anemone.backup_policies.explicit_minimax import (  # pylint: disable=import-outside-toplevel
+        ExplicitMinimaxBackupPolicy,
+    )
+
+    return ExplicitMinimaxBackupPolicy()
 
 
 @dataclass(slots=True)
@@ -323,11 +333,7 @@ class NodeMinmaxEvaluation[
     ) -> "BackupResult":
         """Delegate backup orchestration to the configured backup policy."""
         if self.backup_policy is None:
-            from anemone.backup_policies.explicit_minimax import (  # pylint: disable=import-outside-toplevel
-                ExplicitMinimaxBackupPolicy,
-            )
-
-            self.backup_policy = ExplicitMinimaxBackupPolicy()
+            self.backup_policy = make_default_backup_policy()
         assert self.backup_policy is not None
         policy: BackupPolicy[Any] = self.backup_policy
         return policy.backup_from_children(
