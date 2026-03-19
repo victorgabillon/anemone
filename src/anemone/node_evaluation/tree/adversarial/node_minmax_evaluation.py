@@ -13,9 +13,9 @@ from valanga import (
 from valanga.evaluations import Value
 
 from anemone.dynamics import SearchDynamics
-from anemone.node_evaluation.tree.adversarial.minmax_decision_ordering import (
-    BranchSortValue,
-    MinmaxDecisionOrderingState,
+from anemone.node_evaluation.tree.decision_ordering import (
+    BranchOrderingKey,
+    DecisionOrderingState,
 )
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BestBranchEquivalenceMode,
@@ -52,12 +52,6 @@ class NodeWithValue(TreeEvaluationChild[TurnState], Protocol):
 
     tree_node: TreeNode[Self, TurnState]
 
-
-def make_minmax_decision_ordering_factory() -> MinmaxDecisionOrderingState:
-    """Create the minimax child-ordering bookkeeping helper for one node."""
-    return MinmaxDecisionOrderingState()
-
-
 def make_default_objective() -> Objective[TurnState]:
     """Create the default objective preserving current adversarial semantics."""
     return AdversarialZeroSumObjective()
@@ -79,9 +73,7 @@ class NodeMinmaxEvaluation[
 ](NodeTreeEvaluationState[NodeWithValueT, StateT]):
     r"""Value-first minimax evaluation attached to a tree node."""
 
-    decision_ordering: MinmaxDecisionOrderingState = field(
-        default_factory=make_minmax_decision_ordering_factory
-    )
+    decision_ordering: DecisionOrderingState = field(default_factory=DecisionOrderingState)
 
     # policy used to orchestrate backup behavior from updated children
     backup_policy: "BackupPolicy[Any] | None" = None
@@ -100,15 +92,14 @@ class NodeMinmaxEvaluation[
         self.backed_up_value = value
 
     @property
-    def branches_sorted_by_value(self) -> dict[BranchKey, BranchSortValue]:
-        """Return a dictionary containing the branches of the node sorted by their values.
+    def branch_ordering_keys(self) -> dict[BranchKey, BranchOrderingKey]:
+        """Return the cached generic branch-ordering keys for this node."""
+        return self.decision_ordering.branch_ordering_keys
 
-        Returns:
-            dict[BranchKey, BranchSortValue]: A dictionary where the keys are the branches in the node and
-            the values are the corresponding sort values.
-
-        """
-        return self.decision_ordering.branches_sorted_by_value
+    @property
+    def branches_sorted_by_value(self) -> dict[BranchKey, BranchOrderingKey]:
+        """Compatibility alias for callers that still use the legacy name."""
+        return self.branch_ordering_keys
 
     def is_over(self) -> bool:
         """Temporary compatibility alias for callers that still use legacy naming."""
@@ -185,7 +176,7 @@ class NodeMinmaxEvaluation[
             string_info += f" {branch_name} {subjective_sort_value[0]} $$ "
         anemone_logger.info(string_info)
 
-    def branch_sort_value(self, branch_key: BranchKey) -> BranchSortValue:
+    def branch_sort_value(self, branch_key: BranchKey) -> BranchOrderingKey:
         """Return the search-order tuple for one child branch.
 
         The first component is the objective's subjective sort value. The second
@@ -246,24 +237,24 @@ class NodeMinmaxEvaluation[
             None
 
         """
-        self.decision_ordering.update_branches_values(
+        self.decision_ordering.update_branch_ordering_keys(
             branches_to_consider,
-            branch_sort_value_getter=self.branch_sort_value,
+            branch_ordering_key_getter=self.branch_sort_value,
         )
 
     def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
         """Return frontier candidates in cached minimax search order."""
-        return (*self.branches_sorted_by_value, *self.tree_node.branches_children)
+        return (*self.branch_ordering_keys, *self.tree_node.branches_children)
 
     def _ordered_candidate_branches_for_best_equivalence(
         self,
     ) -> tuple[BranchKey, ...]:
         """Return candidate branches in cached minimax search order."""
-        return tuple(self.branches_sorted_by_value)
+        return tuple(self.branch_ordering_keys)
 
-    def _decision_semantic_compare(self, left: Value, right: Value) -> int:
-        """Compare child values using current minimax decision semantics."""
-        return self.objective.semantic_compare(left, right, self.tree_node.state)
+    def _branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
+        """Return the cached branch-ordering key for one branch."""
+        return self.branch_ordering_keys[branch]
 
     def _branch_values_are_equal(
         self,
@@ -272,26 +263,13 @@ class NodeMinmaxEvaluation[
         best_branch: BranchKey,
     ) -> bool:
         """Return whether two minimax branch ordering keys are exactly equal."""
-        return (
-            self.branches_sorted_by_value[branch]
-            == self.branches_sorted_by_value[best_branch]
+        return self._branch_ordering_key(branch) == self._branch_ordering_key(
+            best_branch
         )
 
-    def _branch_values_are_considered_equal(
-        self,
-        *,
-        branch: BranchKey,
-        best_branch: BranchKey,
-    ) -> bool:
-        """Return whether two minimax branch ordering keys are equal up to tie-breaks."""
-        return (
-            self.branches_sorted_by_value[branch][:2]
-            == self.branches_sorted_by_value[best_branch][:2]
-        )
-
-    def _branch_equivalence_score(self, branch: BranchKey) -> float:
-        """Return the primary scalar score from the family-specific ordering key."""
-        return self.branches_sorted_by_value[branch][0]
+    def _decision_semantic_compare(self, left: Value, right: Value) -> int:
+        """Compare child values using current minimax decision semantics."""
+        return self.objective.semantic_compare(left, right, self.tree_node.state)
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Triggered when the value of the current best branch does not match the best value.

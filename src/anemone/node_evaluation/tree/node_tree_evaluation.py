@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from valanga.evaluations import Value
 
     from anemone.backup_policies.types import BackupResult
+    from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.nodes.tree_node import TreeNode
 
 
@@ -285,6 +286,10 @@ class NodeTreeEvaluationState[
         """Return candidate branches in family-defined best-equivalence order."""
         raise NotImplementedError
 
+    def _branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
+        """Return the shared branch-ordering key for one branch."""
+        raise NotImplementedError
+
     def _branch_is_equivalent_to_best(
         self,
         *,
@@ -299,10 +304,9 @@ class NodeTreeEvaluationState[
                 best_branch=best_branch,
             )
         if mode is BestBranchEquivalenceMode.CONSIDERED_EQUAL:
-            return self._branch_values_are_considered_equal(
-                branch=branch,
-                best_branch=best_branch,
-            )
+            return self._branch_ordering_key(branch)[:2] == self._branch_ordering_key(
+                best_branch
+            )[:2]
         if mode is BestBranchEquivalenceMode.ALMOST_EQUAL:
             return self._are_almost_equal_scores(
                 self._branch_equivalence_score(branch),
@@ -324,18 +328,9 @@ class NodeTreeEvaluationState[
         """Return whether two branches are exactly equal under family semantics."""
         raise NotImplementedError
 
-    def _branch_values_are_considered_equal(
-        self,
-        *,
-        branch: BranchKey,
-        best_branch: BranchKey,
-    ) -> bool:
-        """Return whether two branches are semantically tied under family semantics."""
-        raise NotImplementedError
-
     def _branch_equivalence_score(self, branch: BranchKey) -> float:
         """Return the family's primary scalar score for branch equivalence."""
-        raise NotImplementedError
+        return self._branch_ordering_key(branch)[0]
 
     def _branch_logistic_equivalence_score(self, branch: BranchKey) -> float:
         """Return the score used by logistic-style best-branch equivalence."""

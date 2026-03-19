@@ -302,6 +302,45 @@ def test_single_agent_decision_ordered_branches_are_public_and_deterministic() -
     assert node.best_branch() == node.decision_ordered_branches()[0]
 
 
+def test_single_agent_uses_shared_decision_ordering_state_cache() -> None:
+    node = _node(
+        node_id=0,
+        children={
+            0: _child(20, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+            1: _child(10, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+        },
+    )
+
+    assert node.decision_ordered_branches() == [1, 0]
+    assert node.decision_ordering.branch_ordering_keys == {
+        1: (0.5, 1, 10),
+        0: (0.5, 1, 20),
+    }
+
+
+def test_single_agent_considered_equal_respects_exactness_tie_break() -> None:
+    node = _node(
+        node_id=0,
+        children={
+            0: _child(
+                10,
+                Value(
+                    score=0.9,
+                    certainty=Certainty.FORCED,
+                    over_event=_FakeOverEvent(),
+                ),
+            ),
+            1: _child(11, Value(score=0.9, certainty=Certainty.ESTIMATE)),
+        },
+    )
+
+    assert node.best_branch() == 0
+    assert node.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0]
+    assert node.best_equivalent_branches(
+        BestBranchEquivalenceMode.CONSIDERED_EQUAL
+    ) == [0]
+
+
 def test_single_agent_best_equivalent_branches_support_generic_modes() -> None:
     node = _node(
         node_id=0,

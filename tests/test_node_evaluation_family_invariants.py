@@ -9,6 +9,7 @@ from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies import ExplicitMaxBackupPolicy, ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
+from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -43,9 +44,7 @@ class _FakeOverEvent:
 class _HookDrivenEvaluation(NodeTreeEvaluationState[Any, Any]):
     ordered_branches: tuple[int, ...] = ()
     best_branch_key: int | None = None
-    exact_equal_branches: set[int] = field(default_factory=set)
-    considered_equal_branches: set[int] = field(default_factory=set)
-    scores: dict[int, float] = field(default_factory=dict)
+    ordering_keys: dict[int, BranchOrderingKey] = field(default_factory=dict)
     logistic_scores: dict[int, float] = field(default_factory=dict)
 
     def _ordered_candidate_branches_for_frontier(self) -> tuple[int, ...]:
@@ -57,22 +56,13 @@ class _HookDrivenEvaluation(NodeTreeEvaluationState[Any, Any]):
     def _ordered_candidate_branches_for_best_equivalence(self) -> tuple[int, ...]:
         return self.ordered_branches
 
+    def _branch_ordering_key(self, branch: int) -> BranchOrderingKey:
+        return self.ordering_keys[branch]
+
     def _branch_values_are_equal(self, *, branch: int, best_branch: int) -> bool:
-        return branch == best_branch and branch in self.exact_equal_branches
-
-    def _branch_values_are_considered_equal(
-        self,
-        *,
-        branch: int,
-        best_branch: int,
-    ) -> bool:
-        return (
-            best_branch == self.best_branch_key
-            and branch in self.considered_equal_branches
+        return self._branch_ordering_key(branch) == self._branch_ordering_key(
+            best_branch
         )
-
-    def _branch_equivalence_score(self, branch: int) -> float:
-        return self.scores[branch]
 
     def _branch_logistic_equivalence_score(self, branch: int) -> float:
         return self.logistic_scores[branch]
@@ -208,9 +198,11 @@ def test_shared_tree_evaluation_base_owns_generic_best_equivalence_dispatch() ->
         ),
         ordered_branches=(0, 1, 2),
         best_branch_key=0,
-        exact_equal_branches={0},
-        considered_equal_branches={0, 2},
-        scores={0: 0.50, 1: 0.52, 2: 0.49},
+        ordering_keys={
+            0: (0.50, 0, 10),
+            1: (0.52, 1, 11),
+            2: (0.50, 0, 12),
+        },
         logistic_scores={0: 1.000, 1: 1.005, 2: 1.500},
     )
 
@@ -220,7 +212,7 @@ def test_shared_tree_evaluation_base_owns_generic_best_equivalence_dispatch() ->
     ) == [0, 2]
     assert generic_eval.best_equivalent_branches(
         BestBranchEquivalenceMode.ALMOST_EQUAL
-    ) == [0]
+    ) == [0, 2]
     assert generic_eval.best_equivalent_branches(
         BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
     ) == [0, 1]
