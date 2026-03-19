@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
-from valanga import Color
+from valanga import BranchKey, Color
 from valanga.evaluations import Certainty, Value
 
-from anemone.backup_policies.common import has_value_changed
+from anemone.backup_policies.common import SelectedValue, has_value_changed
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.common.canonical_value import ValueSemanticsError
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
@@ -29,6 +29,21 @@ class _FakeOverEvent:
 
     def is_winner(self, player: Color) -> bool:
         return self.winner == player
+
+
+class _SelectDirectAggregationPolicy:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def select_value(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        branches_with_updated_value: set[BranchKey],
+    ) -> SelectedValue:
+        self.calls += 1
+        assert branches_with_updated_value
+        return SelectedValue(value=node_eval.direct_value, from_child=False)
 
 
 def _make_leaf(node_id: int, value: Value) -> Any:
@@ -160,6 +175,28 @@ def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> N
 
     assert parent.minmax_value == Value(score=0.5, certainty=Certainty.ESTIMATE)
     assert parent.get_score() == 0.5
+
+
+def test_explicit_minimax_backup_uses_injected_aggregation_policy() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: _make_leaf(1, Value(score=0.9, certainty=Certainty.ESTIMATE))},
+        all_generated=True,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+    )
+    aggregation_policy = _SelectDirectAggregationPolicy()
+    parent.backup_policy = ExplicitMinimaxBackupPolicy(
+        aggregation_policy=aggregation_policy
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert aggregation_policy.calls == 1
+    assert parent.minmax_value == Value(score=0.1, certainty=Certainty.ESTIMATE)
+    assert parent.best_branch_sequence == []
 
 
 def test_semantic_compare_terminal_vs_estimate_is_exposed() -> None:

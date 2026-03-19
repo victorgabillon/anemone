@@ -6,8 +6,10 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
+from valanga import BranchKey
 from valanga.evaluations import Certainty, Value
 
+from anemone.backup_policies.common import SelectedValue
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
@@ -28,6 +30,21 @@ class _FakeOverEvent:
     def is_winner(self, player: object) -> bool:
         del player
         return False
+
+
+class _SelectDirectAggregationPolicy:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def select_value(
+        self,
+        *,
+        node_eval: NodeMaxEvaluation[Any],
+        branches_with_updated_value: set[BranchKey],
+    ) -> SelectedValue:
+        self.calls += 1
+        assert branches_with_updated_value
+        return SelectedValue(value=node_eval.direct_value, from_child=False)
 
 
 def _state() -> Any:
@@ -193,6 +210,29 @@ def test_explicit_max_backup_falls_back_to_direct_when_no_child_value_exists() -
 
     assert node.backed_up_value == Value(score=0.3, certainty=Certainty.ESTIMATE)
     assert node.best_branch() is None
+
+
+def test_explicit_max_backup_uses_injected_aggregation_policy() -> None:
+    children = {
+        0: _child(10, Value(score=0.9, certainty=Certainty.ESTIMATE)),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.2, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+    aggregation_policy = _SelectDirectAggregationPolicy()
+    node.backup_policy = ExplicitMaxBackupPolicy(aggregation_policy=aggregation_policy)
+
+    node.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert aggregation_policy.calls == 1
+    assert node.backed_up_value == Value(score=0.2, certainty=Certainty.ESTIMATE)
+    assert node.best_branch_sequence == []
 
 
 def test_single_agent_decision_ordered_branches_are_public_and_deterministic() -> None:

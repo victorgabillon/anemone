@@ -1,18 +1,20 @@
 """Explicit max backup policy for single-agent node evaluation."""
 
-# pylint: disable=duplicate-code
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
 from valanga.evaluations import Certainty
 
+from anemone.backup_policies.aggregation import (
+    AggregationPolicy,
+    MaxAggregationPolicy,
+)
 from anemone.backup_policies.common import (
     ProofClassification,
     SelectedValue,
     all_child_values_exact,
     finalize_selection_with_proof,
-    select_value_from_best_child_and_direct,
 )
 
 if TYPE_CHECKING:
@@ -28,6 +30,17 @@ if TYPE_CHECKING:
 class ExplicitMaxBackupPolicy:
     """Backup policy that computes single-agent max value and PV from Value."""
 
+    aggregation_policy: AggregationPolicy[NodeMaxEvaluation[Any]]
+
+    def __init__(
+        self,
+        aggregation_policy: AggregationPolicy[NodeMaxEvaluation[Any]] | None = None,
+    ) -> None:
+        """Initialize the backup policy with one injectable aggregation strategy."""
+        if aggregation_policy is None:
+            aggregation_policy = MaxAggregationPolicy()
+        self.aggregation_policy = aggregation_policy
+
     def backup_from_children(
         self,
         node_eval: NodeMaxEvaluation[Any],
@@ -41,12 +54,10 @@ class ExplicitMaxBackupPolicy:
             if best_branch_key is not None
             else None
         )
-        direct_value = node_eval.direct_value
 
-        selection = self._select_value(
+        selection = self.aggregation_policy.select_value(
             node_eval=node_eval,
-            best_child_value=best_child_value,
-            direct_value=direct_value,
+            branches_with_updated_value=branches_with_updated_value,
         )
         proof = self._classify_selected_value(
             node_eval=node_eval,
@@ -65,28 +76,6 @@ class ExplicitMaxBackupPolicy:
                 branches_with_updated_best_branch_seq=(
                     branches_with_updated_best_branch_seq
                 ),
-            ),
-        )
-
-    def _select_value(
-        self,
-        *,
-        node_eval: NodeMaxEvaluation[Any],
-        best_child_value: Value | None,
-        direct_value: Value | None,
-    ) -> SelectedValue:
-        """Resolve the parent candidate by competing best child against direct value."""
-        return select_value_from_best_child_and_direct(
-            best_child_value=best_child_value,
-            direct_value=direct_value,
-            all_branches_generated=node_eval.tree_node.all_branches_generated,
-            child_beats_direct=lambda child, direct: (
-                node_eval.objective.semantic_compare(
-                    child,
-                    direct,
-                    node_eval.tree_node.state,
-                )
-                >= 0
             ),
         )
 

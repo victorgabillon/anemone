@@ -6,12 +6,15 @@ from typing import TYPE_CHECKING, Any
 
 from valanga.evaluations import Certainty
 
+from anemone.backup_policies.aggregation import (
+    AggregationPolicy,
+    MinimaxAggregationPolicy,
+)
 from anemone.backup_policies.common import (
     ProofClassification,
     SelectedValue,
     all_child_values_exact,
     finalize_selection_with_proof,
-    select_value_from_best_child_and_direct,
 )
 from anemone.node_evaluation.common import canonical_value
 
@@ -28,6 +31,18 @@ if TYPE_CHECKING:
 class ExplicitMinimaxBackupPolicy:
     """Backup policy that computes adversarial minimax value/PV/over from Value."""
 
+    aggregation_policy: AggregationPolicy[NodeMinmaxEvaluation[Any, Any]]
+
+    def __init__(
+        self,
+        aggregation_policy: AggregationPolicy[NodeMinmaxEvaluation[Any, Any]]
+        | None = None,
+    ) -> None:
+        """Initialize the backup policy with one injectable aggregation strategy."""
+        if aggregation_policy is None:
+            aggregation_policy = MinimaxAggregationPolicy()
+        self.aggregation_policy = aggregation_policy
+
     def backup_from_children(
         self,
         node_eval: NodeMinmaxEvaluation[Any, Any],
@@ -41,14 +56,10 @@ class ExplicitMinimaxBackupPolicy:
         ), "Cannot compute minimax value: no children."
 
         best_branch_before_update = node_eval.best_branch()
-
-        if branches_with_updated_value:
-            self._update_branches_values_value_only(
-                node_eval=node_eval,
-                branches_to_consider=branches_with_updated_value,
-            )
-
-        selection = self._select_value(node_eval=node_eval)
+        selection = self.aggregation_policy.select_value(
+            node_eval=node_eval,
+            branches_with_updated_value=branches_with_updated_value,
+        )
         proof = self._classify_selected_value(
             node_eval=node_eval,
             selection=selection,
@@ -67,85 +78,6 @@ class ExplicitMinimaxBackupPolicy:
                 ),
             ),
         )
-
-    def _select_value(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-    ) -> SelectedValue:
-        """Choose the generic backed-up-value candidate for this minimax node."""
-        best_child_value = self._best_child_value_for_selection(node_eval=node_eval)
-        if best_child_value is None:
-            assert node_eval.tree_node.branches_children, (
-                "Cannot compute minimax value: no children."
-            )
-            direct_value = self._direct_value_candidate(node_eval)
-            assert direct_value is not None, (
-                "Explicit minimax requires direct_value for partially expanded nodes."
-            )
-            return SelectedValue(value=direct_value, from_child=False)
-
-        direct_value = self._direct_value_candidate(node_eval)
-        if not node_eval.tree_node.all_branches_generated:
-            assert direct_value is not None, (
-                "Explicit minimax requires direct_value for partially expanded nodes."
-            )
-
-        return select_value_from_best_child_and_direct(
-            best_child_value=best_child_value,
-            direct_value=direct_value,
-            all_branches_generated=node_eval.tree_node.all_branches_generated,
-            child_beats_direct=lambda child, direct: (
-                node_eval.child_is_better_than_direct(
-                    child,
-                    direct,
-                    side_to_move=node_eval.tree_node.state.turn,
-                )
-            ),
-        )
-
-    def _best_child_value_for_selection(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-    ) -> Value | None:
-        """Return the current best child candidate, refreshing ordering if needed."""
-        best_branch_key = node_eval.best_branch()
-        if best_branch_key is None and node_eval.tree_node.branches_children:
-            self._update_branches_values_value_only(
-                node_eval=node_eval,
-                branches_to_consider=set(node_eval.tree_node.branches_children),
-            )
-            best_branch_key = node_eval.best_branch()
-
-        if best_branch_key is None:
-            return None
-
-        best_child_value = node_eval.child_value_candidate(best_branch_key)
-        assert best_child_value is not None
-        return best_child_value
-
-    def _update_branches_values_value_only(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-        branches_to_consider: set[BranchKey],
-    ) -> None:
-        """Update branch ordering keys using Value semantics instead of float-only keys."""
-        node_eval.update_branches_values(
-            {
-                branch_key
-                for branch_key in branches_to_consider
-                if node_eval.child_value_candidate(branch_key) is not None
-            }
-        )
-
-    def _direct_value_candidate(
-        self,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-    ) -> Value | None:
-        """Return the local direct-evaluator candidate used in partial expansion."""
-        return node_eval.direct_value
 
     def _classify_selected_value(
         self,
