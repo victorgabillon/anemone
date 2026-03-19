@@ -67,7 +67,7 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
 
     def frontier_branches_in_order(self) -> list[BranchKey]:
         """Return frontier branches ordered by current child-preference semantics."""
-        return self.branch_frontier.ordered_frontier_branches(
+        return self.ordered_frontier_branches_from(
             (*self.decision_ordered_branches(), *self.tree_node.branches_children)
         )
 

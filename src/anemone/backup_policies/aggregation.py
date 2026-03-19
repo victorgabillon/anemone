@@ -36,6 +36,7 @@ class AggregationPolicy[NodeEvalT](Protocol):
         branches_with_updated_value: set[BranchKey],
     ) -> SelectedValue:
         """Return the selected child/direct candidate for one node backup."""
+        ...
 
 
 class MaxAggregationPolicy:
@@ -48,6 +49,7 @@ class MaxAggregationPolicy:
         branches_with_updated_value: set[BranchKey],
     ) -> SelectedValue:
         """Select the parent candidate using single-agent max semantics."""
+        # pylint: disable=duplicate-code
         del branches_with_updated_value
         best_branch_key = node_eval.best_branch()
         best_child_value = (

@@ -64,7 +64,9 @@ def test_factory_defaults_to_explicit_policy() -> None:
 
 def test_explicit_backup_policies_default_to_family_aggregation_policies() -> None:
     """Explicit backup policies should install the matching aggregation policy."""
-    assert isinstance(ExplicitMaxBackupPolicy().aggregation_policy, MaxAggregationPolicy)
+    assert isinstance(
+        ExplicitMaxBackupPolicy().aggregation_policy, MaxAggregationPolicy
+    )
     assert isinstance(
         ExplicitMinimaxBackupPolicy().aggregation_policy,
         MinimaxAggregationPolicy,

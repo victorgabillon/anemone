@@ -18,8 +18,10 @@ from anemone.node_evaluation.tree.adversarial.minmax_decision_ordering import (
     BranchSortValue,
     MinmaxDecisionOrderingState,
 )
-from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluationState
-from anemone.nodes.itree_node import ITreeNode
+from anemone.node_evaluation.tree.node_tree_evaluation import (
+    NodeTreeEvaluationState,
+    TreeEvaluationChild,
+)
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
 from anemone.utils.logger import anemone_logger
@@ -31,7 +33,7 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 # Class created to avoid circular import and defines what is seen and needed by the NodeMinmaxEvaluation class
-class NodeWithValue(ITreeNode[TurnState], Protocol):
+class NodeWithValue(TreeEvaluationChild[TurnState], Protocol):
     """Represents a node with a value in a tree structure.
 
     Attributes:
@@ -42,7 +44,11 @@ class NodeWithValue(ITreeNode[TurnState], Protocol):
 
     """
 
-    tree_evaluation: "NodeMinmaxEvaluation"
+    @property
+    def tree_evaluation(self) -> "NodeMinmaxEvaluation":
+        """Return the minimax evaluation associated with this node."""
+        ...
+
     tree_node: TreeNode[Self, TurnState]
 
 
@@ -279,7 +285,7 @@ class NodeMinmaxEvaluation[
 
     def frontier_branches_in_order(self) -> list[BranchKey]:
         """Return frontier branches ordered by current child-preference semantics."""
-        return self.branch_frontier.ordered_frontier_branches(
+        return self.ordered_frontier_branches_from(
             (*self.branches_sorted_by_value, *self.tree_node.branches_children)
         )
 

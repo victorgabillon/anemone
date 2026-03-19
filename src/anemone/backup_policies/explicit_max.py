@@ -48,6 +48,7 @@ class ExplicitMaxBackupPolicy:
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Recompute backed-up value and PV from child values."""
+        # pylint: disable=duplicate-code
         best_branch_key = node_eval.best_branch()
         best_child_value = (
             node_eval.child_value_candidate(best_branch_key)
@@ -86,6 +87,7 @@ class ExplicitMaxBackupPolicy:
         selection: SelectedValue,
     ) -> ProofClassification | None:
         """Classify certainty/outcome for the selected parent value."""
+        # pylint: disable=duplicate-code
         chosen_value = selection.value
         if chosen_value is None:
             return None

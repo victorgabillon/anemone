@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga import BranchKey, OverEvent, State
 
@@ -17,6 +17,8 @@ from anemone.node_evaluation.common.principal_variation import (
 from anemone.nodes.itree_node import ITreeNode
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from valanga.evaluations import Value
 
     from anemone.backup_policies.types import BackupResult
@@ -36,7 +38,27 @@ def make_principal_variation_state_factory() -> PrincipalVariationState:
 class TreeEvaluationChild[StateT: State = State](ITreeNode[StateT], Protocol):
     """Minimal child-node protocol needed by the shared tree-evaluation state."""
 
-    tree_evaluation: Any
+    @property
+    def tree_evaluation(self) -> ChildTreeEvaluation:
+        """Return the child node's tree evaluation."""
+        ...
+
+
+class ChildTreeEvaluation(Protocol):
+    """Minimal child-evaluation protocol needed by shared tree-state helpers."""
+
+    @property
+    def best_branch_sequence(self) -> list[BranchKey]:
+        """Return the child's principal-variation branch sequence."""
+        ...
+
+    def get_value_candidate(self) -> Value | None:
+        """Return the child's current best available candidate Value."""
+        ...
+
+    def has_exact_value(self) -> bool:
+        """Return whether the child currently has an exact candidate Value."""
+        ...
 
 
 @dataclass(slots=True)
@@ -134,7 +156,7 @@ class NodeTreeEvaluationState[
         child = self.tree_node.branches_children[branch_key]
         if child is None:
             return None
-        return cast("Value | None", child.tree_evaluation.get_value_candidate())
+        return child.tree_evaluation.get_value_candidate()
 
     def on_branch_opened(self, branch: BranchKey) -> None:
         """Record that a child branch has entered the frontier."""
@@ -143,6 +165,15 @@ class NodeTreeEvaluationState[
     def has_frontier_branches(self) -> bool:
         """Return whether some child branches remain search-relevant."""
         return self.branch_frontier.has_frontier_branches()
+
+    def ordered_frontier_branches_from(
+        self,
+        ordered_candidate_branches: Iterable[BranchKey],
+    ) -> list[BranchKey]:
+        """Project frontier membership onto one caller-supplied branch ordering."""
+        return self.branch_frontier.ordered_frontier_branches(
+            ordered_candidate_branches
+        )
 
     def _branch_is_frontier_relevant(self, branch_key: BranchKey) -> bool:
         """Return whether a child branch can still affect future search results."""

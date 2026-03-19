@@ -50,6 +50,7 @@ class ExplicitMinimaxBackupPolicy:
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Recompute value/PV/over from updated children and return change flags."""
+        # pylint: disable=duplicate-code
         assert (
             not node_eval.tree_node.all_branches_generated
             or node_eval.tree_node.branches_children
@@ -86,6 +87,7 @@ class ExplicitMinimaxBackupPolicy:
         selection: SelectedValue,
     ) -> ProofClassification | None:
         """Classify certainty/outcome for the selected parent value."""
+        # pylint: disable=duplicate-code
         chosen_value = selection.value
         if chosen_value is None:
             return None
