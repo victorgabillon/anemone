@@ -52,6 +52,7 @@ class NodeWithValue(TreeEvaluationChild[TurnState], Protocol):
 
     tree_node: TreeNode[Self, TurnState]
 
+
 def make_default_objective() -> Objective[TurnState]:
     """Create the default objective preserving current adversarial semantics."""
     return AdversarialZeroSumObjective()
@@ -73,7 +74,9 @@ class NodeMinmaxEvaluation[
 ](NodeTreeEvaluationState[NodeWithValueT, StateT]):
     r"""Value-first minimax evaluation attached to a tree node."""
 
-    decision_ordering: DecisionOrderingState = field(default_factory=DecisionOrderingState)
+    decision_ordering: DecisionOrderingState = field(
+        default_factory=DecisionOrderingState
+    )
 
     # policy used to orchestrate backup behavior from updated children
     backup_policy: "BackupPolicy[Any] | None" = None
@@ -117,37 +120,6 @@ class NodeMinmaxEvaluation[
                 self.tree_node.state,
             )
             >= 0
-        )
-
-    def best_branch(self) -> BranchKey | None:
-        """Return the best branch node based on the subjective value.
-
-        Returns:
-            The best branch based on the subjective value, or None if there are no branch open.
-
-        """
-        return self.decision_ordering.best_branch(
-            child_value_candidate_getter=self.child_value_candidate,
-            semantic_compare=self._decision_semantic_compare,
-        )
-
-    def second_best_branch(self) -> BranchKey:
-        """Return the second-best branch based on the subjective value.
-
-        Returns:
-            The second-best branch.
-
-        """
-        return self.decision_ordering.second_best_branch(
-            child_value_candidate_getter=self.child_value_candidate,
-            semantic_compare=self._decision_semantic_compare,
-        )
-
-    def decision_ordered_branches(self) -> list[BranchKey]:
-        """Return child branches ordered by current minimax decision semantics."""
-        return self.decision_ordering.decision_ordered_branches(
-            child_value_candidate_getter=self.child_value_candidate,
-            semantic_compare=self._decision_semantic_compare,
         )
 
     def print_branches_sorted_by_value_and_exploration(
@@ -246,30 +218,16 @@ class NodeMinmaxEvaluation[
         """Return frontier candidates in cached minimax search order."""
         return (*self.branch_ordering_keys, *self.tree_node.branches_children)
 
-    def _ordered_candidate_branches_for_best_equivalence(
-        self,
-    ) -> tuple[BranchKey, ...]:
-        """Return candidate branches in cached minimax search order."""
-        return tuple(self.branch_ordering_keys)
-
-    def _branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
-        """Return the cached branch-ordering key for one branch."""
-        return self.branch_ordering_keys[branch]
-
-    def _branch_values_are_equal(
-        self,
-        *,
-        branch: BranchKey,
-        best_branch: BranchKey,
-    ) -> bool:
-        """Return whether two minimax branch ordering keys are exactly equal."""
-        return self._branch_ordering_key(branch) == self._branch_ordering_key(
-            best_branch
-        )
+    def _ensure_decision_ordering_ready(self) -> None:
+        """Preserve minimax's incremental ordering-update policy."""
 
     def _decision_semantic_compare(self, left: Value, right: Value) -> int:
         """Compare child values using current minimax decision semantics."""
         return self.objective.semantic_compare(left, right, self.tree_node.state)
+
+    def _decision_ordering_state(self) -> DecisionOrderingState:
+        """Return the shared decision-ordering helper for this node."""
+        return self.decision_ordering
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Triggered when the value of the current best branch does not match the best value.

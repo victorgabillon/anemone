@@ -25,7 +25,10 @@ if TYPE_CHECKING:
     from valanga.evaluations import Value
 
     from anemone.backup_policies.types import BackupResult
-    from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
+    from anemone.node_evaluation.tree.decision_ordering import (
+        BranchOrderingKey,
+        DecisionOrderingState,
+    )
     from anemone.nodes.tree_node import TreeNode
 
 
@@ -254,12 +257,41 @@ class NodeTreeEvaluationState[
         """Return candidate branches in the family's current search order."""
         raise NotImplementedError
 
-    def best_branch(self) -> BranchKey | None:
-        """Return the current best branch.
-
-        Concrete families must supply the actual decision semantics.
-        """
+    def _ensure_decision_ordering_ready(self) -> None:
+        """Ensure the family's cached decision ordering is ready to consume."""
         raise NotImplementedError
+
+    def _decision_ordering_state(self) -> DecisionOrderingState:
+        """Return the family's shared decision-ordering state helper."""
+        raise NotImplementedError
+
+    def _decision_semantic_compare(self, left: Value, right: Value) -> int:
+        """Compare child values using the family's current decision semantics."""
+        raise NotImplementedError
+
+    def decision_ordered_branches(self) -> list[BranchKey]:
+        """Return child branches ordered by current family decision semantics."""
+        self._ensure_decision_ordering_ready()
+        return self._decision_ordering_state().decision_ordered_branches(
+            child_value_candidate_getter=self.child_value_candidate,
+            semantic_compare=self._decision_semantic_compare,
+        )
+
+    def best_branch(self) -> BranchKey | None:
+        """Return the current best branch."""
+        self._ensure_decision_ordering_ready()
+        return self._decision_ordering_state().best_branch(
+            child_value_candidate_getter=self.child_value_candidate,
+            semantic_compare=self._decision_semantic_compare,
+        )
+
+    def second_best_branch(self) -> BranchKey:
+        """Return the current second-best branch."""
+        self._ensure_decision_ordering_ready()
+        return self._decision_ordering_state().second_best_branch(
+            child_value_candidate_getter=self.child_value_candidate,
+            semantic_compare=self._decision_semantic_compare,
+        )
 
     def best_equivalent_branches(
         self,
@@ -282,13 +314,13 @@ class NodeTreeEvaluationState[
 
     def _ordered_candidate_branches_for_best_equivalence(
         self,
-    ) -> Iterable[BranchKey]:
+    ) -> tuple[BranchKey, ...]:
         """Return candidate branches in family-defined best-equivalence order."""
-        raise NotImplementedError
+        return tuple(self.decision_ordered_branches())
 
     def _branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
         """Return the shared branch-ordering key for one branch."""
-        raise NotImplementedError
+        return self._decision_ordering_state().branch_ordering_keys[branch]
 
     def _branch_is_equivalent_to_best(
         self,
@@ -304,9 +336,10 @@ class NodeTreeEvaluationState[
                 best_branch=best_branch,
             )
         if mode is BestBranchEquivalenceMode.CONSIDERED_EQUAL:
-            return self._branch_ordering_key(branch)[:2] == self._branch_ordering_key(
-                best_branch
-            )[:2]
+            return (
+                self._branch_ordering_key(branch)[:2]
+                == self._branch_ordering_key(best_branch)[:2]
+            )
         if mode is BestBranchEquivalenceMode.ALMOST_EQUAL:
             return self._are_almost_equal_scores(
                 self._branch_equivalence_score(branch),
@@ -325,8 +358,10 @@ class NodeTreeEvaluationState[
         branch: BranchKey,
         best_branch: BranchKey,
     ) -> bool:
-        """Return whether two branches are exactly equal under family semantics."""
-        raise NotImplementedError
+        """Return whether two minimax branch ordering keys are exactly equal."""
+        return self._branch_ordering_key(branch) == self._branch_ordering_key(
+            best_branch
+        )
 
     def _branch_equivalence_score(self, branch: BranchKey) -> float:
         """Return the family's primary scalar score for branch equivalence."""

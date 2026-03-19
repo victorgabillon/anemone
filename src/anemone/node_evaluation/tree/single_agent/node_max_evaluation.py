@@ -38,7 +38,9 @@ def make_default_backup_policy() -> ExplicitMaxBackupPolicy:
 class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, StateT]):
     """Canonical Value-based node evaluation for single-agent max search."""
 
-    decision_ordering: DecisionOrderingState = field(default_factory=DecisionOrderingState)
+    decision_ordering: DecisionOrderingState = field(
+        default_factory=DecisionOrderingState
+    )
     objective: Objective[StateT] = field(default_factory=make_default_objective)
     backup_policy: BackupPolicy[NodeMaxEvaluation[StateT]] = field(
         default_factory=make_default_backup_policy
@@ -51,9 +53,7 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
         child_value = self.child_value_candidate(branch_key)
         assert child_value is not None
         exactness_tie_break = (
-            0
-            if child_value.certainty in {Certainty.TERMINAL, Certainty.FORCED}
-            else 1
+            0 if child_value.certainty in {Certainty.TERMINAL, Certainty.FORCED} else 1
         )
         return (
             self.objective.evaluate_value(child_value, self.tree_node.state),
@@ -77,36 +77,17 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
             branch_ordering_key_getter=self.branch_sort_value,
         )
 
-    def decision_ordered_branches(self) -> list[BranchKey]:
-        """Return child branches ordered by the current single-agent preference."""
+    def _ensure_decision_ordering_ready(self) -> None:
+        """Refresh max ordering eagerly before shared decision-ordering access."""
         self._refresh_decision_ordering()
-        return self.decision_ordering.decision_ordered_branches(
-            child_value_candidate_getter=self.child_value_candidate,
-            semantic_compare=self._decision_semantic_compare,
-        )
-
-    def best_branch(self) -> BranchKey | None:
-        """Return the best currently-valued child branch."""
-        self._refresh_decision_ordering()
-        return self.decision_ordering.best_branch(
-            child_value_candidate_getter=self.child_value_candidate,
-            semantic_compare=self._decision_semantic_compare,
-        )
 
     def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
         """Return frontier candidates in current single-agent search order."""
         return (*self.decision_ordered_branches(), *self.tree_node.branches_children)
 
-    def _ordered_candidate_branches_for_best_equivalence(
-        self,
-    ) -> tuple[BranchKey, ...]:
-        """Return candidate branches in current single-agent decision order."""
-        return tuple(self.decision_ordered_branches())
-
-    def _branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
-        """Return the cached branch-ordering key for one branch."""
-        self._refresh_decision_ordering()
-        return self.decision_ordering.branch_ordering_keys[branch]
+    def _decision_ordering_state(self) -> DecisionOrderingState:
+        """Return the shared decision-ordering helper for this node."""
+        return self.decision_ordering
 
     def _branch_values_are_equal(
         self,
