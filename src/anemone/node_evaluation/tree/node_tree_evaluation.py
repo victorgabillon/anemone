@@ -16,6 +16,7 @@ from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvalua
 from anemone.node_evaluation.common.principal_variation import (
     PrincipalVariationState,
 )
+from anemone.node_evaluation.tree.decision_ordering import DecisionOrderingState
 from anemone.nodes.itree_node import ITreeNode
 from anemone.utils.logger import anemone_logger
 
@@ -25,10 +26,7 @@ if TYPE_CHECKING:
     from valanga.evaluations import Value
 
     from anemone.backup_policies.types import BackupResult
-    from anemone.node_evaluation.tree.decision_ordering import (
-        BranchOrderingKey,
-        DecisionOrderingState,
-    )
+    from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.nodes.tree_node import TreeNode
 
 
@@ -93,6 +91,9 @@ class NodeTreeEvaluationState[
     tree_node: TreeNode[NodeT, StateT]
     direct_value: Value | None = None
     _backed_up_value: Value | None = None
+    decision_ordering: DecisionOrderingState = field(
+        default_factory=DecisionOrderingState
+    )
     pv_state: PrincipalVariationState = field(
         default_factory=make_principal_variation_state_factory
     )
@@ -261,10 +262,6 @@ class NodeTreeEvaluationState[
         """Ensure the family's cached decision ordering is ready to consume."""
         raise NotImplementedError
 
-    def _decision_ordering_state(self) -> DecisionOrderingState:
-        """Return the family's shared decision-ordering state helper."""
-        raise NotImplementedError
-
     def _decision_semantic_compare(self, left: Value, right: Value) -> int:
         """Compare child values using the family's current decision semantics."""
         raise NotImplementedError
@@ -272,7 +269,7 @@ class NodeTreeEvaluationState[
     def decision_ordered_branches(self) -> list[BranchKey]:
         """Return child branches ordered by current family decision semantics."""
         self._ensure_decision_ordering_ready()
-        return self._decision_ordering_state().decision_ordered_branches(
+        return self.decision_ordering.decision_ordered_branches(
             child_value_candidate_getter=self.child_value_candidate,
             semantic_compare=self._decision_semantic_compare,
         )
@@ -280,7 +277,7 @@ class NodeTreeEvaluationState[
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch."""
         self._ensure_decision_ordering_ready()
-        return self._decision_ordering_state().best_branch(
+        return self.decision_ordering.best_branch(
             child_value_candidate_getter=self.child_value_candidate,
             semantic_compare=self._decision_semantic_compare,
         )
@@ -288,7 +285,7 @@ class NodeTreeEvaluationState[
     def second_best_branch(self) -> BranchKey:
         """Return the current second-best branch."""
         self._ensure_decision_ordering_ready()
-        return self._decision_ordering_state().second_best_branch(
+        return self.decision_ordering.second_best_branch(
             child_value_candidate_getter=self.child_value_candidate,
             semantic_compare=self._decision_semantic_compare,
         )
@@ -320,7 +317,7 @@ class NodeTreeEvaluationState[
 
     def _branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
         """Return the shared branch-ordering key for one branch."""
-        return self._decision_ordering_state().branch_ordering_keys[branch]
+        return self.decision_ordering.branch_ordering_keys[branch]
 
     def _branch_is_equivalent_to_best(
         self,

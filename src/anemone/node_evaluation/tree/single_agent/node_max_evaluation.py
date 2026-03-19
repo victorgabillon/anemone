@@ -9,10 +9,6 @@ from valanga import BranchKey, State
 from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
-from anemone.node_evaluation.tree.decision_ordering import (
-    BranchOrderingKey,
-    DecisionOrderingState,
-)
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     NodeTreeEvaluationState,
 )
@@ -21,6 +17,7 @@ from anemone.objectives.single_agent_max import SingleAgentMaxObjective
 if TYPE_CHECKING:
     from anemone.backup_policies.protocols import BackupPolicy
     from anemone.backup_policies.types import BackupResult
+    from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.objectives import Objective
 
 
@@ -38,9 +35,6 @@ def make_default_backup_policy() -> ExplicitMaxBackupPolicy:
 class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, StateT]):
     """Canonical Value-based node evaluation for single-agent max search."""
 
-    decision_ordering: DecisionOrderingState = field(
-        default_factory=DecisionOrderingState
-    )
     objective: Objective[StateT] = field(default_factory=make_default_objective)
     backup_policy: BackupPolicy[NodeMaxEvaluation[StateT]] = field(
         default_factory=make_default_backup_policy
@@ -84,10 +78,6 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
     def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
         """Return frontier candidates in current single-agent search order."""
         return (*self.decision_ordered_branches(), *self.tree_node.branches_children)
-
-    def _decision_ordering_state(self) -> DecisionOrderingState:
-        """Return the shared decision-ordering helper for this node."""
-        return self.decision_ordering
 
     def _branch_values_are_equal(
         self,

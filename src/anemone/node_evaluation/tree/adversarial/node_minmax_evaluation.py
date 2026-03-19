@@ -15,7 +15,6 @@ from valanga.evaluations import Value
 from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation.tree.decision_ordering import (
     BranchOrderingKey,
-    DecisionOrderingState,
 )
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BestBranchEquivalenceMode,
@@ -73,10 +72,6 @@ class NodeMinmaxEvaluation[
     StateT: TurnState = TurnState,
 ](NodeTreeEvaluationState[NodeWithValueT, StateT]):
     r"""Value-first minimax evaluation attached to a tree node."""
-
-    decision_ordering: DecisionOrderingState = field(
-        default_factory=DecisionOrderingState
-    )
 
     # policy used to orchestrate backup behavior from updated children
     backup_policy: "BackupPolicy[Any] | None" = None
@@ -225,10 +220,6 @@ class NodeMinmaxEvaluation[
         """Compare child values using current minimax decision semantics."""
         return self.objective.semantic_compare(left, right, self.tree_node.state)
 
-    def _decision_ordering_state(self) -> DecisionOrderingState:
-        """Return the shared decision-ordering helper for this node."""
-        return self.decision_ordering
-
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Triggered when the value of the current best branch does not match the best value.
 
@@ -251,18 +242,3 @@ class NodeMinmaxEvaluation[
         assert self.best_branch_sequence
         return has_best_branch_seq_changed
 
-    def backup_from_children(
-        self,
-        branches_with_updated_value: set[BranchKey],
-        branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> "BackupResult":
-        """Delegate backup orchestration to the configured backup policy."""
-        if self.backup_policy is None:
-            self.backup_policy = make_default_backup_policy()
-        assert self.backup_policy is not None
-        policy: BackupPolicy[Any] = self.backup_policy
-        return policy.backup_from_children(
-            node_eval=self,
-            branches_with_updated_value=branches_with_updated_value,
-            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
-        )
