@@ -51,6 +51,9 @@ class ExplicitMaxBackupPolicy:
     ) -> BackupResult:
         """Recompute backed-up value and PV from child values."""
         # pylint: disable=duplicate-code
+        if branches_with_updated_value:
+            node_eval.update_branches_values(branches_with_updated_value)
+
         best_branch_key = node_eval.best_branch()
         best_child_value = (
             node_eval.child_value_candidate(best_branch_key)

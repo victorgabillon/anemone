@@ -91,6 +91,15 @@ def _node(
     evaluation = NodeMaxEvaluation(tree_node=tree_node)
     evaluation.direct_value = direct_value
     evaluation.backed_up_value = backed_up_value
+    if children:
+        evaluation.update_branches_values(
+            {
+                branch_key
+                for branch_key, child in children.items()
+                if child is not None
+                and child.tree_evaluation.get_value_candidate() is not None
+            }
+        )
     return evaluation
 
 

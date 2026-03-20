@@ -230,6 +230,23 @@ def test_shared_tree_evaluation_base_owns_generic_best_equivalence_dispatch() ->
     ) == [0, 1]
 
 
+def test_shared_frontier_candidate_helper_preserves_order_and_appends_children() -> (
+    None
+):
+    generic_eval = _HookDrivenEvaluation(
+        tree_node=SimpleNamespace(
+            id=4,
+            state=SimpleNamespace(),
+            branches_children={2: object(), 0: object(), 1: object(), 3: object()},
+            all_branches_generated=True,
+        ),
+    )
+
+    assert generic_eval._ordered_candidate_branches_with_child_fallback(
+        (0, 2, 0, 99)
+    ) == (0, 2, 1, 3)
+
+
 def test_decision_ordered_capability_aligns_across_families() -> None:
     adversarial = NodeMinmaxEvaluation(tree_node=_adversarial_tree_node())
     single_agent = NodeMaxEvaluation(tree_node=_single_agent_tree_node())

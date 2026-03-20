@@ -294,7 +294,9 @@ def test_search_ordering_remains_projection_based_for_large_estimate() -> None:
     assert parent.best_branch() == 0
 
 
-def test_minimax_best_equivalent_branches_use_family_semantics_not_id_tie_break() -> None:
+def test_minimax_best_equivalent_branches_use_family_semantics_not_id_tie_break() -> (
+    None
+):
     parent = _make_parent(
         turn=Color.WHITE,
         children={

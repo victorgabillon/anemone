@@ -83,28 +83,25 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
         best_value = self.child_value_candidate(best_branch)
         assert branch_value is not None
         assert best_value is not None
-        return self.objective.semantic_compare(
-            branch_value,
-            best_value,
-            self.tree_node.state,
-        ) == 0
+        return (
+            self.objective.semantic_compare(
+                branch_value,
+                best_value,
+                self.tree_node.state,
+            )
+            == 0
+        )
 
-    def _refresh_decision_ordering(self) -> None:
-        """Refresh cached ordering keys from the currently-valued children."""
-        self.decision_ordering.branch_ordering_keys = {}
+    def update_branches_values(self, branches_to_consider: set[BranchKey]) -> None:
+        """Incrementally refresh ordering keys for the currently-valued children."""
         self.decision_ordering.update_branch_ordering_keys(
             {
                 branch_key
-                for branch_key in self.tree_node.branches_children
+                for branch_key in branches_to_consider
                 if self.child_value_candidate(branch_key) is not None
             },
             branch_ordering_key_getter=self.branch_sort_value,
         )
 
     def _ensure_decision_ordering_ready(self) -> None:
-        """Refresh max ordering eagerly before shared decision-ordering access."""
-        self._refresh_decision_ordering()
-
-    def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
-        """Return frontier candidates in current single-agent search order."""
-        return (*self.decision_ordered_branches(), *self.tree_node.branches_children)
+        """Max now relies on explicit incremental ordering maintenance."""

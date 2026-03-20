@@ -274,9 +274,38 @@ class NodeTreeEvaluationState[
             self._ordered_candidate_branches_for_frontier()
         )
 
-    def _ordered_candidate_branches_for_frontier(self) -> Iterable[BranchKey]:
-        """Return candidate branches in the family's current search order."""
-        raise NotImplementedError
+    def _ordered_candidate_branches_with_child_fallback(
+        self,
+        preferred_ordered_branches: Iterable[BranchKey],
+    ) -> tuple[BranchKey, ...]:
+        """Return preferred branches first, then any remaining child branches."""
+        ordered_branches: list[BranchKey] = []
+        seen_branches: set[BranchKey] = set()
+
+        for branch in preferred_ordered_branches:
+            if (
+                branch in self.tree_node.branches_children
+                and branch not in seen_branches
+            ):
+                ordered_branches.append(branch)
+                seen_branches.add(branch)
+
+        for branch in self.tree_node.branches_children:
+            if branch not in seen_branches:
+                ordered_branches.append(branch)
+                seen_branches.add(branch)
+
+        return tuple(ordered_branches)
+
+    def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
+        """Return candidate branches from cached decision ordering plus fallback."""
+        self._ensure_decision_ordering_ready()
+        return self._ordered_candidate_branches_with_child_fallback(
+            self.decision_ordering.decision_ordered_branches(
+                child_value_candidate_getter=self.child_value_candidate,
+                semantic_compare=self._decision_semantic_compare,
+            )
+        )
 
     def _ensure_decision_ordering_ready(self) -> None:
         """Ensure the family's cached decision ordering is ready to consume."""

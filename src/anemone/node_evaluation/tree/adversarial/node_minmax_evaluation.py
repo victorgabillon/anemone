@@ -207,10 +207,6 @@ class NodeMinmaxEvaluation[
             branch_ordering_key_getter=self.branch_sort_value,
         )
 
-    def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
-        """Return frontier candidates in cached minimax search order."""
-        return (*self.branch_ordering_keys, *self.tree_node.branches_children)
-
     def _ensure_decision_ordering_ready(self) -> None:
         """Preserve minimax's incremental ordering-update policy."""
 
@@ -254,11 +250,14 @@ class NodeMinmaxEvaluation[
         best_value = self.child_value_candidate(best_branch)
         assert branch_value is not None
         assert best_value is not None
-        return self.objective.semantic_compare(
-            branch_value,
-            best_value,
-            self.tree_node.state,
-        ) == 0
+        return (
+            self.objective.semantic_compare(
+                branch_value,
+                best_value,
+                self.tree_node.state,
+            )
+            == 0
+        )
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Refresh the PV head from the currently selected deterministic best child."""

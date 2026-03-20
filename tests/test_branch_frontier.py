@@ -267,3 +267,39 @@ def test_single_agent_frontier_tracks_only_unresolved_children() -> None:
 
     assert parent.has_frontier_branches()
     assert parent.frontier_branches_in_order() == [1]
+
+
+def test_single_agent_frontier_uses_explicit_ordering_cache_updates() -> None:
+    low_child = _single_leaf(
+        1,
+        Value(score=0.1, certainty=Certainty.ESTIMATE),
+    )
+    high_child = _single_leaf(
+        2,
+        Value(score=0.9, certainty=Certainty.ESTIMATE),
+    )
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=SimpleNamespace(phase="single-agent"),
+        branches_children={0: low_child, 1: high_child},
+        all_branches_generated=False,
+    )
+    parent = NodeMaxEvaluation(
+        tree_node=parent_tree_node,
+        backup_policy=ExplicitMaxBackupPolicy(),
+    )
+    parent.direct_value = Value(score=0.0, certainty=Certainty.ESTIMATE)
+    parent.on_branch_opened(0)
+    parent.on_branch_opened(1)
+
+    assert parent.decision_ordering.branch_ordering_keys == {}
+    assert parent.frontier_branches_in_order() == [0, 1]
+    assert parent.decision_ordering.branch_ordering_keys == {}
+
+    parent.update_branches_values({0, 1})
+
+    assert parent.frontier_branches_in_order() == [1, 0]
+    assert parent.decision_ordering.branch_ordering_keys == {
+        0: (0.1, 1, 1),
+        1: (0.9, 1, 2),
+    }
