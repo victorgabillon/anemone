@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from anemone.backup_policies.types import BackupResult
     from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.nodes.tree_node import TreeNode
+    from anemone.objectives.objective import Objective
 
 
 BackupPolicyFactory = Callable[[], BackupPolicy[Any]]
@@ -96,6 +97,8 @@ class NodeTreeEvaluationState[
     _default_backup_policy_factory: ClassVar[BackupPolicyFactory | None] = None
 
     tree_node: TreeNode[NodeT, StateT]
+    objective: Objective[StateT] | None = None
+
     backup_policy: BackupPolicy[Any] | None = None
     direct_value: Value | None = None
     _backed_up_value: Value | None = None
@@ -297,9 +300,19 @@ class NodeTreeEvaluationState[
 
         return tuple(ordered_branches)
 
+    def _branches_with_ordering_key_available(
+        self,
+        branches_to_consider: set[BranchKey],
+    ) -> set[BranchKey]:
+        """Return branches that currently have enough information for ordering-key update."""
+        return {
+            branch_key
+            for branch_key in branches_to_consider
+            if self.child_value_candidate(branch_key) is not None
+        }
+
     def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
         """Return candidate branches from cached decision ordering plus fallback."""
-        self._ensure_decision_ordering_ready()
         return self._ordered_candidate_branches_with_child_fallback(
             self.decision_ordering.decision_ordered_branches(
                 child_value_candidate_getter=self.child_value_candidate,
@@ -307,17 +320,13 @@ class NodeTreeEvaluationState[
             )
         )
 
-    def _ensure_decision_ordering_ready(self) -> None:
-        """Ensure the family's cached decision ordering is ready to consume."""
-        raise NotImplementedError
-
     def _decision_semantic_compare(self, left: Value, right: Value) -> int:
-        """Compare child values using the family's current decision semantics."""
-        raise NotImplementedError
+        """Compare child values using the node's current objective semantics."""
+        assert self.objective is not None, "Tree evaluation requires an objective."
+        return self.objective.semantic_compare(left, right, self.tree_node.state)
 
     def decision_ordered_branches(self) -> list[BranchKey]:
         """Return child branches ordered by current family decision semantics."""
-        self._ensure_decision_ordering_ready()
         return self.decision_ordering.decision_ordered_branches(
             child_value_candidate_getter=self.child_value_candidate,
             semantic_compare=self._decision_semantic_compare,
@@ -325,7 +334,6 @@ class NodeTreeEvaluationState[
 
     def best_branch(self) -> BranchKey | None:
         """Return the current best branch."""
-        self._ensure_decision_ordering_ready()
         return self.decision_ordering.best_branch(
             child_value_candidate_getter=self.child_value_candidate,
             semantic_compare=self._decision_semantic_compare,
@@ -333,7 +341,6 @@ class NodeTreeEvaluationState[
 
     def second_best_branch(self) -> BranchKey:
         """Return the current second-best branch."""
-        self._ensure_decision_ordering_ready()
         return self.decision_ordering.second_best_branch(
             child_value_candidate_getter=self.child_value_candidate,
             semantic_compare=self._decision_semantic_compare,
@@ -420,15 +427,6 @@ class NodeTreeEvaluationState[
         """Return whether two branches are exactly equal under family semantics."""
         raise NotImplementedError
 
-    def _branch_values_are_considered_equal(
-        self,
-        *,
-        branch: BranchKey,
-        best_branch: BranchKey,
-    ) -> bool:
-        """Return whether two branches are tied under family decision semantics."""
-        raise NotImplementedError
-
     def _branch_equivalence_score(self, branch: BranchKey) -> float:
         """Return the family's primary scalar score for branch equivalence."""
         return self._branch_ordering_key(branch)[0]
@@ -449,6 +447,38 @@ class NodeTreeEvaluationState[
             1,
             abs(x),
         )  # the * min(1,x) is a hack to prioritize game over
+
+    def update_branches_values(self, branches_to_consider: set[BranchKey]) -> None:
+        """Refresh cached ordering keys for branches that currently have a value."""
+        self.decision_ordering.update_branch_ordering_keys(
+            self._branches_with_ordering_key_available(branches_to_consider),
+            branch_ordering_key_getter=self.branch_sort_value,
+        )
+
+    def _branch_values_are_considered_equal(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+    ) -> bool:
+        """Return whether two branches tie under the node's decision semantics."""
+        branch_value = self.child_value_candidate(branch)
+        best_value = self.child_value_candidate(best_branch)
+        assert branch_value is not None
+        assert best_value is not None
+        assert self.objective is not None, "Tree evaluation requires an objective."
+        return (
+            self.objective.semantic_compare(
+                branch_value,
+                best_value,
+                self.tree_node.state,
+            )
+            == 0
+        )
+
+    def branch_sort_value(self, branch_key: BranchKey) -> BranchOrderingKey:
+        """Return the branch-ordering key for one child branch."""
+        raise NotImplementedError
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
