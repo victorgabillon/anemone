@@ -294,7 +294,7 @@ def test_search_ordering_remains_projection_based_for_large_estimate() -> None:
     assert parent.best_branch() == 0
 
 
-def test_minimax_best_equivalent_branches_preserve_existing_modes() -> None:
+def test_minimax_best_equivalent_branches_use_family_semantics_not_id_tie_break() -> None:
     parent = _make_parent(
         turn=Color.WHITE,
         children={
@@ -308,7 +308,7 @@ def test_minimax_best_equivalent_branches_preserve_existing_modes() -> None:
 
     parent.update_branches_values({0, 1, 2})
 
-    assert parent.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0]
+    assert parent.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0, 1]
     assert parent.best_equivalent_branches(
         BestBranchEquivalenceMode.CONSIDERED_EQUAL
     ) == [0, 1]
@@ -319,6 +319,33 @@ def test_minimax_best_equivalent_branches_preserve_existing_modes() -> None:
     ]
     assert parent.best_equivalent_branches(
         BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
+    ) == [0, 1, 2]
+
+
+def test_minimax_equal_respects_pv_tie_break_without_using_node_id() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={
+            0: _make_leaf(1, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+            1: _make_leaf(2, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+            2: _make_leaf(3, Value(score=0.5, certainty=Certainty.ESTIMATE)),
+        },
+        all_generated=True,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    parent.tree_node.branches_children[0].tree_evaluation.set_best_branch_sequence([8])
+    parent.tree_node.branches_children[1].tree_evaluation.set_best_branch_sequence([9])
+    parent.tree_node.branches_children[2].tree_evaluation.set_best_branch_sequence(
+        [7, 6]
+    )
+
+    parent.update_branches_values({0, 1, 2})
+
+    assert parent.best_branch() == 0
+    assert parent.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0, 1]
+    assert parent.best_equivalent_branches(
+        BestBranchEquivalenceMode.CONSIDERED_EQUAL
     ) == [0, 1, 2]
     assert parent.best_equivalent_branches(
         BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC

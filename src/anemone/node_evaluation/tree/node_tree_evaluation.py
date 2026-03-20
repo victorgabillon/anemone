@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from math import log
-from typing import TYPE_CHECKING, Any, Protocol, assert_never
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, assert_never, cast
 
 from valanga import BranchKey, OverEvent, State
 
+from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
 from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
@@ -28,6 +30,9 @@ if TYPE_CHECKING:
     from anemone.backup_policies.types import BackupResult
     from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.nodes.tree_node import TreeNode
+
+
+BackupPolicyFactory = Callable[[], BackupPolicy[Any]]
 
 
 def make_branch_frontier_factory() -> BranchFrontierState:
@@ -84,11 +89,14 @@ class NodeTreeEvaluationState[
 
     This class owns only the family-neutral state and helper methods that both
     current tree-evaluation families already share. Decision ordering,
-    family-specific backup entrypoints, and the value semantics behind
-    best-branch equivalence remain in the concrete families.
+    backup delegation, and family-neutral best-branch equivalence live here,
+    while family-specific value semantics remain in the concrete families.
     """
 
+    _default_backup_policy_factory: ClassVar[BackupPolicyFactory | None] = None
+
     tree_node: TreeNode[NodeT, StateT]
+    backup_policy: BackupPolicy[Any] | None = None
     direct_value: Value | None = None
     _backed_up_value: Value | None = None
     decision_ordering: DecisionOrderingState = field(
@@ -100,6 +108,18 @@ class NodeTreeEvaluationState[
     branch_frontier: BranchFrontierState = field(
         default_factory=make_branch_frontier_factory
     )
+
+    def __post_init__(self) -> None:
+        """Eagerly install the family's default backup policy when omitted."""
+        if self.backup_policy is not None:
+            return
+
+        default_factory = cast(
+            "BackupPolicyFactory | None",
+            getattr(self.__class__, "_default_backup_policy_factory", None),
+        )
+        if default_factory is not None:
+            self.backup_policy = default_factory()
 
     @property
     def backed_up_value(self) -> Value | None:
@@ -290,6 +310,19 @@ class NodeTreeEvaluationState[
             semantic_compare=self._decision_semantic_compare,
         )
 
+    def backup_from_children(
+        self,
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> BackupResult:
+        """Delegate backup work to the configured tree-evaluation backup policy."""
+        assert self.backup_policy is not None
+        return self.backup_policy.backup_from_children(
+            node_eval=self,
+            branches_with_updated_value=branches_with_updated_value,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+        )
+
     def best_equivalent_branches(
         self,
         mode: BestBranchEquivalenceMode = BestBranchEquivalenceMode.EQUAL,
@@ -333,9 +366,9 @@ class NodeTreeEvaluationState[
                 best_branch=best_branch,
             )
         if mode is BestBranchEquivalenceMode.CONSIDERED_EQUAL:
-            return (
-                self._branch_ordering_key(branch)[:2]
-                == self._branch_ordering_key(best_branch)[:2]
+            return self._branch_values_are_considered_equal(
+                branch=branch,
+                best_branch=best_branch,
             )
         if mode is BestBranchEquivalenceMode.ALMOST_EQUAL:
             return self._are_almost_equal_scores(
@@ -355,10 +388,17 @@ class NodeTreeEvaluationState[
         branch: BranchKey,
         best_branch: BranchKey,
     ) -> bool:
-        """Return whether two minimax branch ordering keys are exactly equal."""
-        return self._branch_ordering_key(branch) == self._branch_ordering_key(
-            best_branch
-        )
+        """Return whether two branches are exactly equal under family semantics."""
+        raise NotImplementedError
+
+    def _branch_values_are_considered_equal(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+    ) -> bool:
+        """Return whether two branches are tied under family decision semantics."""
+        raise NotImplementedError
 
     def _branch_equivalence_score(self, branch: BranchKey) -> float:
         """Return the family's primary scalar score for branch equivalence."""

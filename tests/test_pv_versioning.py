@@ -39,7 +39,7 @@ def _make_leaf_eval(
         branches_children={},
         all_branches_generated=True,
     )
-    ev = NodeMinmaxEvaluation(tree_node=leaf_tree_node, backup_policy=None)
+    ev = NodeMinmaxEvaluation(tree_node=leaf_tree_node)
     set_estimate_value(ev, score=value_white)
     ev.set_best_branch_sequence(pv_tail[:])
     return ev

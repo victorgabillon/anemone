@@ -58,6 +58,7 @@ def test_node_minmax_evaluation_backup_default_is_explicit_policy() -> None:
         all_branches_generated=True,
     )
     node_eval = NodeMinmaxEvaluation(tree_node=parent_tree_node)
+    assert isinstance(node_eval.backup_policy, ExplicitMinimaxBackupPolicy)
     node_eval.direct_value = Value(score=0.1, certainty=Certainty.ESTIMATE)
 
     node_eval.backup_from_children(
@@ -65,7 +66,6 @@ def test_node_minmax_evaluation_backup_default_is_explicit_policy() -> None:
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert isinstance(node_eval.backup_policy, ExplicitMinimaxBackupPolicy)
     assert isinstance(node_eval.objective, AdversarialZeroSumObjective)
 
 

@@ -2,8 +2,7 @@
 # pylint: disable=duplicate-code
 
 from dataclasses import dataclass, field
-from random import choice
-from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, Self, runtime_checkable
 
 from valanga import (
     BranchKey,
@@ -17,7 +16,7 @@ from anemone.node_evaluation.tree.decision_ordering import (
     BranchOrderingKey,
 )
 from anemone.node_evaluation.tree.node_tree_evaluation import (
-    BestBranchEquivalenceMode,
+    BackupPolicyFactory,
     NodeTreeEvaluationState,
     TreeEvaluationChild,
 )
@@ -27,8 +26,6 @@ from anemone.utils.logger import anemone_logger
 
 if TYPE_CHECKING:
     from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
-    from anemone.backup_policies.protocols import BackupPolicy
-    from anemone.backup_policies.types import BackupResult
 
 
 @runtime_checkable
@@ -73,8 +70,9 @@ class NodeMinmaxEvaluation[
 ](NodeTreeEvaluationState[NodeWithValueT, StateT]):
     r"""Value-first minimax evaluation attached to a tree node."""
 
-    # policy used to orchestrate backup behavior from updated children
-    backup_policy: "BackupPolicy[Any] | None" = None
+    _default_backup_policy_factory: ClassVar[BackupPolicyFactory | None] = (
+        make_default_backup_policy
+    )
 
     # objective responsible for semantic interpretation of Value objects at this node
     objective: Objective[StateT] = field(default_factory=make_default_objective)
@@ -220,25 +218,54 @@ class NodeMinmaxEvaluation[
         """Compare child values using current minimax decision semantics."""
         return self.objective.semantic_compare(left, right, self.tree_node.state)
 
+    def _branch_values_are_equal(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+    ) -> bool:
+        """Return whether branches match on exact Value and minimax PV tie-break."""
+        branch_value = self.child_value_candidate(branch)
+        best_value = self.child_value_candidate(best_branch)
+        assert branch_value is not None
+        assert best_value is not None
+
+        branch_child = self.tree_node.branches_children[branch]
+        best_child = self.tree_node.branches_children[best_branch]
+        assert branch_child is not None
+        assert best_child is not None
+
+        return branch_value == best_value and self._pv_length_tie_break(
+            child=branch_child,
+            child_value=branch_value,
+        ) == self._pv_length_tie_break(
+            child=best_child,
+            child_value=best_value,
+        )
+
+    def _branch_values_are_considered_equal(
+        self,
+        *,
+        branch: BranchKey,
+        best_branch: BranchKey,
+    ) -> bool:
+        """Return whether two branches tie under minimax decision semantics."""
+        branch_value = self.child_value_candidate(branch)
+        best_value = self.child_value_candidate(best_branch)
+        assert branch_value is not None
+        assert best_value is not None
+        return self.objective.semantic_compare(
+            branch_value,
+            best_value,
+            self.tree_node.state,
+        ) == 0
+
     def one_of_best_children_becomes_best_next_node(self) -> bool:
-        """Triggered when the value of the current best branch does not match the best value.
-
-        This method selects one of the best children nodes as the next best node based on a specific condition.
-        It updates the `best_branch_sequence` attribute with the selected child node and its corresponding best branch sequence.
-
-        Raises:
-            AssertionError: If the number of best children is not equal to 1 when `how_equal_` is set to 'equal'.
-            AssertionError: If the selected best child is not an instance of `NodeWithValue`.
-            AssertionError: If the `best_node_sequence` attribute is empty after updating.
-
-        """
-        mode = BestBranchEquivalenceMode.EQUAL
-        best_branches: list[BranchKey] = self.best_equivalent_branches(mode=mode)
-        assert len(best_branches) == 1
-        best_branch_key = choice(best_branches)
+        """Refresh the PV head from the currently selected deterministic best child."""
+        best_branch_key = self.best_branch()
+        assert best_branch_key is not None
         has_best_branch_seq_changed = self.set_best_branch_sequence(
             self.best_branch_line_from_child(best_branch_key)
         )
         assert self.best_branch_sequence
         return has_best_branch_seq_changed
-

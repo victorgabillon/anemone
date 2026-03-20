@@ -46,6 +46,8 @@ class _HookDrivenEvaluation(NodeTreeEvaluationState[Any, Any]):
     best_branch_key: int | None = None
     ordering_keys: dict[int, BranchOrderingKey] = field(default_factory=dict)
     logistic_scores: dict[int, float] = field(default_factory=dict)
+    equal_branches: tuple[int, ...] = ()
+    considered_equal_branches: tuple[int, ...] = ()
 
     def _ordered_candidate_branches_for_frontier(self) -> tuple[int, ...]:
         return self.ordered_branches
@@ -60,9 +62,17 @@ class _HookDrivenEvaluation(NodeTreeEvaluationState[Any, Any]):
         return self.ordering_keys[branch]
 
     def _branch_values_are_equal(self, *, branch: int, best_branch: int) -> bool:
-        return self._branch_ordering_key(branch) == self._branch_ordering_key(
-            best_branch
-        )
+        assert best_branch == self.best_branch_key
+        return branch in self.equal_branches
+
+    def _branch_values_are_considered_equal(
+        self,
+        *,
+        branch: int,
+        best_branch: int,
+    ) -> bool:
+        assert best_branch == self.best_branch_key
+        return branch in self.considered_equal_branches
 
     def _branch_logistic_equivalence_score(self, branch: int) -> float:
         return self.logistic_scores[branch]
@@ -204,6 +214,8 @@ def test_shared_tree_evaluation_base_owns_generic_best_equivalence_dispatch() ->
             2: (0.50, 0, 12),
         },
         logistic_scores={0: 1.000, 1: 1.005, 2: 1.500},
+        equal_branches=(0,),
+        considered_equal_branches=(0, 2),
     )
 
     assert generic_eval.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0]
