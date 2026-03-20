@@ -55,8 +55,29 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
             child.tree_node.id,
         )
 
-    def _branch_tactical_quality_key(self, branch: BranchKey) -> int:
+    def _exact_line_tactical_quality(
+        self,
+        *,
+        child_value: Any,
+        pv_length: int,
+    ) -> tuple[int, int]:
+        """Return the single-agent tactical quality beyond the raw child Value.
+
+        Exact values carry meaningful proof-line quality, so PV length refines
+        their equality class. Estimate values do not, so their tactical quality
+        stays neutral regardless of current PV length.
+        """
+        if child_value.certainty in {Certainty.TERMINAL, Certainty.FORCED}:
+            return (0, pv_length)
+        return (1, 0)
+
+    def _branch_tactical_quality_key(self, branch: BranchKey) -> tuple[int, int]:
         """Return the single-agent tactical-quality key used for exact equality."""
+        child_value = self.child_value_candidate(branch)
+        assert child_value is not None
         child_tree_evaluation = self.child_tree_evaluation(branch)
         assert child_tree_evaluation is not None
-        return len(child_tree_evaluation.best_branch_sequence)
+        return self._exact_line_tactical_quality(
+            child_value=child_value,
+            pv_length=len(child_tree_evaluation.best_branch_sequence),
+        )
