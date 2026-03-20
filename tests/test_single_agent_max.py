@@ -374,6 +374,35 @@ def test_single_agent_best_equivalent_branches_support_generic_modes() -> None:
     ) == [0, 1]
 
 
+def test_single_agent_equal_respects_tactical_quality_without_using_id() -> None:
+    node = _node(
+        node_id=0,
+        children={
+            0: _child(
+                10,
+                Value(score=0.9, certainty=Certainty.ESTIMATE),
+                best_branch_sequence=[8],
+            ),
+            1: _child(
+                11,
+                Value(score=0.9, certainty=Certainty.ESTIMATE),
+                best_branch_sequence=[9],
+            ),
+            2: _child(
+                12,
+                Value(score=0.9, certainty=Certainty.ESTIMATE),
+                best_branch_sequence=[7, 6],
+            ),
+        },
+    )
+
+    assert node.best_branch() == 0
+    assert node.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0, 1]
+    assert node.best_equivalent_branches(
+        BestBranchEquivalenceMode.CONSIDERED_EQUAL
+    ) == [0, 1, 2]
+
+
 def test_almost_equal_logistic_recommender_uses_generic_evaluation_capability() -> None:
     tree_evaluation = _node(
         node_id=0,

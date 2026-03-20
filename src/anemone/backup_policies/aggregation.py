@@ -62,7 +62,7 @@ class MaxAggregationPolicy:
             direct_value=node_eval.direct_value,
             all_branches_generated=node_eval.tree_node.all_branches_generated,
             child_beats_direct=lambda child, direct: (
-                node_eval.objective.semantic_compare(
+                node_eval.required_objective.semantic_compare(
                     child,
                     direct,
                     node_eval.tree_node.state,

@@ -125,6 +125,12 @@ class NodeTreeEvaluationState[
             self.backup_policy = default_factory()
 
     @property
+    def required_objective(self) -> Objective[StateT]:
+        """Return the configured objective, asserting it exists."""
+        assert self.objective is not None, "Tree evaluation requires an objective."
+        return self.objective
+
+    @property
     def backed_up_value(self) -> Value | None:
         """Return the canonical backed-up value for this node."""
         return self._backed_up_value
@@ -322,8 +328,9 @@ class NodeTreeEvaluationState[
 
     def _decision_semantic_compare(self, left: Value, right: Value) -> int:
         """Compare child values using the node's current objective semantics."""
-        assert self.objective is not None, "Tree evaluation requires an objective."
-        return self.objective.semantic_compare(left, right, self.tree_node.state)
+        return self.required_objective.semantic_compare(
+            left, right, self.tree_node.state
+        )
 
     def decision_ordered_branches(self) -> list[BranchKey]:
         """Return child branches ordered by current family decision semantics."""
@@ -424,7 +431,17 @@ class NodeTreeEvaluationState[
         branch: BranchKey,
         best_branch: BranchKey,
     ) -> bool:
-        """Return whether two branches are exactly equal under family semantics."""
+        """Return whether two branches share Value and tactical quality."""
+        branch_value = self.child_value_candidate(branch)
+        best_value = self.child_value_candidate(best_branch)
+        assert branch_value is not None
+        assert best_value is not None
+        return branch_value == best_value and self._branch_tactical_quality_key(
+            branch
+        ) == self._branch_tactical_quality_key(best_branch)
+
+    def _branch_tactical_quality_key(self, branch: BranchKey) -> Any:
+        """Return the family tactical-quality key used for exact branch equality."""
         raise NotImplementedError
 
     def _branch_equivalence_score(self, branch: BranchKey) -> float:
@@ -466,9 +483,8 @@ class NodeTreeEvaluationState[
         best_value = self.child_value_candidate(best_branch)
         assert branch_value is not None
         assert best_value is not None
-        assert self.objective is not None, "Tree evaluation requires an objective."
         return (
-            self.objective.semantic_compare(
+            self.required_objective.semantic_compare(
                 branch_value,
                 best_value,
                 self.tree_node.state,

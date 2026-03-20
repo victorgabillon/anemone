@@ -49,22 +49,14 @@ class NodeMaxEvaluation[StateT: State = State](NodeTreeEvaluationState[Any, Stat
         exactness_tie_break = (
             0 if child_value.certainty in {Certainty.TERMINAL, Certainty.FORCED} else 1
         )
-        assert self.objective is not None, "Tree evaluation requires an objective."
         return (
-            self.objective.evaluate_value(child_value, self.tree_node.state),
+            self.required_objective.evaluate_value(child_value, self.tree_node.state),
             exactness_tie_break,
             child.tree_node.id,
         )
 
-    def _branch_values_are_equal(
-        self,
-        *,
-        branch: BranchKey,
-        best_branch: BranchKey,
-    ) -> bool:
-        """Return whether two child Values are exactly equal for max semantics."""
-        branch_value = self.child_value_candidate(branch)
-        best_value = self.child_value_candidate(best_branch)
-        assert branch_value is not None
-        assert best_value is not None
-        return branch_value == best_value
+    def _branch_tactical_quality_key(self, branch: BranchKey) -> int:
+        """Return the single-agent tactical-quality key used for exact equality."""
+        child_tree_evaluation = self.child_tree_evaluation(branch)
+        assert child_tree_evaluation is not None
+        return len(child_tree_evaluation.best_branch_sequence)

@@ -106,9 +106,8 @@ class NodeMinmaxEvaluation[
     ) -> bool:
         """Determine if a child's value is better than the direct evaluation for the current node."""
         assert side_to_move == self.tree_node.state.turn
-        assert self.objective is not None, "Tree evaluation requires an objective."
         return (
-            self.objective.semantic_compare(
+            self.required_objective.semantic_compare(
                 child,
                 direct,
                 self.tree_node.state,
@@ -162,8 +161,7 @@ class NodeMinmaxEvaluation[
             "Ensure children receive direct_value explicitly as a Value or "
             "minmax_value via backup before calling branch_sort_value()."
         )
-        assert self.objective is not None, "Tree evaluation requires an objective."
-        subjective_value_of_child = self.objective.evaluate_value(
+        subjective_value_of_child = self.required_objective.evaluate_value(
             child_value,
             self.tree_node.state,
         )
@@ -194,29 +192,15 @@ class NodeMinmaxEvaluation[
 
         return pv_length
 
-    def _branch_values_are_equal(
-        self,
-        *,
-        branch: BranchKey,
-        best_branch: BranchKey,
-    ) -> bool:
-        """Return whether branches match on exact Value and minimax PV tie-break."""
+    def _branch_tactical_quality_key(self, branch: BranchKey) -> int:
+        """Return the minimax tactical-quality key used for exact equality."""
         branch_value = self.child_value_candidate(branch)
-        best_value = self.child_value_candidate(best_branch)
         assert branch_value is not None
-        assert best_value is not None
-
         branch_child = self.tree_node.branches_children[branch]
-        best_child = self.tree_node.branches_children[best_branch]
         assert branch_child is not None
-        assert best_child is not None
-
-        return branch_value == best_value and self._pv_length_tie_break(
+        return self._pv_length_tie_break(
             child=branch_child,
             child_value=branch_value,
-        ) == self._pv_length_tie_break(
-            child=best_child,
-            child_value=best_value,
         )
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
