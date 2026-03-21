@@ -1,6 +1,7 @@
 """Focused cross-family invariants for node-evaluation families."""
 
 from dataclasses import dataclass, field
+from enum import Enum
 from types import SimpleNamespace
 from typing import Any
 
@@ -28,6 +29,10 @@ from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
 
 
+class _SoloRole(Enum):
+    SOLO = "solo"
+
+
 class _FakeOverEvent:
     def is_over(self) -> bool:
         return True
@@ -37,6 +42,14 @@ class _FakeOverEvent:
 
     def is_winner(self, player: object) -> bool:
         del player
+        return False
+
+    def is_win_for(self, role: object) -> bool:
+        del role
+        return False
+
+    def is_loss_for(self, role: object) -> bool:
+        del role
         return False
 
 
@@ -93,7 +106,7 @@ def _adversarial_tree_node() -> Any:
 def _single_agent_tree_node() -> Any:
     return SimpleNamespace(
         id=2,
-        state=SimpleNamespace(phase="single-agent"),
+        state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={},
         all_branches_generated=True,
     )
@@ -175,7 +188,7 @@ def test_family_specific_objective_semantics_remain_distinct() -> None:
         single_agent_objective.semantic_compare(
             left,
             right,
-            SimpleNamespace(phase="single-agent"),
+            SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         )
         < 0
     )
@@ -199,6 +212,69 @@ def test_families_share_concrete_tree_evaluation_state_base() -> None:
 
     assert isinstance(adversarial, NodeTreeEvaluationState)
     assert isinstance(single_agent, NodeTreeEvaluationState)
+
+
+def test_families_inherit_shared_exact_outcome_polarity() -> None:
+    adversarial = NodeMinmaxEvaluation(tree_node=_adversarial_tree_node())
+    single_agent = NodeMaxEvaluation(tree_node=_single_agent_tree_node())
+    favorable_value = Value(score=0.0, certainty=Certainty.FORCED)
+    unfavorable_value = Value(score=0.0, certainty=Certainty.FORCED)
+
+    @dataclass(frozen=True)
+    class _RoleRelativeOverEvent:
+        winner: object | None = None
+        loser: object | None = None
+
+        def is_draw(self) -> bool:
+            return False
+
+        def is_winner(self, player: object) -> bool:
+            return self.winner == player
+
+        def is_win_for(self, role: object) -> bool:
+            return self.winner == role
+
+        def is_loss_for(self, role: object) -> bool:
+            if self.loser is not None:
+                return self.loser == role
+            return self.winner is not None and self.winner != role
+
+    assert (
+        NodeMaxEvaluation._exact_outcome_polarity
+        is NodeTreeEvaluationState._exact_outcome_polarity
+    )
+    assert (
+        NodeMinmaxEvaluation._exact_outcome_polarity
+        is NodeTreeEvaluationState._exact_outcome_polarity
+    )
+    assert (
+        single_agent._exact_outcome_polarity(
+            over_event=_RoleRelativeOverEvent(winner=_SoloRole.SOLO),
+            child_value=favorable_value,
+        )
+        == 1
+    )
+    assert (
+        single_agent._exact_outcome_polarity(
+            over_event=_RoleRelativeOverEvent(loser=_SoloRole.SOLO),
+            child_value=unfavorable_value,
+        )
+        == -1
+    )
+    assert (
+        adversarial._exact_outcome_polarity(
+            over_event=_RoleRelativeOverEvent(winner=Color.WHITE),
+            child_value=favorable_value,
+        )
+        == 1
+    )
+    assert (
+        adversarial._exact_outcome_polarity(
+            over_event=_RoleRelativeOverEvent(loser=Color.WHITE),
+            child_value=unfavorable_value,
+        )
+        == -1
+    )
 
 
 def test_shared_tree_evaluation_base_owns_generic_best_equivalence_dispatch() -> None:

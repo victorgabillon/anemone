@@ -1,6 +1,7 @@
 """Focused tests for the extracted branch-frontier concept."""
 
 from dataclasses import dataclass, field
+from enum import Enum
 from random import Random
 from types import SimpleNamespace
 from typing import Any, cast
@@ -26,6 +27,10 @@ from anemone.node_selector.recurzipf.recur_zipf_base import (
 )
 from anemone.tree_manager.algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from anemone.tree_manager.tree_expander import TreeExpansion
+
+
+class _SoloRole(Enum):
+    SOLO = "solo"
 
 
 @dataclass(slots=True)
@@ -105,7 +110,7 @@ def _minimax_leaf(node_id: int, value: Value) -> Any:
 def _single_leaf(node_id: int, value: Value) -> Any:
     tree_node = SimpleNamespace(
         id=node_id,
-        state=SimpleNamespace(phase="single-agent"),
+        state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={},
         all_branches_generated=True,
     )
@@ -248,7 +253,7 @@ def test_single_agent_frontier_tracks_only_unresolved_children() -> None:
     )
     parent_tree_node = SimpleNamespace(
         id=0,
-        state=SimpleNamespace(phase="single-agent"),
+        state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={0: exact_child, 1: live_child},
         all_branches_generated=False,
     )
@@ -280,7 +285,7 @@ def test_single_agent_frontier_uses_explicit_ordering_cache_updates() -> None:
     )
     parent_tree_node = SimpleNamespace(
         id=0,
-        state=SimpleNamespace(phase="single-agent"),
+        state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={0: low_child, 1: high_child},
         all_branches_generated=False,
     )
@@ -300,6 +305,6 @@ def test_single_agent_frontier_uses_explicit_ordering_cache_updates() -> None:
 
     assert parent.frontier_branches_in_order() == [1, 0]
     assert parent.decision_ordering.branch_ordering_keys == {
-        0: (0.1, 1, 1),
-        1: (0.9, 1, 2),
+        0: (0.1, 0, 1),
+        1: (0.9, 0, 2),
     }

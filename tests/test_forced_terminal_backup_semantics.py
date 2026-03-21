@@ -1,5 +1,6 @@
 """Semantic regression tests for ESTIMATE/FORCED/TERMINAL backup behavior."""
 
+from enum import Enum
 from types import SimpleNamespace
 from typing import Any
 
@@ -13,6 +14,10 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
+
+
+class _SoloRole(Enum):
+    SOLO = "solo"
 
 
 class _FakeOverEvent:
@@ -34,7 +39,7 @@ class _FakeOverEvent:
 
 
 def _single_state() -> Any:
-    return SimpleNamespace(phase="single-agent")
+    return SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent")
 
 
 def _single_leaf(node_id: int, value: Value) -> Any:

@@ -8,7 +8,7 @@ from enum import StrEnum
 from math import log
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, assert_never, cast
 
-from valanga import BranchKey, OverEvent, State
+from valanga import BranchKey, OverEvent, State, TurnState
 
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.common import canonical_value
@@ -44,6 +44,40 @@ def make_branch_frontier_factory() -> BranchFrontierState:
 def make_principal_variation_state_factory() -> PrincipalVariationState:
     """Create the generic principal-variation bookkeeping helper for one node."""
     return PrincipalVariationState()
+
+
+def _over_event_is_win_for_role(over_event: OverEvent, role: Any) -> bool:
+    """Return whether one over-event is a win for the given role.
+
+    Prefer Valanga's newer role-relative API when available, while keeping
+    compatibility with older ``is_winner(...)``-style over-event objects still
+    used in this repository and its tests.
+    """
+    is_win_for = getattr(over_event, "is_win_for", None)
+    if callable(is_win_for):
+        return bool(is_win_for(role))
+
+    is_winner = getattr(over_event, "is_winner", None)
+    if callable(is_winner):
+        return bool(is_winner(role))
+
+    return False
+
+
+def _over_event_is_loss_for_role(over_event: OverEvent, role: Any) -> bool:
+    """Return whether one over-event is a loss for the given role."""
+    is_loss_for = getattr(over_event, "is_loss_for", None)
+    if callable(is_loss_for):
+        return bool(is_loss_for(role))
+
+    if over_event.is_draw():
+        return False
+
+    is_winner = getattr(over_event, "is_winner", None)
+    if callable(is_winner):
+        return not bool(is_winner(role))
+
+    return False
 
 
 class BestBranchEquivalenceMode(StrEnum):
@@ -84,7 +118,7 @@ class ChildTreeEvaluation(Protocol):
 @dataclass(slots=True)
 class NodeTreeEvaluationState[
     NodeT: TreeEvaluationChild[Any] = TreeEvaluationChild[Any],
-    StateT: State = State,
+    StateT: TurnState = TurnState,
 ]:
     """Shared concrete state/helper base for tree-evaluation families.
 
@@ -440,9 +474,51 @@ class NodeTreeEvaluationState[
             branch
         ) == self._branch_tactical_quality_key(best_branch)
 
-    def _branch_tactical_quality_key(self, branch: BranchKey) -> Any:
-        """Return the family tactical-quality key used for exact branch equality."""
-        raise NotImplementedError
+    def _branch_tactical_quality_key(self, branch: BranchKey) -> int:
+        """Return the shared tactical-quality key used for exact branch equality."""
+        return self._branch_exact_line_tactical_quality(branch)
+
+    def _branch_exact_line_tactical_quality(self, branch: BranchKey) -> int:
+        """Return outcome-aware line quality for one child branch.
+
+        The shared default prefers shorter lines. Exact non-draw outcomes may
+        flip the sign when the family says the outcome is unfavorable for this
+        node, which makes longer lines compare as tactically better.
+        """
+        child_value = self.child_value_candidate(branch)
+        assert child_value is not None
+
+        child_tree_evaluation = self.child_tree_evaluation(branch)
+        assert child_tree_evaluation is not None
+        pv_length = len(child_tree_evaluation.best_branch_sequence)
+
+        over_event = child_value.over_event
+        if over_event is None or over_event.is_draw():
+            return pv_length
+
+        polarity = self._exact_outcome_polarity(
+            over_event=over_event,
+            child_value=child_value,
+        )
+        if polarity < 0:
+            return -pv_length
+        return pv_length
+
+    def _exact_outcome_polarity(
+        self,
+        *,
+        over_event: OverEvent,
+        child_value: Value,
+    ) -> int:
+        """Return whether one exact outcome is favorable, unfavorable, or neutral."""
+        del child_value
+        role = self.tree_node.state.turn
+
+        if _over_event_is_win_for_role(over_event, role):
+            return 1
+        if _over_event_is_loss_for_role(over_event, role):
+            return -1
+        return 0
 
     def _branch_equivalence_score(self, branch: BranchKey) -> float:
         """Return the family's primary scalar score for branch equivalence."""

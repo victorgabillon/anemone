@@ -3,6 +3,7 @@
 # ruff: noqa: D103
 
 from dataclasses import dataclass
+from enum import Enum
 from types import SimpleNamespace
 from typing import Any
 
@@ -21,18 +22,36 @@ from anemone.objectives import SingleAgentMaxObjective
 from anemone.recommender_rule.recommender_rule import AlmostEqualLogistic
 
 
+class _SoloRole(Enum):
+    SOLO = "solo"
+
+
 @dataclass(frozen=True)
 class _FakeOverEvent:
     done: bool = True
+    winner: object | None = None
+    loser: object | None = None
+    draw: bool = False
 
     def is_over(self) -> bool:
         return self.done
 
     def is_draw(self) -> bool:
-        return False
+        return self.draw
 
     def is_winner(self, player: object) -> bool:
-        del player
+        return self.winner == player
+
+    def is_win_for(self, role: object) -> bool:
+        return self.winner == role
+
+    def is_loss_for(self, role: object) -> bool:
+        if self.draw:
+            return False
+        if self.loser is not None:
+            return self.loser == role
+        if self.winner is not None:
+            return self.winner != role
         return False
 
 
@@ -71,12 +90,13 @@ class _ForcedProofPolicy:
 
 
 def _state() -> Any:
-    return SimpleNamespace(phase="single-agent")
+    return SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent")
 
 
 def _node(
     *,
     node_id: int,
+    objective: SingleAgentMaxObjective[Any] | None = None,
     direct_value: Value | None = None,
     backed_up_value: Value | None = None,
     children: dict[int, Any] | None = None,
@@ -88,7 +108,10 @@ def _node(
         branches_children=children or {},
         all_branches_generated=all_branches_generated,
     )
-    evaluation = NodeMaxEvaluation(tree_node=tree_node)
+    if objective is None:
+        evaluation = NodeMaxEvaluation(tree_node=tree_node)
+    else:
+        evaluation = NodeMaxEvaluation(tree_node=tree_node, objective=objective)
     evaluation.direct_value = direct_value
     evaluation.backed_up_value = backed_up_value
     if children:
@@ -322,8 +345,8 @@ def test_single_agent_uses_shared_decision_ordering_state_cache() -> None:
 
     assert node.decision_ordered_branches() == [1, 0]
     assert node.decision_ordering.branch_ordering_keys == {
-        1: (0.5, 1, 10),
-        0: (0.5, 1, 20),
+        1: (0.5, 0, 10),
+        0: (0.5, 0, 20),
     }
 
 
@@ -403,7 +426,7 @@ def test_single_agent_equal_uses_exact_line_quality_without_using_id() -> None:
     ) == [0, 1, 2]
 
 
-def test_single_agent_equal_ignores_estimate_pv_length_differences() -> None:
+def test_single_agent_equal_uses_shared_pv_length_tie_break_for_estimates() -> None:
     node = _node(
         node_id=0,
         children={
@@ -421,7 +444,114 @@ def test_single_agent_equal_ignores_estimate_pv_length_differences() -> None:
     )
 
     assert node.best_branch() == 0
-    assert node.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0, 1]
+    assert node.best_equivalent_branches(BestBranchEquivalenceMode.EQUAL) == [0]
+    assert node.best_equivalent_branches(
+        BestBranchEquivalenceMode.CONSIDERED_EQUAL
+    ) == [0, 1]
+
+
+def test_single_agent_branch_order_prefers_shorter_favorable_exact_lines() -> None:
+    node = _node(
+        node_id=0,
+        children={
+            0: _child(
+                10,
+                Value(
+                    score=1.0,
+                    certainty=Certainty.FORCED,
+                    over_event=_FakeOverEvent(winner=_SoloRole.SOLO),
+                ),
+                best_branch_sequence=[8, 7, 6],
+            ),
+            1: _child(
+                11,
+                Value(
+                    score=1.0,
+                    certainty=Certainty.FORCED,
+                    over_event=_FakeOverEvent(winner=_SoloRole.SOLO),
+                ),
+                best_branch_sequence=[9],
+            ),
+        },
+    )
+
+    assert node.best_branch() == 1
+
+
+def test_single_agent_branch_order_prefers_longer_unfavorable_exact_lines() -> None:
+    node = _node(
+        node_id=0,
+        children={
+            0: _child(
+                10,
+                Value(
+                    score=0.0,
+                    certainty=Certainty.FORCED,
+                    over_event=_FakeOverEvent(loser=_SoloRole.SOLO),
+                ),
+                best_branch_sequence=[8],
+            ),
+            1: _child(
+                11,
+                Value(
+                    score=0.0,
+                    certainty=Certainty.FORCED,
+                    over_event=_FakeOverEvent(loser=_SoloRole.SOLO),
+                ),
+                best_branch_sequence=[9, 7, 6],
+            ),
+        },
+    )
+
+    assert node.best_branch() == 1
+
+
+def test_single_agent_exact_draw_like_outcomes_keep_default_shorter_policy() -> None:
+    @dataclass(frozen=True)
+    class _DrawOverEvent:
+        def is_over(self) -> bool:
+            return True
+
+        def is_draw(self) -> bool:
+            return True
+
+        def is_winner(self, player: object) -> bool:
+            del player
+            return False
+
+        def is_win_for(self, role: object) -> bool:
+            del role
+            return False
+
+        def is_loss_for(self, role: object) -> bool:
+            del role
+            return False
+
+    node = _node(
+        node_id=0,
+        children={
+            0: _child(
+                10,
+                Value(
+                    score=0.0,
+                    certainty=Certainty.FORCED,
+                    over_event=_DrawOverEvent(),
+                ),
+                best_branch_sequence=[8],
+            ),
+            1: _child(
+                11,
+                Value(
+                    score=0.0,
+                    certainty=Certainty.FORCED,
+                    over_event=_DrawOverEvent(),
+                ),
+                best_branch_sequence=[9, 7],
+            ),
+        },
+    )
+
+    assert node.best_branch() == 0
 
 
 def test_almost_equal_logistic_recommender_uses_generic_evaluation_capability() -> None:

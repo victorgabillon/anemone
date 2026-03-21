@@ -4,14 +4,14 @@ from typing import Protocol
 
 from valanga import (
     BranchKey,
-    State,
+    TurnState,
 )
 from valanga.evaluations import Value
 
 from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
 
 
-class NodeAdversarialEvaluation[StateT: State = State](
+class NodeAdversarialEvaluation[StateT: TurnState = TurnState](
     NodeTreeEvaluation[StateT], Protocol
 ):
     """Adversarial decision and backup semantics layered on canonical values."""

@@ -4,11 +4,7 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, Self, runtime_checkable
 
-from valanga import (
-    BranchKey,
-    Color,
-    TurnState,
-)
+from valanga import BranchKey, Color, TurnState
 from valanga.evaluations import Value
 
 from anemone.dynamics import SearchDynamics
@@ -167,40 +163,8 @@ class NodeMinmaxEvaluation[
         )
         return (
             subjective_value_of_child,
-            self._pv_length_tie_break(child=child, child_value=child_value),
+            self._branch_exact_line_tactical_quality(branch_key),
             child.tree_node.id,
-        )
-
-    def _pv_length_tie_break(
-        self,
-        *,
-        child: NodeWithValueT,
-        child_value: Value,
-    ) -> int:
-        """Return the PV-length tie-break for one child.
-
-        This must be based on the child branch's exact outcome metadata, not on
-        whether the parent currently happens to expose ``over_event`` metadata.
-        """
-        pv_length = len(child.tree_evaluation.best_branch_sequence)
-        over_event = child_value.over_event
-
-        if over_event is not None and not over_event.is_draw():
-            if over_event.is_winner(self.tree_node.state.turn):
-                return pv_length
-            return -pv_length
-
-        return pv_length
-
-    def _branch_tactical_quality_key(self, branch: BranchKey) -> int:
-        """Return the minimax tactical-quality key used for exact equality."""
-        branch_value = self.child_value_candidate(branch)
-        assert branch_value is not None
-        branch_child = self.tree_node.branches_children[branch]
-        assert branch_child is not None
-        return self._pv_length_tie_break(
-            child=branch_child,
-            child_value=branch_value,
         )
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:

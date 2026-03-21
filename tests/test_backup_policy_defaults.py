@@ -1,5 +1,6 @@
 """Tests for default backup policy wiring."""
 
+from enum import Enum
 from types import SimpleNamespace
 
 from valanga import Color
@@ -26,6 +27,10 @@ from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
 
 
+class _SoloRole(Enum):
+    SOLO = "solo"
+
+
 def _leaf(score: float) -> SimpleNamespace:
     tree_node = SimpleNamespace(
         id=1,
@@ -42,7 +47,7 @@ def _leaf(score: float) -> SimpleNamespace:
 def _single_agent_tree_node() -> SimpleNamespace:
     return SimpleNamespace(
         id=7,
-        state=SimpleNamespace(phase="single-agent"),
+        state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={},
         all_branches_generated=True,
     )
