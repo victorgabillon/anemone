@@ -2,8 +2,9 @@
 
 from typing import Protocol
 
-from valanga import OverEvent
 from valanga.evaluations import Value
+
+from anemone._valanga_types import AnyOverEvent
 
 
 class NodeValueEvaluation(Protocol):
@@ -30,7 +31,7 @@ class NodeValueEvaluation(Protocol):
         ...
 
     @property
-    def over_event(self) -> OverEvent | None:
+    def over_event(self) -> AnyOverEvent | None:
         """Return exact outcome metadata when present."""
         ...
 

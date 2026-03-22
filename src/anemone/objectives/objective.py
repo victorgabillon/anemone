@@ -2,8 +2,10 @@
 
 from typing import Protocol
 
-from valanga import OverEvent, State
+from valanga import State
 from valanga.evaluations import Value
+
+from anemone._valanga_types import AnyOverEvent
 
 
 class Objective[StateT: State = State](Protocol):
@@ -17,6 +19,6 @@ class Objective[StateT: State = State](Protocol):
         """Compare two Values using the semantics induced by the given state."""
         ...
 
-    def terminal_score(self, over_event: OverEvent, state: StateT) -> float:
+    def terminal_score(self, over_event: AnyOverEvent, state: StateT) -> float:
         """Project a terminal over-event to the scalar score used by this objective."""
         ...

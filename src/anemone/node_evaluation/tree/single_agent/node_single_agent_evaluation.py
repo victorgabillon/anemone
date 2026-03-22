@@ -2,12 +2,11 @@
 
 from typing import Protocol
 
-from valanga import TurnState
-
+from anemone._valanga_types import AnyTurnState
 from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
 
 
-class NodeSingleAgentEvaluation[StateT: TurnState = TurnState](
+class NodeSingleAgentEvaluation[StateT: AnyTurnState = AnyTurnState](
     NodeTreeEvaluation[StateT], Protocol
 ):
     """Single-agent decision and backup semantics layered on canonical values.

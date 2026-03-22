@@ -5,8 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from valanga import BranchKey, TurnState
-
+from anemone._valanga_types import AnyTurnState
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BackupPolicyFactory,
@@ -15,11 +14,13 @@ from anemone.node_evaluation.tree.node_tree_evaluation import (
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective
 
 if TYPE_CHECKING:
+    from valanga import BranchKey
+
     from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.objectives import Objective
 
 
-def make_default_objective() -> Objective[TurnState]:
+def make_default_objective() -> Objective[AnyTurnState]:
     """Create the default single-agent objective."""
     return SingleAgentMaxObjective()
 
@@ -30,7 +31,7 @@ def make_default_backup_policy() -> ExplicitMaxBackupPolicy:
 
 
 @dataclass(slots=True)
-class NodeMaxEvaluation[StateT: TurnState = TurnState](
+class NodeMaxEvaluation[StateT: AnyTurnState = AnyTurnState](
     NodeTreeEvaluationState[Any, StateT]
 ):
     """Canonical Value-based node evaluation for single-agent max search."""

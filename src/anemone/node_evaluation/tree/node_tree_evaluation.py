@@ -8,8 +8,9 @@ from enum import StrEnum
 from math import log
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, assert_never, cast
 
-from valanga import BranchKey, OverEvent, State, TurnState
+from valanga import BranchKey, State
 
+from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
@@ -84,7 +85,7 @@ class ChildTreeEvaluation(Protocol):
 @dataclass(slots=True)
 class NodeTreeEvaluationState[
     NodeT: TreeEvaluationChild[Any] = TreeEvaluationChild[Any],
-    StateT: TurnState = TurnState,
+    StateT: AnyTurnState = AnyTurnState,
 ]:
     """Shared concrete state/helper base for tree-evaluation families.
 
@@ -188,12 +189,12 @@ class NodeTreeEvaluationState[
         """Return True when the candidate Value carries exact outcome metadata."""
         return canonical_value.has_over_event(self.get_value_candidate())
 
-    def get_over_event_candidate(self) -> OverEvent | None:
+    def get_over_event_candidate(self) -> AnyOverEvent | None:
         """Return exact outcome metadata from the candidate Value when present."""
         return canonical_value.get_over_event_candidate(self.get_value_candidate())
 
     @property
-    def over_event(self) -> OverEvent | None:
+    def over_event(self) -> AnyOverEvent | None:
         """Return exact outcome metadata when present on the canonical candidate."""
         return self.get_over_event_candidate()
 
@@ -473,7 +474,7 @@ class NodeTreeEvaluationState[
     def _exact_outcome_polarity(
         self,
         *,
-        over_event: OverEvent,
+        over_event: AnyOverEvent,
         child_value: Value,
     ) -> int:
         """Return whether one exact outcome is favorable, unfavorable, or neutral."""

@@ -4,9 +4,10 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, Self, runtime_checkable
 
-from valanga import BranchKey, Color, TurnState
+from valanga import BranchKey, Color
 from valanga.evaluations import Value
 
+from anemone._valanga_types import AnyTurnState
 from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation.tree.decision_ordering import (
     BranchOrderingKey,
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 # Class created to avoid circular import and defines what is seen and needed by the NodeMinmaxEvaluation class
-class NodeWithValue(TreeEvaluationChild[TurnState], Protocol):
+class NodeWithValue(TreeEvaluationChild[AnyTurnState], Protocol):
     """Represents a node with a value in a tree structure.
 
     Attributes:
@@ -42,10 +43,10 @@ class NodeWithValue(TreeEvaluationChild[TurnState], Protocol):
         """Return the minimax evaluation associated with this node."""
         ...
 
-    tree_node: TreeNode[Self, TurnState]
+    tree_node: TreeNode[Self, AnyTurnState]
 
 
-def make_default_objective() -> Objective[TurnState]:
+def make_default_objective() -> Objective[AnyTurnState]:
     """Create the default objective preserving current adversarial semantics."""
     return AdversarialZeroSumObjective()
 
@@ -62,7 +63,7 @@ def make_default_backup_policy() -> "ExplicitMinimaxBackupPolicy":
 @dataclass(slots=True)
 class NodeMinmaxEvaluation[
     NodeWithValueT: NodeWithValue = NodeWithValue,
-    StateT: TurnState = TurnState,
+    StateT: AnyTurnState = AnyTurnState,
 ](NodeTreeEvaluationState[NodeWithValueT, StateT]):
     r"""Value-first minimax evaluation attached to a tree node."""
 

@@ -38,7 +38,7 @@ test = [
   "pytest>=9.0.2",
   "coverage",
   "pytest-cov>=6.0.0",
-  "atomheart==0.2.4",
+  "atomheart==0.2.6",
 ]
 
 lint = [
@@ -228,8 +228,8 @@ reportMissingTypeStubs = false
 
 
 # Tell pyright which venv to use for import resolution
-venvPath = "."
-venv = ".venv"
+venvPath = ".tox"
+venv = "typecheck"
 
 # Avoid scanning huge generated folders
 exclude = [

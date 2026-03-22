@@ -19,11 +19,12 @@ from dataclasses import dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
-from valanga import BranchKey, State, TurnState
+from valanga import BranchKey, State
 from valanga.evaluations import Value
 from valanga.game import BranchName
 from valanga.policy import NotifyProgressCallable, Recommendation
 
+from anemone._valanga_types import AnyTurnState
 from anemone.dynamics import SearchDynamics
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
@@ -229,7 +230,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return tree_exploration_result
 
 
-def create_tree_exploration[StateT: TurnState](
+def create_tree_exploration[StateT: AnyTurnState](
     node_selector_create: NodeSelectorFactory,
     starting_state: StateT,
     tree_manager: tree_man.AlgorithmNodeTreeManager[AlgorithmNode[StateT]],

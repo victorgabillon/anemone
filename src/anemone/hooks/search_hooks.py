@@ -3,14 +3,11 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from random import Random
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import Any, Protocol
 
+from anemone._valanga_types import AnyTurnState
 from anemone.node_selector.opening_instructions import OpeningInstructor
 from anemone.node_selector.priority_check.priority_check import PriorityCheck
-
-if TYPE_CHECKING:
-    from valanga import TurnState
-
 
 type PriorityCheckFactory = Callable[
     [Mapping[str, Any], Random, "SearchHooks | None", OpeningInstructor],
@@ -21,7 +18,7 @@ type PriorityCheckFactory = Callable[
 class FeatureExtractor(Protocol):
     """Extract arbitrary features from game states for optional selector logic."""
 
-    def features(self, state: "TurnState") -> Mapping[str, Any]:
+    def features(self, state: AnyTurnState) -> Mapping[str, Any]:
         """Return a mapping of feature names to values for the given state."""
         raise NotImplementedError
 

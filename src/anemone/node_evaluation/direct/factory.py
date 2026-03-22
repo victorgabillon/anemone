@@ -1,12 +1,12 @@
 """Provide a factory function for creating node evaluators."""
 
-from valanga import TurnState
+from anemone._valanga_types import AnyTurnState
 
 from .node_direct_evaluator import NodeDirectEvaluator
 from .protocols import MasterStateValueEvaluator
 
 
-def create_node_evaluator[StateT: TurnState = TurnState](
+def create_node_evaluator[StateT: AnyTurnState = AnyTurnState](
     master_state_evaluator: MasterStateValueEvaluator,
 ) -> NodeDirectEvaluator[StateT]:
     """Create a NodeDirectEvaluator backed by a master state evaluator."""

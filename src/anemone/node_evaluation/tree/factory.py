@@ -3,8 +3,9 @@
 from collections.abc import Callable
 from typing import Any, Generic, Protocol, TypeVar
 
-from valanga import State, TurnState
+from valanga import State
 
+from anemone._valanga_types import AnyTurnState
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
@@ -20,7 +21,7 @@ from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective
 
 StateT = TypeVar("StateT", bound=State)
-TurnStateT = TypeVar("TurnStateT", bound=TurnState)
+TurnStateT = TypeVar("TurnStateT", bound=AnyTurnState)
 EvalT_co = TypeVar("EvalT_co", bound=NodeTreeEvaluation[Any], covariant=True)
 EvalT = TypeVar("EvalT", bound=NodeTreeEvaluation[Any])
 

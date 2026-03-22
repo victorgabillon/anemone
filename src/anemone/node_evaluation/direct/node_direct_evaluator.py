@@ -5,9 +5,9 @@ from enum import StrEnum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from valanga import OverEvent, TurnState
 from valanga.evaluations import Certainty, Value
 
+from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.node_evaluation.common import canonical_value
 from anemone.nodes.algorithm_node import AlgorithmNode
 
@@ -45,7 +45,7 @@ class NodeBatchValueEvaluator(Protocol):
         ...
 
 
-class EvaluationQueries[StateT: TurnState = TurnState]:
+class EvaluationQueries[StateT: AnyTurnState = AnyTurnState]:
     """A class that represents evaluation queries for algorithm nodes.
 
     Attributes:
@@ -68,7 +68,7 @@ class EvaluationQueries[StateT: TurnState = TurnState]:
         self.not_over_nodes = []
 
 
-class NodeDirectEvaluator[StateT: TurnState = TurnState]:
+class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
     """Evaluate the value of nodes in a tree structure.
 
     The evaluator uses a master state evaluator to calculate node values.
@@ -108,7 +108,7 @@ class NodeDirectEvaluator[StateT: TurnState = TurnState]:
         *,
         node: AlgorithmNode[StateT],
         evaluation: float | None,
-        canonical_over_event: OverEvent,
+        canonical_over_event: AnyOverEvent,
     ) -> float:
         if evaluation is not None:
             return evaluation

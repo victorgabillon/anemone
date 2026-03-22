@@ -13,8 +13,10 @@ from anemone.node_evaluation.common import canonical_value
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    from valanga import BranchKey, OverEvent
+    from valanga import BranchKey
     from valanga.evaluations import Value
+
+    from anemone._valanga_types import AnyOverEvent
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +32,7 @@ class ProofClassification:
     """Exactness/outcome classification for the resulting parent value."""
 
     certainty: Certainty
-    over_event: OverEvent | None
+    over_event: AnyOverEvent | None
 
     @classmethod
     def from_value(cls, value: Value) -> ProofClassification:
@@ -157,7 +159,7 @@ class BackupPipelineNode(Protocol):
         ...
 
     @property
-    def over_event(self) -> OverEvent | None:
+    def over_event(self) -> AnyOverEvent | None:
         """Return exact-outcome metadata derived from the current effective value."""
         ...
 
@@ -172,7 +174,7 @@ class BackupSnapshot:
 
     value_before: Value | None
     pv_before: tuple[BranchKey, ...]
-    over_before: OverEvent | None
+    over_before: AnyOverEvent | None
 
     @classmethod
     def capture(cls, node_eval: BackupPipelineNode) -> BackupSnapshot:

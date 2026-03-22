@@ -58,6 +58,7 @@ if TYPE_CHECKING:
 
     from valanga.evaluations import EvalItem
 
+    from anemone._valanga_types import AnyOverEvent
     from anemone.tree_exploration import TreeExploration
 
     from .model import ToyPlayerRole, ToyScenarioSpec
@@ -198,7 +199,7 @@ class ToyTerminalOverDetector(OverEventDetector):
 
     def check_obvious_over_events(
         self, state: State
-    ) -> tuple[OverEvent | None, float | None]:
+    ) -> tuple[AnyOverEvent | None, float | None]:
         """Return a terminal over-event + value when the toy node is terminal."""
         if not isinstance(state, ToyState):
             return None, None
@@ -442,7 +443,7 @@ def _color_for_player(player: ToyPlayerRole) -> Color:
     return Color.WHITE
 
 
-def _terminal_over_event(score: float) -> OverEvent:
+def _terminal_over_event(score: float) -> AnyOverEvent:
     if score > 0:
         return OverEvent(outcome=Outcome.WIN, winner=Color.WHITE)
     if score < 0:

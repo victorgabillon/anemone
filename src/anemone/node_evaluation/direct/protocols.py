@@ -3,8 +3,10 @@
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
-from valanga import OverEvent, State
+from valanga import State
 from valanga.evaluations import EvalItem, Value
+
+from anemone._valanga_types import AnyOverEvent
 
 
 class OverEventDetector(Protocol):
@@ -12,7 +14,7 @@ class OverEventDetector(Protocol):
 
     def check_obvious_over_events(
         self, state: State
-    ) -> tuple[OverEvent | None, float | None]:
+    ) -> tuple[AnyOverEvent | None, float | None]:
         """Return an over event and evaluation if the state is terminal."""
         ...
 

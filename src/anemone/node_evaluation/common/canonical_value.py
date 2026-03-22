@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 from valanga.evaluations import Certainty, Value
 
 if TYPE_CHECKING:
-    from valanga import OverEvent
+    from anemone._valanga_types import AnyOverEvent
 
 
 class ValueSemanticsError(ValueError):
@@ -151,7 +151,7 @@ def make_estimate_value(*, score: float) -> Value:
     )
 
 
-def make_forced_value(*, score: float, over_event: OverEvent | None = None) -> Value:
+def make_forced_value(*, score: float, over_event: AnyOverEvent | None = None) -> Value:
     """Create an exact non-terminal Value."""
     return validate_value_semantics(
         Value(
@@ -162,7 +162,7 @@ def make_forced_value(*, score: float, over_event: OverEvent | None = None) -> V
     )
 
 
-def make_terminal_value(*, score: float, over_event: OverEvent) -> Value:
+def make_terminal_value(*, score: float, over_event: AnyOverEvent) -> Value:
     """Create an exact Value for a node whose own state is terminal."""
     return validate_value_semantics(
         Value(
@@ -178,7 +178,7 @@ def make_backed_up_value(
     score: float,
     exact: bool,
     node_is_terminal: bool,
-    over_event: OverEvent | None,
+    over_event: AnyOverEvent | None,
 ) -> Value:
     """Construct a backed-up Value from parent-local terminality and exactness.
 
@@ -196,7 +196,7 @@ def make_backed_up_value(
     return make_estimate_value(score=score)
 
 
-def get_over_event_candidate(value: Value | None) -> OverEvent | None:
+def get_over_event_candidate(value: Value | None) -> AnyOverEvent | None:
     """Return exact outcome metadata from a candidate Value when present."""
     validated_value = _validated_optional_value(value)
     if validated_value is None:

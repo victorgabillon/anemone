@@ -2,8 +2,10 @@
 
 from dataclasses import dataclass
 
-from valanga import OverEvent, State
+from valanga import State
 from valanga.evaluations import Certainty, Value
+
+from anemone._valanga_types import AnyOverEvent
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,7 +35,7 @@ class SingleAgentMaxObjective[StateT: State = State]:
             return -1
         return 0
 
-    def terminal_score(self, over_event: OverEvent, state: StateT) -> float:
+    def terminal_score(self, over_event: AnyOverEvent, state: StateT) -> float:
         """Return the explicit score convention for terminal single-agent states."""
         del over_event, state
         return self.terminal_score_value

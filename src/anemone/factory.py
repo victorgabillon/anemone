@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from random import Random
 from typing import TYPE_CHECKING, Literal
 
-from valanga import Dynamics, RepresentationFactory, StateModifications, TurnState
+from valanga import Dynamics, RepresentationFactory, StateModifications
 from valanga.evaluator_types import EvaluatorInput
 
 from anemone import node_factory
 from anemone import search_factory as search_factories
+from anemone._valanga_types import AnyTurnState
 from anemone.dynamics import SearchDynamics, normalize_search_dynamics
 from anemone.hooks.search_hooks import SearchHooks
 from anemone.node_evaluation.direct.factory import create_node_evaluator
@@ -54,7 +55,7 @@ class TreeAndValuePlayerArgs:
     type: Literal["TreeAndValue"] = TREE_AND_VALUE_LITERAL_STRING
 
 
-def create_tree_and_value_branch_selector[StateT: TurnState, ActionT: Hashable](
+def create_tree_and_value_branch_selector[StateT: AnyTurnState, ActionT: Hashable](
     state_type: type[StateT],
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
     args: TreeAndValuePlayerArgs,
@@ -88,7 +89,7 @@ def create_tree_and_value_branch_selector[StateT: TurnState, ActionT: Hashable](
 
 
 def create_tree_and_value_branch_selector_with_tree_eval_factory[
-    StateT: TurnState,
+    StateT: AnyTurnState,
     ActionT: Hashable,
 ](
     state_type: type[StateT],

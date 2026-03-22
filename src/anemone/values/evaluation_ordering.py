@@ -10,7 +10,7 @@ from valanga import Color
 from valanga.evaluations import Certainty, Value
 
 if TYPE_CHECKING:
-    from valanga import OverEvent
+    from anemone._valanga_types import AnyOverEvent
 
 
 class TerminalOutcome(Enum):
@@ -30,7 +30,7 @@ class EvaluationOrdering:
     loss_score: float = -1.0
     terminal_without_over_event: TerminalOutcome = TerminalOutcome.DRAW
 
-    def terminal_score(self, over_event: OverEvent, *, perspective: Color) -> float:
+    def terminal_score(self, over_event: AnyOverEvent, *, perspective: Color) -> float:
         """Project a terminal over-event to a scalar score."""
         if over_event.is_draw():
             return self.draw_score

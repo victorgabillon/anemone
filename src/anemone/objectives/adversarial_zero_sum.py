@@ -2,14 +2,14 @@
 
 from dataclasses import dataclass
 
-from valanga import OverEvent, TurnState
 from valanga.evaluations import Value
 
+from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.values import DEFAULT_EVALUATION_ORDERING, EvaluationOrdering
 
 
 @dataclass(frozen=True, slots=True)
-class AdversarialZeroSumObjective[StateT: TurnState = TurnState]:
+class AdversarialZeroSumObjective[StateT: AnyTurnState = AnyTurnState]:
     """Thin objective adapter for the current turn-based adversarial semantics."""
 
     evaluation_ordering: EvaluationOrdering = DEFAULT_EVALUATION_ORDERING
@@ -29,7 +29,7 @@ class AdversarialZeroSumObjective[StateT: TurnState = TurnState]:
             side_to_move=state.turn,
         )
 
-    def terminal_score(self, over_event: OverEvent, state: StateT) -> float:
+    def terminal_score(self, over_event: AnyOverEvent, state: StateT) -> float:
         """Project terminal outcomes using the current side-to-move perspective."""
         return self.evaluation_ordering.terminal_score(
             over_event,

@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 from random import Random
 
-from valanga import TurnState
 from valanga.policy import NotifyProgressCallable, Recommendation
 
+from anemone._valanga_types import AnyTurnState
 from anemone.basics import Seed
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
@@ -22,7 +22,7 @@ from .trees.factory import ValueTreeFactory
 
 
 @dataclass
-class TreeAndValueBranchSelector[StateT: TurnState = TurnState]:
+class TreeAndValueBranchSelector[StateT: AnyTurnState = AnyTurnState]:
     """The TreeAndValueBranchSelector class is responsible for selecting branches based on a tree and value strategy.
 
     Attributes:
