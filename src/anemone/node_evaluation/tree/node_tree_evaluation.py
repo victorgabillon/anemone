@@ -536,8 +536,21 @@ class NodeTreeEvaluationState[
         )
 
     def branch_sort_value(self, branch_key: BranchKey) -> BranchOrderingKey:
-        """Return the branch-ordering key for one child branch."""
-        raise NotImplementedError
+        """Return the generic ordering key for one child branch."""
+        child = self.tree_node.branches_children[branch_key]
+        assert child is not None
+
+        child_value = self.child_value_candidate(branch_key)
+        assert child_value is not None, (
+            f"Cannot compute branch sort value: child {branch_key} has no Value yet. "
+            "Ensure children are evaluated directly or backed up before ordering."
+        )
+
+        return (
+            self.required_objective.evaluate_value(child_value, self.tree_node.state),
+            self._branch_exact_line_tactical_quality(branch_key),
+            child.id,
+        )
 
     def update_best_branch_sequence(
         self, branches_with_updated_best_branch_seq: set[BranchKey]
@@ -596,7 +609,7 @@ class NodeTreeEvaluationState[
         for branch in self.best_branch_sequence:
             child = node_eval.tree_node.branches_children[branch]
             assert child is not None
-            info_string += f"{branch} ({child.tree_node.id!s}) "
+            info_string += f"{branch} ({child.id!s}) "
             node_eval = child.tree_evaluation
         anemone_logger.info(info_string)
 

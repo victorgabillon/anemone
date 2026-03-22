@@ -22,6 +22,10 @@ class _FakeChildNode:
     tree_evaluation: NodeMinmaxEvaluation[Any, Any]
 
     @property
+    def id(self) -> int:
+        return self.node_id
+
+    @property
     def tree_node(self) -> Any:
         return self.tree_evaluation.tree_node
 

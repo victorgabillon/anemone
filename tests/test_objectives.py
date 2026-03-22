@@ -68,7 +68,11 @@ def _leaf(node_id: int, score: float) -> Any:
     value = Value(score=score, certainty=Certainty.ESTIMATE)
     tree_evaluation.direct_value = value
     tree_evaluation.minmax_value = value
-    return SimpleNamespace(tree_node=tree_node, tree_evaluation=tree_evaluation)
+    return SimpleNamespace(
+        id=node_id,
+        tree_node=tree_node,
+        tree_evaluation=tree_evaluation,
+    )
 
 
 def _exact_leaf(
@@ -94,7 +98,11 @@ def _exact_leaf(
     tree_evaluation.direct_value = value
     tree_evaluation.minmax_value = value
     tree_evaluation.set_best_branch_sequence(list(range(pv_length)))
-    return SimpleNamespace(tree_node=tree_node, tree_evaluation=tree_evaluation)
+    return SimpleNamespace(
+        id=node_id,
+        tree_node=tree_node,
+        tree_evaluation=tree_evaluation,
+    )
 
 
 def test_adversarial_objective_matches_existing_ordering_adapter() -> None:

@@ -85,7 +85,7 @@ def _make_leaf(node_id: int, value: Value) -> Any:
     ev = NodeMinmaxEvaluation(tree_node=tree_node)
     ev.direct_value = value
     ev.minmax_value = value
-    return SimpleNamespace(tree_node=tree_node, tree_evaluation=ev)
+    return SimpleNamespace(id=node_id, tree_node=tree_node, tree_evaluation=ev)
 
 
 def _make_unvalued_leaf(node_id: int) -> Any:
@@ -96,7 +96,7 @@ def _make_unvalued_leaf(node_id: int) -> Any:
         all_branches_generated=True,
     )
     ev = NodeMinmaxEvaluation(tree_node=tree_node)
-    return SimpleNamespace(tree_node=tree_node, tree_evaluation=ev)
+    return SimpleNamespace(id=node_id, tree_node=tree_node, tree_evaluation=ev)
 
 
 def _make_parent(

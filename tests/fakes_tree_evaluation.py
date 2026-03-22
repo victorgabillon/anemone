@@ -147,10 +147,14 @@ class FakeChildEvaluation:
 
 @dataclass
 class FakeChildNode:
-    """Minimal child node API expected by NodeMinmaxEvaluation."""
+    """Minimal child node API expected by tree-evaluation tests."""
 
     node_id: int
     tree_evaluation: FakeChildEvaluation
+
+    @property
+    def id(self) -> int:
+        return self.node_id
 
     @property
     def tree_node(self) -> Any:

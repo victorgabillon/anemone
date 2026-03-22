@@ -138,36 +138,6 @@ class NodeMinmaxEvaluation[
             string_info += f" {branch_name} {subjective_sort_value[0]} $$ "
         anemone_logger.info(string_info)
 
-    def branch_sort_value(self, branch_key: BranchKey) -> BranchOrderingKey:
-        """Return the search-order tuple for one child branch.
-
-        The first component is the objective's subjective sort value. The second
-        component is a PV-length tie-break that consumes exact outcome metadata
-        explicitly:
-
-        - exact wins prefer shorter lines
-        - exact losses prefer longer lines
-        - draws / estimates / exact values without outcome metadata keep the
-          default shorter-line preference
-        """
-        child = self.tree_node.branches_children[branch_key]
-        assert child is not None
-        child_value = self.child_value_candidate(branch_key)
-        assert child_value is not None, (
-            f"Cannot record sort value: child {branch_key} has no Value yet. "
-            "Ensure children receive direct_value explicitly as a Value or "
-            "minmax_value via backup before calling branch_sort_value()."
-        )
-        subjective_value_of_child = self.required_objective.evaluate_value(
-            child_value,
-            self.tree_node.state,
-        )
-        return (
-            subjective_value_of_child,
-            self._branch_exact_line_tactical_quality(branch_key),
-            child.tree_node.id,
-        )
-
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Refresh the PV head from the currently selected deterministic best child."""
         best_branch_key = self.best_branch()

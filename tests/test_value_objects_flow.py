@@ -130,6 +130,7 @@ def _make_node(
     )
     tree_evaluation = NodeMinmaxEvaluation(tree_node=tree_node)
     return SimpleNamespace(
+        id=node_id,
         state=state,
         tree_node=tree_node,
         tree_evaluation=tree_evaluation,

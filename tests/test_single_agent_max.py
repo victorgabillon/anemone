@@ -134,7 +134,11 @@ def _child(
     evaluation.direct_value = value
     evaluation.backed_up_value = value
     evaluation.set_best_branch_sequence(list(best_branch_sequence or []))
-    return SimpleNamespace(tree_node=tree_node, tree_evaluation=evaluation)
+    return SimpleNamespace(
+        id=node_id,
+        tree_node=tree_node,
+        tree_evaluation=evaluation,
+    )
 
 
 def test_single_agent_objective_uses_raw_score_without_turn() -> None:

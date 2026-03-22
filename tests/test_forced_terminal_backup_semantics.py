@@ -55,7 +55,7 @@ def _single_leaf(node_id: int, value: Value) -> Any:
     evaluation = NodeMaxEvaluation(tree_node=tree_node)
     evaluation.direct_value = value
     evaluation.backed_up_value = value
-    return SimpleNamespace(tree_node=tree_node, tree_evaluation=evaluation)
+    return SimpleNamespace(id=node_id, tree_node=tree_node, tree_evaluation=evaluation)
 
 
 def _single_parent(*, children: dict[int, Any]) -> NodeMaxEvaluation[Any]:
@@ -80,7 +80,7 @@ def _minimax_leaf(node_id: int, value: Value) -> Any:
     evaluation = NodeMinmaxEvaluation(tree_node=tree_node)
     evaluation.direct_value = value
     evaluation.minmax_value = value
-    return SimpleNamespace(tree_node=tree_node, tree_evaluation=evaluation)
+    return SimpleNamespace(id=node_id, tree_node=tree_node, tree_evaluation=evaluation)
 
 
 def _minimax_parent(

@@ -41,7 +41,7 @@ def _leaf(score: float) -> SimpleNamespace:
     ev = NodeMinmaxEvaluation(tree_node=tree_node)
     ev.direct_value = Value(score=score, certainty=Certainty.ESTIMATE)
     ev.minmax_value = Value(score=score, certainty=Certainty.ESTIMATE)
-    return SimpleNamespace(tree_node=tree_node, tree_evaluation=ev)
+    return SimpleNamespace(id=tree_node.id, tree_node=tree_node, tree_evaluation=ev)
 
 
 def _single_agent_tree_node() -> SimpleNamespace:

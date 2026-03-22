@@ -14,9 +14,6 @@ from anemone.node_evaluation.tree.node_tree_evaluation import (
 from anemone.objectives.single_agent_max import SingleAgentMaxObjective
 
 if TYPE_CHECKING:
-    from valanga import BranchKey
-
-    from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.objectives import Objective
 
 
@@ -41,15 +38,3 @@ class NodeMaxEvaluation[StateT: AnyTurnState = AnyTurnState](
     )
 
     objective: Objective[StateT] | None = field(default_factory=make_default_objective)
-
-    def branch_sort_value(self, branch_key: BranchKey) -> BranchOrderingKey:
-        """Return the shared branch-ordering key for one single-agent child."""
-        child = self.tree_node.branches_children[branch_key]
-        assert child is not None
-        child_value = self.child_value_candidate(branch_key)
-        assert child_value is not None
-        return (
-            self.required_objective.evaluate_value(child_value, self.tree_node.state),
-            self._branch_exact_line_tactical_quality(branch_key),
-            child.tree_node.id,
-        )
