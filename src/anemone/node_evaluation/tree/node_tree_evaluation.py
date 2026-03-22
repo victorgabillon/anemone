@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from valanga.evaluations import Value
 
     from anemone.backup_policies.types import BackupResult
+    from anemone.dynamics import SearchDynamics
     from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.nodes.tree_node import TreeNode
     from anemone.objectives.objective import Objective
@@ -613,6 +614,24 @@ class NodeTreeEvaluationState[
             node_eval = child.tree_evaluation
         anemone_logger.info(info_string)
 
+    def print_branch_ordering(
+        self,
+        dynamics: SearchDynamics[Any, Any],
+    ) -> None:
+        """Log child branches in the current decision order."""
+        ordered_branches = self.decision_ordered_branches()
+        anemone_logger.info(
+            "here are the %s branches in decision order:",
+            len(ordered_branches),
+        )
+
+        string_info = ""
+        for branch_key in ordered_branches:
+            ordering_key = self._branch_ordering_key(branch_key)
+            branch_name = dynamics.action_name(self.tree_node.state, branch_key)
+            string_info += f" {branch_name} {ordering_key[0]} $$ "
+        anemone_logger.info(string_info)
+
 
 class NodeTreeEvaluation[StateT: State = State](
     NodeValueEvaluation,
@@ -645,4 +664,11 @@ class NodeTreeEvaluation[StateT: State = State](
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Run family-specific backup after child updates."""
+        ...
+
+    def print_branch_ordering(
+        self,
+        dynamics: SearchDynamics[Any, Any],
+    ) -> None:
+        """Log child branches in the current decision order."""
         ...

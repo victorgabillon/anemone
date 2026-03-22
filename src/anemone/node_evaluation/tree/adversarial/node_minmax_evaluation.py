@@ -2,13 +2,12 @@
 # pylint: disable=duplicate-code
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
 
 from valanga import BranchKey, Color
 from valanga.evaluations import Value
 
 from anemone._valanga_types import AnyTurnState
-from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation.tree.decision_ordering import (
     BranchOrderingKey,
 )
@@ -19,7 +18,6 @@ from anemone.node_evaluation.tree.node_tree_evaluation import (
 )
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
-from anemone.utils.logger import anemone_logger
 
 if TYPE_CHECKING:
     from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
@@ -111,32 +109,6 @@ class NodeMinmaxEvaluation[
             )
             >= 0
         )
-
-    def print_branches_sorted_by_value_and_exploration(
-        self, dynamics: SearchDynamics[Any, Any]
-    ) -> None:
-        """Print the branch of the node sorted by their value and exploration.
-
-        This method prints the branches of the node along with their subjective sort value.
-        The branches are sorted based on their value and exploration.
-
-        Args:
-            dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
-
-        Returns:
-            None
-
-        """
-        branch_key: BranchKey
-        anemone_logger.info(
-            "here are the %s branches sorted by value: ",
-            len(self.branches_sorted_by_value),
-        )
-        string_info: str = ""
-        for branch_key, subjective_sort_value in self.branches_sorted_by_value.items():
-            branch_name = dynamics.action_name(self.tree_node.state, branch_key)
-            string_info += f" {branch_name} {subjective_sort_value[0]} $$ "
-        anemone_logger.info(string_info)
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Refresh the PV head from the currently selected deterministic best child."""
