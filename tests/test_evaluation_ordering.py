@@ -19,8 +19,11 @@ class _FakeOverEvent:
     def is_draw(self) -> bool:
         return self.draw
 
-    def is_winner(self, player: Color) -> bool:
-        return self.winner == player
+    def is_win_for(self, role: Color) -> bool:
+        return self.winner == role
+
+    def is_loss_for(self, role: Color) -> bool:
+        return self.winner is not None and self.winner != role
 
 
 @dataclass(frozen=True)
@@ -36,8 +39,11 @@ class _NoIsOverOverEvent:
     def is_draw(self) -> bool:
         return self.draw
 
-    def is_winner(self, player: Color) -> bool:
-        return self.winner == player
+    def is_win_for(self, role: Color) -> bool:
+        return self.winner == role
+
+    def is_loss_for(self, role: Color) -> bool:
+        return self.winner is not None and self.winner != role
 
 
 def test_semantic_compare_win_beats_high_estimate() -> None:

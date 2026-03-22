@@ -14,11 +14,11 @@ from anemone.backup_policies.common import (
 )
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.common.canonical_value import ValueSemanticsError
-from anemone.node_evaluation.tree.node_tree_evaluation import (
-    BestBranchEquivalenceMode,
-)
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
+)
+from anemone.node_evaluation.tree.node_tree_evaluation import (
+    BestBranchEquivalenceMode,
 )
 from anemone.values import DEFAULT_EVALUATION_ORDERING
 
@@ -34,8 +34,11 @@ class _FakeOverEvent:
     def is_draw(self) -> bool:
         return self.draw
 
-    def is_winner(self, player: Color) -> bool:
-        return self.winner == player
+    def is_win_for(self, role: Color) -> bool:
+        return self.winner == role
+
+    def is_loss_for(self, role: Color) -> bool:
+        return self.winner is not None and self.winner != role
 
 
 class _SelectDirectAggregationPolicy:

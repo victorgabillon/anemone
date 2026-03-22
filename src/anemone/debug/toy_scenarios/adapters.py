@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, cast
 from valanga import (
     BranchKey,
     Color,
+    Outcome,
     OverEvent,
     State,
     StateTag,
@@ -442,16 +443,11 @@ def _color_for_player(player: ToyPlayerRole) -> Color:
 
 
 def _terminal_over_event(score: float) -> OverEvent:
-    from valanga.over_event import (  # pylint: disable=import-outside-toplevel
-        HowOver,
-        Winner,
-    )
-
     if score > 0:
-        return OverEvent(how_over=HowOver.WIN, who_is_winner=Winner.WHITE)
+        return OverEvent(outcome=Outcome.WIN, winner=Color.WHITE)
     if score < 0:
-        return OverEvent(how_over=HowOver.WIN, who_is_winner=Winner.BLACK)
-    return OverEvent(how_over=HowOver.DRAW, who_is_winner=Winner.NO_KNOWN_WINNER)
+        return OverEvent(outcome=Outcome.WIN, winner=Color.BLACK)
+    return OverEvent(outcome=Outcome.DRAW)
 
 
 def _require_branch_name(branch_key: BranchKey) -> str:

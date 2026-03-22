@@ -7,9 +7,8 @@ from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
-from valanga import BranchKey, Color, OverEvent, State
+from valanga import BranchKey, Color, Outcome, OverEvent, State
 from valanga.evaluations import Certainty, Value
-from valanga.over_event import HowOver, Winner
 from valanga.policy import BranchPolicy
 
 from anemone import (
@@ -94,11 +93,11 @@ class _NimOverDetector(OverEventDetector):
 
         turn = getattr(state, "turn", None)
         assert isinstance(turn, Color)
-        winner = Winner.BLACK if turn is Color.WHITE else Winner.WHITE
+        winner = Color.BLACK if turn is Color.WHITE else Color.WHITE
         return (
             OverEvent(
-                how_over=HowOver.WIN,
-                who_is_winner=winner,
+                outcome=Outcome.WIN,
+                winner=winner,
                 termination="last_stone",
             ),
             None,
@@ -240,4 +239,4 @@ def test_repeated_replanning_follows_an_optimal_nim_course(
         state = transition.next_state
 
     assert final_over_event is not None
-    assert final_over_event.who_is_winner == Winner.WHITE
+    assert final_over_event.winner == Color.WHITE

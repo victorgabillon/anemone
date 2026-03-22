@@ -26,7 +26,7 @@ def test_fake_child_evaluation_exposes_exactness_and_terminality_separately() ->
         minmax_value=Value(
             score=0.0,
             certainty=Certainty.TERMINAL,
-            over_event=FakeOverEvent(_is_over=True, who_is_winner=Color.WHITE),
+            over_event=FakeOverEvent(_is_over=True, winner=Color.WHITE),
         ),
     )
     forced_without_over = FakeChildEvaluation(
@@ -49,7 +49,7 @@ def test_fake_child_evaluation_exposes_exactness_and_terminality_separately() ->
 def test_fake_child_node_is_over_uses_true_terminality() -> None:
     eval_with_raw_over_only = FakeChildEvaluation(
         value_white=0.0,
-        over_event=FakeOverEvent(_is_over=True, who_is_winner=Color.WHITE),
+        over_event=FakeOverEvent(_is_over=True, winner=Color.WHITE),
         minmax_value=Value(score=0.0, certainty=Certainty.ESTIMATE, over_event=None),
     )
     terminal_eval = FakeChildEvaluation(
@@ -57,7 +57,7 @@ def test_fake_child_node_is_over_uses_true_terminality() -> None:
         minmax_value=Value(
             score=0.0,
             certainty=Certainty.TERMINAL,
-            over_event=FakeOverEvent(_is_over=True, who_is_winner=Color.WHITE),
+            over_event=FakeOverEvent(_is_over=True, winner=Color.WHITE),
         ),
     )
 

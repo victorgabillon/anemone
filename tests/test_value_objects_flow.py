@@ -4,9 +4,8 @@ from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import Any
 
-from valanga import Color, OverEvent
+from valanga import Color, Outcome, OverEvent
 from valanga.evaluations import Certainty, Value
-from valanga.over_event import HowOver
 
 from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 from anemone.node_evaluation.direct.node_direct_evaluator import (
@@ -25,10 +24,9 @@ class _OverDetector:
         self, state: SimpleNamespace
     ) -> tuple[Any | None, float | None]:
         if state.is_terminal:
-            over = OverEvent()
-            over.becomes_over(
-                how_over=HowOver.WIN,
-                who_is_winner=Color.WHITE,
+            over = OverEvent(
+                outcome=Outcome.WIN,
+                winner=Color.WHITE,
                 termination="terminal",
             )
             return (
@@ -43,10 +41,9 @@ class _OverDetectorWithoutEvaluation:
         self, state: SimpleNamespace
     ) -> tuple[Any | None, float | None]:
         if state.is_terminal:
-            over = OverEvent()
-            over.becomes_over(
-                how_over=HowOver.WIN,
-                who_is_winner=Color.WHITE,
+            over = OverEvent(
+                outcome=Outcome.WIN,
+                winner=Color.WHITE,
                 termination="terminal",
             )
             return over, None
@@ -80,7 +77,7 @@ class _InvalidEstimateWithOverBatchValueEvaluator(_BatchValueEvaluator):
             Value(
                 score=node.state.base_score,
                 certainty=Certainty.ESTIMATE,
-                over_event=OverEvent(),
+                over_event=OverEvent(outcome=Outcome.UNKNOWN),
             )
             for node in items
         ]
@@ -88,10 +85,9 @@ class _InvalidEstimateWithOverBatchValueEvaluator(_BatchValueEvaluator):
 
 class _InvalidTerminalBatchValueEvaluator(_BatchValueEvaluator):
     def evaluate_batch_items(self, items: Sequence[Any]) -> list[Value]:
-        terminal = OverEvent()
-        terminal.becomes_over(
-            how_over=HowOver.WIN,
-            who_is_winner=Color.WHITE,
+        terminal = OverEvent(
+            outcome=Outcome.WIN,
+            winner=Color.WHITE,
             termination="invalid-direct-terminal",
         )
         return [

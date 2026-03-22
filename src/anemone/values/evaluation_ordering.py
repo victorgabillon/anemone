@@ -34,7 +34,7 @@ class EvaluationOrdering:
         """Project a terminal over-event to a scalar score."""
         if over_event.is_draw():
             return self.draw_score
-        if over_event.is_winner(perspective):
+        if over_event.is_win_for(perspective):
             return self.win_score
         return self.loss_score
 
@@ -105,7 +105,7 @@ class EvaluationOrdering:
 
         if over_event.is_draw():
             return TerminalOutcome.DRAW
-        if over_event.is_winner(perspective):
+        if over_event.is_win_for(perspective):
             return TerminalOutcome.WIN
         return TerminalOutcome.LOSS
 

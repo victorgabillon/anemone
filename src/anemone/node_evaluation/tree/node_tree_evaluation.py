@@ -46,40 +46,6 @@ def make_principal_variation_state_factory() -> PrincipalVariationState:
     return PrincipalVariationState()
 
 
-def _over_event_is_win_for_role(over_event: OverEvent, role: Any) -> bool:
-    """Return whether one over-event is a win for the given role.
-
-    Prefer Valanga's newer role-relative API when available, while keeping
-    compatibility with older ``is_winner(...)``-style over-event objects still
-    used in this repository and its tests.
-    """
-    is_win_for = getattr(over_event, "is_win_for", None)
-    if callable(is_win_for):
-        return bool(is_win_for(role))
-
-    is_winner = getattr(over_event, "is_winner", None)
-    if callable(is_winner):
-        return bool(is_winner(role))
-
-    return False
-
-
-def _over_event_is_loss_for_role(over_event: OverEvent, role: Any) -> bool:
-    """Return whether one over-event is a loss for the given role."""
-    is_loss_for = getattr(over_event, "is_loss_for", None)
-    if callable(is_loss_for):
-        return bool(is_loss_for(role))
-
-    if over_event.is_draw():
-        return False
-
-    is_winner = getattr(over_event, "is_winner", None)
-    if callable(is_winner):
-        return not bool(is_winner(role))
-
-    return False
-
-
 class BestBranchEquivalenceMode(StrEnum):
     """Modes for collecting branches considered equivalent to the best branch."""
 
@@ -514,9 +480,9 @@ class NodeTreeEvaluationState[
         del child_value
         role = self.tree_node.state.turn
 
-        if _over_event_is_win_for_role(over_event, role):
+        if over_event.is_win_for(role):
             return 1
-        if _over_event_is_loss_for_role(over_event, role):
+        if over_event.is_loss_for(role):
             return -1
         return 0
 

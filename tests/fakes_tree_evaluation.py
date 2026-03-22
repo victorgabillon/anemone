@@ -29,8 +29,8 @@ def set_estimate_value(
 class FakeOverEvent:
     """Small over-event stub for unit tests."""
 
-    how_over: str | None = None
-    who_is_winner: Color | None = None
+    outcome: str | None = None
+    winner: Color | None = None
     termination: str | None = None
     _is_over: bool = False
 
@@ -38,24 +38,27 @@ class FakeOverEvent:
         return self._is_over
 
     def is_win(self) -> bool:
-        return self._is_over and self.who_is_winner is not None
+        return self._is_over and self.winner is not None
 
     def is_draw(self) -> bool:
-        return self._is_over and self.who_is_winner is None
+        return self._is_over and self.winner is None
 
-    def is_winner(self, player: Color) -> bool:
-        return self._is_over and self.who_is_winner is player
+    def is_win_for(self, role: Color) -> bool:
+        return self._is_over and self.winner is role
+
+    def is_loss_for(self, role: Color) -> bool:
+        return self._is_over and self.winner is not None and self.winner is not role
 
     def becomes_over(
         self,
         *,
-        how_over: str | None,
-        who_is_winner: Color | None,
+        outcome: str | None,
+        winner: Color | None,
         termination: str | None,
     ) -> None:
         self._is_over = True
-        self.how_over = how_over
-        self.who_is_winner = who_is_winner
+        self.outcome = outcome
+        self.winner = winner
         self.termination = termination
 
 
@@ -129,9 +132,13 @@ class FakeChildEvaluation:
             return candidate.over_event
         return self.over_event
 
-    def is_winner(self, player: Color) -> bool:
+    def is_win_for(self, role: Color) -> bool:
         over = self._effective_over_event()
-        return over is not None and over.is_winner(player)
+        return over is not None and over.is_win_for(role)
+
+    def is_loss_for(self, role: Color) -> bool:
+        over = self._effective_over_event()
+        return over is not None and over.is_loss_for(role)
 
     def is_draw(self) -> bool:
         over = self._effective_over_event()

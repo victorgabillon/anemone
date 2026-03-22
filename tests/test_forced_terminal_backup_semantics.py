@@ -34,8 +34,11 @@ class _FakeOverEvent:
     def is_draw(self) -> bool:
         return self.draw
 
-    def is_winner(self, player: Color) -> bool:
-        return self.winner == player
+    def is_win_for(self, role: Color) -> bool:
+        return self.winner == role
+
+    def is_loss_for(self, role: Color) -> bool:
+        return self.winner is not None and self.winner != role
 
 
 def _single_state() -> Any:
@@ -160,7 +163,7 @@ def test_minimax_partial_winning_child_makes_parent_forced_not_terminal() -> Non
     assert parent.minmax_value is not None
     assert parent.minmax_value.certainty is Certainty.FORCED
     assert parent.minmax_value.over_event is not None
-    assert parent.minmax_value.over_event.is_winner(Color.WHITE)
+    assert parent.minmax_value.over_event.is_win_for(Color.WHITE)
     assert not parent.is_terminal()
     assert parent.has_exact_value()
     assert parent.frontier_branches_in_order() == []

@@ -120,6 +120,6 @@ class MinimaxProofPolicy:
     ) -> bool:
         """Return True when the chosen child alone proves the parent's exact value."""
         over_event = selected_child_value.over_event
-        return over_event is not None and over_event.is_winner(
+        return over_event is not None and over_event.is_win_for(
             node_eval.tree_node.state.turn
         )

@@ -10,10 +10,10 @@ from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies import ExplicitMaxBackupPolicy, ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
-from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
+from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.factory import (
     NodeTreeMinmaxEvaluationFactory,
 )
@@ -38,10 +38,6 @@ class _FakeOverEvent:
         return True
 
     def is_draw(self) -> bool:
-        return False
-
-    def is_winner(self, player: object) -> bool:
-        del player
         return False
 
     def is_win_for(self, role: object) -> bool:
@@ -227,9 +223,6 @@ def test_families_inherit_shared_exact_outcome_polarity() -> None:
 
         def is_draw(self) -> bool:
             return False
-
-        def is_winner(self, player: object) -> bool:
-            return self.winner == player
 
         def is_win_for(self, role: object) -> bool:
             return self.winner == role

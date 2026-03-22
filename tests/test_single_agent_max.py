@@ -39,9 +39,6 @@ class _FakeOverEvent:
     def is_draw(self) -> bool:
         return self.draw
 
-    def is_winner(self, player: object) -> bool:
-        return self.winner == player
-
     def is_win_for(self, role: object) -> bool:
         return self.winner == role
 
@@ -514,10 +511,6 @@ def test_single_agent_exact_draw_like_outcomes_keep_default_shorter_policy() -> 
 
         def is_draw(self) -> bool:
             return True
-
-        def is_winner(self, player: object) -> bool:
-            del player
-            return False
 
         def is_win_for(self, role: object) -> bool:
             del role

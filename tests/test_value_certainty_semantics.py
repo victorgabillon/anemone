@@ -22,8 +22,12 @@ class _FakeOverEvent:
     def is_draw(self) -> bool:
         return False
 
-    def is_winner(self, player: object) -> bool:
-        del player
+    def is_win_for(self, role: object) -> bool:
+        del role
+        return False
+
+    def is_loss_for(self, role: object) -> bool:
+        del role
         return False
 
 

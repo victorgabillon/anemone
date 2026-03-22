@@ -9,9 +9,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 import valanga
-from valanga import BranchKey, Color, OverEvent, State, Transition, TurnState
+from valanga import BranchKey, Color, Outcome, OverEvent, State, Transition, TurnState
 from valanga.evaluations import Certainty, Value
-from valanga.over_event import HowOver, Winner
 from valanga.policy import BranchPolicy
 
 from anemone import (
@@ -250,8 +249,7 @@ class _GreedyBestBranchRule:
 def _reached_one_over_event() -> OverEvent:
     """Return the canonical exact metadata for reaching the goal state."""
     return OverEvent(
-        how_over=HowOver.DRAW,
-        who_is_winner=Winner.NO_KNOWN_WINNER,
+        outcome=Outcome.DRAW,
         termination="reached_one",  # type: ignore[arg-type]
     )
 
