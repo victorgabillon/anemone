@@ -155,7 +155,7 @@ def test_estimate_children_respect_side_to_move_ordering() -> None:
     assert black_parent.get_score() == 0.2
 
 
-def test_partial_expansion_prefers_direct_when_better_for_side_to_move() -> None:
+def test_partial_expansion_uses_best_child_backed_up_value_for_white() -> None:
     parent = _make_parent(
         turn=Color.WHITE,
         children={0: _make_leaf(1, Value(score=0.2, certainty=Certainty.ESTIMATE))},
@@ -168,8 +168,8 @@ def test_partial_expansion_prefers_direct_when_better_for_side_to_move() -> None
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.minmax_value == Value(score=0.5, certainty=Certainty.ESTIMATE)
-    assert parent.get_score() == 0.5
+    assert parent.minmax_value == Value(score=0.2, certainty=Certainty.ESTIMATE)
+    assert parent.get_score() == 0.2
 
 
 def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> None:
@@ -189,7 +189,7 @@ def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> Non
     assert parent.get_score() == 0.2
 
 
-def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> None:
+def test_partial_expansion_uses_best_child_backed_up_value_for_black() -> None:
     parent = _make_parent(
         turn=Color.BLACK,
         children={0: _make_leaf(1, Value(score=0.7, certainty=Certainty.ESTIMATE))},
@@ -202,8 +202,8 @@ def test_partial_expansion_prefers_direct_for_black_when_direct_is_better() -> N
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.minmax_value == Value(score=0.5, certainty=Certainty.ESTIMATE)
-    assert parent.get_score() == 0.5
+    assert parent.minmax_value == Value(score=0.7, certainty=Certainty.ESTIMATE)
+    assert parent.get_score() == 0.7
 
 
 def test_explicit_minimax_backup_uses_injected_aggregation_policy() -> None:
@@ -434,11 +434,14 @@ def test_partial_expansion_unvalued_best_child_clears_pv() -> None:
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert parent.minmax_value == parent.direct_value
+    assert parent.minmax_value is None
+    assert parent.get_value() == parent.direct_value
     assert parent.best_branch_sequence == []
 
 
-def test_partial_expansion_requires_direct_value() -> None:
+def test_partial_expansion_does_not_require_direct_value_when_child_value_exists() -> (
+    None
+):
     parent = _make_parent(
         turn=Color.WHITE,
         children={0: _make_leaf(1, Value(score=0.4, certainty=Certainty.ESTIMATE))},
@@ -447,15 +450,13 @@ def test_partial_expansion_requires_direct_value() -> None:
     )
     parent.direct_value = None
 
-    try:
-        parent.backup_from_children(
-            branches_with_updated_value={0},
-            branches_with_updated_best_branch_seq=set(),
-        )
-    except AssertionError as exc:
-        assert "direct_value" in str(exc)
-    else:
-        raise AssertionError
+    parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.minmax_value == Value(score=0.4, certainty=Certainty.ESTIMATE)
+    assert parent.get_score() == 0.4
 
 
 def test_terminal_value_syncs_parent_over_event_and_reports_over_changed() -> None:

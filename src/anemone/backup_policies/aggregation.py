@@ -1,32 +1,25 @@
-"""Aggregation policies for selecting parent candidates during backup."""
+"""Aggregation policies for computing tree-derived backup candidates."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from anemone.backup_policies.common import (
     SelectedValue,
-    select_value_from_best_child_and_direct,
 )
 
 if TYPE_CHECKING:
     from valanga import BranchKey
     from valanga.evaluations import Value
 
-    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
-        NodeMinmaxEvaluation,
-    )
-    from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
-        NodeMaxEvaluation,
-    )
-
 
 class AggregationPolicy[NodeEvalT](Protocol):
-    """Protocol for selecting the winning parent candidate value.
+    """Protocol for selecting one tree-derived candidate for ``backed_up_value``.
 
-    Aggregation policies choose only which Value candidate wins for the parent.
-    They must remain compatible with each family's existing best-branch and PV
-    semantics, which still live outside this policy boundary.
+    Aggregation policies compute only the backup candidate derived from child or
+    subtree information. They do not define the node's canonical value; the
+    canonical-value helpers still prefer ``backed_up_value`` over ``direct_value``
+    when a backed-up candidate exists.
     """
 
     def select_value(
@@ -35,121 +28,68 @@ class AggregationPolicy[NodeEvalT](Protocol):
         node_eval: NodeEvalT,
         branches_with_updated_value: set[BranchKey],
     ) -> SelectedValue:
-        """Return the selected child/direct candidate for one node backup."""
+        """Return one candidate for ``backed_up_value`` for one node backup."""
         ...
 
 
-class MaxAggregationPolicy:
-    """Aggregation policy for single-agent max candidate selection."""
+class BestChildAggregationSource(Protocol):
+    """Minimal node-evaluation surface needed by the shared best-child policy."""
+
+    def best_branch(self) -> BranchKey | None:
+        """Return the current best child branch."""
+        ...
+
+    def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
+        """Return the current candidate value for one child branch."""
+        ...
+
+
+class BranchOrderingPreparationSource(Protocol):
+    """Minimal surface for refreshing child ordering before aggregation."""
+
+    def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
+        """Return the current candidate value for one child branch."""
+        ...
+
+    def update_branches_values(self, branches_to_consider: set[BranchKey]) -> None:
+        """Refresh ordering keys for the provided child branches."""
+        ...
+
+
+def prepare_best_child_aggregation(
+    *,
+    node_eval: BranchOrderingPreparationSource,
+    branches_to_consider: set[BranchKey],
+) -> None:
+    """Refresh ordering keys for child branches that currently expose a value."""
+    if not branches_to_consider:
+        return
+
+    node_eval.update_branches_values(
+        {
+            branch_key
+            for branch_key in branches_to_consider
+            if node_eval.child_value_candidate(branch_key) is not None
+        }
+    )
+
+
+class BestChildAggregationPolicy[NodeEvalT: BestChildAggregationSource]:
+    """Aggregation policy that returns the current best known child candidate."""
 
     def select_value(
         self,
         *,
-        node_eval: NodeMaxEvaluation[Any],
+        node_eval: NodeEvalT,
         branches_with_updated_value: set[BranchKey],
     ) -> SelectedValue:
-        """Select the parent candidate using single-agent max semantics."""
-        # pylint: disable=duplicate-code
+        """Return the best currently-known child-derived backup candidate."""
         del branches_with_updated_value
         best_branch_key = node_eval.best_branch()
-        best_child_value = (
-            node_eval.child_value_candidate(best_branch_key)
-            if best_branch_key is not None
-            else None
-        )
-        return select_value_from_best_child_and_direct(
-            best_child_value=best_child_value,
-            direct_value=node_eval.direct_value,
-            all_branches_generated=node_eval.tree_node.all_branches_generated,
-            child_beats_direct=lambda child, direct: (
-                node_eval.required_objective.semantic_compare(
-                    child,
-                    direct,
-                    node_eval.tree_node.state,
-                )
-                >= 0
-            ),
-        )
-
-
-class MinimaxAggregationPolicy:
-    """Aggregation policy for adversarial minimax candidate selection."""
-
-    def select_value(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-        branches_with_updated_value: set[BranchKey],
-    ) -> SelectedValue:
-        """Select the parent candidate using minimax ordering semantics."""
-        if branches_with_updated_value:
-            self._update_branch_ordering(
-                node_eval=node_eval,
-                branches_to_consider=branches_with_updated_value,
-            )
-
-        best_child_value = self._best_child_value_for_selection(node_eval=node_eval)
-        if best_child_value is None:
-            assert node_eval.tree_node.branches_children, (
-                "Cannot compute minimax value: no children."
-            )
-            direct_value = node_eval.direct_value
-            assert direct_value is not None, (
-                "Explicit minimax requires direct_value for partially expanded nodes."
-            )
-            return SelectedValue(value=direct_value, from_child=False)
-
-        direct_value = node_eval.direct_value
-        if not node_eval.tree_node.all_branches_generated:
-            assert direct_value is not None, (
-                "Explicit minimax requires direct_value for partially expanded nodes."
-            )
-
-        return select_value_from_best_child_and_direct(
-            best_child_value=best_child_value,
-            direct_value=direct_value,
-            all_branches_generated=node_eval.tree_node.all_branches_generated,
-            child_beats_direct=lambda child, direct: (
-                node_eval.child_is_better_than_direct(
-                    child,
-                    direct,
-                    side_to_move=node_eval.tree_node.state.turn,
-                )
-            ),
-        )
-
-    def _best_child_value_for_selection(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-    ) -> Value | None:
-        """Return the current best child candidate, refreshing ordering if needed."""
-        best_branch_key = node_eval.best_branch()
-        if best_branch_key is None and node_eval.tree_node.branches_children:
-            self._update_branch_ordering(
-                node_eval=node_eval,
-                branches_to_consider=set(node_eval.tree_node.branches_children),
-            )
-            best_branch_key = node_eval.best_branch()
-
         if best_branch_key is None:
-            return None
+            return SelectedValue(value=None, from_child=False)
 
         best_child_value = node_eval.child_value_candidate(best_branch_key)
-        assert best_child_value is not None
-        return best_child_value
-
-    def _update_branch_ordering(
-        self,
-        *,
-        node_eval: NodeMinmaxEvaluation[Any, Any],
-        branches_to_consider: set[BranchKey],
-    ) -> None:
-        """Refresh minimax branch ordering from the currently-known child values."""
-        node_eval.update_branches_values(
-            {
-                branch_key
-                for branch_key in branches_to_consider
-                if node_eval.child_value_candidate(branch_key) is not None
-            }
-        )
+        if best_child_value is None:
+            return SelectedValue(value=None, from_child=False)
+        return SelectedValue(value=best_child_value, from_child=True)

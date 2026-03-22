@@ -227,7 +227,7 @@ def test_explicit_max_backup_chooses_highest_scoring_child_and_updates_pv() -> N
     assert node.best_branch_sequence == [1, 8, 9]
 
 
-def test_explicit_max_backup_falls_back_to_direct_value_when_direct_is_better() -> None:
+def test_explicit_max_backup_uses_best_child_backed_up_value_in_partial_mode() -> None:
     children = {
         0: _child(10, Value(score=0.2, certainty=Certainty.ESTIMATE)),
     }
@@ -244,11 +244,14 @@ def test_explicit_max_backup_falls_back_to_direct_value_when_direct_is_better() 
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert node.backed_up_value == Value(score=0.5, certainty=Certainty.ESTIMATE)
-    assert node.best_branch_sequence == []
+    assert node.backed_up_value == Value(score=0.2, certainty=Certainty.ESTIMATE)
+    assert node.get_value() == Value(score=0.2, certainty=Certainty.ESTIMATE)
+    assert node.best_branch_sequence == [0]
 
 
-def test_explicit_max_backup_falls_back_to_direct_when_no_child_value_exists() -> None:
+def test_explicit_max_backup_leaves_backed_up_value_absent_without_child_value() -> (
+    None
+):
     children = {
         0: _child(10, None),
     }
@@ -264,7 +267,8 @@ def test_explicit_max_backup_falls_back_to_direct_when_no_child_value_exists() -
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert node.backed_up_value == Value(score=0.3, certainty=Certainty.ESTIMATE)
+    assert node.backed_up_value is None
+    assert node.get_value() == Value(score=0.3, certainty=Certainty.ESTIMATE)
     assert node.best_branch() is None
 
 

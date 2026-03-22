@@ -193,7 +193,7 @@ def test_update_best_branch_sequence_requires_notification() -> None:
     assert parent.pv_version == version_before
 
 
-def test_partial_expansion_pv_invariant_helper() -> None:
+def test_partial_expansion_pv_invariant_helper_allows_non_empty_pv_for_white() -> None:
     parent, _ = _make_parent_eval()
     parent.tree_node.all_branches_generated = False
     parent.tree_node.state.turn = Color.WHITE
@@ -206,7 +206,7 @@ def test_partial_expansion_pv_invariant_helper() -> None:
     )
 
     assert parent.best_branch() == 0
-    assert parent.best_branch_sequence == []
+    assert parent.best_branch_sequence
     parent.assert_pv_invariants()
 
 
@@ -227,7 +227,7 @@ def test_partial_expansion_pv_invariant_helper_allows_non_empty_pv() -> None:
     parent.assert_pv_invariants()
 
 
-def test_partial_expansion_pv_invariant_helper_black_disallows_pv() -> None:
+def test_partial_expansion_pv_invariant_helper_black_allows_non_empty_pv() -> None:
     parent, _ = _make_parent_eval()
     parent.tree_node.all_branches_generated = False
     parent.tree_node.state.turn = Color.BLACK
@@ -240,7 +240,7 @@ def test_partial_expansion_pv_invariant_helper_black_disallows_pv() -> None:
     )
 
     assert parent.best_branch() is not None
-    assert parent.best_branch_sequence == []
+    assert parent.best_branch_sequence
     parent.assert_pv_invariants()
 
 

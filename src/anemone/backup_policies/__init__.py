@@ -2,8 +2,7 @@
 
 from anemone.backup_policies.aggregation import (
     AggregationPolicy,
-    MaxAggregationPolicy,
-    MinimaxAggregationPolicy,
+    BestChildAggregationPolicy,
 )
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
@@ -19,11 +18,10 @@ __all__ = [
     "AggregationPolicy",
     "BackupPolicy",
     "BackupResult",
+    "BestChildAggregationPolicy",
     "ExplicitMaxBackupPolicy",
     "ExplicitMinimaxBackupPolicy",
-    "MaxAggregationPolicy",
     "MaxProofPolicy",
-    "MinimaxAggregationPolicy",
     "MinimaxProofPolicy",
     "ProofPolicy",
 ]

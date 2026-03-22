@@ -4,7 +4,7 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
 
-from valanga import BranchKey, Color
+from valanga import BranchKey
 from valanga.evaluations import Value
 
 from anemone._valanga_types import AnyTurnState
@@ -95,20 +95,6 @@ class NodeMinmaxEvaluation[
     def is_over(self) -> bool:
         """Temporary compatibility alias for callers that still use legacy naming."""
         return self.is_terminal()
-
-    def child_is_better_than_direct(
-        self, child: Value, direct: Value, *, side_to_move: Color
-    ) -> bool:
-        """Determine if a child's value is better than the direct evaluation for the current node."""
-        assert side_to_move == self.tree_node.state.turn
-        return (
-            self.required_objective.semantic_compare(
-                child,
-                direct,
-                self.tree_node.state,
-            )
-            >= 0
-        )
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Refresh the PV head from the currently selected deterministic best child."""

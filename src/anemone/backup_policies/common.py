@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class SelectedValue:
-    """One value candidate plus whether it was chosen from a child branch."""
+    """One candidate for ``backed_up_value`` plus whether it came from a child."""
 
     value: Value | None
     from_child: bool
@@ -70,11 +70,12 @@ def select_value_from_best_child_and_direct(
     all_branches_generated: bool,
     child_beats_direct: Callable[[Value, Value], bool],
 ) -> SelectedValue:
-    """Select the winning parent candidate from the best child and direct value.
+    """Select the winner of one hybrid best-child-versus-direct comparison.
 
-    This helper owns only the generic child-vs-direct competition shape.
-    Each family still owns how the best child is found and how child/direct
-    comparison semantics are defined.
+    This is a special helper for policies that intentionally mix direct and
+    child-derived estimates. It is not the default aggregation shape: the shared
+    default aggregation now computes only child/tree-derived ``backed_up_value``
+    candidates and leaves canonical direct fallback to ``canonical_value``.
     """
     if best_child_value is None:
         return SelectedValue(value=direct_value, from_child=False)

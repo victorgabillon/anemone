@@ -7,11 +7,10 @@ from valanga import Color
 from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies import (
+    BestChildAggregationPolicy,
     ExplicitMaxBackupPolicy,
     ExplicitMinimaxBackupPolicy,
-    MaxAggregationPolicy,
     MaxProofPolicy,
-    MinimaxAggregationPolicy,
     MinimaxProofPolicy,
 )
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
@@ -118,11 +117,11 @@ def test_factories_keep_injected_family_dependencies() -> None:
 def test_explicit_backup_policies_default_to_family_policy_objects() -> None:
     """Explicit backup policies should install the matching aggregation/proof policies."""
     assert isinstance(
-        ExplicitMaxBackupPolicy().aggregation_policy, MaxAggregationPolicy
+        ExplicitMaxBackupPolicy().aggregation_policy, BestChildAggregationPolicy
     )
     assert isinstance(ExplicitMaxBackupPolicy().proof_policy, MaxProofPolicy)
     assert isinstance(
         ExplicitMinimaxBackupPolicy().aggregation_policy,
-        MinimaxAggregationPolicy,
+        BestChildAggregationPolicy,
     )
     assert isinstance(ExplicitMinimaxBackupPolicy().proof_policy, MinimaxProofPolicy)

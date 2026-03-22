@@ -65,3 +65,9 @@ def test_fake_child_node_is_over_uses_true_terminality() -> None:
         node_id=1, tree_evaluation=eval_with_raw_over_only
     ).is_over()
     assert FakeChildNode(node_id=2, tree_evaluation=terminal_eval).is_over()
+
+
+def test_fake_child_node_exposes_public_id() -> None:
+    fake_node = FakeChildNode(node_id=17, tree_evaluation=FakeChildEvaluation(0.1))
+
+    assert fake_node.id == 17

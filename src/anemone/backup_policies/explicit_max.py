@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 from anemone.backup_policies.aggregation import (
     AggregationPolicy,
-    MaxAggregationPolicy,
+    BestChildAggregationPolicy,
+    prepare_best_child_aggregation,
 )
 from anemone.backup_policies.common import (
     SelectedValue,
@@ -37,7 +38,7 @@ class ExplicitMaxBackupPolicy:
     ) -> None:
         """Initialize the backup policy with injectable aggregation/proof strategies."""
         if aggregation_policy is None:
-            aggregation_policy = MaxAggregationPolicy()
+            aggregation_policy = BestChildAggregationPolicy()
         if proof_policy is None:
             proof_policy = MaxProofPolicy()
         self.aggregation_policy = aggregation_policy
@@ -50,9 +51,11 @@ class ExplicitMaxBackupPolicy:
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Recompute backed-up value and PV from child values."""
-        # pylint: disable=duplicate-code
         if branches_with_updated_value:
-            node_eval.update_branches_values(branches_with_updated_value)
+            prepare_best_child_aggregation(
+                node_eval=node_eval,
+                branches_to_consider=branches_with_updated_value,
+            )
 
         best_branch_key = node_eval.best_branch()
         best_child_value = (
