@@ -58,7 +58,6 @@ def create_algorithm_node_tree_manager(
     algorithm_node_tree_manager: AlgorithmNodeTreeManager = AlgorithmNodeTreeManager(
         node_evaluator=node_direct_evaluator,
         tree_manager=tree_manager,
-        algorithm_tree_node_factory=algorithm_node_factory,
         evaluation_queries=evaluation_queries,
         index_manager=exploration_index_manager,
         depth_index_propagator=(DepthIndexPropagator() if depth_index else None),

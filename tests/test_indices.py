@@ -200,9 +200,10 @@ def build_tree_from_yaml_clean(
 
         instr = _instructions_open_all_children(node)
 
-        expansions = tree_manager.open_instructions(
+        expansions = tree_manager.expand_instructions(
             tree=tree, opening_instructions=instr
         )
+        tree_manager.evaluate_expansions(tree_expansions=expansions)
         tree_manager.update_backward(tree_expansions=expansions)
 
     return tree

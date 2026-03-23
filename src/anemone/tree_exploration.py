@@ -1,21 +1,6 @@
-"""Provide the implementation of the TreeExploration class.
+"""Tree-search runtime orchestration centered on ``TreeExploration``."""
 
-The TreeExploration class is responsible for managing a search for the best branch in a given state using a tree-based approach.
-
-The TreeExploration class is used to create and manage a tree structure that represents the possible branches and
- their evaluations in a state space. It provides methods for exploring the tree, selecting the best branch,
-  and printing information during the branch computation.
-
-The module also includes helper functions for creating a TreeExploration object and its dependencies.
-
-Classes:
-- TreeExploration: Manages the search for the best branch using a tree-based approach.
-
-Functions:
-- create_tree_exploration: Creates a TreeExploration object with the specified dependencies.
-"""
-
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from random import Random
 from typing import TYPE_CHECKING, Any
 
@@ -70,19 +55,11 @@ def compute_child_evals[StateT: State](
 
 @dataclass
 class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """Tree Exploration is an object to manage one best-branch search.
+    """Own the runtime orchestration of one tree search.
 
-    Attributes:
-    - tree: The tree structure representing the possible branches and their evaluations.
-    - tree_manager: The manager for the tree structure.
-    - node_selector: The selector for choosing nodes and branches to open in the tree.
-    - recommend_branch_after_exploration: The recommender rule for selecting the best branch after the exploration.
-    - stopping_criterion: The stopping criterion for determining when to stop the tree exploration.
-
-    Methods:
-    - print_info_during_branch_computation: Prints information during the branch computation.
-    - explore: Explores the tree to find the best branch.
-
+    ``TreeExploration`` is the single explicit sequencing owner for one search
+    iteration. One iteration selects a target, expands it, evaluates the
+    resulting nodes, then propagates the resulting tree updates.
     """
 
     # TODO: Not sure why this class is not simply the TreeAndValuePlayer Class
@@ -94,6 +71,28 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     stopping_criterion: ProgressMonitor[NodeT]
     notify_percent_function: NotifyProgressCallable
+    _latest_tree_expansions: tree_man.TreeExpansions[NodeT] = field(
+        init=False,
+        repr=False,
+    )
+
+    def __post_init__(self) -> None:
+        """Seed selector-visible iteration state for the first step."""
+        self._latest_tree_expansions = self._make_initial_tree_expansions()
+
+    def _make_initial_tree_expansions(self) -> tree_man.TreeExpansions[NodeT]:
+        """Return the synthetic root creation log used before the first step."""
+        tree_expansions: tree_man.TreeExpansions[NodeT] = tree_man.TreeExpansions()
+        tree_expansions.add_creation(
+            tree_expansion=tree_man.TreeExpansion(
+                child_node=self.tree.root_node,
+                parent_node=None,
+                state_modifications=None,
+                creation_child_node=True,
+                branch_key=None,
+            )
+        )
+        return tree_expansions
 
     def print_info_during_branch_computation(self, random_generator: Random) -> None:
         """Print info during the branch computation.
@@ -129,6 +128,64 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             )
             self.tree_manager.print_best_line(tree=self.tree)
 
+    def _select_node_for_expansion(self) -> node_sel.OpeningInstructions[NodeT]:
+        """Ask the selector for the next branches to open."""
+        return self.node_selector.choose_node_and_branch_to_open(
+            tree=self.tree,
+            latest_tree_expansions=self._latest_tree_expansions,
+        )
+
+    def _limit_opening_instructions(
+        self,
+        opening_instructions: node_sel.OpeningInstructions[NodeT],
+    ) -> node_sel.OpeningInstructions[NodeT]:
+        """Apply the stopping criterion's opening-budget filter."""
+        return self.stopping_criterion.respectful_opening_instructions(
+            opening_instructions=opening_instructions,
+            tree=self.tree,
+        )
+
+    def _expand_opening_instructions(
+        self,
+        opening_instructions: node_sel.OpeningInstructions[NodeT],
+    ) -> tree_man.TreeExpansions[NodeT]:
+        """Run the structural expansion phase for one iteration."""
+        return self.tree_manager.expand_instructions(
+            tree=self.tree,
+            opening_instructions=opening_instructions,
+        )
+
+    def _evaluate_expansions(
+        self,
+        tree_expansions: tree_man.TreeExpansions[NodeT],
+    ) -> None:
+        """Run the direct-evaluation phase for newly created nodes."""
+        self.tree_manager.evaluate_expansions(tree_expansions=tree_expansions)
+
+    def _propagate_iteration_updates(
+        self,
+        tree_expansions: tree_man.TreeExpansions[NodeT],
+    ) -> None:
+        """Run the post-evaluation propagation and refresh phases."""
+        self.tree_manager.update_backward(tree_expansions=tree_expansions)
+        self.tree_manager.propagate_depth_index(tree_expansions=tree_expansions)
+        self.tree_manager.refresh_exploration_indices(tree=self.tree)
+
+    def step(self) -> None:
+        """Run one search iteration in the canonical runtime order."""
+        # Search stops once the root value is exact, even if the root state is
+        # still non-terminal and some siblings remain unopened.
+        assert not self.tree.root_node.tree_evaluation.has_exact_value()
+
+        opening_instructions = self._select_node_for_expansion()
+        opening_instructions_subset = self._limit_opening_instructions(
+            opening_instructions
+        )
+        tree_expansions = self._expand_opening_instructions(opening_instructions_subset)
+        self._evaluate_expansions(tree_expansions)
+        self._propagate_iteration_updates(tree_expansions)
+        self._latest_tree_expansions = tree_expansions
+
     def explore(self, random_generator: Random) -> TreeExplorationResult[NodeT]:
         """Explore the tree to find the best branch.
 
@@ -139,52 +196,13 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             TreeExplorationResult[NodeT]: The recommended branch and its evaluation.
 
         """
-        # by default the first tree expansion is the creation of the tree node
-        tree_expansions: tree_man.TreeExpansions[NodeT] = tree_man.TreeExpansions()
-
-        tree_expansion: tree_man.TreeExpansion[NodeT] = tree_man.TreeExpansion(
-            child_node=self.tree.root_node,
-            parent_node=None,
-            state_modifications=None,
-            creation_child_node=True,
-            branch_key=None,
-        )
-        tree_expansions.add_creation(tree_expansion=tree_expansion)
+        self._latest_tree_expansions = self._make_initial_tree_expansions()
 
         loop: int = 0
         while self.stopping_criterion.should_we_continue(tree=self.tree):
             loop = loop + 1
-            # Search stops once the root value is exact, even if the root state is
-            # still non-terminal and some siblings remain unopened.
-            assert not self.tree.root_node.tree_evaluation.has_exact_value()
-            # print info
             self.print_info_during_branch_computation(random_generator=random_generator)
-
-            # choose the branches and nodes to open
-            opening_instructions: node_sel.OpeningInstructions[NodeT]
-            opening_instructions = self.node_selector.choose_node_and_branch_to_open(
-                tree=self.tree, latest_tree_expansions=tree_expansions
-            )
-
-            # make sure we do not break the stopping criterion
-            opening_instructions_subset: node_sel.OpeningInstructions[NodeT]
-            opening_instructions_subset = (
-                self.stopping_criterion.respectful_opening_instructions(
-                    opening_instructions=opening_instructions, tree=self.tree
-                )
-            )
-
-            # open the nodes
-            tree_expansions = self.tree_manager.open_instructions(
-                tree=self.tree, opening_instructions=opening_instructions_subset
-            )
-
-            # Propagate value changes upward from the newly changed/opened nodes.
-            self.tree_manager.update_backward(tree_expansions=tree_expansions)
-            # Maintain descendant-depth metadata as its own upward phase.
-            self.tree_manager.propagate_depth_index(tree_expansions=tree_expansions)
-            # Refresh exploration indices separately after the upward phases.
-            self.tree_manager.refresh_exploration_indices(tree=self.tree)
+            self.step()
 
             if loop % 10 == 0:
                 self.stopping_criterion.notify_percent_progress(

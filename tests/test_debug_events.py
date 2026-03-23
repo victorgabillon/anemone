@@ -232,13 +232,14 @@ class _FakeObservedOpenManager:
         self.was_called = False
         self.received_tree: Any | None = None
         self.received_opening_instructions: Any | None = None
-        self.result = SimpleNamespace(marker="open-result")
+        self.result: tuple[_FakeTreeExpansion, ...] = ()
 
-    def open_instructions(self, tree: Any, opening_instructions: Any) -> Any:
+    def expand_instructions(self, tree: Any, opening_instructions: Any) -> Any:
         self.was_called = True
         self.received_tree = tree
         self.received_opening_instructions = opening_instructions
 
+        expansions: list[_FakeTreeExpansion] = []
         for opening_instruction in opening_instructions.values():
             child = _FakeNode(
                 id=tree.nodes_count,
@@ -252,8 +253,21 @@ class _FakeObservedOpenManager:
                 opening_instruction.branch
             ] = child
             tree.nodes_count += 1
+            expansions.append(
+                _FakeTreeExpansion(
+                    child_node=child,
+                    parent_node=opening_instruction.node_to_open,
+                    state_modifications=None,
+                    creation_child_node=True,
+                    branch_key=opening_instruction.branch,
+                )
+            )
 
+        self.result = tuple(expansions)
         return self.result
+
+    def evaluate_expansions(self, tree_expansions: Any) -> None:
+        del tree_expansions
 
     def update_indices(self, tree: Any) -> None:
         del tree
@@ -268,17 +282,12 @@ class _FakeObservedOpenManagerWithEvaluation(_FakeObservedOpenManager):
         self.node_evaluator = _FakeDirectEvaluator()
         self.evaluation_queries = _FakeEvaluationQueries()
 
-    def open_instructions(self, tree: Any, opening_instructions: Any) -> Any:
-        result = super().open_instructions(tree, opening_instructions)
-        for opening_instruction in opening_instructions.values():
-            child = opening_instruction.node_to_open.branches_children[
-                opening_instruction.branch
-            ]
-            assert child is not None
+    def evaluate_expansions(self, tree_expansions: Any) -> None:
+        for tree_expansion in tree_expansions:
+            child = tree_expansion.child_node
             self.node_evaluator.add_evaluation_query(child, self.evaluation_queries)
 
         self.node_evaluator.evaluate_all_queried_nodes(self.evaluation_queries)
-        return result
 
 
 class _FakeObservedUpdateManager:
@@ -324,7 +333,7 @@ class _FakeObservedExplorationManager:
             action_name=lambda state, branch: f"move:{branch}"
         )
 
-    def open_instructions(
+    def expand_instructions(
         self, tree: Any, opening_instructions: Any
     ) -> tuple[_FakeTreeExpansion, ...]:
         del tree, opening_instructions
@@ -339,11 +348,14 @@ class _FakeObservedExplorationManager:
             ),
         )
 
+    def evaluate_expansions(self, tree_expansions: Any) -> None:
+        del tree_expansions
+
     def update_backward(self, tree_expansions: Any) -> None:
         del tree_expansions
         self._root.tree_evaluation.best_branch_sequence = [self._branch_key]
 
-    def update_indices(self, tree: Any) -> None:
+    def refresh_exploration_indices(self, tree: Any) -> None:
         del tree
 
     def print_best_line(self, tree: Any) -> None:
@@ -380,12 +392,13 @@ class _FakeObservedExploration:
                     tree=self.tree,
                 )
             )
-            tree_expansions = self.tree_manager.open_instructions(
+            tree_expansions = self.tree_manager.expand_instructions(
                 tree=self.tree,
                 opening_instructions=opening_instructions_subset,
             )
+            self.tree_manager.evaluate_expansions(tree_expansions=tree_expansions)
             self.tree_manager.update_backward(tree_expansions=tree_expansions)
-            self.tree_manager.update_indices(tree=self.tree)
+            self.tree_manager.refresh_exploration_indices(tree=self.tree)
 
         return self.result
 
@@ -569,7 +582,9 @@ def test_observable_updater_keeps_flags_false_when_state_is_unchanged() -> None:
     ]
 
 
-def test_observable_tree_manager_open_instructions_delegates_and_emits_events() -> None:
+def test_observable_tree_manager_expand_instructions_delegates_and_emits_events() -> (
+    None
+):
     root = _FakeNode(id=1, tree_depth=0, state=SimpleNamespace(tag="root"))
     tree = SimpleNamespace(nodes_count=2)
     base_manager = _FakeObservedOpenManager()
@@ -579,7 +594,7 @@ def test_observable_tree_manager_open_instructions_delegates_and_emits_events() 
     )
 
     opening_instructions = _FakeOpeningInstructions([_FakeOpeningInstruction(root, 7)])
-    result = manager.open_instructions(
+    result = manager.expand_instructions(
         tree=tree,
         opening_instructions=opening_instructions,
     )
@@ -599,7 +614,7 @@ def test_observable_tree_manager_open_instructions_delegates_and_emits_events() 
     ]
 
 
-def test_observable_tree_manager_wraps_direct_evaluator_for_opening_events() -> None:
+def test_observable_tree_manager_wraps_direct_evaluator_for_evaluation_phase() -> None:
     root = _FakeNode(id=1, tree_depth=0, state=SimpleNamespace(tag="root"))
     tree = SimpleNamespace(nodes_count=2)
     manager = ObservableAlgorithmNodeTreeManager(
@@ -607,12 +622,13 @@ def test_observable_tree_manager_wraps_direct_evaluator_for_opening_events() -> 
         debug_sink := RecordingDebugSink(),
     )
 
-    manager.open_instructions(
+    tree_expansions = manager.expand_instructions(
         tree=tree,
         opening_instructions=_FakeOpeningInstructions(
             [_FakeOpeningInstruction(root, 7)]
         ),
     )
+    manager.evaluate_expansions(tree_expansions=tree_expansions)
 
     assert (
         DirectValueAssigned(

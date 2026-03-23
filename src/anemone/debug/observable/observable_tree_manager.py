@@ -56,33 +56,19 @@ class ObservableAlgorithmNodeTreeManager:
         """Return the wrapped manager's search dynamics."""
         return self._base.dynamics
 
-    def open_instructions(self, tree: Any, opening_instructions: Any) -> Any:
-        """Delegate opening to the base manager and infer structural events."""
+    def expand_instructions(self, tree: Any, opening_instructions: Any) -> Any:
+        """Delegate structural expansion and infer structural debug events."""
         nodes_to_open = collect_unique_nodes_from_opening_instructions(
             opening_instructions
         )
         before_children_by_node = {
             id(node): snapshot_children(node) for node in nodes_to_open
         }
-        buffered_direct_value_events = _BufferedDebugSink()
-        observable_direct_evaluator = _find_observable_direct_evaluator(self._base)
-        original_direct_evaluator_sink: SearchDebugSink | None = None
-        if observable_direct_evaluator is not None:
-            original_direct_evaluator_sink = observable_direct_evaluator.debug_sink
-            observable_direct_evaluator.set_debug_sink(buffered_direct_value_events)
-
         self._emit_node_opening_planned_events(opening_instructions)
-        try:
-            result = self._base.open_instructions(
-                tree=tree,
-                opening_instructions=opening_instructions,
-            )
-        finally:
-            if observable_direct_evaluator is not None:
-                assert original_direct_evaluator_sink is not None
-                observable_direct_evaluator.set_debug_sink(
-                    original_direct_evaluator_sink
-                )
+        result = self._base.expand_instructions(
+            tree=tree,
+            opening_instructions=opening_instructions,
+        )
 
         for node in nodes_to_open:
             before = before_children_by_node[id(node)]
@@ -95,6 +81,26 @@ class ObservableAlgorithmNodeTreeManager:
                         branch_key=branch_key,
                         was_already_present=branch_key in before,
                     )
+                )
+
+        return result
+
+    def evaluate_expansions(self, tree_expansions: Any) -> Any:
+        """Delegate direct evaluation and replay direct-value debug events."""
+        buffered_direct_value_events = _BufferedDebugSink()
+        observable_direct_evaluator = _find_observable_direct_evaluator(self._base)
+        original_direct_evaluator_sink: SearchDebugSink | None = None
+        if observable_direct_evaluator is not None:
+            original_direct_evaluator_sink = observable_direct_evaluator.debug_sink
+            observable_direct_evaluator.set_debug_sink(buffered_direct_value_events)
+
+        try:
+            result = self._base.evaluate_expansions(tree_expansions=tree_expansions)
+        finally:
+            if observable_direct_evaluator is not None:
+                assert original_direct_evaluator_sink is not None
+                observable_direct_evaluator.set_debug_sink(
+                    original_direct_evaluator_sink
                 )
 
         buffered_direct_value_events.flush_to(self._debug_sink)
