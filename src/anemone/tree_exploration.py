@@ -1,4 +1,4 @@
-"""Tree-search runtime orchestration centered on ``TreeExploration``."""
+"""Runnable tree-search runtime centered on ``TreeExploration``."""
 
 from dataclasses import dataclass, field
 from random import Random
@@ -55,11 +55,17 @@ def compute_child_evals[StateT: State](
 
 @dataclass
 class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """Own the runtime orchestration of one tree search.
+    """Runnable runtime object for one tree search.
 
     ``TreeExploration`` is the single explicit sequencing owner for one search
-    iteration. One iteration selects a target, expands it, evaluates the
-    resulting nodes, then propagates the resulting tree updates.
+    iteration. It owns the search state for one run and exposes the two main
+    runtime operations:
+
+    * ``step()`` for one iteration
+    * ``explore(...)`` for a full run to recommendation
+
+    ``SearchRuntime`` is the preferred public alias for callers who want a
+    shorter top-level name for this runtime concept.
     """
 
     # TODO: Not sure why this class is not simply the TreeAndValuePlayer Class
@@ -241,6 +247,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return tree_exploration_result
 
 
+SearchRuntime = TreeExploration
+
+
 def create_tree_exploration[StateT: AnyTurnState](
     node_selector_create: NodeSelectorFactory,
     starting_state: StateT,
@@ -250,20 +259,11 @@ def create_tree_exploration[StateT: AnyTurnState](
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
     notify_percent_function: NotifyProgressCallable | None = None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
-    """Create a TreeExploration object with the specified dependencies.
+    """Assemble ``TreeExploration`` from already-created collaborators.
 
-    Args:
-        node_selector_create (NodeSelectorFactory): Factory for creating the node selector.
-        starting_state (StateT): Starting state for exploration.
-        tree_manager (tree_man.AlgorithmNodeTreeManager): Manager for the tree structure.
-        tree_factory (ValueTreeFactory[StateT]): Factory for creating the tree structure.
-        stopping_criterion_args (AllStoppingCriterionArgs): Arguments for the stopping criterion.
-        recommend_branch_after_exploration (recommender_rule.AllRecommendFunctionsArgs): Recommender rule.
-        notify_percent_function (NotifyProgressCallable | None): Optional progress callback.
-
-    Returns:
-        TreeExploration[AlgorithmNode[StateT]]: The created TreeExploration object.
-
+    Top-level callers usually prefer the higher-level
+    ``anemone.create_tree_and_value_exploration(...)`` helpers, which build
+    these collaborators and return this same runtime object directly.
     """
     # creates the tree
     tree: trees.Tree[AlgorithmNode[StateT]] = tree_factory.create(

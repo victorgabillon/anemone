@@ -1,26 +1,37 @@
-"""Provide functionality for creating tree and value builders for the TreeAndValuePlayer.
+"""Public entrypoints for assembling and running Anemone searches.
 
-The TreeAndValuePlayerArgs class represents the arguments for configuring the TreeAndValuePlayer.
-The create_tree_and_value_builders function is used to create the tree and value builders.
+Preferred public vocabulary:
 
-Example usage:
-    from anemone import TreeAndValuePlayerArgs, create_tree_and_value_builders
+* ``SearchArgs`` configures a search
+* ``create_search(...)`` builds the runnable runtime
+* ``SearchRuntime`` exposes ``step()`` and ``explore(...)``
 
-    args = TreeAndValuePlayerArgs(...)
-    builders = create_tree_and_value_builders(args)
-
-    # Use the builders to create the TreeAndValuePlayer
-    player = TreeAndValuePlayer(builders.tree_builder, builders.value_builder)
+``SearchRecommender`` and the older ``TreeAndValue...`` names remain available
+for compatibility and convenience.
 """
 
 from .factory import (
+    SearchArgs,
     TreeAndValuePlayerArgs,
+    create_search,
+    create_search_with_tree_eval_factory,
     create_tree_and_value_branch_selector,
     create_tree_and_value_branch_selector_with_tree_eval_factory,
+    create_tree_and_value_exploration,
+    create_tree_and_value_exploration_with_tree_eval_factory,
 )
+from .tree_and_value_branch_selector import SearchRecommender
+from .tree_exploration import SearchRuntime
 
 __all__ = [
+    "SearchArgs",
+    "SearchRecommender",
+    "SearchRuntime",
     "TreeAndValuePlayerArgs",
+    "create_search",
+    "create_search_with_tree_eval_factory",
     "create_tree_and_value_branch_selector",
     "create_tree_and_value_branch_selector_with_tree_eval_factory",
+    "create_tree_and_value_exploration",
+    "create_tree_and_value_exploration_with_tree_eval_factory",
 ]

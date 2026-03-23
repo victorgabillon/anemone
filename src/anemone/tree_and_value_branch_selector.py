@@ -1,4 +1,4 @@
-"""Module for Tree and Value Branch Selector."""
+"""Convenience wrapper for callers that only need ``recommend(...)``."""
 
 from dataclasses import dataclass
 from random import Random
@@ -23,16 +23,12 @@ from .trees.factory import ValueTreeFactory
 
 @dataclass
 class TreeAndValueBranchSelector[StateT: AnyTurnState = AnyTurnState]:
-    """The TreeAndValueBranchSelector class is responsible for selecting branches based on a tree and value strategy.
+    """Convenience API that builds and runs a fresh ``TreeExploration``.
 
-    Attributes:
-    - tree_manager: The tree manager responsible for managing the algorithm nodes.
-    - tree_factory: The tree factory responsible for creating branch and value trees.
-    - stopping_criterion_args: The stopping criterion arguments used to determine when to stop the tree exploration.
-    - node_selector_create: The node selector factory used to create node selectors for tree exploration.
-    - random_generator: The random generator used for randomization during tree exploration.
-    - recommend_branch_after_exploration: The recommendation functions used to recommend a branch after tree exploration.
-
+    ``TreeExploration`` is the real runtime object. This wrapper remains useful
+    when callers only want the one-shot ``recommend(...)`` interface instead of
+    driving the runtime directly. ``SearchRecommender`` is the preferred public
+    alias for this secondary concept.
     """
 
     # pretty empty class but might be useful when dealing with multi round and time , no?
@@ -50,7 +46,7 @@ class TreeAndValueBranchSelector[StateT: AnyTurnState = AnyTurnState]:
         seed: Seed,
         notify_progress: NotifyProgressCallable | None = None,
     ) -> Recommendation:
-        """Select the best branch based on the tree and value strategy.
+        """Build a runtime, explore from ``state``, and return the recommendation.
 
         Args:
             state (StateT): The current state to explore.
@@ -77,7 +73,7 @@ class TreeAndValueBranchSelector[StateT: AnyTurnState = AnyTurnState]:
         state: StateT,
         notify_progress: NotifyProgressCallable | None = None,
     ) -> TreeExploration:
-        """Create a TreeExploration instance for the given state."""
+        """Build a fresh runnable ``TreeExploration`` for the given state."""
         tree_exploration: TreeExploration = create_tree_exploration(
             tree_manager=self.tree_manager,
             node_selector_create=self.node_selector_create,
@@ -92,3 +88,6 @@ class TreeAndValueBranchSelector[StateT: AnyTurnState = AnyTurnState]:
     def print_info(self) -> None:
         """Print information about the branch selector type."""
         print("type: Tree and Value")
+
+
+SearchRecommender = TreeAndValueBranchSelector

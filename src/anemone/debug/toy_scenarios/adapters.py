@@ -6,8 +6,8 @@ scenario layer is limited to:
 * declarative state/domain fixtures
 * a tiny search-dynamics adapter
 * a tiny direct-evaluation adapter
-* one helper that assembles the existing production exploration pipeline via
-  ``create_tree_and_value_branch_selector_with_tree_eval_factory(...)``
+* one helper that assembles the existing production exploration runtime via
+  ``create_search_with_tree_eval_factory(...)``
 
 All tree growth, node selection, backup propagation, and stopping behavior come
 from the real Anemone engine.
@@ -31,8 +31,8 @@ from valanga import (
 
 from anemone.dynamics import SearchDynamics
 from anemone.factory import (
-    TreeAndValuePlayerArgs,
-    create_tree_and_value_branch_selector_with_tree_eval_factory,
+    SearchArgs,
+    create_search_with_tree_eval_factory,
 )
 from anemone.node_evaluation.direct.protocols import (
     MasterStateValueEvaluator,
@@ -314,15 +314,22 @@ def create_real_tree_exploration_for_toy_scenario(
 ) -> TreeExploration[Any]:
     """Assemble a real ``TreeExploration`` for one toy scenario.
 
-    The resulting exploration object is built from the production Anemone search
-    components through the same high-level branch-selector factory used by the
-    main package. The toy layer only contributes the tiny domain adapters.
+    The resulting exploration object is built through the same top-level
+    runtime-construction path exposed by the main package. The toy layer only
+    contributes the tiny domain adapters.
     """
     dynamics = ToyDynamics(scenario_spec)
     master_evaluator = ToyStateValueEvaluator(scenario_spec)
-    branch_selector = create_tree_and_value_branch_selector_with_tree_eval_factory(
+
+    return create_search_with_tree_eval_factory(
         state_type=ToyState,
         dynamics=dynamics,
+        starting_state=ToyState(
+            scenario_spec=scenario_spec,
+            node_id=scenario_spec.root_id,
+            turn=_root_turn(scenario_spec),
+            adversarial_turns=_uses_adversarial_turns(scenario_spec),
+        ),
         args=_build_tree_and_value_args(scenario_spec),
         random_generator=Random(0),
         master_state_evaluator=master_evaluator,
@@ -330,23 +337,14 @@ def create_real_tree_exploration_for_toy_scenario(
         node_tree_evaluation_factory=cast(
             "Any", _build_node_tree_evaluation_factory(scenario_spec)
         ),
-        hooks=None,
-    )
-
-    return branch_selector.create_tree_exploration(
-        state=ToyState(
-            scenario_spec=scenario_spec,
-            node_id=scenario_spec.root_id,
-            turn=_root_turn(scenario_spec),
-            adversarial_turns=_uses_adversarial_turns(scenario_spec),
-        ),
         notify_progress=None,
+        hooks=None,
     )
 
 
 def _build_tree_and_value_args(
     scenario_spec: ToyScenarioSpec,
-) -> TreeAndValuePlayerArgs:
+) -> SearchArgs:
     """Return the production search configuration used for toy-domain runs.
 
     The toy scenarios intentionally use one clear, documented real-engine policy:
@@ -356,7 +354,7 @@ def _build_tree_and_value_args(
     * tree-branch-limit stopping sized to the declarative toy graph
     * softmax recommender at the end of the run
     """
-    return TreeAndValuePlayerArgs(
+    return SearchArgs(
         node_selector=ComposedNodeSelectorArgs(
             type=NodeSelectorType.COMPOSED,
             priority=NoPriorityCheckArgs(type=NodeSelectorType.PRIORITY_NOOP),
