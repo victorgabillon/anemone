@@ -1,5 +1,6 @@
 """Algorithm-aware tree-side phases used by ``TreeExploration``."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol, cast
 
@@ -40,6 +41,81 @@ class BestLinePrintable(Protocol):
         ...
 
 
+@dataclass(slots=True)
+class _ExpansionDirectEvaluation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+    """Direct-evaluation unit for nodes created by structural expansion."""
+
+    evaluation_queries: EvaluationQueries
+    get_node_evaluator: Callable[[], NodeDirectEvaluator | None]
+
+    def evaluate_expansions(self, tree_expansions: TreeExpansions[NodeT]) -> None:
+        """Stage newly created children and run direct evaluation."""
+        node_evaluator = self.get_node_evaluator()
+        assert node_evaluator is not None
+        for node_to_evaluate in self._created_nodes_for_direct_evaluation(
+            tree_expansions=tree_expansions
+        ):
+            node_evaluator.add_evaluation_query(
+                node=node_to_evaluate,
+                evaluation_queries=self.evaluation_queries,
+            )
+
+        node_evaluator.evaluate_all_queried_nodes(
+            evaluation_queries=self.evaluation_queries
+        )
+
+    def _created_nodes_for_direct_evaluation(
+        self,
+        *,
+        tree_expansions: TreeExpansions[NodeT],
+    ) -> list[NodeT]:
+        """Return the newly created child nodes that still need direct evaluation."""
+        return [
+            tree_expansion.child_node
+            for tree_expansion in tree_expansions.expansions_with_node_creation
+        ]
+
+
+@dataclass(slots=True)
+class _ExpansionPropagation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+    """Propagation unit deriving value/depth seeds from structural expansions."""
+
+    get_value_propagator: Callable[[], ValuePropagator]
+    get_depth_index_propagator: Callable[[], DepthIndexPropagator | None]
+
+    def propagate_value_changes(self, tree_expansions: TreeExpansions[NodeT]) -> None:
+        """Kick off upward value propagation from structural expansion records."""
+        propagation_seed_nodes = self._propagation_seed_nodes(
+            tree_expansions=tree_expansions
+        )
+        if not propagation_seed_nodes:
+            return
+
+        self.get_value_propagator().propagate_from_changed_nodes(propagation_seed_nodes)
+
+    def propagate_depth_index(self, tree_expansions: TreeExpansions[NodeT]) -> None:
+        """Kick off descendant-depth propagation from structural expansion records."""
+        depth_index_propagator = self.get_depth_index_propagator()
+        if depth_index_propagator is None:
+            return
+
+        propagation_seed_nodes = self._propagation_seed_nodes(
+            tree_expansions=tree_expansions
+        )
+        if not propagation_seed_nodes:
+            return
+
+        depth_index_propagator.propagate_from_changed_nodes(propagation_seed_nodes)
+
+    def _propagation_seed_nodes(
+        self,
+        *,
+        tree_expansions: TreeExpansions[NodeT],
+    ) -> list[NodeT]:
+        """Return the child nodes that seed the post-expansion propagation waves."""
+        return [tree_expansion.child_node for tree_expansion in tree_expansions]
+
+
 @dataclass
 class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """Provide algorithm-aware tree phases while ``TreeManager`` stays structural.
@@ -57,6 +133,25 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     index_manager: NodeExplorationIndexManager
     value_propagator: ValuePropagator = field(default_factory=ValuePropagator)
     depth_index_propagator: DepthIndexPropagator | None = None
+    _direct_evaluation: _ExpansionDirectEvaluation[NodeT] = field(
+        init=False,
+        repr=False,
+    )
+    _propagation: _ExpansionPropagation[NodeT] = field(
+        init=False,
+        repr=False,
+    )
+
+    def __post_init__(self) -> None:
+        """Assemble the narrow post-expansion units used by this phase API."""
+        self._direct_evaluation = _ExpansionDirectEvaluation(
+            evaluation_queries=self.evaluation_queries,
+            get_node_evaluator=lambda: self.node_evaluator,
+        )
+        self._propagation = _ExpansionPropagation(
+            get_value_propagator=lambda: self.value_propagator,
+            get_depth_index_propagator=lambda: self.depth_index_propagator,
+        )
 
     @property
     def dynamics(self) -> SearchDynamics[Any, Any]:
@@ -78,43 +173,17 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     # Direct evaluation phase
     def evaluate_expansions(self, tree_expansions: TreeExpansions[NodeT]) -> None:
-        """Evaluate newly created child nodes from structural expansion records."""
-        assert self.node_evaluator is not None
-        for node_to_evaluate in self._created_nodes_for_direct_evaluation(
-            tree_expansions=tree_expansions
-        ):
-            self.node_evaluator.add_evaluation_query(
-                node=node_to_evaluate,
-                evaluation_queries=self.evaluation_queries,
-            )
-
-        self.node_evaluator.evaluate_all_queried_nodes(
-            evaluation_queries=self.evaluation_queries
-        )
+        """Delegate post-expansion direct evaluation to the direct-evaluation unit."""
+        self._direct_evaluation.evaluate_expansions(tree_expansions)
 
     # Upward propagation phases
     def update_backward(self, tree_expansions: TreeExpansions[NodeT]) -> None:
-        """Kick off upward value propagation from the latest structural changes."""
-        propagation_seed_nodes = self._propagation_seed_nodes(
-            tree_expansions=tree_expansions
-        )
-        if not propagation_seed_nodes:
-            return
-
-        self.value_propagator.propagate_from_changed_nodes(propagation_seed_nodes)
+        """Delegate post-expansion value propagation to the propagation unit."""
+        self._propagation.propagate_value_changes(tree_expansions)
 
     def propagate_depth_index(self, tree_expansions: TreeExpansions[NodeT]) -> None:
-        """Kick off descendant-depth propagation from the latest structural changes."""
-        if self.depth_index_propagator is None:
-            return
-
-        propagation_seed_nodes = self._propagation_seed_nodes(
-            tree_expansions=tree_expansions
-        )
-        if not propagation_seed_nodes:
-            return
-
-        self.depth_index_propagator.propagate_from_changed_nodes(propagation_seed_nodes)
+        """Delegate post-expansion depth propagation to the propagation unit."""
+        self._propagation.propagate_depth_index(tree_expansions)
 
     # Exploration-index refresh phase
     def refresh_exploration_indices(self, tree: trees.Tree[NodeT]) -> None:
@@ -154,28 +223,3 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             require_branch_frontier_aware(
                 opening_instruction.node_to_open.tree_evaluation
             ).on_branch_opened(opening_instruction.branch)
-
-    def _propagation_seed_nodes(
-        self,
-        *,
-        tree_expansions: TreeExpansions[NodeT],
-    ) -> list[NodeT]:
-        """Return the child nodes that seed the upward propagation phases.
-
-        Each structural expansion record names the child node whose changed
-        structural/value state parents must observe next. That makes the child
-        node the correct seed for both value propagation and descendant-depth
-        propagation.
-        """
-        return [tree_expansion.child_node for tree_expansion in tree_expansions]
-
-    def _created_nodes_for_direct_evaluation(
-        self,
-        *,
-        tree_expansions: TreeExpansions[NodeT],
-    ) -> list[NodeT]:
-        """Return the newly created child nodes that still need direct evaluation."""
-        return [
-            tree_expansion.child_node
-            for tree_expansion in tree_expansions.expansions_with_node_creation
-        ]
