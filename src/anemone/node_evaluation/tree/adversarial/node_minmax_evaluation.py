@@ -1,16 +1,12 @@
-"""Provide Value-first NodeMinmaxEvaluation implementation for minimax search."""
+"""Thin adversarial wrapper over the shared tree-evaluation engine."""
 # pylint: disable=duplicate-code
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, ClassVar, Protocol, Self
 
-from valanga import BranchKey
 from valanga.evaluations import Value
 
 from anemone._valanga_types import AnyTurnState
-from anemone.node_evaluation.tree.decision_ordering import (
-    BranchOrderingKey,
-)
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BackupPolicyFactory,
     NodeTreeEvaluationState,
@@ -23,17 +19,12 @@ if TYPE_CHECKING:
     from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 
 
-@runtime_checkable
-# Class created to avoid circular import and defines what is seen and needed by the NodeMinmaxEvaluation class
 class NodeWithValue(TreeEvaluationChild[AnyTurnState], Protocol):
-    """Represents a node with a value in a tree structure.
+    """Recursive child-node protocol for the minimax wrapper.
 
-    Attributes:
-        tree_evaluation (NodeMinmaxEvaluation): The minmax evaluation associated with the node.
-        tree_node (TreeNode[Self]): The tree node associated with the node.
-
-    Note: Uses Self to indicate that tree_node's children type should match the node itself.
-
+    ``TreeEvaluationChild`` captures the generic engine's needs, but the named
+    minimax wrapper still benefits from expressing that its ``tree_node`` points
+    at more nodes from the same semantic family.
     """
 
     @property
@@ -63,31 +54,26 @@ class NodeMinmaxEvaluation[
     NodeWithValueT: NodeWithValue = NodeWithValue,
     StateT: AnyTurnState = AnyTurnState,
 ](NodeTreeEvaluationState[NodeWithValueT, StateT]):
-    r"""Value-first minimax evaluation attached to a tree node."""
+    """Semantic minimax preset layered on ``NodeTreeEvaluationState``.
+
+    The shared base class owns the generic tree-search mechanics. This wrapper
+    keeps the adversarial family name, default objective, and the meaningful
+    ``minmax_value`` vocabulary expected by callers.
+    """
 
     _default_backup_policy_factory: ClassVar[BackupPolicyFactory | None] = (
         make_default_backup_policy
     )
 
-    # objective responsible for semantic interpretation of Value objects at this node
+    # Family wrapper installs adversarial value semantics on the shared engine.
     objective: Objective[StateT] | None = field(default_factory=make_default_objective)
 
     @property
     def minmax_value(self) -> Value | None:
-        """Return this family's storage-name alias for generic backed_up_value."""
+        """Return the adversarial family's semantic alias for ``backed_up_value``."""
         return self.backed_up_value
 
     @minmax_value.setter
     def minmax_value(self, value: Value | None) -> None:
-        """Set this family's storage-name alias for generic backed_up_value."""
+        """Set the adversarial family's semantic alias for ``backed_up_value``."""
         self.backed_up_value = value
-
-    @property
-    def branch_ordering_keys(self) -> dict[BranchKey, BranchOrderingKey]:
-        """Return the cached generic branch-ordering keys for this node."""
-        return self.decision_ordering.branch_ordering_keys
-
-    @property
-    def branches_sorted_by_value(self) -> dict[BranchKey, BranchOrderingKey]:
-        """Compatibility alias for callers that still use the legacy name."""
-        return self.branch_ordering_keys

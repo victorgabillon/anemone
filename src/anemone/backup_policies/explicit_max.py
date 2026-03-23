@@ -1,4 +1,4 @@
-"""Explicit max backup policy for single-agent node evaluation."""
+"""Thin max wrapper that installs single-agent defaults on the shared engine."""
 
 from __future__ import annotations
 
@@ -18,14 +18,14 @@ if TYPE_CHECKING:
 
 
 class ExplicitMaxBackupPolicy(ExplicitTreeBackupPolicy["NodeMaxEvaluation[Any]"]):
-    """Single-agent max wrapper around the shared explicit tree-backup engine."""
+    """Named single-agent max wrapper around ``ExplicitTreeBackupPolicy``."""
 
     def __init__(
         self,
         aggregation_policy: AggregationPolicy[NodeMaxEvaluation[Any]] | None = None,
         proof_policy: ProofPolicy[NodeMaxEvaluation[Any]] | None = None,
     ) -> None:
-        """Install the max-family defaults on the shared explicit backup engine."""
+        """Install the max family's default aggregation and proof policies."""
         if aggregation_policy is None:
             aggregation_policy = BestChildAggregationPolicy()
         if proof_policy is None:

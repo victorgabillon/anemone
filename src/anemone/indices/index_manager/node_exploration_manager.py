@@ -26,10 +26,10 @@ from anemone.utils.small_tools import (
 
 if TYPE_CHECKING:
     from anemone.basics import TreeDepth
-    from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
-    from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
-        NodeMinmaxEvaluation,
+    from anemone.node_evaluation.common.branch_ordering import (
+        DecisionOrderedEvaluation,
     )
+    from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
     from anemone.trees.descendants import RangedDescendants
 
 
@@ -502,11 +502,8 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
         for parent_node in tree_nodes[tree_depth].values():
             branch_rank: int
             branch: BranchKey
-            tree_eval = cast(
-                "NodeMinmaxEvaluation[Any, Any]",
-                parent_node.tree_evaluation,
-            )
-            for branch_rank, branch in enumerate(tree_eval.branches_sorted_by_value):
+            tree_eval = cast("DecisionOrderedEvaluation", parent_node.tree_evaluation)
+            for branch_rank, branch in enumerate(tree_eval.decision_ordered_branches()):
                 child_node = parent_node.branches_children[branch]
                 if child_node is None:
                     continue

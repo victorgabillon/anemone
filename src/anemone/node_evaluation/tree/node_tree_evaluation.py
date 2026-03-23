@@ -1,4 +1,4 @@
-"""Provide shared tree-search evaluation state plus the public protocol."""
+"""Provide the generic tree-evaluation engine plus its shared public protocol."""
 
 from __future__ import annotations
 
@@ -58,7 +58,11 @@ class BestBranchEquivalenceMode(StrEnum):
 
 
 class TreeEvaluationChild[StateT: State = State](ITreeNode[StateT], Protocol):
-    """Minimal child-node protocol needed by the shared tree-evaluation state."""
+    """Minimal child-node protocol needed by the shared tree-evaluation engine.
+
+    Family wrappers can extend this protocol when they want stronger recursive
+    typing, but the generic engine only depends on this surface.
+    """
 
     @property
     def tree_evaluation(self) -> ChildTreeEvaluation:
@@ -67,7 +71,7 @@ class TreeEvaluationChild[StateT: State = State](ITreeNode[StateT], Protocol):
 
 
 class ChildTreeEvaluation(Protocol):
-    """Minimal child-evaluation protocol needed by shared tree-state helpers."""
+    """Minimal child-evaluation protocol consumed by family-neutral helpers."""
 
     @property
     def best_branch_sequence(self) -> list[BranchKey]:
@@ -90,10 +94,10 @@ class NodeTreeEvaluationState[
 ]:
     """Shared concrete state/helper base for tree-evaluation families.
 
-    This class owns only the family-neutral state and helper methods that both
-    current tree-evaluation families already share. Decision ordering,
+    This is the generic engine underneath the thin named family wrappers such as
+    ``NodeMinmaxEvaluation`` and ``NodeMaxEvaluation``. Decision ordering,
     backup delegation, and family-neutral best-branch equivalence live here,
-    while family-specific value semantics remain in the concrete families.
+    while family-specific defaults and vocabulary stay in the wrappers.
     """
 
     _default_backup_policy_factory: ClassVar[BackupPolicyFactory | None] = None
@@ -648,7 +652,7 @@ class NodeTreeEvaluation[StateT: State = State](
     DecisionOrderedEvaluation,
     Protocol,
 ):
-    """Shared tree-search evaluation surface used by generic search orchestration."""
+    """Shared tree-search evaluation surface exposed by all family wrappers."""
 
     @property
     def best_branch_sequence(self) -> list[BranchKey]:

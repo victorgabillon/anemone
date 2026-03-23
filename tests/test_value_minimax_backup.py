@@ -292,7 +292,7 @@ def test_search_ordering_remains_projection_based_for_large_estimate() -> None:
         branches_with_updated_best_branch_seq=set(),
     )
 
-    ordered_branches = list(parent.branches_sorted_by_value.keys())
+    ordered_branches = list(parent.decision_ordering.branch_ordering_keys)
     assert ordered_branches.index(1) < ordered_branches.index(0)
     assert parent.best_branch() == 0
 
@@ -555,7 +555,7 @@ def test_branch_ordering_for_search_uses_projection_and_stable_tie_breakers() ->
         branches_with_updated_best_branch_seq=set(),
     )
 
-    assert list(parent.branches_sorted_by_value.keys()) == [0, 1]
+    assert list(parent.decision_ordering.branch_ordering_keys) == [0, 1]
     assert parent.decision_ordered_branches() == [0, 1]
     assert parent.second_best_branch() == 1
 

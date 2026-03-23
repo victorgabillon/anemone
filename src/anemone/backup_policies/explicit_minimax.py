@@ -1,4 +1,4 @@
-"""Explicit minimax backup policy with separated value/PV responsibilities."""
+"""Thin minimax wrapper that installs adversarial defaults on the shared engine."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class ExplicitMinimaxBackupPolicy(
     ExplicitTreeBackupPolicy["NodeMinmaxEvaluation[Any, Any]"]
 ):
-    """Adversarial minimax wrapper around the shared explicit backup engine."""
+    """Named minimax wrapper around ``ExplicitTreeBackupPolicy``."""
 
     def __init__(
         self,
@@ -28,7 +28,7 @@ class ExplicitMinimaxBackupPolicy(
         | None = None,
         proof_policy: ProofPolicy[NodeMinmaxEvaluation[Any, Any]] | None = None,
     ) -> None:
-        """Install the minimax-family defaults on the shared explicit backup engine."""
+        """Install the minimax family's default aggregation and proof policies."""
         if aggregation_policy is None:
             aggregation_policy = BestChildAggregationPolicy()
         if proof_policy is None:
