@@ -91,17 +91,3 @@ class NodeMinmaxEvaluation[
     def branches_sorted_by_value(self) -> dict[BranchKey, BranchOrderingKey]:
         """Compatibility alias for callers that still use the legacy name."""
         return self.branch_ordering_keys
-
-    def is_over(self) -> bool:
-        """Temporary compatibility alias for callers that still use legacy naming."""
-        return self.is_terminal()
-
-    def one_of_best_children_becomes_best_next_node(self) -> bool:
-        """Refresh the PV head from the currently selected deterministic best child."""
-        best_branch_key = self.best_branch()
-        assert best_branch_key is not None
-        has_best_branch_seq_changed = self.set_best_branch_sequence(
-            self.best_branch_line_from_child(best_branch_key)
-        )
-        assert self.best_branch_sequence
-        return has_best_branch_seq_changed

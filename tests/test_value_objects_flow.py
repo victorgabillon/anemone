@@ -245,28 +245,6 @@ def test_add_query_does_not_require_algorithm_node_is_over() -> None:
     assert queries.not_over_nodes == []
 
 
-def test_algorithm_node_is_over_uses_terminality(monkeypatch) -> None:
-    """AlgorithmNode.is_over is a compatibility wrapper over node-local terminality."""
-    evaluator = NodeDirectEvaluator(master_state_evaluator=_BatchValueEvaluator())
-    node = _make_node(node_id=5, turn=Color.WHITE, base_score=0.0, is_terminal=True)
-
-    evaluator.check_obvious_over_events(node)
-    assert node.tree_evaluation.is_terminal()
-
-    def _legacy_tree_eval_is_over(self) -> bool:
-        raise AssertionError(
-            "AlgorithmNode.is_over should not call tree_evaluation.is_over()"
-        )
-
-    monkeypatch.setattr(
-        type(node.tree_evaluation),
-        "is_over",
-        _legacy_tree_eval_is_over,
-    )
-
-    assert node.is_over()
-
-
 def test_minmax_value_is_populated_after_child_backup_and_bridge_holds() -> None:
     """Backup populates minmax Value and keeps float-score bridge aligned."""
     parent = _make_node(node_id=10, turn=Color.WHITE, base_score=0.1, is_terminal=False)

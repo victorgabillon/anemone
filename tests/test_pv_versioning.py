@@ -227,7 +227,9 @@ def test_partial_expansion_pv_invariant_helper_allows_non_empty_pv() -> None:
     parent.assert_pv_invariants()
 
 
-def test_partial_expansion_pv_invariant_helper_black_allows_non_empty_pv() -> None:
+def test_partial_expansion_pv_invariant_helper_black_with_large_direct_allows_pv() -> (
+    None
+):
     parent, _ = _make_parent_eval()
     parent.tree_node.all_branches_generated = False
     parent.tree_node.state.turn = Color.BLACK

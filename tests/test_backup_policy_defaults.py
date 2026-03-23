@@ -10,6 +10,7 @@ from anemone.backup_policies import (
     BestChildAggregationPolicy,
     ExplicitMaxBackupPolicy,
     ExplicitMinimaxBackupPolicy,
+    ExplicitTreeBackupPolicy,
     MaxProofPolicy,
     MinimaxProofPolicy,
 )
@@ -116,10 +117,12 @@ def test_factories_keep_injected_family_dependencies() -> None:
 
 def test_explicit_backup_policies_default_to_family_policy_objects() -> None:
     """Explicit backup policies should install the matching aggregation/proof policies."""
+    assert isinstance(ExplicitMaxBackupPolicy(), ExplicitTreeBackupPolicy)
     assert isinstance(
         ExplicitMaxBackupPolicy().aggregation_policy, BestChildAggregationPolicy
     )
     assert isinstance(ExplicitMaxBackupPolicy().proof_policy, MaxProofPolicy)
+    assert isinstance(ExplicitMinimaxBackupPolicy(), ExplicitTreeBackupPolicy)
     assert isinstance(
         ExplicitMinimaxBackupPolicy().aggregation_policy,
         BestChildAggregationPolicy,

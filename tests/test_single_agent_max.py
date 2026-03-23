@@ -261,6 +261,7 @@ def test_explicit_max_backup_leaves_backed_up_value_absent_without_child_value()
         children=children,
         all_branches_generated=False,
     )
+    node.set_best_branch_sequence([0])
 
     node.backup_from_children(
         branches_with_updated_value={0},
@@ -270,6 +271,39 @@ def test_explicit_max_backup_leaves_backed_up_value_absent_without_child_value()
     assert node.backed_up_value is None
     assert node.get_value() == Value(score=0.3, certainty=Certainty.ESTIMATE)
     assert node.best_branch() is None
+    assert node.best_branch_sequence == []
+
+
+def test_explicit_max_backup_updates_pv_tail_for_best_child_changes() -> None:
+    children = {
+        0: _child(10, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+        1: _child(
+            11,
+            Value(score=0.9, certainty=Certainty.ESTIMATE),
+            best_branch_sequence=[8],
+        ),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    node.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq={1},
+    )
+    assert node.best_branch_sequence == [1, 8]
+
+    children[1].tree_evaluation.set_best_branch_sequence([10, 11])
+    result = node.backup_from_children(
+        branches_with_updated_value=set(),
+        branches_with_updated_best_branch_seq={1},
+    )
+
+    assert result.pv_changed
+    assert node.best_branch_sequence == [1, 10, 11]
 
 
 def test_explicit_max_backup_uses_injected_aggregation_policy() -> None:

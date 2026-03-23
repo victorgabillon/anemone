@@ -582,6 +582,16 @@ class NodeTreeEvaluationState[
         """Clear the stored principal variation content."""
         return self.pv_state.clear()
 
+    def one_of_best_children_becomes_best_next_node(self) -> bool:
+        """Rebuild the PV head from the current best child."""
+        best_branch_key = self.best_branch()
+        assert best_branch_key is not None
+        has_best_branch_seq_changed = self.set_best_branch_sequence(
+            self.best_branch_line_from_child(best_branch_key)
+        )
+        assert self.best_branch_sequence
+        return has_best_branch_seq_changed
+
     def assert_pv_invariants(self) -> None:
         """Assert family-neutral principal-variation invariants."""
         best_branch_key = self.best_branch()
@@ -649,6 +659,10 @@ class NodeTreeEvaluation[StateT: State = State](
         self, branches_with_updated_best_branch_seq: set[BranchKey]
     ) -> bool:
         """Update the principal variation from changed child branches."""
+        ...
+
+    def one_of_best_children_becomes_best_next_node(self) -> bool:
+        """Rebuild the principal variation from the current best child."""
         ...
 
     def best_equivalent_branches(
