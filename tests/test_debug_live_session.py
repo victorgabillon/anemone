@@ -7,6 +7,10 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import pytest
+from graphviz.backend.execute import ExecutableNotFound
+
+import anemone.debug.export as debug_export
 from anemone.debug import (
     DebugNodeView,
     DebugTreeSnapshot,
@@ -139,6 +143,54 @@ def test_live_debug_session_recorder_finalize_marks_session_complete(
     payload = json.loads((session_dir / "session.json").read_text(encoding="utf-8"))
     assert payload["is_live"] is True
     assert payload["is_complete"] is True
+
+
+def test_live_debug_session_recorder_keeps_metadata_when_graphviz_is_unavailable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_dir = tmp_path / "live-session"
+    warning_messages: list[str] = []
+
+    class _FailingRenderGraph:
+        source = "digraph {}"
+
+        def render(self, **_: object) -> str:
+            raise ExecutableNotFound(["dot"])
+
+    monkeypatch.setattr(
+        debug_export,
+        "render_snapshot",
+        lambda snapshot, format_str=None: _FailingRenderGraph(),
+    )
+    monkeypatch.setattr(
+        debug_export.anemone_logger,
+        "warning",
+        lambda message, *args: warning_messages.append(message % args),
+    )
+
+    recorder = LiveDebugSessionRecorder(
+        session_dir,
+        snapshot_provider=lambda event: FIXED_SNAPSHOT,
+        snapshot_policy=lambda event: isinstance(event, NodeSelected),
+        snapshot_format="svg",
+    )
+
+    recorder.emit(NodeSelected(node_id="9"))
+
+    payload = json.loads((session_dir / "session.json").read_text(encoding="utf-8"))
+    assert payload["entries"][0]["has_snapshot"] is True
+    assert payload["entries"][0]["snapshot_file"] is None
+    assert payload["entries"][0]["snapshot_metadata_file"] == (
+        "snapshots/0000_NodeSelected.snapshot.json"
+    )
+    assert not (session_dir / "snapshots" / "0000_NodeSelected.svg").exists()
+    assert (session_dir / "snapshots" / "0000_NodeSelected.snapshot.json").exists()
+    assert warning_messages == [
+        "Skipping debug snapshot render for "
+        f"{session_dir / 'snapshots' / '0000_NodeSelected.svg'} because "
+        "Graphviz executable 'dot' is unavailable."
+    ]
 
 
 def test_render_replay_index_html_contains_live_polling_hooks() -> None:

@@ -21,6 +21,8 @@ from .html_templates import render_replay_index_html
 from .replay import build_event_fields_payload, format_debug_event
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from .recording import DebugTimelineEntry, DebugTrace
 
 _DEFAULT_SNAPSHOT_DIRECTORY = "snapshots"
@@ -31,13 +33,20 @@ def build_replay_payload(
     *,
     snapshot_format: str = "svg",
     snapshot_directory: str = _DEFAULT_SNAPSHOT_DIRECTORY,
+    rendered_snapshot_entry_indices: Collection[int] | None = None,
 ) -> dict[str, Any]:
     """Build a JSON-friendly browser payload for ``trace``."""
+    rendered_snapshot_index_set = (
+        None
+        if rendered_snapshot_entry_indices is None
+        else set(rendered_snapshot_entry_indices)
+    )
     entries = [
         build_replay_entry_payload(
             entry,
             snapshot_format=snapshot_format,
             snapshot_directory=snapshot_directory,
+            rendered_snapshot_entry_indices=rendered_snapshot_index_set,
         )
         for entry in trace
     ]
@@ -53,16 +62,24 @@ def build_replay_entry_payload(
     *,
     snapshot_format: str = "svg",
     snapshot_directory: str = _DEFAULT_SNAPSHOT_DIRECTORY,
+    rendered_snapshot_entry_indices: Collection[int] | None = None,
 ) -> dict[str, Any]:
     """Build the browser payload for one timeline entry."""
+    has_snapshot = entry.snapshot is not None
     snapshot_file = None
     snapshot_metadata_file = None
-    if entry.snapshot is not None:
+    rendered_snapshot_available = (
+        has_snapshot
+        if rendered_snapshot_entry_indices is None
+        else entry.index in rendered_snapshot_entry_indices
+    )
+    if rendered_snapshot_available:
         snapshot_file = _snapshot_relative_path(
             entry,
             snapshot_format=snapshot_format,
             snapshot_directory=snapshot_directory,
         )
+    if has_snapshot:
         snapshot_metadata_file = _snapshot_metadata_relative_path(
             entry,
             snapshot_directory=snapshot_directory,
@@ -74,7 +91,7 @@ def build_replay_entry_payload(
         "event_summary": format_debug_event(entry.event),
         "event_fields": build_event_fields_payload(entry.event),
         "breakpoint_hit": entry.breakpoint_hit,
-        "has_snapshot": entry.snapshot is not None,
+        "has_snapshot": has_snapshot,
         "snapshot_file": snapshot_file,
         "snapshot_metadata_file": snapshot_metadata_file,
     }
@@ -100,6 +117,7 @@ def export_replay_bundle(
 
     snapshot_dir = bundle_dir / _DEFAULT_SNAPSHOT_DIRECTORY
     snapshot_dir.mkdir(parents=True, exist_ok=True)
+    rendered_snapshot_entry_indices: set[int] = set()
 
     for entry in trace:
         if entry.snapshot is None:
@@ -109,17 +127,23 @@ def export_replay_bundle(
             entry,
             format_str=snapshot_format,
         )
-        export_snapshot_entry(
+        rendered_snapshot_path = export_snapshot_entry(
             entry.snapshot,
             snapshot_path,
             format_str=snapshot_format,
         )
+        if rendered_snapshot_path is not None:
+            rendered_snapshot_entry_indices.add(entry.index)
         export_snapshot_json(
             entry.snapshot,
             snapshot_dir / trace_snapshot_metadata_filename(entry),
         )
 
-    payload = build_replay_payload(trace, snapshot_format=snapshot_format)
+    payload = build_replay_payload(
+        trace,
+        snapshot_format=snapshot_format,
+        rendered_snapshot_entry_indices=rendered_snapshot_entry_indices,
+    )
     write_replay_payload(payload, bundle_dir / "trace.json")
     (bundle_dir / "index.html").write_text(
         render_replay_index_html(),

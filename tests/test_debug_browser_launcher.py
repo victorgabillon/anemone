@@ -11,6 +11,10 @@ from http.server import ThreadingHTTPServer
 from threading import Thread
 from typing import TYPE_CHECKING, Any
 
+import pytest
+from graphviz.backend.execute import ExecutableNotFound
+
+import anemone.debug.export as debug_export
 from anemone.debug.browser import DebugSessionHTTPRequestHandler
 from anemone.debug.toy_scenarios import (
     list_registered_scenarios,
@@ -110,6 +114,47 @@ def test_debug_browser_api_rejects_unknown_scenario_name(tmp_path: Path) -> None
     assert status_code == 404
     assert payload["ok"] is False
     assert payload["error_code"] == "unknown_scenario"
+
+
+def test_debug_browser_api_runs_scenario_without_graphviz_binary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _FailingRenderGraph:
+        source = "digraph {}"
+
+        def render(self, **_: object) -> str:
+            raise ExecutableNotFound(["dot"])
+
+    monkeypatch.setattr(
+        debug_export,
+        "render_snapshot",
+        lambda snapshot, format_str=None: _FailingRenderGraph(),
+    )
+
+    with _running_browser_server(tmp_path) as address:
+        status_code, payload = _request_json(
+            address,
+            "POST",
+            "/api/run_scenario",
+            {"name": "single_agent_backup"},
+        )
+        session_status, session_payload = _request_json(
+            address,
+            "GET",
+            "/sessions/single_agent_backup/session.json",
+        )
+
+    assert status_code == 200
+    assert payload["ok"] is True
+    assert session_status == 200
+    assert session_payload["is_complete"] is True
+    assert session_payload["entry_count"] > 0
+    assert any(
+        entry["snapshot_metadata_file"] is not None
+        for entry in session_payload["entries"]
+    )
+    assert all(entry["snapshot_file"] is None for entry in session_payload["entries"])
 
 
 def test_debug_browser_api_can_launch_two_scenarios_and_control_each(

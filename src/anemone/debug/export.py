@@ -6,6 +6,10 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+from graphviz.backend.execute import ExecutableNotFound
+
+from anemone.utils.logger import anemone_logger
+
 from .dot_renderer import DotRenderer
 from .replay import format_debug_event
 from .snapshot_serialization import write_snapshot_json
@@ -43,25 +47,34 @@ def export_snapshot_render(
     path: str | Path,
     *,
     format_str: str = "svg",
-) -> Path:
+) -> Path | None:
     """Render snapshot with Graphviz and return the resulting output path.
 
-    The final file extension is driven by ``format_str``.
+    The final file extension is driven by ``format_str``. When the Graphviz
+    executable is unavailable, rendering is skipped and ``None`` is returned.
     """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
 
     graph = render_snapshot(snapshot, format_str=format_str)
     graph_as_any = cast(Any, graph)  # noqa: TC006
-    rendered_path = cast(
-        "str",
-        graph_as_any.render(
-            filename=target.stem,
-            directory=str(target.parent),
-            cleanup=True,
-            format=format_str,
-        ),
-    )
+    try:
+        rendered_path = cast(
+            "str",
+            graph_as_any.render(
+                filename=target.stem,
+                directory=str(target.parent),
+                cleanup=True,
+                format=format_str,
+            ),
+        )
+    except ExecutableNotFound:
+        anemone_logger.warning(
+            "Skipping debug snapshot render for %s because Graphviz executable "
+            "'dot' is unavailable.",
+            target,
+        )
+        return None
     return Path(rendered_path)
 
 
@@ -70,7 +83,7 @@ def export_snapshot_entry(
     path: str | Path,
     *,
     format_str: str = "svg",
-) -> Path:
+) -> Path | None:
     """Export one snapshot, choosing DOT or rendered output by extension/format."""
     target = Path(path)
     if target.suffix.lower() == ".dot" or format_str.lower() == "dot":
@@ -99,9 +112,13 @@ def export_trace_snapshots(
             continue
 
         output_path = output_dir / trace_snapshot_filename(entry, format_str=format_str)
-        exported.append(
-            export_snapshot_entry(entry.snapshot, output_path, format_str=format_str)
+        rendered_snapshot_path = export_snapshot_entry(
+            entry.snapshot,
+            output_path,
+            format_str=format_str,
         )
+        if rendered_snapshot_path is not None:
+            exported.append(rendered_snapshot_path)
 
     return tuple(exported)
 

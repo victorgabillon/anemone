@@ -128,6 +128,25 @@ def test_build_replay_payload_is_json_friendly() -> None:
     assert entries[4]["breakpoint_hit"] == "bp-3"
 
 
+def test_build_replay_payload_can_keep_metadata_without_snapshot_file() -> None:
+    payload = build_replay_payload(
+        _build_trace(),
+        rendered_snapshot_entry_indices=set(),
+    )
+
+    entries = payload["entries"]
+    assert entries[2]["has_snapshot"] is True
+    assert entries[2]["snapshot_file"] is None
+    assert entries[2]["snapshot_metadata_file"] == (
+        "snapshots/0002_ChildLinked.snapshot.json"
+    )
+    assert entries[4]["has_snapshot"] is True
+    assert entries[4]["snapshot_file"] is None
+    assert entries[4]["snapshot_metadata_file"] == (
+        "snapshots/0004_BackupFinished.snapshot.json"
+    )
+
+
 def test_export_replay_bundle_writes_expected_files(tmp_path: Path) -> None:
     bundle_dir = export_replay_bundle(
         _build_trace(),

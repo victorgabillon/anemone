@@ -64,6 +64,7 @@ class LiveDebugSessionRecorder(SearchDebugSink):
         self._html_template = html_template
         self._controller = controller
         self._entries: list[DebugTimelineEntry] = []
+        self._rendered_snapshot_entry_indices: set[int] = set()
         self._is_complete = False
 
         self._directory.mkdir(parents=True, exist_ok=True)
@@ -136,6 +137,7 @@ class LiveDebugSessionRecorder(SearchDebugSink):
                     entry,
                     snapshot_format=self._snapshot_format,
                     snapshot_directory=_DEFAULT_SNAPSHOT_DIRECTORY,
+                    rendered_snapshot_entry_indices=self._rendered_snapshot_entry_indices,
                 )
                 for entry in self._entries
             ],
@@ -151,7 +153,7 @@ class LiveDebugSessionRecorder(SearchDebugSink):
             return True
         return self._snapshot_policy(event)
 
-    def _export_snapshot(self, entry: DebugTimelineEntry) -> Path:
+    def _export_snapshot(self, entry: DebugTimelineEntry) -> Path | None:
         """Export the snapshot attached to ``entry`` if not already written."""
         if entry.snapshot is None:
             raise MissingLiveSessionSnapshotError
@@ -160,6 +162,7 @@ class LiveDebugSessionRecorder(SearchDebugSink):
             format_str=self._snapshot_format,
         )
         if snapshot_path.exists():
+            self._rendered_snapshot_entry_indices.add(entry.index)
             metadata_path = self._snapshot_directory / trace_snapshot_metadata_filename(
                 entry
             )
@@ -172,6 +175,8 @@ class LiveDebugSessionRecorder(SearchDebugSink):
             snapshot_path,
             format_str=self._snapshot_format,
         )
+        if exported_snapshot_path is not None:
+            self._rendered_snapshot_entry_indices.add(entry.index)
         export_snapshot_json(
             entry.snapshot,
             self._snapshot_directory / trace_snapshot_metadata_filename(entry),
