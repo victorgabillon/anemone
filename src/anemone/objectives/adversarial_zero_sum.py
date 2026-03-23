@@ -1,4 +1,4 @@
-"""Adversarial zero-sum Objective built on top of EvaluationOrdering."""
+"""Adversarial zero-sum objective built on top of ``EvaluationOrdering``."""
 
 from dataclasses import dataclass
 
@@ -10,19 +10,23 @@ from anemone.values import DEFAULT_EVALUATION_ORDERING, EvaluationOrdering
 
 @dataclass(frozen=True, slots=True)
 class AdversarialZeroSumObjective[StateT: AnyTurnState = AnyTurnState]:
-    """Thin objective adapter for the current turn-based adversarial semantics."""
+    """State-aware objective adapter for adversarial turn-based semantics.
+
+    This objective delegates reusable ``Value`` comparison/projection rules to
+    ``EvaluationOrdering`` and supplies the current node's turn as context.
+    """
 
     evaluation_ordering: EvaluationOrdering = DEFAULT_EVALUATION_ORDERING
 
     def evaluate_value(self, value: Value, state: StateT) -> float:
-        """Return the existing projection-based search ordering key for this node."""
+        """Project one child ``Value`` using the current node-local perspective."""
         return self.evaluation_ordering.search_sort_key(
             value,
             side_to_move=state.turn,
         )
 
     def semantic_compare(self, left: Value, right: Value, state: StateT) -> int:
-        """Compare two values using the current side-to-move adversarial semantics."""
+        """Compare child ``Value`` objects using current node-local adversarial semantics."""
         return self.evaluation_ordering.semantic_compare(
             left,
             right,
@@ -30,7 +34,7 @@ class AdversarialZeroSumObjective[StateT: AnyTurnState = AnyTurnState]:
         )
 
     def terminal_score(self, over_event: AnyOverEvent, state: StateT) -> float:
-        """Project terminal outcomes using the current side-to-move perspective."""
+        """Project terminal outcomes using the current node's side-to-move context."""
         return self.evaluation_ordering.terminal_score(
             over_event,
             perspective=state.turn,

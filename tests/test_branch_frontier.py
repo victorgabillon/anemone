@@ -16,6 +16,7 @@ from anemone.node_evaluation.direct.node_direct_evaluator import EvaluationQueri
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
+from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
@@ -308,6 +309,14 @@ def test_single_agent_frontier_uses_explicit_ordering_cache_updates() -> None:
 
     assert parent.frontier_branches_in_order() == [1, 0]
     assert parent.decision_ordering.branch_ordering_keys == {
-        0: (0.1, 0, 1),
-        1: (0.9, 0, 2),
+        0: BranchOrderingKey(
+            primary_score=0.1,
+            tactical_tiebreak=0,
+            stable_tiebreak_id=1,
+        ),
+        1: BranchOrderingKey(
+            primary_score=0.9,
+            tactical_tiebreak=0,
+            stable_tiebreak_id=2,
+        ),
     }

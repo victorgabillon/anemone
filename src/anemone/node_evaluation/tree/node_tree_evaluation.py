@@ -19,7 +19,10 @@ from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvalua
 from anemone.node_evaluation.common.principal_variation import (
     PrincipalVariationState,
 )
-from anemone.node_evaluation.tree.decision_ordering import DecisionOrderingState
+from anemone.node_evaluation.tree.decision_ordering import (
+    BranchOrderingKey,
+    DecisionOrderingState,
+)
 from anemone.nodes.itree_node import ITreeNode
 from anemone.utils.logger import anemone_logger
 
@@ -30,7 +33,6 @@ if TYPE_CHECKING:
 
     from anemone.backup_policies.types import BackupResult
     from anemone.dynamics import SearchDynamics
-    from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
     from anemone.nodes.tree_node import TreeNode
     from anemone.objectives.objective import Objective
 
@@ -339,7 +341,7 @@ class NodeTreeEvaluationState[
         )
 
     def decision_ordered_branches(self) -> list[BranchKey]:
-        """Return child branches ordered by current family decision semantics."""
+        """Return child branches ordered by node-local semantics plus cached tie-breaks."""
         return self.decision_ordering.decision_ordered_branches(
             child_value_candidate_getter=self.child_value_candidate,
             semantic_compare=self._decision_semantic_compare,
@@ -398,7 +400,7 @@ class NodeTreeEvaluationState[
         return tuple(self.decision_ordered_branches())
 
     def _branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
-        """Return the shared branch-ordering key for one branch."""
+        """Return the cached branch-ordering key for one branch."""
         return self.decision_ordering.branch_ordering_keys[branch]
 
     def _branch_is_equivalent_to_best(
@@ -493,8 +495,8 @@ class NodeTreeEvaluationState[
         return 0
 
     def _branch_equivalence_score(self, branch: BranchKey) -> float:
-        """Return the family's primary scalar score for branch equivalence."""
-        return self._branch_ordering_key(branch)[0]
+        """Return the cached primary score used for branch-equivalence heuristics."""
+        return self._branch_ordering_key(branch).primary_score
 
     def _branch_logistic_equivalence_score(self, branch: BranchKey) -> float:
         """Return the score used by logistic-style best-branch equivalence."""
@@ -514,10 +516,10 @@ class NodeTreeEvaluationState[
         )  # the * min(1,x) is a hack to prioritize game over
 
     def update_branches_values(self, branches_to_consider: set[BranchKey]) -> None:
-        """Refresh cached ordering keys for branches that currently have a value."""
+        """Refresh cached branch-ordering keys for branches that currently have a value."""
         self.decision_ordering.update_branch_ordering_keys(
             self._branches_with_ordering_key_available(branches_to_consider),
-            branch_ordering_key_getter=self.branch_sort_value,
+            branch_ordering_key_getter=self._compute_branch_ordering_key,
         )
 
     def _branch_values_are_considered_equal(
@@ -540,21 +542,23 @@ class NodeTreeEvaluationState[
             == 0
         )
 
-    def branch_sort_value(self, branch_key: BranchKey) -> BranchOrderingKey:
-        """Return the generic ordering key for one child branch."""
+    def _compute_branch_ordering_key(self, branch_key: BranchKey) -> BranchOrderingKey:
+        """Build the cached branch-ordering key for one child branch."""
         child = self.tree_node.branches_children[branch_key]
         assert child is not None
 
         child_value = self.child_value_candidate(branch_key)
         assert child_value is not None, (
-            f"Cannot compute branch sort value: child {branch_key} has no Value yet. "
+            f"Cannot compute branch-ordering key: child {branch_key} has no Value yet. "
             "Ensure children are evaluated directly or backed up before ordering."
         )
 
-        return (
-            self.required_objective.evaluate_value(child_value, self.tree_node.state),
-            self._branch_exact_line_tactical_quality(branch_key),
-            child.id,
+        return BranchOrderingKey(
+            primary_score=self.required_objective.evaluate_value(
+                child_value, self.tree_node.state
+            ),
+            tactical_tiebreak=self._branch_exact_line_tactical_quality(branch_key),
+            stable_tiebreak_id=child.id,
         )
 
     def update_best_branch_sequence(
@@ -643,7 +647,7 @@ class NodeTreeEvaluationState[
         for branch_key in ordered_branches:
             ordering_key = self._branch_ordering_key(branch_key)
             branch_name = dynamics.action_name(self.tree_node.state, branch_key)
-            string_info += f" {branch_name} {ordering_key[0]} $$ "
+            string_info += f" {branch_name} {ordering_key.primary_score} $$ "
         anemone_logger.info(string_info)
 
 

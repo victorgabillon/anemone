@@ -1,4 +1,4 @@
-"""Provide branch decision-ordering capabilities for tree-search evaluations."""
+"""Provide branch-level decision-ordering helpers and protocols."""
 
 from collections.abc import Callable, Iterable
 from functools import cmp_to_key
@@ -23,7 +23,7 @@ def ordered_branches_from_candidates[T: _Orderable](
     *,
     semantic_compare: Callable[[Value, Value], int],
 ) -> list[BranchKey]:
-    """Return branches ordered by semantic value, tie-break data, then branch key."""
+    """Derive branch order from semantic ``Value`` comparison plus tie-break data."""
 
     def _cmp(
         left: tuple[BranchKey, Value, T],
@@ -47,7 +47,11 @@ def ordered_branches_from_candidates[T: _Orderable](
 
 @runtime_checkable
 class DecisionOrderedEvaluation(Protocol):
-    """Evaluation capability exposing family-specific child decision ordering."""
+    """Node-evaluation capability exposing derived branch decision ordering.
+
+    This protocol is about branch order at one node. It does not describe
+    ``Value``-level comparison policy or cached branch-ordering-key storage.
+    """
 
     def decision_ordered_branches(self) -> list[BranchKey]:
         """Return child branches ordered by current decision semantics."""
@@ -60,7 +64,7 @@ class DecisionOrderedEvaluation(Protocol):
 
 @runtime_checkable
 class SecondBestBranchAware(DecisionOrderedEvaluation, Protocol):
-    """Evaluation capability exposing the current top-two branch ordering."""
+    """Node-evaluation capability exposing the current top-two branch order."""
 
     def second_best_branch(self) -> BranchKey:
         """Return the current second-best branch key."""

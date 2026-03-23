@@ -1,4 +1,4 @@
-"""Single-agent maximizing Objective implementation."""
+"""Single-agent maximizing objective implementation."""
 
 from dataclasses import dataclass
 
@@ -10,17 +10,22 @@ from anemone._valanga_types import AnyOverEvent
 
 @dataclass(frozen=True, slots=True)
 class SingleAgentMaxObjective[StateT: State = State]:
-    """Interpret canonical Value objects with simple single-agent max semantics."""
+    """State-aware objective for simple single-agent max semantics.
+
+    This objective defines node-local comparison/projection rules directly rather
+    than delegating to ``EvaluationOrdering``. It still operates at the ``Value``
+    semantics layer, not the branch-cache layer.
+    """
 
     terminal_score_value: float = 0.0
 
     def evaluate_value(self, value: Value, state: StateT) -> float:
-        """Project a Value to the scalar used for single-agent max decisions."""
+        """Project one ``Value`` to the scalar used for node-local max decisions."""
         del state
         return value.score
 
     def semantic_compare(self, left: Value, right: Value, state: StateT) -> int:
-        """Prefer larger scores, with exact values winning equal-score ties."""
+        """Compare child ``Value`` objects for this node's max objective semantics."""
         del state
         if left.score > right.score:
             return 1
@@ -36,7 +41,7 @@ class SingleAgentMaxObjective[StateT: State = State]:
         return 0
 
     def terminal_score(self, over_event: AnyOverEvent, state: StateT) -> float:
-        """Return the explicit score convention for terminal single-agent states."""
+        """Return the terminal scalar score convention for this objective."""
         del over_event, state
         return self.terminal_score_value
 

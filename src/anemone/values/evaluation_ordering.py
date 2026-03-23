@@ -1,4 +1,4 @@
-"""Ordering utilities for Value comparison and search sorting."""
+"""Reusable ``Value`` comparison and projection policy objects."""
 
 from __future__ import annotations
 
@@ -23,7 +23,12 @@ class TerminalOutcome(Enum):
 
 @dataclass(frozen=True, slots=True)
 class EvaluationOrdering:
-    """Define terminal projection and exact-Value comparison semantics."""
+    """Define reusable ``Value``-level ordering semantics.
+
+    ``EvaluationOrdering`` is perspective-aware, but it is not tree-structure
+    aware: it compares and projects canonical ``Value`` objects without owning
+    any node-local branch cache or branch-order bookkeeping.
+    """
 
     win_score: float = 1.0
     draw_score: float = 0.0
@@ -31,7 +36,7 @@ class EvaluationOrdering:
     terminal_without_over_event: TerminalOutcome = TerminalOutcome.DRAW
 
     def terminal_score(self, over_event: AnyOverEvent, *, perspective: Color) -> float:
-        """Project a terminal over-event to a scalar score."""
+        """Project one exact terminal outcome to this policy's scalar score."""
         if over_event.is_draw():
             return self.draw_score
         if over_event.is_win_for(perspective):
@@ -39,7 +44,7 @@ class EvaluationOrdering:
         return self.loss_score
 
     def semantic_compare(self, a: Value, b: Value, *, side_to_move: Color) -> int:
-        """Compare values with terminal-outcome and exactness-aware rules."""
+        """Compare two ``Value`` objects using this policy's semantic rules."""
         a_outcome = self._terminal_outcome_or_none(a, perspective=side_to_move)
         b_outcome = self._terminal_outcome_or_none(b, perspective=side_to_move)
 
@@ -69,7 +74,7 @@ class EvaluationOrdering:
         *,
         side_to_move: Color,
     ) -> float:
-        """Return B-ish search key based on numeric projection.
+        """Project one ``Value`` to the scalar used by objective-level ordering.
 
         Uses projected numeric scores for terminal values and raw score for estimates,
         preserving legacy behavior where large-magnitude estimates can outrank

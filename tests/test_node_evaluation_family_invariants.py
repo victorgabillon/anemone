@@ -190,6 +190,46 @@ def test_family_specific_objective_semantics_remain_distinct() -> None:
     )
 
 
+def test_branch_ordering_key_preserves_legacy_field_ordering() -> None:
+    lower_primary = BranchOrderingKey(
+        primary_score=0.4,
+        tactical_tiebreak=99,
+        stable_tiebreak_id=99,
+    )
+    lower_tactical = BranchOrderingKey(
+        primary_score=0.5,
+        tactical_tiebreak=0,
+        stable_tiebreak_id=20,
+    )
+    lower_stable_id = BranchOrderingKey(
+        primary_score=0.5,
+        tactical_tiebreak=0,
+        stable_tiebreak_id=30,
+    )
+
+    assert sorted(
+        [
+            lower_stable_id,
+            lower_primary,
+            BranchOrderingKey(
+                primary_score=0.5,
+                tactical_tiebreak=1,
+                stable_tiebreak_id=10,
+            ),
+            lower_tactical,
+        ]
+    ) == [
+        lower_primary,
+        lower_tactical,
+        lower_stable_id,
+        BranchOrderingKey(
+            primary_score=0.5,
+            tactical_tiebreak=1,
+            stable_tiebreak_id=10,
+        ),
+    ]
+
+
 def test_generic_tree_evaluation_protocol_aligns_across_families() -> None:
     adversarial = NodeMinmaxEvaluation(tree_node=_adversarial_tree_node())
     single_agent = NodeMaxEvaluation(tree_node=_single_agent_tree_node())
@@ -281,9 +321,21 @@ def test_shared_tree_evaluation_base_owns_generic_best_equivalence_dispatch() ->
         ordered_branches=(0, 1, 2),
         best_branch_key=0,
         ordering_keys={
-            0: (0.50, 0, 10),
-            1: (0.52, 1, 11),
-            2: (0.50, 0, 12),
+            0: BranchOrderingKey(
+                primary_score=0.50,
+                tactical_tiebreak=0,
+                stable_tiebreak_id=10,
+            ),
+            1: BranchOrderingKey(
+                primary_score=0.52,
+                tactical_tiebreak=1,
+                stable_tiebreak_id=11,
+            ),
+            2: BranchOrderingKey(
+                primary_score=0.50,
+                tactical_tiebreak=0,
+                stable_tiebreak_id=12,
+            ),
         },
         branch_values={
             0: Value(score=0.50, certainty=Certainty.ESTIMATE),

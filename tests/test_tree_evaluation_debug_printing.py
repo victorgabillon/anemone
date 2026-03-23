@@ -95,16 +95,17 @@ def _make_minimax_parent() -> NodeMinmaxEvaluation[Any, Any]:
 
 
 @pytest.mark.parametrize(
-    ("parent", "expected_order"),
+    ("parent", "expected_order", "expected_primary_scores"),
     [
-        pytest.param(_make_single_agent_parent(), ["move:1", "move:0"]),
-        pytest.param(_make_minimax_parent(), ["move:1", "move:0"]),
+        pytest.param(_make_single_agent_parent(), ["move:1", "move:0"], ["0.5"]),
+        pytest.param(_make_minimax_parent(), ["move:1", "move:0"], ["0.7", "0.2"]),
     ],
 )
 def test_print_branch_ordering_is_available_via_shared_protocol(
     monkeypatch: pytest.MonkeyPatch,
     parent: NodeTreeEvaluation[Any],
     expected_order: list[str],
+    expected_primary_scores: list[str],
 ) -> None:
     messages: list[str] = []
 
@@ -120,3 +121,5 @@ def test_print_branch_ordering_is_available_via_shared_protocol(
     assert expected_order[0] in messages[1]
     assert expected_order[1] in messages[1]
     assert messages[1].index(expected_order[0]) < messages[1].index(expected_order[1])
+    for score in expected_primary_scores:
+        assert score in messages[1]

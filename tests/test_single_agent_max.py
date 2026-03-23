@@ -15,6 +15,7 @@ from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BestBranchEquivalenceMode,
 )
+from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
@@ -384,8 +385,16 @@ def test_single_agent_uses_shared_decision_ordering_state_cache() -> None:
 
     assert node.decision_ordered_branches() == [1, 0]
     assert node.decision_ordering.branch_ordering_keys == {
-        1: (0.5, 0, 10),
-        0: (0.5, 0, 20),
+        1: BranchOrderingKey(
+            primary_score=0.5,
+            tactical_tiebreak=0,
+            stable_tiebreak_id=10,
+        ),
+        0: BranchOrderingKey(
+            primary_score=0.5,
+            tactical_tiebreak=0,
+            stable_tiebreak_id=20,
+        ),
     }
 
 

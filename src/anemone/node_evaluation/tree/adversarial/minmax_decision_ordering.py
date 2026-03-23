@@ -1,4 +1,4 @@
-"""Compatibility aliases for the shared decision-ordering module."""
+"""Compatibility aliases over the shared branch decision-ordering module."""
 
 from anemone.node_evaluation.tree.decision_ordering import (
     BranchOrderingKey,
