@@ -269,9 +269,6 @@ class _FakeObservedOpenManager:
     def evaluate_expansions(self, tree_expansions: Any) -> None:
         del tree_expansions
 
-    def update_indices(self, tree: Any) -> None:
-        del tree
-
     def print_best_line(self, tree: Any) -> None:
         del tree
 
@@ -316,9 +313,6 @@ class _FakeObservedUpdateManager:
                 tree_expansion.branch_key or 0
             ]
             tree_expansion.parent_node.tree_evaluation.over_event = "solved"
-
-    def update_indices(self, tree: Any) -> None:
-        del tree
 
     def print_best_line(self, tree: Any) -> None:
         del tree

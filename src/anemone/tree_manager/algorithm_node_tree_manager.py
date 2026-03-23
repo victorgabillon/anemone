@@ -121,7 +121,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Refresh exploration indices after the upward propagation phases."""
         update_all_indices(index_manager=self.index_manager, tree=tree)
 
-    # Rendering helpers
+    # Presentation helpers
     def print_some_stats(self, tree: trees.Tree[NodeT]) -> None:
         """Print statistics about the given tree.
 
