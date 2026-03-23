@@ -6,8 +6,8 @@ Preferred public vocabulary:
 * ``create_search(...)`` builds the runnable runtime
 * ``SearchRuntime`` exposes ``step()`` and ``explore(...)``
 
-``SearchRecommender`` and the older ``TreeAndValue...`` names remain available
-for compatibility and convenience.
+``SearchRecommender`` remains available as the secondary recommend-only API.
+Legacy ``TreeAndValue...`` names remain available for compatibility.
 """
 
 from .factory import (

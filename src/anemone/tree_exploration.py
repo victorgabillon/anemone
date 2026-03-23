@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """Tree Exploration Result holds the result of a tree exploration."""
+    """Result of exploring one search tree."""
 
     branch_recommendation: Recommendation
     tree: trees.Tree[NodeT]
@@ -67,9 +67,6 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     ``SearchRuntime`` is the preferred public alias for callers who want a
     shorter top-level name for this runtime concept.
     """
-
-    # TODO: Not sure why this class is not simply the TreeAndValuePlayer Class
-    #  but might be useful when dealing with multi round and time , no?
 
     tree: trees.Tree[NodeT]
     tree_manager: tree_man.AlgorithmNodeTreeManager[NodeT]

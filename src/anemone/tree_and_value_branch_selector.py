@@ -31,8 +31,6 @@ class TreeAndValueBranchSelector[StateT: AnyTurnState = AnyTurnState]:
     alias for this secondary concept.
     """
 
-    # pretty empty class but might be useful when dealing with multi round and time , no?
-
     tree_manager: tree_man.AlgorithmNodeTreeManager
     tree_factory: ValueTreeFactory[StateT]
     stopping_criterion_args: AllStoppingCriterionArgs
@@ -46,17 +44,7 @@ class TreeAndValueBranchSelector[StateT: AnyTurnState = AnyTurnState]:
         seed: Seed,
         notify_progress: NotifyProgressCallable | None = None,
     ) -> Recommendation:
-        """Build a runtime, explore from ``state``, and return the recommendation.
-
-        Args:
-            state (StateT): The current state to explore.
-            seed (Seed): The seed used for randomization during branch selection.
-            notify_progress (NotifyProgressCallable | None): Optional progress callback.
-
-        Returns:
-            Recommendation: The recommended branch based on the tree and value strategy.
-
-        """
+        """Build a runtime, explore from ``state``, and return a recommendation."""
         tree_exploration: TreeExploration = self.create_tree_exploration(
             state=state, notify_progress=notify_progress
         )
@@ -86,7 +74,7 @@ class TreeAndValueBranchSelector[StateT: AnyTurnState = AnyTurnState]:
         return tree_exploration
 
     def print_info(self) -> None:
-        """Print information about the branch selector type."""
+        """Print a small human-readable label for this wrapper."""
         print("type: Tree and Value")
 
 

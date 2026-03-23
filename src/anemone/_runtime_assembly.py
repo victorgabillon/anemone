@@ -1,8 +1,7 @@
-"""Internal collaborator wiring for the public search-construction API.
+"""Internal collaborator wiring behind the public search constructors.
 
-This module assembles the concrete collaborators used by the public
-constructors in ``anemone.factory``. It is intentionally implementation-
-oriented and is not meant to be the primary user-facing API surface.
+This module exists to keep dependency assembly out of ``anemone.factory``.
+It is implementation-oriented and is not meant to be user-facing API.
 """
 
 from collections.abc import Hashable
@@ -40,8 +39,8 @@ if TYPE_CHECKING:
     )
 
 
-class SearchBuildArgsP(Protocol):
-    """Minimal config surface needed to assemble search collaborators."""
+class _SearchBuildArgsP(Protocol):
+    """Internal config surface needed to assemble search collaborators."""
 
     node_selector: ComposedNodeSelectorArgs
     opening_type: OpeningType
@@ -50,7 +49,7 @@ class SearchBuildArgsP(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class SearchRuntimeDependencies[StateT: AnyTurnState]:
-    """Reusable collaborators needed to assemble one search runtime."""
+    """Internal dependency bundle for one search runtime."""
 
     tree_manager: AlgorithmNodeTreeManager[AlgorithmNode[StateT]]
     tree_factory: ValueTreeFactory[StateT]
@@ -63,7 +62,7 @@ def assemble_search_runtime_dependencies[
 ](
     *,
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
-    args: SearchBuildArgsP,
+    args: _SearchBuildArgsP,
     random_generator: Random,
     master_state_evaluator: MasterStateValueEvaluator,
     state_representation_factory: RepresentationFactory[
@@ -73,7 +72,7 @@ def assemble_search_runtime_dependencies[
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
     hooks: SearchHooks | None = None,
 ) -> SearchRuntimeDependencies[StateT]:
-    """Assemble the concrete collaborators behind one search runtime."""
+    """Assemble collaborators for the public search constructors."""
     search_dynamics = normalize_search_dynamics(dynamics)
 
     node_evaluator: NodeDirectEvaluator[StateT] = create_node_evaluator(

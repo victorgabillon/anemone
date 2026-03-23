@@ -1,14 +1,15 @@
 """Public construction API for Anemone search runtimes.
 
-Preferred public vocabulary:
+Preferred entrypoints:
 
 * ``SearchArgs`` for build-time configuration
-* ``create_search(...)`` for building a runnable runtime
-* ``SearchRuntime`` for the runtime object itself
+* ``create_search(...)`` for the runnable runtime
+* ``SearchRuntime`` for the runtime object
 
 Internal collaborator wiring lives in ``anemone._runtime_assembly``. Legacy
 ``TreeAndValue...`` names remain available here for compatibility.
 """
+# pylint: disable=duplicate-code
 
 from collections.abc import Hashable
 from dataclasses import dataclass
@@ -54,6 +55,7 @@ from anemone.tree_exploration import (
 TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 
 
+# Public config aliases
 @dataclass
 class TreeAndValuePlayerArgs:
     """Configuration for building one search runtime.
@@ -72,6 +74,7 @@ class TreeAndValuePlayerArgs:
 
 SearchArgs = TreeAndValuePlayerArgs
 
+# Public exports
 __all__ = [
     "SearchArgs",
     "SearchRecommender",
@@ -87,42 +90,7 @@ __all__ = [
 ]
 
 
-def _build_runtime_from_dependencies[StateT: AnyTurnState](
-    *,
-    starting_state: StateT,
-    args: SearchArgs,
-    dependencies: SearchRuntimeDependencies[StateT],
-    notify_progress: NotifyProgressCallable | None = None,
-) -> SearchRuntime[AlgorithmNode[StateT]]:
-    """Build the runnable runtime from already-assembled collaborators."""
-    return create_tree_exploration(
-        node_selector_create=dependencies.node_selector_create,
-        starting_state=starting_state,
-        tree_manager=dependencies.tree_manager,
-        tree_factory=dependencies.tree_factory,
-        stopping_criterion_args=args.stopping_criterion,
-        recommend_branch_after_exploration=args.recommender_rule,
-        notify_percent_function=notify_progress,
-    )
-
-
-def _build_recommender_from_dependencies[StateT: AnyTurnState](
-    *,
-    args: SearchArgs,
-    random_generator: Random,
-    dependencies: SearchRuntimeDependencies[StateT],
-) -> SearchRecommender[StateT]:
-    """Build the thin recommendation wrapper from assembled collaborators."""
-    return TreeAndValueBranchSelector(
-        tree_manager=dependencies.tree_manager,
-        random_generator=random_generator,
-        tree_factory=dependencies.tree_factory,
-        node_selector_create=dependencies.node_selector_create,
-        stopping_criterion_args=args.stopping_criterion,
-        recommend_branch_after_exploration=args.recommender_rule,
-    )
-
-
+# Preferred runtime constructors
 def create_search[StateT: AnyTurnState, ActionT: Hashable](
     state_type: type[StateT],
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
@@ -137,11 +105,7 @@ def create_search[StateT: AnyTurnState, ActionT: Hashable](
     notify_progress: NotifyProgressCallable | None = None,
     hooks: SearchHooks | None = None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
-    """Build and return a ready-to-run ``TreeExploration`` runtime.
-
-    This is the preferred top-level construction path when callers want direct
-    control over one search instance via ``step()`` or ``explore(...)``.
-    """
+    """Build the preferred runnable ``TreeExploration`` runtime."""
     _ = state_type
 
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT]
@@ -179,7 +143,7 @@ def create_search_with_tree_eval_factory[
     notify_progress: NotifyProgressCallable | None = None,
     hooks: SearchHooks | None = None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
-    """Build a ready-to-run ``TreeExploration`` with an explicit value family."""
+    """Build the runtime with an explicit tree-evaluation family."""
     _ = state_type
 
     dependencies = assemble_search_runtime_dependencies(
@@ -200,6 +164,7 @@ def create_search_with_tree_eval_factory[
     )
 
 
+# Recommendation-only wrapper constructors
 def create_tree_and_value_branch_selector[StateT: AnyTurnState, ActionT: Hashable](
     state_type: type[StateT],
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
@@ -212,13 +177,7 @@ def create_tree_and_value_branch_selector[StateT: AnyTurnState, ActionT: Hashabl
     | None,
     hooks: SearchHooks | None = None,
 ) -> TreeAndValueBranchSelector[StateT]:
-    """Create a recommend-only wrapper around the tree-exploration runtime.
-
-    Callers that want direct runtime control should prefer
-    ``create_search(...)``. This wrapper remains useful when the only public
-    operation needed is
-    ``recommend(...)``.
-    """
+    """Build the secondary recommend-only wrapper over the runtime."""
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT]
     node_tree_evaluation_factory = NodeTreeMinmaxEvaluationFactory[StateT]()
 
@@ -250,7 +209,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT],
     hooks: SearchHooks | None = None,
 ) -> TreeAndValueBranchSelector[StateT]:
-    """Create the recommend-only wrapper while reusing the main assembly path."""
+    """Build the recommend-only wrapper with an explicit value family."""
     _ = state_type
 
     dependencies = assemble_search_runtime_dependencies(
@@ -270,6 +229,7 @@ def create_tree_and_value_branch_selector_with_tree_eval_factory[
     )
 
 
+# Compatibility wrappers
 def create_tree_and_value_exploration[StateT: AnyTurnState, ActionT: Hashable](
     state_type: type[StateT],
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
@@ -284,7 +244,7 @@ def create_tree_and_value_exploration[StateT: AnyTurnState, ActionT: Hashable](
     notify_progress: NotifyProgressCallable | None = None,
     hooks: SearchHooks | None = None,
 ) -> SearchRuntime[AlgorithmNode[StateT]]:
-    """Compatibility constructor for the default tree-and-value runtime."""
+    """Compatibility wrapper over ``create_search(...)``."""
     return create_search(
         state_type=state_type,
         dynamics=dynamics,
@@ -316,7 +276,7 @@ def create_tree_and_value_exploration_with_tree_eval_factory[
     notify_progress: NotifyProgressCallable | None = None,
     hooks: SearchHooks | None = None,
 ) -> SearchRuntime[AlgorithmNode[StateT]]:
-    """Compatibility family-aware constructor for the tree-and-value runtime."""
+    """Compatibility wrapper over ``create_search_with_tree_eval_factory(...)``."""
     return create_search_with_tree_eval_factory(
         state_type=state_type,
         dynamics=dynamics,
@@ -328,4 +288,41 @@ def create_tree_and_value_exploration_with_tree_eval_factory[
         node_tree_evaluation_factory=node_tree_evaluation_factory,
         notify_progress=notify_progress,
         hooks=hooks,
+    )
+
+
+# Local build helpers
+def _build_runtime_from_dependencies[StateT: AnyTurnState](
+    *,
+    starting_state: StateT,
+    args: SearchArgs,
+    dependencies: SearchRuntimeDependencies[StateT],
+    notify_progress: NotifyProgressCallable | None = None,
+) -> SearchRuntime[AlgorithmNode[StateT]]:
+    """Assemble the runtime from already-wired collaborators."""
+    return create_tree_exploration(
+        node_selector_create=dependencies.node_selector_create,
+        starting_state=starting_state,
+        tree_manager=dependencies.tree_manager,
+        tree_factory=dependencies.tree_factory,
+        stopping_criterion_args=args.stopping_criterion,
+        recommend_branch_after_exploration=args.recommender_rule,
+        notify_percent_function=notify_progress,
+    )
+
+
+def _build_recommender_from_dependencies[StateT: AnyTurnState](
+    *,
+    args: SearchArgs,
+    random_generator: Random,
+    dependencies: SearchRuntimeDependencies[StateT],
+) -> SearchRecommender[StateT]:
+    """Assemble the secondary recommend-only wrapper from shared wiring."""
+    return TreeAndValueBranchSelector(
+        tree_manager=dependencies.tree_manager,
+        random_generator=random_generator,
+        tree_factory=dependencies.tree_factory,
+        node_selector_create=dependencies.node_selector_create,
+        stopping_criterion_args=args.stopping_criterion,
+        recommend_branch_after_exploration=args.recommender_rule,
     )
