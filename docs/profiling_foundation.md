@@ -67,6 +67,13 @@ python -m anemone.profiling.cli run --scenario smoke --output-dir profiling_runs
 python -m anemone.profiling.cli run-suite --suite baseline --output-dir profiling_runs --repetitions 5 --component-summary
 ```
 
+GUI launcher:
+
+```bash
+pip install -e .[gui]
+python -m anemone.profiling.gui
+```
+
 Convenience runner entrypoint:
 
 ```bash
@@ -120,6 +127,21 @@ profiling_runs/
 
 This keeps the suite artifact comparison-ready without requiring later tooling to
 re-scan directories.
+
+## GUI
+
+PR4 adds a local Streamlit dashboard under `anemone.profiling.gui`.
+
+The dashboard can:
+
+- launch scenarios and suites
+- browse existing runs and suites
+- display component timing breakdowns
+- show readable profiler text artifacts
+- compare two runs or two suites
+
+The GUI reads the existing profiling artifacts only. It does not add new
+profiling hooks or modify core search behavior.
 
 When component summaries are enabled, the summary approximates framework
 overhead as:

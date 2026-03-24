@@ -1,4 +1,5 @@
 """Shared deterministic synthetic profiling scenarios."""
+# pylint: disable=duplicate-code,useless-return
 
 from __future__ import annotations
 
@@ -154,6 +155,7 @@ class SyntheticState(State):
         self.depth += 1
         self.node_key = self.child_key_from_branch(branch_key)
         self.turn = Color.BLACK if self.turn == Color.WHITE else Color.WHITE
+        return None
 
     def pprint(self) -> str:
         """Return a compact human-readable representation of the state."""
