@@ -115,9 +115,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
                     continue
 
                 parent_state = (
-                    parent_node.state
-                    if index_manager.needs_parent_state
-                    else None
+                    parent_node.state if index_manager.needs_parent_state else None
                 )
                 index_manager.update_node_indices(
                     child_node=child_node,
