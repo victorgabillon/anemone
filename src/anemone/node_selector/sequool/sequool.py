@@ -353,7 +353,7 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         if not self.recursif:
             self.all_nodes_not_opened.remove_descendant(best_node)
 
-        if self.recursif and best_node.tree_node.all_branches_generated:
+        if self.recursif and best_node.all_branches_generated:
             return self.choose_node_and_branch_to_open_recur(from_node=best_node)
 
         all_branches_to_open = self.opening_instructor.all_branches_to_open(

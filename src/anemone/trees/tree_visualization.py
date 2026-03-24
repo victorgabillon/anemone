@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 
     from anemone.dynamics import SearchDynamics
     from anemone.nodes import ITreeNode
-    from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
     from .tree import Tree
 
@@ -83,11 +82,11 @@ def add_dot[StateT: State](
     dot.body.extend(rendered.body)
 
 
-def display_special[StateT: State](
-    node: AlgorithmNode[StateT],
+def display_special(
+    node: ITreeNode[Any],
     format_str: str,
     index: dict[BranchKey, str],
-    dynamics: SearchDynamics[StateT, Any],
+    dynamics: SearchDynamics[Any, Any],
 ) -> Digraph:
     """Display a tree with the legacy special-edge label prefix for the given node."""
     return _render_snapshot(
@@ -97,10 +96,10 @@ def display_special[StateT: State](
     )
 
 
-def display[StateT: State](
-    tree: Tree[AlgorithmNode[StateT]],
+def display[NodeT: ITreeNode[Any]](
+    tree: Tree[NodeT],
     format_str: str,
-    dynamics: SearchDynamics[StateT, Any],
+    dynamics: SearchDynamics[Any, Any],
 ) -> Digraph:
     """Display a tree using the debug snapshot and DOT renderer."""
     return _render_snapshot(
@@ -110,18 +109,20 @@ def display[StateT: State](
     )
 
 
-def save_pdf_to_file[StateT: State](
-    tree: Tree[AlgorithmNode[StateT]], dynamics: SearchDynamics[StateT, Any]
+def save_pdf_to_file[NodeT: ITreeNode[Any]](
+    tree: Tree[NodeT], dynamics: SearchDynamics[Any, Any]
 ) -> None:
     """Save the visualization of a tree as a PDF file."""
     dot = display(tree=tree, format_str="pdf", dynamics=dynamics)
-    tag_ = tree.root_node.state.tag
+    tag_ = tree.root_node.tag
     dot.render("chipiron/runs/treedisplays/TreeVisual_" + str(tag_) + ".pdf")
 
 
-def save_raw_data_to_file(tree: Tree[AlgorithmNode], count: str = "#") -> None:
+def save_raw_data_to_file[NodeT: ITreeNode[Any]](
+    tree: Tree[NodeT], count: str = "#"
+) -> None:
     """Save raw tree data to a file."""
-    tag_ = tree.root_node.state.tag
+    tag_ = tree.root_node.tag
     filename = "chipiron/debugTreeData_" + str(tag_) + "-" + str(count) + ".td"
 
     sys.setrecursionlimit(100000)

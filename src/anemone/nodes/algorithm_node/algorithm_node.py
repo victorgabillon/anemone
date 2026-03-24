@@ -1,7 +1,4 @@
-"""Define the AlgorithmNode class used by the tree and value algorithm.
-
-It wraps tree nodes with tree-search evaluations and exploration tools.
-"""
+"""Runtime/search wrapper built on top of a structural ``TreeNode``."""
 
 from collections.abc import MutableMapping
 from typing import Self
@@ -22,9 +19,11 @@ from anemone.nodes.tree_node import TreeNode
 
 
 class AlgorithmNode[StateT: State = State]:
-    """The generic node used by the tree and value algorithm.
+    """Algorithm-facing wrapper that still exposes the structural ``ITreeNode`` surface.
 
-    It wraps tree nodes with tree-search evaluations and exploration tools.
+    ``AlgorithmNode`` owns search/runtime concerns such as tree evaluation,
+    exploration-index payloads, and optional evaluator representations while
+    delegating structural navigation to the wrapped ``TreeNode``.
     """
 
     tree_node: TreeNode[Self, StateT]

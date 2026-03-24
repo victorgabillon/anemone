@@ -1,4 +1,4 @@
-"""Define the TreeNode class, which represents a node in a tree structure."""
+"""Generic structural node implementation shared by tree wrappers."""
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -15,10 +15,11 @@ class TreeNode[
     FamilyT: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ]:
-    r"""Represent a node in a tree structure.
+    r"""Concrete structural implementation of ``ITreeNode``.
 
-    The TreeNode class stores information about a specific state, including its depth
-    and parent-child relationships with other nodes.
+    ``TreeNode`` stores navigation and branch-opening bookkeeping only: state,
+    tree depth, parent/child links, and unopened-branch tracking. Search/runtime
+    layers should wrap it rather than grow more algorithm semantics here.
 
     Attributes:
         id\_ (int): The number to identify this node for easier debugging.

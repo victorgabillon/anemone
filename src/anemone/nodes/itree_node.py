@@ -1,14 +1,9 @@
-"""Define the interface for a tree node used in branch selection.
+"""Structural protocol shared by tree-node wrappers.
 
-The `ITreeNode` protocol represents a node in a tree structure for exploring
-possible branches. It provides properties and methods for accessing information
-about the node, such as its ID, state, depth, child nodes, and parent nodes.
-
-The `ITreeNode` protocol also defines methods for adding a parent node,
-checking if all branches have been generated, accessing the available
-branches, and checking if the state is terminal.
-
-Note: This is an interface and should not be instantiated directly.
+`ITreeNode` defines the navigation and branch-opening surface that generic tree
+helpers are allowed to depend on. It intentionally stays structural: search
+runtime details such as evaluations, exploration indices, and PV bookkeeping
+belong on higher-level wrappers like `AlgorithmNode`, not on this protocol.
 """
 
 from collections.abc import MutableMapping
@@ -18,7 +13,7 @@ from valanga import BranchKey, State, StateTag
 
 
 class ITreeNode[StateT: State = State](Protocol):
-    """The `ITreeNode` protocol represents a node in a tree structure used for selecting branches."""
+    """Structural/navigation protocol for nodes stored in a tree."""
 
     @property
     def id(self) -> int:
@@ -90,6 +85,11 @@ class ITreeNode[StateT: State = State](Protocol):
     @all_branches_generated.setter
     def all_branches_generated(self, value: bool) -> None:
         """Set the flag indicating that all branches have been generated."""
+
+    @property
+    def non_opened_branches(self) -> set[BranchKey]:
+        """Return structural branches that exist conceptually but are not opened yet."""
+        ...
 
     @property
     def tag(self) -> StateTag:

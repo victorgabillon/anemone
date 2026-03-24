@@ -11,14 +11,13 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 )
 
 from .itree_node import ITreeNode
-from .tree_node import TreeNode
 
 
-def are_all_branches_and_children_opened(tree_node: TreeNode) -> bool:
-    """Check if all branches and children of a tree node are opened.
+def are_all_branches_and_children_opened(tree_node: ITreeNode[Any]) -> bool:
+    """Check if all structural branches of a node have been opened.
 
     Args:
-        tree_node (TreeNode): The tree node to check.
+        tree_node (ITreeNode): The tree node to check.
 
     Returns:
         bool: True if all branches and children are opened, False otherwise.
@@ -107,7 +106,7 @@ def print_a_branch_sequence_from_root[StateT: State](
     """Print the branch sequence from the root node to a given tree node.
 
     Args:
-        tree_node (TreeNode): The tree node to print the branch sequence for.
+        tree_node (ITreeNode): The tree node to print the branch sequence for.
 
     Returns:
         None

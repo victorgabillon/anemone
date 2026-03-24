@@ -75,7 +75,7 @@ class UpdateIndexLocalMinChange:
         assert parent_node_exploration_index_data.interval is not None
         inter_level_interval: Interval | None
         local_index: float | None
-        if len(parent_node.tree_node.branches_children) == 1:
+        if len(parent_node.branches_children) == 1:
             local_index = parent_node_exploration_index_data.index
             inter_level_interval = parent_node_exploration_index_data.interval
         else:

@@ -115,7 +115,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
                     continue
 
                 parent_state = (
-                    parent_node.tree_node.state
+                    parent_node.state
                     if index_manager.needs_parent_state
                     else None
                 )
@@ -142,7 +142,7 @@ def print_all_indices[NodeT: AlgorithmNode[Any]](
             if parent_node.exploration_index_data is not None:
                 print(
                     "parent_node",
-                    parent_node.tree_node.id,
+                    parent_node.id,
                     parent_node.exploration_index_data.index,
                 )
 
