@@ -1,12 +1,14 @@
 # Nodes
 
-This package defines the core tree data structures.
+This package defines the node-layer vocabulary used across the search runtime.
 
-## Key pieces
+- `ITreeNode`: structural/navigation protocol
+- `TreeNode`: concrete structural implementation
+- `AlgorithmNode`: runtime/search wrapper in `anemone.nodes.algorithm_node`
 
-- `tree_node.py`: `TreeNode` stores the shared graph structure, including parent
-  links, child branches, and the associated `valanga` state.
-- `itree_node.py`: `ITreeNode` protocol used by wrappers to expose navigation
-  consistently.
-- `algorithm_node/`: Higher-level wrappers that attach evaluation and exploration
-  data to a `TreeNode`.
+`TreeNode` owns structure only. `AlgorithmNode` adds tree evaluation,
+exploration-index payloads, and optional evaluator representations on top of
+that structure.
+
+For the end-to-end runtime flow, see
+[`docs/source/search_iteration_architecture.rst`](../../../docs/source/search_iteration_architecture.rst).

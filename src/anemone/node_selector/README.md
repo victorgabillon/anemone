@@ -1,17 +1,29 @@
-# Node selection
+# Node selector
 
-Node selectors choose which node and branch to open next during tree exploration.
+This package decides which node or branch should be opened next during search.
 
-## Key pieces
+## Key concepts
 
-- `factory.py`: `create()` builds a selector from configuration arguments.
-- `opening_instructions.py`: Defines how branches are opened (and which
-  branches to open).
-- `node_selector.py` / `node_selector_args.py`: Base classes and argument types.
-- `node_selector_types.py`: Enumerates supported selector types.
+- selector: chooses where the search goes next
+- opening instructions: the concrete node/branch openings returned by a selector
+- opening instructor: turns "open this node" into the actual branches to open
 
-Concrete strategies are in subfolders:
+## What selectors read and return
 
-- `uniform/` for uniform selection.
-- `recurzipf/` for RecurZipf-based sampling.
-- `sequool/` for Sequool-style depth selection.
+- selectors read evaluation state and, depending on strategy, may also read
+  branch-frontier or exploration-index state
+- selectors return `OpeningInstructions` for the structural expansion phase
+
+## Composition
+
+- `composed/`: optional priority override plus base selector
+- `uniform/`, `recurzipf/`, `sequool/`: concrete strategy families
+
+## Out of scope
+
+- selectors do not evaluate nodes
+- selectors do not back up values
+- selectors do not recompute exploration indices
+
+For the end-to-end runtime flow, see
+[`docs/source/search_iteration_architecture.rst`](../../../docs/source/search_iteration_architecture.rst).

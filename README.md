@@ -1,17 +1,19 @@
 # anemone
 
-`anemone` is a Python library for tree search over `valanga` game states. It builds a
-shared tree graph and layers algorithm-specific wrappers on top so you can plug in
-node evaluation, exploration indices, and selection policies for "tree and value"
-searches.
+`anemone` is a Python library for tree search over `valanga` game states. It
+separates structural tree storage, runtime search state, node evaluation,
+exploration indices, and selector/opening logic so different search policies can
+share one coherent runtime.
 
-## Highlights
+## Overview
 
-- Tree-and-value exploration pipeline driven by `TreeAndValueBranchSelector`.
-- Modular factories for node evaluation, selection, index computation, and tree
-  management.
-- Pluggable stopping criteria and recommender rules for final branch selection.
-- Optional torch-based evaluator for batched neural evaluations.
+The main architectural split is:
+
+- structure: `TreeNode` and `ITreeNode`
+- runtime: `AlgorithmNode` and `TreeExploration`
+- evaluation: direct evaluation plus backed-up tree evaluation
+- exploration: per-node exploration-index payloads and tree-wide recomputation
+- selection: selectors and opening instructions that decide what to expand next
 
 ## Installation
 
@@ -19,101 +21,88 @@ searches.
 pip install anemone
 ```
 
-Optional torch integration:
+Optional extras:
 
 ```bash
 pip install anemone[nn]
-```
-
-Optional debug tooling:
-
-```bash
 pip install anemone[debug]
 ```
 
 Debug snapshot export and the debug browser's SVG rendering also require the
-system Graphviz executable (`dot`) to be installed.
+system Graphviz executable (`dot`).
 
-- Ubuntu: `sudo apt install graphviz`
-- macOS: `brew install graphviz`
+## Getting started
 
-## Quick start
+The canonical public entry point is `anemone.factory.create_search`.
 
-`anemone` exposes factory helpers to build a branch selector configured with your
-node selector, evaluation, and stopping-criterion choices. At runtime you feed it a
-`valanga` state and a seed to get back a branch recommendation.
+- Use `anemone.factory` to build a runnable search runtime.
+- Treat `anemone._runtime_assembly` and `anemone.search_factory` as internal
+  wiring layers behind that API.
+- Use `TreeAndValueBranchSelector` only when you want the higher-level
+  one-shot recommendation wrapper instead of driving the runtime directly.
 
 ```python
 from random import Random
 
-from anemone import TreeAndValuePlayerArgs, create_tree_and_value_branch_selector
-from anemone.node_selector.factory import UniformArgs
-from anemone.node_selector.node_selector_types import NodeSelectorType
-from anemone.progress_monitor.progress_monitor import (
-    StoppingCriterionTypes,
-    TreeBranchLimitArgs,
-)
-from anemone.recommender_rule.recommender_rule import SoftmaxRule
+from anemone.factory import SearchArgs, create_search
 
-# Populate the pieces specific to your game domain.
-args = TreeAndValuePlayerArgs(
-    node_selector=UniformArgs(type=NodeSelectorType.UNIFORM),
-    opening_type=None,
-    stopping_criterion=TreeBranchLimitArgs(
-        type=StoppingCriterionTypes.TREE_BRANCH_LIMIT,
-        tree_branch_limit=100,
-    ),
-    recommender_rule=SoftmaxRule(type="softmax", temperature=1.0),
+# Domain-specific collaborators omitted for brevity:
+# - YourStateType
+# - your_dynamics
+# - starting_state
+# - your_evaluator
+# - your_selector_args
+# - your_opening_type
+# - your_stopping_criterion
+# - your_recommender_rule
+args = SearchArgs(
+    node_selector=your_selector_args,
+    opening_type=your_opening_type,
+    stopping_criterion=your_stopping_criterion,
+    recommender_rule=your_recommender_rule,
 )
 
-selector = create_tree_and_value_branch_selector(
+runtime = create_search(
     state_type=YourStateType,
+    dynamics=your_dynamics,
+    starting_state=starting_state,
     args=args,
     random_generator=Random(0),
-    master_state_evaluator=your_state_evaluator,
+    master_state_value_evaluator=your_evaluator,
     state_representation_factory=None,
-    queue_progress_player=None,
 )
 
-recommendation = selector.select_branch(state=current_state, selection_seed=0)
-print(recommendation.branch_key)
+result = runtime.explore(Random(0))
+print(result.branch_recommendation.recommended_name)
 ```
 
-## Design
+## Core concepts
 
-This codebase follows a “core node + wrappers” pattern.
+- `TreeNode`: the concrete structural node storing state, depth, and links.
+- `AlgorithmNode`: the runtime wrapper that adds tree evaluation and
+  exploration-index payloads.
+- `direct_value`: the immediate evaluator output for one node.
+- `backed_up_value`: the subtree-derived value propagated from children.
+- exploration index: optional per-node search-priority data recomputed across
+  the tree by a configured strategy.
 
-- **`TreeNode` (core)**
-  - `TreeNode` is the canonical, shared data structure.
-  - It stores the graph structure: `branches_children` and `parent_nodes`.
-  - There is conceptually a single tree/graph of `TreeNode`s.
+## How it works
 
-- **Wrappers implement `ITreeNode`**
-  - Higher-level nodes (e.g. `AlgorithmNode`) wrap a `TreeNode` and add algorithm-specific state:
-    evaluation, indices, representations, etc.
-  - Wrappers expose navigation by delegating to the underlying `TreeNode`.
+- `create_search(...)` assembles the runtime, direct evaluator, selector
+  factory, tree-evaluation factory, and tree manager.
+- The initial tree is created with a directly evaluated root node.
+- A selector chooses which node or branch to open next.
+- The tree manager expands the structure and creates any new runtime nodes.
+- Direct evaluation fills `direct_value` on newly created nodes.
+- Upward propagation recomputes `backed_up_value`, branch ordering, and
+  principal variation.
+- Exploration-index payloads are refreshed for the next iteration.
 
-- **Homogeneity at the wrapper level**
-  - Even though `TreeNode` is the core place where connections are stored, each wrapper is intended to be
-    *closed under parent/child links*:
-    - a wrapper’s `branches_children` and `parent_nodes` contain that same wrapper type.
-    - today this is typically either “all `TreeNode`” or “all `AlgorithmNode`”.
-    - in the future, another wrapper can exist (still implementing `ITreeNode`), and it should also be
-      homogeneous within itself.
+## Documentation
 
-The practical motivation is:
-- algorithms can be written against `ITreeNode` (for navigation) and against wrappers like `AlgorithmNode`
-  (for algorithm-specific fields),
-- while keeping a single shared underlying structure that can be accessed consistently from any wrapper.
-
-## Repository layout
-
-Each important package folder includes a local README with details. Start with:
-
-- `src/anemone/` for the main search pipeline and public entry points.
-- `src/anemone/node_selector/` for selection strategies (Uniform, RecurZipf, Sequool).
-- `src/anemone/node_evaluation/` for direct evaluation and minmax tree evaluation.
-- `src/anemone/tree_manager/`, `src/anemone/trees/`, and `src/anemone/updates/` for tree construction,
-  expansion, and backpropagation.
-- `src/anemone/indices/` for exploration index computation and updates.
-- `tests/` for index and tree-building fixtures.
+- [Search iteration architecture](docs/source/search_iteration_architecture.rst)
+- [Node evaluation README](src/anemone/node_evaluation/README.md)
+- [Exploration indices README](src/anemone/indices/README.md)
+- [Node selector README](src/anemone/node_selector/README.md)
+- [Nodes README](src/anemone/nodes/README.md)
+- [Search factory README](src/anemone/search_factory/README.md)

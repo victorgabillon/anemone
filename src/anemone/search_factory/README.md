@@ -1,10 +1,13 @@
-# Search factories
+# Search factory
 
-Search factories create coordinated components that must share the same
-configuration:
+This package is an internal assembly layer.
 
-- Node selectors (`node_selector/`).
-- Exploration index data (`indices/`).
+- `SearchFactory` keeps selector creation and exploration-index payload creation
+  coherent for one runtime configuration.
+- `_runtime_assembly` uses it while building the runnable search runtime.
+- `anemone.factory` remains the public entry point for callers.
 
-`search_factory.py` exposes `SearchFactory` and `SearchFactoryP` to keep selector,
-index creation, and search configuration in sync.
+If you are new to the codebase, start from `anemone.factory`, not here.
+
+For the end-to-end runtime flow, see
+[`docs/source/search_iteration_architecture.rst`](../../../docs/source/search_iteration_architecture.rst).

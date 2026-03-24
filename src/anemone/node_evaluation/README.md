@@ -1,14 +1,26 @@
 # Node evaluation
 
-Node evaluation is split into two layers:
+This package owns Anemone's value semantics and tree-evaluation state.
 
-- **Common** (`common/`): canonical `Value` semantics and the shared
-  node-evaluation protocol.
-- **Direct evaluation** (`direct/`): evaluates a single game state and exposes
-  `NodeDirectEvaluator` along with the `MasterStateEvaluator` protocol.
-- **Tree evaluation** (`tree/`): aggregates child evaluations and computes
-  backed-up values for the single-agent and adversarial search families, with a
-  shared `NodeTreeEvaluation` protocol for generic search orchestration.
+## Key concepts
 
-Factories in these modules are used by the main `factory.py` entry points to
-build the evaluation pipeline for the tree-and-value search.
+- `direct_value`: immediate evaluator output for one node
+- `backed_up_value`: subtree-derived value propagated from children
+- candidate value: best currently available value, preferring backed-up over
+  direct when both exist
+- canonical value: the required concrete `Value` returned to consumers that
+  need one
+
+## Structure
+
+- `common/`: shared value semantics and protocols
+- `direct/`: immediate evaluation of individual nodes
+- `tree/`: backup, branch ordering, branch frontier, and principal variation
+
+## Out of scope
+
+- no exploration-index strategy logic
+- no selector/opening policy logic
+
+For the end-to-end runtime flow, see
+[`docs/source/search_iteration_architecture.rst`](../../../docs/source/search_iteration_architecture.rst).
