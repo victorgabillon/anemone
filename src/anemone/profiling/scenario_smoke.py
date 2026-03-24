@@ -22,6 +22,8 @@ from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import OpeningType
 from anemone.node_selector.priority_check.noop_args import NoPriorityCheckArgs
 from anemone.node_selector.uniform.uniform import UniformArgs
+from anemone.profiling.collectors import wrap_profiled_components
+from anemone.profiling.scenario_runtime import ScenarioRuntime, ScenarioRuntimeOptions
 from anemone.profiling.scenarios import ProfilingScenario
 from anemone.progress_monitor.progress_monitor import (
     StoppingCriterionTypes,
@@ -258,8 +260,8 @@ def _build_smoke_args() -> SearchArgs:
     )
 
 
-def _run_smoke_search() -> None:
-    """Run a tiny real search via the public API to validate the profiling shell."""
+def _build_smoke_runtime(options: ScenarioRuntimeOptions) -> ScenarioRuntime:
+    """Build the smoke runtime, optionally wrapping injectable components."""
     children_by_id = {
         0: [1, 2],
         1: [],
@@ -276,25 +278,48 @@ def _run_smoke_search() -> None:
         turn=Color.WHITE,
     )
 
-    with suppress_logging(anemone_logger):
-        exploration = create_search(
-            state_type=_SmokeState,
-            dynamics=_SmokeDynamics(),
-            starting_state=starting_state,
-            args=_build_smoke_args(),
-            random_generator=Random(0),
-            master_state_value_evaluator=_SmokeValueEvaluator(value_by_id),
-            state_representation_factory=None,
+    dynamics: SearchDynamics[_SmokeState, Any] = _SmokeDynamics()
+    evaluator: MasterStateValueEvaluator = _SmokeValueEvaluator(value_by_id)
+    component_collectors = None
+    if options.component_summary:
+        evaluator, dynamics, component_collectors = wrap_profiled_components(
+            evaluator=evaluator,
+            dynamics=dynamics,
         )
-        result = exploration.explore(random_generator=Random(0))
 
-    if exploration.tree.nodes_count != 3:
-        raise RuntimeError(
-            "Smoke profiling scenario expected a 3-node tree, "
-            f"got {exploration.tree.nodes_count}"
-        )
-    if result.branch_recommendation.recommended_name is None:
-        raise RuntimeError("Smoke profiling scenario did not produce a recommendation")
+    exploration = create_search(
+        state_type=_SmokeState,
+        dynamics=dynamics,
+        starting_state=starting_state,
+        args=_build_smoke_args(),
+        random_generator=Random(0),
+        master_state_value_evaluator=evaluator,
+        state_representation_factory=None,
+    )
+
+    def runner() -> None:
+        with suppress_logging(anemone_logger):
+            result = exploration.explore(random_generator=Random(0))
+
+        if exploration.tree.nodes_count != 3:
+            raise RuntimeError(
+                "Smoke profiling scenario expected a 3-node tree, "
+                f"got {exploration.tree.nodes_count}"
+            )
+        if result.branch_recommendation.recommended_name is None:
+            raise RuntimeError(
+                "Smoke profiling scenario did not produce a recommendation"
+            )
+
+    return ScenarioRuntime(
+        runner=runner,
+        component_collectors=component_collectors,
+    )
+
+
+def _run_smoke_search() -> None:
+    """Run a tiny real search via the public API to validate the profiling shell."""
+    _build_smoke_runtime(ScenarioRuntimeOptions()).runner()
 
 
 def build_smoke_scenario() -> ProfilingScenario:
@@ -303,4 +328,5 @@ def build_smoke_scenario() -> ProfilingScenario:
         name="smoke",
         description="Tiny real end-to-end search using public Anemone APIs.",
         runner=_run_smoke_search,
+        runtime_builder=_build_smoke_runtime,
     )

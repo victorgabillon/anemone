@@ -5,9 +5,10 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, cast
 
 from .artifacts import RunStatus
+from .external_profilers import ProfilerName, SUPPORTED_EXTERNAL_PROFILERS
 from .runner import run_scenario
 from .scenarios import list_scenarios
 from .storage import default_runs_base_dir
@@ -35,6 +36,17 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         default=str(default_runs_base_dir()),
         help="Base directory where the profiling run folder will be created.",
     )
+    run_parser.add_argument(
+        "--profiler",
+        choices=SUPPORTED_EXTERNAL_PROFILERS,
+        default="none",
+        help="Optional external profiler to run around the scenario.",
+    )
+    run_parser.add_argument(
+        "--component-summary",
+        action="store_true",
+        help="Enable wrapper-based component timing when the scenario supports it.",
+    )
 
     subparsers.add_parser(
         "list-scenarios",
@@ -60,6 +72,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.scenario,
             Path(args.output_dir),
             command=[sys.executable, "-m", "anemone.profiling.cli", *argv_list],
+            profiler=cast(ProfilerName, args.profiler),
+            component_summary=args.component_summary,
         )
     except Exception as exc:  # pragma: no cover - simple CLI guard
         print(f"profiling run failed before artifact creation: {exc}", file=sys.stderr)

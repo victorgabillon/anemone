@@ -7,10 +7,9 @@ import platform
 import socket
 import subprocess
 import sys
-import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, cast
 
 from .artifacts import (
     RunArtifacts,
@@ -19,6 +18,16 @@ from .artifacts import (
     RunStatus,
     RunTimingSummary,
 )
+from .component_summary import (
+    COMPONENT_SUMMARY_FILENAME,
+    save_component_summary,
+)
+from .external_profilers import (
+    ProfilerName,
+    SUPPORTED_EXTERNAL_PROFILERS,
+    run_with_external_profiler,
+)
+from .scenario_runtime import ScenarioRuntime, ScenarioRuntimeOptions
 from .scenarios import get_scenario
 from .storage import (
     default_runs_base_dir,
@@ -68,6 +77,8 @@ def run_scenario(
     *,
     command: Sequence[str] | None = None,
     cwd: Path | None = None,
+    profiler: ProfilerName = "none",
+    component_summary: bool = False,
 ) -> RunResult:
     """Execute one profiling scenario and persist its run artifact."""
     scenario = get_scenario(scenario_name)
@@ -88,30 +99,84 @@ def run_scenario(
         git_commit=_discover_git_commit(current_cwd),
         cwd=str(current_cwd.resolve()),
         command=[] if command is None else list(command),
-        notes={"scenario_description": scenario.description},
+        notes={
+            "scenario_description": scenario.description,
+            "profiler": profiler,
+            "component_summary_requested": str(component_summary).lower(),
+            "wall_time_definition": (
+                "scenario execution wall time excluding profiler artifact writing"
+            ),
+        },
     )
 
     status = RunStatus.SUCCESS
     error_message: str | None = None
-    start_perf_counter = time.perf_counter()
+    extra_paths: dict[str, str] = {}
+    scenario_runtime: ScenarioRuntime | None = None
+    total_run_wall_time_seconds = 0.0
     try:
-        scenario.runner()
+        if scenario.runtime_builder is None:
+            scenario_runtime = ScenarioRuntime(runner=scenario.runner)
+        else:
+            scenario_runtime = scenario.runtime_builder(
+                ScenarioRuntimeOptions(component_summary=component_summary)
+            )
+        metadata.notes["component_summary_available"] = str(
+            scenario_runtime.component_collectors is not None
+        ).lower()
+        profiler_result = run_with_external_profiler(
+            profiler,
+            scenario_runtime.runner,
+            run_dir,
+        )
+        total_run_wall_time_seconds = profiler_result.execution_wall_time_seconds
+        extra_paths.update(profiler_result.extra_paths)
+        if profiler_result.captured_error is not None:
+            status = RunStatus.FAILED
+            error_message = (
+                "Scenario execution failed: "
+                f"{type(profiler_result.captured_error).__name__}: "
+                f"{profiler_result.captured_error}"
+            )
     except Exception as exc:  # pragma: no cover - exercised by tests
         status = RunStatus.FAILED
         error_message = (
             f"Scenario execution failed: {type(exc).__name__}: {exc}"
         )
 
+    if (
+        component_summary
+        and scenario_runtime is not None
+        and scenario_runtime.component_collectors is not None
+    ):
+        try:
+            component_summary_path = run_dir / COMPONENT_SUMMARY_FILENAME
+            summary = scenario_runtime.component_collectors.build_summary(
+                total_run_wall_time_seconds
+            )
+            save_component_summary(summary, component_summary_path)
+            extra_paths["component_summary_json"] = str(component_summary_path)
+            metadata.notes["component_summary_enabled"] = "true"
+        except Exception as exc:  # pragma: no cover - simple artifact guard
+            component_error = (
+                f"Component summary generation failed: {type(exc).__name__}: {exc}"
+            )
+            if error_message is None:
+                status = RunStatus.FAILED
+                error_message = component_error
+            else:
+                error_message = f"{error_message}; {component_error}"
+
     finished_at = _timestamp_utc_now()
     result = RunResult(
         status=status,
         metadata=metadata,
         timing=RunTimingSummary(
-            wall_time_seconds=time.perf_counter() - start_perf_counter
+            wall_time_seconds=total_run_wall_time_seconds
         ),
         artifacts=RunArtifacts(
             run_json_path=str(run_json_path),
-            extra_paths={},
+            extra_paths=extra_paths,
         ),
         error_message=error_message,
     )
@@ -136,6 +201,17 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         default=str(default_runs_base_dir()),
         help="Base directory where the profiling run folder will be created.",
     )
+    parser.add_argument(
+        "--profiler",
+        choices=SUPPORTED_EXTERNAL_PROFILERS,
+        default="none",
+        help="Optional external profiler to run around the scenario.",
+    )
+    parser.add_argument(
+        "--component-summary",
+        action="store_true",
+        help="Enable wrapper-based component timing when the scenario supports it.",
+    )
     return parser
 
 
@@ -150,6 +226,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.scenario,
             Path(args.output_dir),
             command=[sys.executable, "-m", "anemone.profiling.runner", *argv_list],
+            profiler=cast(ProfilerName, args.profiler),
+            component_summary=args.component_summary,
         )
     except Exception as exc:  # pragma: no cover - simple CLI guard
         print(f"profiling run failed before artifact creation: {exc}", file=sys.stderr)

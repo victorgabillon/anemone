@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from functools import partial
 from importlib import import_module
 
+from .scenario_runtime import ScenarioRuntime, ScenarioRuntimeOptions
+
 
 @dataclass(slots=True)
 class ProfilingScenario:
@@ -15,6 +17,7 @@ class ProfilingScenario:
     name: str
     description: str
     runner: Callable[[], None]
+    runtime_builder: Callable[[ScenarioRuntimeOptions], ScenarioRuntime] | None = None
 
 
 @dataclass(frozen=True, slots=True)
