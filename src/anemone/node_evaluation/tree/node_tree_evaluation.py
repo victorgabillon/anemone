@@ -18,7 +18,6 @@ from anemone.node_evaluation.common.principal_variation import (
     PrincipalVariationState,
 )
 from anemone.node_evaluation.tree import (
-    backup_orchestration,
     best_branch_equivalence,
     branch_ordering_runtime,
     debug_printing,
@@ -332,8 +331,8 @@ class NodeTreeEvaluationState[
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Delegate backup work to the configured tree-evaluation backup policy."""
-        return backup_orchestration.backup_from_children(
-            backup_policy=self.backup_policy,
+        assert self.backup_policy is not None
+        return self.backup_policy.backup_from_children(
             node_eval=self,
             branches_with_updated_value=branches_with_updated_value,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
