@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from anemone.dynamics import SearchDynamics
-from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
+from anemone.node_evaluation.direct.protocols import (
+    MasterStateValueEvaluator,
+    OverEventDetector,
+)
 
 from .component_summary import ComponentSummary, TimedCallStats
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    import valanga
+    from valanga import State
 
 
 @dataclass(slots=True)
@@ -65,7 +73,9 @@ class EvaluatorTimingCollector:
     """Method-level accumulators for a wrapped evaluator."""
 
     total: _MutableTimingAccumulator = field(default_factory=_MutableTimingAccumulator)
-    evaluate: _MutableTimingAccumulator = field(default_factory=_MutableTimingAccumulator)
+    evaluate: _MutableTimingAccumulator = field(
+        default_factory=_MutableTimingAccumulator
+    )
     evaluate_batch_items: _MutableTimingAccumulator = field(
         default_factory=_MutableTimingAccumulator
     )
@@ -114,7 +124,9 @@ class DynamicsTimingCollector:
 
     def legal_actions_summary(self) -> TimedCallStats | None:
         """Return the timing summary for dynamics `legal_actions(...)`."""
-        return None if self.legal_actions.call_count == 0 else self.legal_actions.freeze()
+        return (
+            None if self.legal_actions.call_count == 0 else self.legal_actions.freeze()
+        )
 
 
 @dataclass(slots=True)
@@ -168,45 +180,56 @@ class ComponentCollectors:
 class TimingMasterStateValueEvaluator(MasterStateValueEvaluator):
     """Transparent timing wrapper around a master state evaluator."""
 
+    over: OverEventDetector
+
     def __init__(
         self,
         wrapped: MasterStateValueEvaluator,
         collector: EvaluatorTimingCollector,
     ) -> None:
+        """Wrap one evaluator while preserving its public protocol."""
         self._wrapped = wrapped
         self.collector = collector
+        self.over = wrapped.over
 
-    @property
-    def over(self) -> object:
-        """Expose the wrapped evaluator's over-event detector."""
-        return getattr(self._wrapped, "over")
-
-    def evaluate(self, state: object) -> object:
+    def evaluate(self, state: State) -> Any:
         """Time `evaluate(...)` while preserving semantics."""
         return self.collector.record_timed_call(
             self.collector.evaluate,
-            lambda: getattr(self._wrapped, "evaluate")(state),
+            lambda: self._wrapped.evaluate(state),
         )
 
-    def evaluate_batch_items(self, items: object) -> object:
+    def evaluate_batch_items(
+        self,
+        items: Sequence[Any],
+    ) -> list[Any]:
         """Time `evaluate_batch_items(...)` while preserving semantics."""
-        return self.collector.record_timed_call(
-            self.collector.evaluate_batch_items,
-            lambda: getattr(self._wrapped, "evaluate_batch_items")(items),
+        return cast(
+            "list[Any]",
+            self.collector.record_timed_call(
+                self.collector.evaluate_batch_items,
+                lambda: self._wrapped.evaluate_batch_items(items),
+            ),
         )
 
-    def value_white(self, state: object) -> object:
+    def value_white(self, state: State) -> float:
         """Time `value_white(...)` when the wrapped evaluator provides it."""
-        return self.collector.record_timed_call(
-            self.collector.value_white,
-            lambda: getattr(self._wrapped, "value_white")(state),
+        return cast(
+            "float",
+            self.collector.record_timed_call(
+                self.collector.value_white,
+                lambda: self._wrapped.value_white(state),  # type: ignore[attr-defined]
+            ),
         )
 
-    def value_white_batch_items(self, items: object) -> object:
+    def value_white_batch_items(self, items: Sequence[Any]) -> list[float]:
         """Time `value_white_batch_items(...)` when the evaluator provides it."""
-        return self.collector.record_timed_call(
-            self.collector.value_white_batch_items,
-            lambda: getattr(self._wrapped, "value_white_batch_items")(items),
+        return cast(
+            "list[float]",
+            self.collector.record_timed_call(
+                self.collector.value_white_batch_items,
+                lambda: self._wrapped.value_white_batch_items(items),  # type: ignore[attr-defined]
+            ),
         )
 
     def __getattr__(self, name: str) -> object:
@@ -224,30 +247,37 @@ class TimingSearchDynamics(SearchDynamics[Any, Any]):
         wrapped: SearchDynamics[Any, Any],
         collector: DynamicsTimingCollector,
     ) -> None:
+        """Wrap one dynamics object while preserving its public protocol."""
         self._wrapped = wrapped
         self.collector = collector
 
-    def legal_actions(self, state: object) -> object:
+    def legal_actions(self, state: Any) -> valanga.BranchKeyGeneratorP[Any]:
         """Time `legal_actions(...)` while preserving semantics."""
-        return _record_timed_call(
-            self.collector.legal_actions,
-            lambda: getattr(self._wrapped, "legal_actions")(state),
+        return cast(
+            "valanga.BranchKeyGeneratorP[Any]",
+            _record_timed_call(
+                self.collector.legal_actions,
+                lambda: self._wrapped.legal_actions(state),
+            ),
         )
 
-    def step(self, state: object, action: object, *, depth: int) -> object:
+    def step(self, state: Any, action: Any, *, depth: int) -> valanga.Transition[Any]:
         """Time `step(...)` while preserving semantics."""
-        return _record_timed_call(
-            self.collector.step,
-            lambda: getattr(self._wrapped, "step")(state, action, depth=depth),
+        return cast(
+            "valanga.Transition[Any]",
+            _record_timed_call(
+                self.collector.step,
+                lambda: self._wrapped.step(state, action, depth=depth),
+            ),
         )
 
-    def action_name(self, state: object, action: object) -> str:
+    def action_name(self, state: Any, action: Any) -> str:
         """Delegate `action_name(...)` to the wrapped dynamics."""
-        return getattr(self._wrapped, "action_name")(state, action)
+        return self._wrapped.action_name(state, action)
 
-    def action_from_name(self, state: object, name: str) -> object:
+    def action_from_name(self, state: Any, name: str) -> Any:
         """Delegate `action_from_name(...)` to the wrapped dynamics."""
-        return getattr(self._wrapped, "action_from_name")(state, name)
+        return self._wrapped.action_from_name(state, name)
 
     def __getattr__(self, name: str) -> object:
         """Delegate all other attribute access to the wrapped dynamics."""

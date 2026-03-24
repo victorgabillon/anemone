@@ -1,4 +1,5 @@
 """Standalone execution shell for one profiling scenario run."""
+# pylint: disable=broad-exception-caught,duplicate-code
 
 from __future__ import annotations
 
@@ -9,7 +10,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Sequence, cast
+from typing import TYPE_CHECKING, cast
 
 from .artifacts import (
     RunArtifacts,
@@ -23,8 +24,8 @@ from .component_summary import (
     save_component_summary,
 )
 from .external_profilers import (
-    ProfilerName,
     SUPPORTED_EXTERNAL_PROFILERS,
+    ProfilerName,
     run_with_external_profiler,
 )
 from .scenario_runtime import ScenarioRuntime, ScenarioRuntimeOptions
@@ -37,6 +38,9 @@ from .storage import (
     save_run_result,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 
 def _timestamp_utc_now() -> datetime:
     """Return the current UTC timestamp."""
@@ -45,9 +49,14 @@ def _timestamp_utc_now() -> datetime:
 
 def _format_utc_timestamp(timestamp: datetime) -> str:
     """Format a UTC timestamp as a compact ISO string."""
-    return timestamp.astimezone(UTC).replace(microsecond=0).isoformat().replace(
-        "+00:00",
-        "Z",
+    return (
+        timestamp.astimezone(UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace(
+            "+00:00",
+            "Z",
+        )
     )
 
 
@@ -79,12 +88,14 @@ def run_scenario(
     cwd: Path | None = None,
     profiler: ProfilerName = "none",
     component_summary: bool = False,
+    scenario_label: str | None = None,
 ) -> RunResult:
     """Execute one profiling scenario and persist its run artifact."""
     scenario = get_scenario(scenario_name)
     current_cwd = Path.cwd() if cwd is None else Path(cwd)
     started_at = _timestamp_utc_now()
-    requested_run_id = make_run_id(scenario.name, timestamp=started_at)
+    run_name = scenario.name if scenario_label is None else scenario_label
+    requested_run_id = make_run_id(run_name, timestamp=started_at)
     run_dir = make_run_dir(Path(output_dir), requested_run_id)
     run_id = run_dir.name
     run_json_path = run_result_path(run_dir)
@@ -108,6 +119,8 @@ def run_scenario(
             ),
         },
     )
+    if scenario_label is not None:
+        metadata.notes["scenario_label"] = scenario_label
 
     status = RunStatus.SUCCESS
     error_message: str | None = None
@@ -140,9 +153,7 @@ def run_scenario(
             )
     except Exception as exc:  # pragma: no cover - exercised by tests
         status = RunStatus.FAILED
-        error_message = (
-            f"Scenario execution failed: {type(exc).__name__}: {exc}"
-        )
+        error_message = f"Scenario execution failed: {type(exc).__name__}: {exc}"
 
     if (
         component_summary
@@ -171,9 +182,7 @@ def run_scenario(
     result = RunResult(
         status=status,
         metadata=metadata,
-        timing=RunTimingSummary(
-            wall_time_seconds=total_run_wall_time_seconds
-        ),
+        timing=RunTimingSummary(wall_time_seconds=total_run_wall_time_seconds),
         artifacts=RunArtifacts(
             run_json_path=str(run_json_path),
             extra_paths=extra_paths,
@@ -226,7 +235,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.scenario,
             Path(args.output_dir),
             command=[sys.executable, "-m", "anemone.profiling.runner", *argv_list],
-            profiler=cast(ProfilerName, args.profiler),
+            profiler=cast("ProfilerName", args.profiler),
             component_summary=args.component_summary,
         )
     except Exception as exc:  # pragma: no cover - simple CLI guard

@@ -1,13 +1,16 @@
 """Tests for external profiler adapter helpers."""
 
 from importlib.util import find_spec
+from pathlib import Path
 
 import pytest
 
 from anemone.profiling.external_profilers import run_with_external_profiler
 
 
-def test_run_with_external_profiler_cprofile_writes_expected_artifacts(tmp_path) -> None:
+def test_run_with_external_profiler_cprofile_writes_expected_artifacts(
+    tmp_path: Path,
+) -> None:
     """The cProfile adapter should write stable artifact files."""
 
     def _target() -> None:
@@ -26,7 +29,7 @@ def test_run_with_external_profiler_cprofile_writes_expected_artifacts(tmp_path)
 
 
 def test_run_with_external_profiler_pyinstrument_handles_missing_dependency(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     """An explicit pyinstrument request should fail cleanly when unavailable."""
     if find_spec("pyinstrument") is not None:

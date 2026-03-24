@@ -1,4 +1,5 @@
 """Small adapters for optional external profiler execution."""
+# pylint: disable=broad-exception-caught
 
 from __future__ import annotations
 
@@ -6,11 +7,13 @@ import cProfile
 import io
 import pstats
 import time
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import import_module
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal, assert_never
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 ProfilerName = Literal["none", "cprofile", "pyinstrument"]
 SUPPORTED_EXTERNAL_PROFILERS: tuple[ProfilerName, ...] = (
@@ -20,12 +23,16 @@ SUPPORTED_EXTERNAL_PROFILERS: tuple[ProfilerName, ...] = (
 )
 
 
+def _new_str_dict() -> dict[str, str]:
+    return {}
+
+
 @dataclass(slots=True)
 class ExternalProfilerRunResult:
     """Stable result for one externally-profiled execution."""
 
     execution_wall_time_seconds: float
-    extra_paths: dict[str, str] = field(default_factory=dict)
+    extra_paths: dict[str, str] = field(default_factory=_new_str_dict)
     captured_error: Exception | None = None
 
 
@@ -41,11 +48,7 @@ def run_with_external_profiler(
         return _run_with_cprofile(target, Path(run_dir))
     if profiler_name == "pyinstrument":
         return _run_with_pyinstrument(target, Path(run_dir))
-
-    supported = ", ".join(SUPPORTED_EXTERNAL_PROFILERS)
-    raise ValueError(
-        f"Unsupported profiler {profiler_name!r}. Supported profilers: {supported}"
-    )
+    assert_never(profiler_name)
 
 
 def _run_without_external_profiler(

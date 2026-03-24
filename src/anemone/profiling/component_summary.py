@@ -1,4 +1,5 @@
 """Structured component-level timing summaries for profiling runs."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
@@ -6,6 +7,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 COMPONENT_SUMMARY_FILENAME = "component_summary.json"
 
@@ -14,9 +16,59 @@ def _copy_str_dict(raw: object) -> dict[str, str]:
     """Return a plain string dictionary from loaded JSON-like input."""
     if raw is None:
         return {}
+    mapping = _require_str_object_mapping(raw)
+    return {str(key): str(value) for key, value in mapping.items()}
+
+
+def _new_str_dict() -> dict[str, str]:
+    return {}
+
+
+def _expected_mapping_error(raw: object) -> TypeError:
+    return TypeError(f"Expected a mapping, got {type(raw)}")
+
+
+def _summary_object_error(raw: object) -> TypeError:
+    return TypeError(f"Expected component summary JSON object, got {type(raw)}")
+
+
+def _require_str_object_mapping(raw: object) -> Mapping[str, object]:
     if not isinstance(raw, Mapping):
-        raise TypeError(f"Expected a mapping, got {type(raw)}")
-    return {str(key): str(value) for key, value in raw.items()}
+        raise _expected_mapping_error(raw)
+    return cast("Mapping[str, object]", raw)
+
+
+def _int_field(data: Mapping[str, object], field_name: str) -> int:
+    raw_value = data[field_name]
+    if isinstance(raw_value, bool):
+        return int(raw_value)
+    if isinstance(raw_value, int):
+        return raw_value
+    if isinstance(raw_value, float | str):
+        return int(raw_value)
+    raise _numeric_field_error(field_name, raw_value, expected_type="int")
+
+
+def _float_field(data: Mapping[str, object], field_name: str) -> float:
+    raw_value = data[field_name]
+    if isinstance(raw_value, bool):
+        return float(raw_value)
+    if isinstance(raw_value, int | float):
+        return float(raw_value)
+    if isinstance(raw_value, str):
+        return float(raw_value)
+    raise _numeric_field_error(field_name, raw_value, expected_type="float")
+
+
+def _numeric_field_error(
+    field_name: str,
+    raw_value: object,
+    *,
+    expected_type: str,
+) -> TypeError:
+    return TypeError(
+        f"{field_name} must be {expected_type}-compatible, got {type(raw_value)}"
+    )
 
 
 @dataclass(slots=True)
@@ -44,11 +96,17 @@ class TimedCallStats:
         """Deserialize the timed-call statistics from JSON-friendly data."""
         min_raw = data.get("min_wall_time_seconds")
         return cls(
-            call_count=int(data["call_count"]),
-            total_wall_time_seconds=float(data["total_wall_time_seconds"]),
-            max_wall_time_seconds=float(data["max_wall_time_seconds"]),
-            min_wall_time_seconds=float(min_raw) if min_raw is not None else None,
-            mean_wall_time_seconds=float(data["mean_wall_time_seconds"]),
+            call_count=_int_field(data, "call_count"),
+            total_wall_time_seconds=_float_field(data, "total_wall_time_seconds"),
+            max_wall_time_seconds=_float_field(data, "max_wall_time_seconds"),
+            min_wall_time_seconds=(
+                float(min_raw)
+                if isinstance(min_raw, str | int | float | bool)
+                else None
+                if min_raw is None
+                else _raise_min_wall_time_error(min_raw)
+            ),
+            mean_wall_time_seconds=_float_field(data, "mean_wall_time_seconds"),
         )
 
 
@@ -62,7 +120,7 @@ class ComponentSummary:
     evaluator: TimedCallStats | None = None
     dynamics_step: TimedCallStats | None = None
     dynamics_legal_actions: TimedCallStats | None = None
-    notes: dict[str, str] = field(default_factory=dict)
+    notes: dict[str, str] = field(default_factory=_new_str_dict)
 
     def to_dict(self) -> dict[str, object]:
         """Serialize the component summary to JSON-friendly data."""
@@ -94,25 +152,31 @@ class ComponentSummary:
         legal_raw = data.get("dynamics_legal_actions")
         residual_raw = data.get("residual_framework_wall_time_seconds")
         return cls(
-            total_run_wall_time_seconds=float(data["total_run_wall_time_seconds"]),
-            total_profiled_component_wall_time_seconds=float(
-                data["total_profiled_component_wall_time_seconds"]
+            total_run_wall_time_seconds=_float_field(
+                data, "total_run_wall_time_seconds"
+            ),
+            total_profiled_component_wall_time_seconds=_float_field(
+                data, "total_profiled_component_wall_time_seconds"
             ),
             residual_framework_wall_time_seconds=(
-                float(residual_raw) if residual_raw is not None else None
+                float(residual_raw)
+                if isinstance(residual_raw, str | int | float | bool)
+                else None
+                if residual_raw is None
+                else _raise_residual_error(residual_raw)
             ),
             evaluator=(
-                TimedCallStats.from_dict(evaluator_raw)
+                TimedCallStats.from_dict(cast("Mapping[str, object]", evaluator_raw))
                 if isinstance(evaluator_raw, Mapping)
                 else None
             ),
             dynamics_step=(
-                TimedCallStats.from_dict(step_raw)
+                TimedCallStats.from_dict(cast("Mapping[str, object]", step_raw))
                 if isinstance(step_raw, Mapping)
                 else None
             ),
             dynamics_legal_actions=(
-                TimedCallStats.from_dict(legal_raw)
+                TimedCallStats.from_dict(cast("Mapping[str, object]", legal_raw))
                 if isinstance(legal_raw, Mapping)
                 else None
             ),
@@ -136,7 +200,21 @@ def load_component_summary(path: Path) -> ComponentSummary:
         loaded = json.load(handle)
 
     if not isinstance(loaded, dict):
-        raise TypeError(
-            f"Expected component summary JSON object, got {type(loaded)}"
-        )
-    return ComponentSummary.from_dict(loaded)
+        raise _summary_object_error(loaded)
+    return ComponentSummary.from_dict(cast("dict[str, object]", loaded))
+
+
+def _raise_min_wall_time_error(raw: object) -> float:
+    raise _numeric_field_error(
+        "min_wall_time_seconds",
+        raw,
+        expected_type="float",
+    )
+
+
+def _raise_residual_error(raw: object) -> float | None:
+    raise _numeric_field_error(
+        "residual_framework_wall_time_seconds",
+        raw,
+        expected_type="float",
+    )

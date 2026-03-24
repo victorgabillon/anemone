@@ -1,4 +1,5 @@
 """Filesystem helpers for profiling run directories and JSON artifacts."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
@@ -6,6 +7,7 @@ import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 from .artifacts import RunResult, run_result_to_dict
 
@@ -31,7 +33,9 @@ def make_run_id(
     timestamp: datetime | None = None,
 ) -> str:
     """Create a readable, sortable run identifier."""
-    run_timestamp = datetime.now(tz=UTC) if timestamp is None else timestamp.astimezone(UTC)
+    run_timestamp = (
+        datetime.now(tz=UTC) if timestamp is None else timestamp.astimezone(UTC)
+    )
     prefix = run_timestamp.strftime("%Y-%m-%dT%H-%M-%S")
     return f"{prefix}_{sanitize_scenario_name(scenario_name)}"
 
@@ -83,6 +87,10 @@ def load_run_result(path: Path) -> RunResult:
         loaded = json.load(handle)
 
     if not isinstance(loaded, dict):
-        raise TypeError(f"Expected run artifact JSON object, got {type(loaded)}")
+        raise _run_artifact_object_error(loaded)
 
-    return RunResult.from_dict(loaded)
+    return RunResult.from_dict(cast("dict[str, object]", loaded))
+
+
+def _run_artifact_object_error(raw: object) -> TypeError:
+    return TypeError(f"Expected run artifact JSON object, got {type(raw)}")

@@ -37,13 +37,23 @@ In particular, PR1 does not touch:
 - `component_summary.json` artifact output when enabled
 - `cprofile.pstats` and `cprofile_top.txt` artifacts for `cprofile`
 - `pyinstrument.txt` artifact when `pyinstrument` is requested and installed
+- deterministic synthetic profiling scenarios:
+  - `cheap_eval`
+  - `expensive_eval`
+  - `wide_tree`
+  - `deep_tree`
+  - `reuse_heavy`
+- repeatable profiling suites:
+  - `baseline`
+  - `quick`
+- `suite.json` artifact output for repeated suite runs
 
 ## What Is Still Out Of Scope
 
 - process-level profilers such as py-spy
 - viztracer integration
-- benchmark matrices
-- HTML reports, charts, or GUI tooling
+- GUI tooling, charts, or HTML reports
+- CI performance regression gates
 
 ## Running It
 
@@ -51,8 +61,10 @@ Preferred CLI:
 
 ```bash
 python -m anemone.profiling.cli list-scenarios
+python -m anemone.profiling.cli list-suites
 python -m anemone.profiling.cli run --scenario smoke --output-dir profiling_runs
 python -m anemone.profiling.cli run --scenario smoke --output-dir profiling_runs --profiler cprofile --component-summary
+python -m anemone.profiling.cli run-suite --suite baseline --output-dir profiling_runs --repetitions 5 --component-summary
 ```
 
 Convenience runner entrypoint:
@@ -82,6 +94,33 @@ wall time, run status, and placeholder artifact references for future tooling.
 The recorded wall time tracks scenario execution itself and intentionally
 excludes profiler artifact writing or profiler post-processing.
 
+Suite runs create a separate suite-level directory with nested scenario runs:
+
+```text
+profiling_runs/
+  2026-03-24T15-10-00_baseline_suite/
+    suite.json
+    scenario_runs/
+      2026-03-24T15-10-00_cheap_eval_rep1/
+        run.json
+        component_summary.json
+      2026-03-24T15-10-01_cheap_eval_rep2/
+        run.json
+      2026-03-24T15-10-05_wide_tree_rep1/
+        run.json
+```
+
+`suite.json` records:
+
+- suite metadata
+- requested repetition count
+- profiler and component-summary settings
+- per-scenario aggregate wall-time statistics across successful repetitions
+- per-repetition `run.json` paths and statuses
+
+This keeps the suite artifact comparison-ready without requiring later tooling to
+re-scan directories.
+
 When component summaries are enabled, the summary approximates framework
 overhead as:
 
@@ -91,3 +130,12 @@ residual_framework_wall_time_seconds
 ```
 
 This residual is useful, but intentionally approximate.
+
+## Scenario Roles
+
+- `smoke` validates profiling plumbing and public API integration.
+- `cheap_eval` keeps evaluator work near zero so framework overhead is easier to see.
+- `expensive_eval` makes evaluator CPU cost dominant while keeping the tree shape similar.
+- `wide_tree` stresses broader opening pressure and legal-action generation.
+- `deep_tree` stresses deeper narrow traversal.
+- `reuse_heavy` stresses repeated shared-state patterns.

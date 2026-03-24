@@ -1,16 +1,17 @@
 """Stable JSON artifact models for profiling runs."""
+# pylint: disable=duplicate-code
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any
+from enum import StrEnum
+from typing import cast
 
 SCHEMA_VERSION = "1"
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     """Terminal status for one profiling run."""
 
     SUCCESS = "success"
@@ -21,9 +22,8 @@ def _copy_str_dict(raw: object) -> dict[str, str]:
     """Return a plain string dictionary from loaded JSON-like input."""
     if raw is None:
         return {}
-    if not isinstance(raw, Mapping):
-        raise TypeError(f"Expected a mapping, got {type(raw)}")
-    return {str(key): str(value) for key, value in raw.items()}
+    mapping = _require_str_object_mapping(raw)
+    return {str(key): str(value) for key, value in mapping.items()}
 
 
 def _copy_str_list(raw: object) -> list[str]:
@@ -31,8 +31,46 @@ def _copy_str_list(raw: object) -> list[str]:
     if raw is None:
         return []
     if not isinstance(raw, list):
-        raise TypeError(f"Expected a list, got {type(raw)}")
-    return [str(item) for item in raw]
+        raise _expected_list_error(raw)
+    list_raw = cast("list[object]", raw)
+    return [str(item) for item in list_raw]
+
+
+def _new_str_dict() -> dict[str, str]:
+    return {}
+
+
+def _expected_mapping_error(raw: object) -> TypeError:
+    return TypeError(f"Expected a mapping, got {type(raw)}")
+
+
+def _expected_list_error(raw: object) -> TypeError:
+    return TypeError(f"Expected a list, got {type(raw)}")
+
+
+def _missing_mapping_field_error(field_name: str) -> TypeError:
+    return TypeError(f"{field_name} must be a mapping")
+
+
+def _require_str_object_mapping(raw: object) -> Mapping[str, object]:
+    if not isinstance(raw, Mapping):
+        raise _expected_mapping_error(raw)
+    return cast("Mapping[str, object]", raw)
+
+
+def _float_field(data: Mapping[str, object], field_name: str) -> float:
+    raw_value = data[field_name]
+    if isinstance(raw_value, bool):
+        return float(raw_value)
+    if isinstance(raw_value, int | float):
+        return float(raw_value)
+    if isinstance(raw_value, str):
+        return float(raw_value)
+    raise _float_field_error(field_name, raw_value)
+
+
+def _float_field_error(field_name: str, raw_value: object) -> TypeError:
+    return TypeError(f"{field_name} must be float-compatible, got {type(raw_value)}")
 
 
 @dataclass(slots=True)
@@ -40,7 +78,7 @@ class RunArtifacts:
     """References to files produced by one profiling run."""
 
     run_json_path: str | None = None
-    extra_paths: dict[str, str] = field(default_factory=dict)
+    extra_paths: dict[str, str] = field(default_factory=_new_str_dict)
 
     def to_dict(self) -> dict[str, object]:
         """Serialize the artifact references to JSON-friendly data."""
@@ -54,7 +92,9 @@ class RunArtifacts:
         """Deserialize artifact references from JSON-friendly data."""
         return cls(
             run_json_path=(
-                str(data["run_json_path"]) if data.get("run_json_path") is not None else None
+                str(data["run_json_path"])
+                if data.get("run_json_path") is not None
+                else None
             ),
             extra_paths=_copy_str_dict(data.get("extra_paths")),
         )
@@ -74,7 +114,7 @@ class RunMetadata:
     git_commit: str | None
     cwd: str
     command: list[str]
-    notes: dict[str, str] = field(default_factory=dict)
+    notes: dict[str, str] = field(default_factory=_new_str_dict)
 
     def to_dict(self) -> dict[str, object]:
         """Serialize run metadata to JSON-friendly data."""
@@ -126,7 +166,7 @@ class RunTimingSummary:
     @classmethod
     def from_dict(cls, data: Mapping[str, object]) -> RunTimingSummary:
         """Deserialize timing data from JSON-friendly data."""
-        return cls(wall_time_seconds=float(data["wall_time_seconds"]))
+        return cls(wall_time_seconds=_float_field(data, "wall_time_seconds"))
 
 
 @dataclass(slots=True)
@@ -158,19 +198,22 @@ class RunResult:
         timing_raw = data.get("timing")
         artifacts_raw = data.get("artifacts")
         if not isinstance(metadata_raw, Mapping):
-            raise TypeError("RunResult.metadata must be a mapping")
+            raise _missing_mapping_field_error("RunResult.metadata")
         if not isinstance(timing_raw, Mapping):
-            raise TypeError("RunResult.timing must be a mapping")
+            raise _missing_mapping_field_error("RunResult.timing")
         if not isinstance(artifacts_raw, Mapping):
-            raise TypeError("RunResult.artifacts must be a mapping")
+            raise _missing_mapping_field_error("RunResult.artifacts")
 
         error_raw = data.get("error_message")
+        metadata_mapping = cast("Mapping[str, object]", metadata_raw)
+        timing_mapping = cast("Mapping[str, object]", timing_raw)
+        artifacts_mapping = cast("Mapping[str, object]", artifacts_raw)
         return cls(
             schema_version=str(data.get("schema_version", SCHEMA_VERSION)),
             status=RunStatus(str(data["status"])),
-            metadata=RunMetadata.from_dict(metadata_raw),
-            timing=RunTimingSummary.from_dict(timing_raw),
-            artifacts=RunArtifacts.from_dict(artifacts_raw),
+            metadata=RunMetadata.from_dict(metadata_mapping),
+            timing=RunTimingSummary.from_dict(timing_mapping),
+            artifacts=RunArtifacts.from_dict(artifacts_mapping),
             error_message=str(error_raw) if error_raw is not None else None,
         )
 

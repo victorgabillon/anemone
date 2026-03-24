@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 from importlib import import_module
+from typing import TYPE_CHECKING
 
-from .scenario_runtime import ScenarioRuntime, ScenarioRuntimeOptions
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .scenario_runtime import ScenarioRuntime, ScenarioRuntimeOptions
 
 
 @dataclass(slots=True)
@@ -62,15 +65,9 @@ def _load_lazy_scenario(
     builder = getattr(module, registration.loader_attribute)
     scenario = builder()
     if not isinstance(scenario, ProfilingScenario):
-        raise TypeError(
-            "Lazy profiling scenario builder must return ProfilingScenario, "
-            f"got {type(scenario)}"
-        )
+        raise _lazy_builder_type_error(scenario)
     if scenario.name != registration.name:
-        raise ValueError(
-            "Lazy profiling scenario name mismatch: "
-            f"expected {registration.name!r}, got {scenario.name!r}"
-        )
+        raise _lazy_builder_name_error(registration.name, scenario.name)
 
     register_scenario(scenario)
     return scenario
@@ -82,9 +79,7 @@ def get_scenario(name: str) -> ProfilingScenario:
         registered = _SCENARIOS[name]
     except KeyError as exc:
         available = ", ".join(sorted(_SCENARIOS))
-        raise ValueError(
-            f"Unknown profiling scenario {name!r}. Available scenarios: {available}"
-        ) from exc
+        raise _unknown_scenario_error(name, available) from exc
 
     if isinstance(registered, ProfilingScenario):
         return registered
@@ -116,8 +111,68 @@ def list_scenarios() -> list[ProfilingScenario]:
 
 
 register_lazy_scenario(
+    name="cheap_eval",
+    description=(
+        "Synthetic deterministic scenario with minimal evaluator cost to expose "
+        "framework overhead."
+    ),
+    loader_module="anemone.profiling.scenario_cheap_eval",
+    loader_attribute="build_cheap_eval_scenario",
+)
+
+register_lazy_scenario(
+    name="deep_tree",
+    description="Synthetic deterministic scenario with deeper narrow structure.",
+    loader_module="anemone.profiling.scenario_deep_tree",
+    loader_attribute="build_deep_tree_scenario",
+)
+
+register_lazy_scenario(
+    name="expensive_eval",
+    description="Synthetic deterministic scenario with higher evaluator CPU cost.",
+    loader_module="anemone.profiling.scenario_expensive_eval",
+    loader_attribute="build_expensive_eval_scenario",
+)
+
+register_lazy_scenario(
+    name="reuse_heavy",
+    description=(
+        "Synthetic deterministic scenario with repeated shared states to stress reuse."
+    ),
+    loader_module="anemone.profiling.scenario_reuse_heavy",
+    loader_attribute="build_reuse_heavy_scenario",
+)
+
+register_lazy_scenario(
     name="smoke",
     description="Tiny real end-to-end search using public Anemone APIs.",
     loader_module="anemone.profiling.scenario_smoke",
     loader_attribute="build_smoke_scenario",
 )
+
+register_lazy_scenario(
+    name="wide_tree",
+    description="Synthetic deterministic scenario with high branching factor.",
+    loader_module="anemone.profiling.scenario_wide_tree",
+    loader_attribute="build_wide_tree_scenario",
+)
+
+
+def _lazy_builder_type_error(scenario: object) -> TypeError:
+    return TypeError(
+        "Lazy profiling scenario builder must return ProfilingScenario, "
+        f"got {type(scenario)}"
+    )
+
+
+def _lazy_builder_name_error(expected_name: str, actual_name: str) -> ValueError:
+    return ValueError(
+        f"Lazy profiling scenario name mismatch: expected {expected_name!r}, "
+        f"got {actual_name!r}"
+    )
+
+
+def _unknown_scenario_error(name: str, available: str) -> ValueError:
+    return ValueError(
+        f"Unknown profiling scenario {name!r}. Available scenarios: {available}"
+    )

@@ -1,6 +1,7 @@
 """Tests for profiling run-id and directory helpers."""
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 from anemone.profiling.storage import make_run_dir, make_run_id
 
@@ -15,7 +16,7 @@ def test_make_run_id_sanitizes_scenario_name() -> None:
     assert run_id == "2026-03-24T14-32-10_smoke_scenario_v1"
 
 
-def test_make_run_dir_creates_expected_directory(tmp_path) -> None:
+def test_make_run_dir_creates_expected_directory(tmp_path: Path) -> None:
     """Creating a run directory should materialize the expected path."""
     run_dir = make_run_dir(tmp_path / "profiling_runs", "2026-03-24T14-32-10_smoke")
 
@@ -23,7 +24,7 @@ def test_make_run_dir_creates_expected_directory(tmp_path) -> None:
     assert run_dir.is_dir()
 
 
-def test_make_run_dir_appends_suffix_on_collision(tmp_path) -> None:
+def test_make_run_dir_appends_suffix_on_collision(tmp_path: Path) -> None:
     """Repeated run ids should allocate deterministic suffixed directories."""
     base_dir = tmp_path / "profiling_runs"
 

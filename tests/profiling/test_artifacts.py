@@ -1,6 +1,7 @@
 """Tests for profiling artifact serialization helpers."""
 
 import json
+from pathlib import Path
 
 from anemone.profiling.artifacts import (
     RunArtifacts,
@@ -13,7 +14,7 @@ from anemone.profiling.artifacts import (
 from anemone.profiling.storage import load_run_result, save_run_result
 
 
-def test_run_result_round_trip_preserves_fields(tmp_path) -> None:
+def test_run_result_round_trip_preserves_fields(tmp_path: Path) -> None:
     """Run artifacts should survive a save/load round trip."""
     run_result = RunResult(
         status=RunStatus.SUCCESS,

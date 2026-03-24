@@ -37,7 +37,9 @@ class _FakeDynamics:
         del state
         return (0, 1)
 
-    def step(self, state: object, action: object, *, depth: int) -> tuple[object, object, int]:
+    def step(
+        self, state: object, action: object, *, depth: int
+    ) -> tuple[object, object, int]:
         return state, action, depth
 
     def action_name(self, state: object, action: object) -> str:

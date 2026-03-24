@@ -1,5 +1,7 @@
 """Tests for component-summary artifact helpers."""
 
+from pathlib import Path
+
 from anemone.profiling.component_summary import (
     ComponentSummary,
     TimedCallStats,
@@ -8,7 +10,7 @@ from anemone.profiling.component_summary import (
 )
 
 
-def test_component_summary_round_trip_preserves_fields(tmp_path) -> None:
+def test_component_summary_round_trip_preserves_fields(tmp_path: Path) -> None:
     """Component summary artifacts should survive a save/load round trip."""
     summary = ComponentSummary(
         total_run_wall_time_seconds=0.024,

@@ -1,15 +1,15 @@
 """Real tiny end-to-end smoke scenario for the profiling foundation."""
+# pylint: disable=duplicate-code,useless-return
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
+from importlib import import_module
 from random import Random
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any
 
 import valanga
-from valanga import BranchKey, Color, OverEvent, State, StateModifications, StateTag
-from valanga.evaluations import Certainty, Value
+from valanga import BranchKey, Color, State, StateModifications, StateTag
 
 from anemone.dynamics import SearchDynamics
 from anemone.factory import SearchArgs, create_search
@@ -31,6 +31,16 @@ from anemone.progress_monitor.progress_monitor import (
 )
 from anemone.recommender_rule.recommender_rule import SoftmaxRule
 from anemone.utils.logger import anemone_logger, suppress_logging
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
+
+    from anemone._valanga_types import AnyOverEvent
+
+
+_VALANGA_EVALUATIONS = import_module("valanga.evaluations")
+Certainty = _VALANGA_EVALUATIONS.Certainty
+Value = _VALANGA_EVALUATIONS.Value
 
 
 class _OrdinalBranchKeyGenerator:
@@ -68,7 +78,7 @@ class _OrdinalBranchKeyGenerator:
         """Return all generated keys."""
         return list(self._keys)
 
-    def copy_with_reset(self) -> Self:
+    def copy_with_reset(self) -> _OrdinalBranchKeyGenerator:
         """Return a fresh generator over the same branch keys."""
         return _OrdinalBranchKeyGenerator(self._keys)
 
@@ -94,14 +104,18 @@ class _SmokeState(State):
 
     def branch_name_from_key(self, key: BranchKey) -> str:
         """Return a readable branch name for one ordinal move."""
-        child_id = self._child_id_from_branch(key)
+        child_id = self.child_id_from_branch(key)
         return f"{self.node_id}->{child_id}"
 
     def is_game_over(self) -> bool:
         """Return whether the current node has no legal children."""
         return len(self.children_by_id.get(self.node_id, [])) == 0
 
-    def copy(self, stack: bool, deep_copy_legal_moves: bool = True) -> Self:
+    def copy(
+        self,
+        stack: bool,
+        deep_copy_legal_moves: bool = True,
+    ) -> _SmokeState:
         """Return a shallow copy compatible with the Valanga state contract."""
         del stack, deep_copy_legal_moves
         return _SmokeState(
@@ -112,7 +126,7 @@ class _SmokeState(State):
 
     def step(self, branch_key: BranchKey) -> StateModifications | None:
         """Mutate in place so the state is compatible with Valanga expectations."""
-        self.node_id = self._child_id_from_branch(branch_key)
+        self.node_id = self.child_id_from_branch(branch_key)
         self.turn = Color.BLACK if self.turn == Color.WHITE else Color.WHITE
         return None
 
@@ -120,16 +134,16 @@ class _SmokeState(State):
         """Return a compact human-readable representation of the state."""
         return f"SmokeState(node_id={self.node_id}, turn={self.turn.name})"
 
-    def _child_id_from_branch(self, branch_key: BranchKey) -> int:
+    def child_id_from_branch(self, branch_key: BranchKey) -> int:
+        """Resolve one branch key to the corresponding child node identifier."""
         children = self.children_by_id.get(self.node_id, [])
         if not isinstance(branch_key, int):
-            raise TypeError(
-                f"Smoke scenario branch_key must be an int, got {type(branch_key)}"
-            )
+            raise _branch_key_type_error(branch_key)
         if branch_key < 0 or branch_key >= len(children):
-            raise ValueError(
-                f"Invalid smoke branch {branch_key} for node {self.node_id}; "
-                f"expected 0..{len(children) - 1}"
+            raise _invalid_branch_error(
+                branch_key=branch_key,
+                node_id=self.node_id,
+                max_branch=len(children) - 1,
             )
         return children[branch_key]
 
@@ -140,7 +154,7 @@ class _NeverOverDetector(OverEventDetector):
     def check_obvious_over_events(
         self,
         state: State,
-    ) -> tuple[OverEvent | None, float | None]:
+    ) -> tuple[AnyOverEvent | None, float | None]:
         del state
         return None, None
 
@@ -154,10 +168,10 @@ class _SmokeValueEvaluator(MasterStateValueEvaluator):
         self._value_by_id = value_by_id
         self.over = _NeverOverDetector()
 
-    def evaluate_batch_items[ItemStateT: State](
+    def evaluate_batch_items(
         self,
         items: Sequence[Any],
-    ) -> list[Value]:
+    ) -> list[Any]:
         return [
             Value(
                 score=self.value_white(getattr(item, "state", item)),
@@ -167,7 +181,7 @@ class _SmokeValueEvaluator(MasterStateValueEvaluator):
             for item in items
         ]
 
-    def evaluate(self, state: State) -> Value:
+    def evaluate(self, state: State) -> Any:
         """Return the cached value for one state."""
         return Value(
             score=self.value_white(state),
@@ -177,7 +191,10 @@ class _SmokeValueEvaluator(MasterStateValueEvaluator):
 
     def value_white(self, state: State) -> float:
         """Return the white-perspective scalar value for one state."""
-        return float(self._value_by_id[int(state.tag)])
+        tag = state.tag
+        if not isinstance(tag, int):
+            raise _state_tag_type_error(tag)
+        return float(self._value_by_id[tag])
 
     def value_white_batch_items(self, items: Sequence[Any]) -> list[float]:
         """Return scalar values for a batch of states or eval items."""
@@ -205,7 +222,7 @@ class _SmokeDynamics(SearchDynamics[_SmokeState, Any]):
     ) -> valanga.Transition[_SmokeState]:
         """Return the next search state without mutating the input state."""
         del depth
-        child_id = state._child_id_from_branch(action)
+        child_id = state.child_id_from_branch(action)
         next_turn = Color.BLACK if state.turn == Color.WHITE else Color.WHITE
         next_state = _SmokeState(
             node_id=child_id,
@@ -237,9 +254,7 @@ class _SmokeDynamics(SearchDynamics[_SmokeState, Any]):
         try:
             return children.index(child_id)
         except ValueError as exc:
-            raise ValueError(
-                f"State node_id={state.node_id} has no child_id={child_id}"
-            ) from exc
+            raise _missing_child_id_error(state.node_id, child_id) from exc
 
 
 def _build_smoke_args() -> SearchArgs:
@@ -282,10 +297,16 @@ def _build_smoke_runtime(options: ScenarioRuntimeOptions) -> ScenarioRuntime:
     evaluator: MasterStateValueEvaluator = _SmokeValueEvaluator(value_by_id)
     component_collectors = None
     if options.component_summary:
-        evaluator, dynamics, component_collectors = wrap_profiled_components(
-            evaluator=evaluator,
-            dynamics=dynamics,
+        wrapped_evaluator, wrapped_dynamics, component_collectors = (
+            wrap_profiled_components(
+                evaluator=evaluator,
+                dynamics=dynamics,
+            )
         )
+        assert wrapped_evaluator is not None
+        assert wrapped_dynamics is not None
+        evaluator = wrapped_evaluator
+        dynamics = wrapped_dynamics
 
     exploration = create_search(
         state_type=_SmokeState,
@@ -302,14 +323,9 @@ def _build_smoke_runtime(options: ScenarioRuntimeOptions) -> ScenarioRuntime:
             result = exploration.explore(random_generator=Random(0))
 
         if exploration.tree.nodes_count != 3:
-            raise RuntimeError(
-                "Smoke profiling scenario expected a 3-node tree, "
-                f"got {exploration.tree.nodes_count}"
-            )
-        if result.branch_recommendation.recommended_name is None:
-            raise RuntimeError(
-                "Smoke profiling scenario did not produce a recommendation"
-            )
+            raise _unexpected_tree_size_error(exploration.tree.nodes_count)
+        if not result.branch_recommendation.recommended_name:
+            raise _missing_recommendation_error()
 
     return ScenarioRuntime(
         runner=runner,
@@ -330,3 +346,38 @@ def build_smoke_scenario() -> ProfilingScenario:
         runner=_run_smoke_search,
         runtime_builder=_build_smoke_runtime,
     )
+
+
+def _branch_key_type_error(branch_key: object) -> TypeError:
+    return TypeError(
+        f"Smoke scenario branch_key must be an int, got {type(branch_key)}"
+    )
+
+
+def _invalid_branch_error(
+    *,
+    branch_key: int,
+    node_id: int,
+    max_branch: int,
+) -> ValueError:
+    return ValueError(
+        f"Invalid smoke branch {branch_key} for node {node_id}; expected 0..{max_branch}"
+    )
+
+
+def _state_tag_type_error(tag: object) -> TypeError:
+    return TypeError(f"Smoke scenario state tag must be an int, got {type(tag)}")
+
+
+def _missing_child_id_error(node_id: int, child_id: int) -> ValueError:
+    return ValueError(f"State node_id={node_id} has no child_id={child_id}")
+
+
+def _unexpected_tree_size_error(nodes_count: int) -> RuntimeError:
+    return RuntimeError(
+        f"Smoke profiling scenario expected a 3-node tree, got {nodes_count}"
+    )
+
+
+def _missing_recommendation_error() -> RuntimeError:
+    return RuntimeError("Smoke profiling scenario did not produce a recommendation")

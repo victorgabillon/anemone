@@ -1,19 +1,21 @@
 """Tests for profiling runner and CLI behavior."""
 
 from importlib.util import find_spec
+from pathlib import Path
 
 import pytest
 
-from anemone.profiling import cli
+from anemone.profiling import cli, scenarios
 from anemone.profiling.artifacts import RunStatus
 from anemone.profiling.component_summary import load_component_summary
 from anemone.profiling.runner import run_scenario
-from anemone.profiling import scenarios
 from anemone.profiling.scenarios import ProfilingScenario
 from anemone.profiling.storage import load_run_result
 
 
-def test_run_scenario_writes_success_artifact_for_smoke_scenario(tmp_path) -> None:
+def test_run_scenario_writes_success_artifact_for_smoke_scenario(
+    tmp_path: Path,
+) -> None:
     """The smoke scenario should produce a successful run artifact."""
     result = run_scenario("smoke", tmp_path)
 
@@ -33,7 +35,9 @@ def test_run_scenario_writes_success_artifact_for_smoke_scenario(tmp_path) -> No
     assert loaded.timing.wall_time_seconds >= 0.0
 
 
-def test_run_scenario_writes_component_summary_for_smoke_scenario(tmp_path) -> None:
+def test_run_scenario_writes_component_summary_for_smoke_scenario(
+    tmp_path: Path,
+) -> None:
     """The smoke scenario should produce a component summary when requested."""
     result = run_scenario("smoke", tmp_path, component_summary=True)
 
@@ -55,7 +59,9 @@ def test_run_scenario_writes_component_summary_for_smoke_scenario(tmp_path) -> N
     assert summary.dynamics_legal_actions is not None
 
 
-def test_run_scenario_writes_cprofile_artifacts_for_smoke_scenario(tmp_path) -> None:
+def test_run_scenario_writes_cprofile_artifacts_for_smoke_scenario(
+    tmp_path: Path,
+) -> None:
     """The smoke scenario should produce cProfile artifacts when requested."""
     result = run_scenario("smoke", tmp_path, profiler="cprofile")
 
@@ -71,7 +77,10 @@ def test_run_scenario_writes_cprofile_artifacts_for_smoke_scenario(tmp_path) -> 
     )
 
 
-def test_run_scenario_persists_failure_artifact(tmp_path, monkeypatch) -> None:
+def test_run_scenario_persists_failure_artifact(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A failing scenario should still write a failed run artifact."""
 
     def _raise_failure() -> None:
@@ -96,7 +105,7 @@ def test_run_scenario_persists_failure_artifact(tmp_path, monkeypatch) -> None:
 
 
 def test_run_scenario_marks_run_failed_when_pyinstrument_is_unavailable(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     """Explicit pyinstrument requests should still produce a failed run artifact."""
     if find_spec("pyinstrument") is not None:
@@ -114,7 +123,9 @@ def test_run_scenario_marks_run_failed_when_pyinstrument_is_unavailable(
     assert run_json_path.exists()
 
 
-def test_cli_list_scenarios_prints_registered_scenarios(capsys) -> None:
+def test_cli_list_scenarios_prints_registered_scenarios(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """The CLI should list available profiling scenarios."""
     exit_code = cli.main(["list-scenarios"])
 
@@ -123,11 +134,12 @@ def test_cli_list_scenarios_prints_registered_scenarios(capsys) -> None:
     assert "smoke:" in captured.out
 
 
-def test_cli_run_prints_run_json_path(tmp_path, capsys) -> None:
+def test_cli_run_prints_run_json_path(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """The CLI run command should print the resulting run artifact path."""
-    exit_code = cli.main(
-        ["run", "--scenario", "smoke", "--output-dir", str(tmp_path)]
-    )
+    exit_code = cli.main(["run", "--scenario", "smoke", "--output-dir", str(tmp_path)])
 
     captured = capsys.readouterr()
     assert exit_code == 0
@@ -135,8 +147,8 @@ def test_cli_run_prints_run_json_path(tmp_path, capsys) -> None:
 
 
 def test_cli_run_with_cprofile_and_component_summary_writes_artifacts(
-    tmp_path,
-    capsys,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """The CLI should support cProfile and wrapper-based component summaries."""
     exit_code = cli.main(
