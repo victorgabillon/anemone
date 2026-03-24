@@ -15,6 +15,7 @@ documentation for details.
    :maxdepth: 2
    :caption: Contents:
 
+   search_iteration_architecture
    debug_live_session
 
 .. automodule:: anemone
