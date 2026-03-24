@@ -47,9 +47,9 @@ def record_tree_expansion[NodeT: node.ITreeNode[Any]](
     """Apply one TreeExpansion's bookkeeping to a tree + its log."""
     if tree_expansion.creation_child_node:
         tree.nodes_count += 1
-        tree.descendants.add_descendant(tree_expansion.child_node)
+        tree.descendants.register_descendant(tree_expansion.child_node)
 
-    tree_expansions.add(tree_expansion=tree_expansion)
+    tree_expansions.record(tree_expansion=tree_expansion)
 
 
 def _new_expansions_list() -> list[TreeExpansion[Any]]:
@@ -80,6 +80,24 @@ class TreeExpansions[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
             self.expansions_with_node_creation + self.expansions_without_node_creation
         )
 
+    def record(self, tree_expansion: TreeExpansion[NodeT]) -> None:
+        """Record one tree expansion under the appropriate bookkeeping bucket."""
+        if tree_expansion.creation_child_node:
+            self.record_creation(tree_expansion=tree_expansion)
+        else:
+            self.record_connection(tree_expansion=tree_expansion)
+
+    def created_nodes(self) -> list[NodeT]:
+        """Return the nodes that were newly created during this expansion wave."""
+        return [
+            tree_expansion.child_node
+            for tree_expansion in self.expansions_with_node_creation
+        ]
+
+    def affected_child_nodes(self) -> list[NodeT]:
+        """Return every child node touched during this expansion wave."""
+        return [tree_expansion.child_node for tree_expansion in self]
+
     def add(self, tree_expansion: TreeExpansion[NodeT]) -> None:
         """Add a tree expansion to the collection.
 
@@ -87,10 +105,15 @@ class TreeExpansions[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
             tree_expansion: The tree expansion to add.
 
         """
-        if tree_expansion.creation_child_node:
-            self.add_creation(tree_expansion=tree_expansion)
-        else:
-            self.add_connection(tree_expansion=tree_expansion)
+        self.record(tree_expansion=tree_expansion)
+
+    def record_creation(self, tree_expansion: TreeExpansion[NodeT]) -> None:
+        """Record a tree expansion with a newly created child node."""
+        self.expansions_with_node_creation.append(tree_expansion)
+
+    def record_connection(self, tree_expansion: TreeExpansion[NodeT]) -> None:
+        """Record a tree expansion that only connects to an existing child node."""
+        self.expansions_without_node_creation.append(tree_expansion)
 
     def add_creation(self, tree_expansion: TreeExpansion[NodeT]) -> None:
         """Add a tree expansion with a newly created child node.
@@ -99,7 +122,7 @@ class TreeExpansions[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
             tree_expansion: The tree expansion to add.
 
         """
-        self.expansions_with_node_creation.append(tree_expansion)
+        self.record_creation(tree_expansion=tree_expansion)
 
     def add_connection(self, tree_expansion: TreeExpansion[NodeT]) -> None:
         """Add a tree expansion that only connects to an existing node.
@@ -108,7 +131,7 @@ class TreeExpansions[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
             tree_expansion: The tree expansion to add.
 
         """
-        self.expansions_without_node_creation.append(tree_expansion)
+        self.record_connection(tree_expansion=tree_expansion)
 
     def __str__(self) -> str:
         """Return a string summary of recorded expansions."""

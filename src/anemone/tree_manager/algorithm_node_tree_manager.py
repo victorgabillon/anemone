@@ -68,10 +68,7 @@ class _ExpansionDirectEvaluation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]
         tree_expansions: TreeExpansions[NodeT],
     ) -> list[NodeT]:
         """Return the newly created child nodes that still need direct evaluation."""
-        return [
-            tree_expansion.child_node
-            for tree_expansion in tree_expansions.expansions_with_node_creation
-        ]
+        return tree_expansions.created_nodes()
 
 
 @dataclass(slots=True)
@@ -111,7 +108,7 @@ class _ExpansionPropagation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree_expansions: TreeExpansions[NodeT],
     ) -> list[NodeT]:
         """Return the child nodes that seed the post-expansion propagation waves."""
-        return [tree_expansion.child_node for tree_expansion in tree_expansions]
+        return tree_expansions.affected_child_nodes()
 
 
 @dataclass

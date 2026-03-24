@@ -107,7 +107,10 @@ class TreeManager[
 
         need_creation_child_node: bool = (
             tree.descendants.is_new_generation(tree_depth)
-            or state_tag not in tree.descendants.descendants_at_tree_depth[tree_depth]
+            or not tree.descendants.contains_tag_at_depth(
+                tree_depth=tree_depth,
+                state_tag=state_tag,
+            )
         )
 
         tree_expansion: TreeExpansion[FamilyT]
@@ -133,7 +136,10 @@ class TreeManager[
 
         else:  # the node already exists
             child_node_existing: FamilyT
-            child_node_existing = tree.descendants[tree_depth][state_tag]
+            child_node_existing = tree.descendants.node_at(
+                tree_depth=tree_depth,
+                state_tag=state_tag,
+            )
             child_node_existing.add_parent(
                 branch_key=branch, new_parent_node=parent_node
             )

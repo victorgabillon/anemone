@@ -92,11 +92,12 @@ class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         """
         # Update internal info with the latest tree expansions
+        created_node: NodeT
+        for created_node in latest_tree_expansions.created_nodes():
+            self.all_nodes_not_opened.register_descendant(created_node)
+
         expansion: tree_man.TreeExpansion[NodeT]
         for expansion in latest_tree_expansions:
-            if expansion.creation_child_node:
-                self.all_nodes_not_opened.add_descendant(expansion.child_node)
-
             # if a new tree_depth is being created then init the visits to 1
             # (0 would bug as it would automatically be selected with zipf computation)
             tree_depth: int = expansion.child_node.tree_depth
@@ -351,7 +352,7 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
 
         if not self.recursif:
-            self.all_nodes_not_opened.remove_descendant(best_node)
+            self.all_nodes_not_opened.unregister_descendant(best_node)
 
         if self.recursif and best_node.all_branches_generated:
             return self.choose_node_and_branch_to_open_recur(from_node=best_node)

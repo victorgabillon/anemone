@@ -66,7 +66,7 @@ class ValueTreeFactory[StateT: AnyTurnState = AnyTurnState]:
         descendants: RangedDescendants[AlgorithmNode[StateT]] = RangedDescendants[
             AlgorithmNode[StateT]
         ]()
-        descendants.add_descendant(root_node)
+        descendants.register_descendant(root_node)
 
         value_tree: Tree[AlgorithmNode[StateT]] = Tree[AlgorithmNode[StateT]](
             root_node=root_node, descendants=descendants

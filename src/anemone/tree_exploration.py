@@ -86,7 +86,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def _make_initial_tree_expansions(self) -> tree_man.TreeExpansions[NodeT]:
         """Return the synthetic root creation log used before the first step."""
         tree_expansions: tree_man.TreeExpansions[NodeT] = tree_man.TreeExpansions()
-        tree_expansions.add_creation(
+        tree_expansions.record_creation(
             tree_expansion=tree_man.TreeExpansion(
                 child_node=self.tree.root_node,
                 parent_node=None,

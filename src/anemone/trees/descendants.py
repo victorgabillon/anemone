@@ -140,6 +140,31 @@ class Descendants[NodeT: ITreeNode[Any]]:
             and node.tag in self[node.tree_depth]
         )
 
+    def has_tree_depth(self, tree_depth: TreeDepth) -> bool:
+        """Return whether this registry currently stores nodes at ``tree_depth``."""
+        return tree_depth in self.descendants_at_tree_depth
+
+    def contains_tag_at_depth(
+        self,
+        *,
+        tree_depth: TreeDepth,
+        state_tag: StateTag,
+    ) -> bool:
+        """Return whether a node with ``state_tag`` is stored at ``tree_depth``."""
+        return self.has_tree_depth(tree_depth) and state_tag in self[tree_depth]
+
+    def node_at(self, *, tree_depth: TreeDepth, state_tag: StateTag) -> NodeT:
+        """Return the node stored at one depth/tag pair."""
+        return self[tree_depth][state_tag]
+
+    def register_descendant(self, node: NodeT) -> None:
+        """Register one node in the descendants bookkeeping."""
+        self.add_descendant(node)
+
+    def unregister_descendant(self, node: NodeT) -> None:
+        """Remove one node from the descendants bookkeeping."""
+        self.remove_descendant(node)
+
     def remove_descendant(self, node: NodeT) -> None:
         """Remove a descendant node from the tree.
 
