@@ -401,6 +401,10 @@ class NodeTreeEvaluationState[
         """Return the cached branch-ordering key for one branch."""
         return self.decision_ordering.branch_ordering_keys[branch]
 
+    def branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
+        """Return the cached ordering key for one child branch."""
+        return self._branch_ordering_key(branch)
+
     def _branch_is_equivalent_to_best(
         self,
         *,
@@ -619,20 +623,15 @@ class NodeTreeEvaluationState[
         # NOTE: partial-expansion PV/value policy is owned by backup policies.
 
     def print_best_line(self) -> None:
-        """Log the current best line by following the stored PV through children."""
+        """Backward-compatible debug helper for logging the current best line."""
         debug_printing.print_best_line(self)
 
     def print_branch_ordering(
         self,
         dynamics: SearchDynamics[Any, Any],
     ) -> None:
-        """Log child branches in the current decision order."""
-        debug_printing.print_branch_ordering(
-            tree_node=self.tree_node,
-            ordered_branches=self.decision_ordered_branches(),
-            branch_ordering_key_getter=self._branch_ordering_key,
-            dynamics=dynamics,
-        )
+        """Backward-compatible debug helper for logging branch order."""
+        debug_printing.print_branch_ordering(self, dynamics=dynamics)
 
 
 class NodeTreeEvaluation[StateT: State = State](
@@ -672,9 +671,6 @@ class NodeTreeEvaluation[StateT: State = State](
         """Run family-specific backup after child updates."""
         ...
 
-    def print_branch_ordering(
-        self,
-        dynamics: SearchDynamics[Any, Any],
-    ) -> None:
-        """Log child branches in the current decision order."""
+    def branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
+        """Return the cached ordering key for one child branch."""
         ...

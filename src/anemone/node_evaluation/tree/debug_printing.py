@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Any, Protocol
 from anemone.utils.logger import anemone_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from valanga import BranchKey
 
     from anemone.dynamics import SearchDynamics
@@ -23,6 +21,20 @@ class BestLinePrintableNodeEval(Protocol):
     @property
     def best_branch_sequence(self) -> list[BranchKey]:
         """Return the current principal-variation branch sequence."""
+        ...
+
+
+class BranchOrderingPrintableNodeEval(Protocol):
+    """Minimal node-evaluation surface needed for branch-order logging."""
+
+    tree_node: Any
+
+    def decision_ordered_branches(self) -> list[BranchKey]:
+        """Return child branches in decision order."""
+        ...
+
+    def branch_ordering_key(self, branch: BranchKey) -> BranchOrderingKey:
+        """Return the cached ordering key for one branch."""
         ...
 
 
@@ -50,13 +62,12 @@ def print_best_line(node_eval: BestLinePrintableNodeEval) -> None:
 
 
 def print_branch_ordering(
+    node_eval: BranchOrderingPrintableNodeEval,
     *,
-    tree_node: Any,
-    ordered_branches: list[BranchKey],
-    branch_ordering_key_getter: Callable[[BranchKey], BranchOrderingKey],
     dynamics: SearchDynamics[Any, Any],
 ) -> None:
     """Log child branches in the current decision order."""
+    ordered_branches = node_eval.decision_ordered_branches()
     anemone_logger.info(
         "here are the %s branches in decision order:",
         len(ordered_branches),
@@ -64,7 +75,7 @@ def print_branch_ordering(
 
     string_info = ""
     for branch_key in ordered_branches:
-        ordering_key = branch_ordering_key_getter(branch_key)
-        branch_name = dynamics.action_name(tree_node.state, branch_key)
+        ordering_key = node_eval.branch_ordering_key(branch_key)
+        branch_name = dynamics.action_name(node_eval.tree_node.state, branch_key)
         string_info += f" {branch_name} {ordering_key.primary_score} $$ "
     anemone_logger.info(string_info)

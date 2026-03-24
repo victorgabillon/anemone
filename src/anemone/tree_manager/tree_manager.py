@@ -105,12 +105,11 @@ class TreeManager[
         tree_depth: int = parent_node.tree_depth + 1
         state_tag: StateTag = state.tag
 
-        need_creation_child_node: bool = (
-            tree.descendants.is_new_generation(tree_depth)
-            or not tree.descendants.contains_tag_at_depth(
-                tree_depth=tree_depth,
-                state_tag=state_tag,
-            )
+        need_creation_child_node: bool = tree.descendants.is_new_generation(
+            tree_depth
+        ) or not tree.descendants.contains_tag_at_depth(
+            tree_depth=tree_depth,
+            state_tag=state_tag,
         )
 
         tree_expansion: TreeExpansion[FamilyT]

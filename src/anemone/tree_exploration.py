@@ -1,5 +1,6 @@
 """Runnable tree-search runtime centered on ``TreeExploration``."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from random import Random
 from typing import TYPE_CHECKING, Any
@@ -18,7 +19,6 @@ from anemone.progress_monitor.progress_monitor import (
     create_stopping_criterion,
 )
 from anemone.search_factory import NodeSelectorFactory
-from anemone.utils.logger import anemone_logger
 
 from . import node_selector as node_sel
 from . import recommender_rule, trees
@@ -27,6 +27,10 @@ from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
     from valanga.policy import BranchPolicy
+
+
+type IterationProgressReporter = Callable[[Any, Random], None]
+type SearchResultReporter = Callable[[Any], None]
 
 
 @dataclass
@@ -74,6 +78,8 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs
     stopping_criterion: ProgressMonitor[NodeT]
     notify_percent_function: NotifyProgressCallable
+    iteration_progress_reporter: IterationProgressReporter | None = None
+    search_result_reporter: SearchResultReporter | None = None
     _latest_tree_expansions: tree_man.TreeExpansions[NodeT] = field(
         init=False,
         repr=False,
@@ -97,39 +103,21 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
         return tree_expansions
 
+    def _report_iteration_progress(self, random_generator: Random) -> None:
+        """Invoke the optional iteration-progress reporter for this runtime."""
+        if self.iteration_progress_reporter is None:
+            return
+        self.iteration_progress_reporter(self, random_generator)
+
     def print_info_during_branch_computation(self, random_generator: Random) -> None:
-        """Print info during the branch computation.
+        """Backward-compatible alias for the iteration-progress reporter."""
+        self._report_iteration_progress(random_generator)
 
-        Args:
-            random_generator (Random): The random number generator.
-
-        """
-        current_best_branch: str
-        if self.tree.root_node.tree_evaluation.best_branch_sequence:
-            current_best_branch = str(
-                self.tree.root_node.tree_evaluation.best_branch_sequence[0]
-            )
-        else:
-            current_best_branch = "?"
-        if random_generator.random() < 0.11:
-            anemone_logger.info(
-                "state: %s",
-                self.tree.root_node.state,
-            )
-
-            str_progress = self.stopping_criterion.get_string_of_progress(self.tree)
-            anemone_logger.info(
-                "%s | current best branch: %s | current white value: %s",
-                str_progress,
-                current_best_branch,
-                self.tree.root_node.tree_evaluation.get_score(),
-            )
-
-            # ,end='\r')
-            self.tree.root_node.tree_evaluation.print_branch_ordering(
-                dynamics=self.tree_manager.dynamics
-            )
-            self.tree_manager.print_best_line(tree=self.tree)
+    def _report_search_result(self) -> None:
+        """Invoke the optional search-result reporter for this runtime."""
+        if self.search_result_reporter is None:
+            return
+        self.search_result_reporter(self)
 
     def _select_node_for_expansion(self) -> node_sel.OpeningInstructions[NodeT]:
         """Ask the selector for the next branches to open."""
@@ -204,7 +192,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         loop: int = 0
         while self.stopping_criterion.should_we_continue(tree=self.tree):
             loop = loop + 1
-            self.print_info_during_branch_computation(random_generator=random_generator)
+            self._report_iteration_progress(random_generator=random_generator)
             self.step()
 
             if loop % 10 == 0:
@@ -223,9 +211,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         best_branch_name = self.tree_manager.dynamics.action_name(
             self.tree.root_node.state, best_branch
         )
-        self.tree_manager.print_best_line(
-            tree=self.tree
-        )  # TODO: maybe almost best chosen line no?
+        self._report_search_result()
 
         branch_recommendation = Recommendation(
             recommended_name=best_branch_name,
@@ -255,6 +241,8 @@ def create_tree_exploration[StateT: AnyTurnState](
     stopping_criterion_args: AllStoppingCriterionArgs,
     recommend_branch_after_exploration: recommender_rule.AllRecommendFunctionsArgs,
     notify_percent_function: NotifyProgressCallable | None = None,
+    iteration_progress_reporter: IterationProgressReporter | None = None,
+    search_result_reporter: SearchResultReporter | None = None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """Assemble ``TreeExploration`` from already-created collaborators.
 
@@ -281,6 +269,8 @@ def create_tree_exploration[StateT: AnyTurnState](
         node_selector=node_selector,
         recommend_branch_after_exploration=recommend_branch_after_exploration,
         notify_percent_function=notify_percent_function,
+        iteration_progress_reporter=iteration_progress_reporter,
+        search_result_reporter=search_result_reporter,
     )
 
     return tree_exploration

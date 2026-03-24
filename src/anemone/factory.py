@@ -51,6 +51,10 @@ from anemone.tree_exploration import (
     TreeExploration,
     create_tree_exploration,
 )
+from anemone.tree_exploration_debug import (
+    log_final_best_line,
+    maybe_log_iteration_progress,
+)
 
 TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 
@@ -308,6 +312,8 @@ def _build_runtime_from_dependencies[StateT: AnyTurnState](
         stopping_criterion_args=args.stopping_criterion,
         recommend_branch_after_exploration=args.recommender_rule,
         notify_percent_function=notify_progress,
+        iteration_progress_reporter=maybe_log_iteration_progress,
+        search_result_reporter=log_final_best_line,
     )
 
 

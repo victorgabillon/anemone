@@ -4,20 +4,23 @@ from __future__ import annotations
 
 from enum import Enum
 from types import SimpleNamespace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from valanga import Color
 from valanga.evaluations import Certainty, Value
 
+from anemone.node_evaluation.tree import debug_printing
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
-from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
 from anemone.utils.logger import anemone_logger
+
+if TYPE_CHECKING:
+    from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
 
 
 class _SoloRole(Enum):
@@ -31,7 +34,7 @@ class _FakeDynamics:
 
 
 def _call_generic_debug_print(node_eval: NodeTreeEvaluation[Any]) -> None:
-    node_eval.print_branch_ordering(dynamics=_FakeDynamics())
+    debug_printing.print_branch_ordering(node_eval, dynamics=_FakeDynamics())
 
 
 def _max_child(node_id: int, score: float) -> Any:
@@ -107,6 +110,7 @@ def test_print_branch_ordering_is_available_via_shared_protocol(
     expected_order: list[str],
     expected_primary_scores: list[str],
 ) -> None:
+    """Shared tree-evaluation families should expose one debug-print path."""
     messages: list[str] = []
 
     def _record_info(msg: object, *args: object) -> None:
