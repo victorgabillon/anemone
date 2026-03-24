@@ -5,26 +5,31 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from math import log
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, assert_never, cast
 
 from valanga import BranchKey, State
 
 from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.backup_policies.protocols import BackupPolicy
-from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
 from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
 from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 from anemone.node_evaluation.common.principal_variation import (
     PrincipalVariationState,
 )
+from anemone.node_evaluation.tree import (
+    backup_orchestration,
+    best_branch_equivalence,
+    branch_ordering_runtime,
+    debug_printing,
+    principal_variation_runtime,
+    value_access,
+)
 from anemone.node_evaluation.tree.decision_ordering import (
     BranchOrderingKey,
     DecisionOrderingState,
 )
 from anemone.nodes.itree_node import ITreeNode
-from anemone.utils.logger import anemone_logger
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -165,40 +170,31 @@ class NodeTreeEvaluationState[
 
     def get_value_candidate(self) -> Value | None:
         """Return backed-up value when available, else direct value."""
-        return canonical_value.get_value_candidate(
-            backed_up_value=self.backed_up_value,
-            direct_value=self.direct_value,
-        )
+        return value_access.get_value_candidate(self)
 
     def get_value(self) -> Value:
         """Return the canonical Value for this node."""
-        return canonical_value.get_value(
-            backed_up_value=self.backed_up_value,
-            direct_value=self.direct_value,
-        )
+        return value_access.get_value(self)
 
     def get_score(self) -> float:
         """Return the canonical scalar score for this node."""
-        return canonical_value.get_score(
-            backed_up_value=self.backed_up_value,
-            direct_value=self.direct_value,
-        )
+        return value_access.get_score(self)
 
     def has_exact_value(self) -> bool:
         """Return True when the candidate Value is exact."""
-        return canonical_value.is_exact_value(self.get_value_candidate())
+        return value_access.has_exact_value(self)
 
     def is_terminal(self) -> bool:
         """Return True when the candidate Value says this node's own state is terminal."""
-        return canonical_value.is_terminal_value(self.get_value_candidate())
+        return value_access.is_terminal(self)
 
     def has_over_event(self) -> bool:
         """Return True when the candidate Value carries exact outcome metadata."""
-        return canonical_value.has_over_event(self.get_value_candidate())
+        return value_access.has_over_event(self)
 
     def get_over_event_candidate(self) -> AnyOverEvent | None:
         """Return exact outcome metadata from the candidate Value when present."""
-        return canonical_value.get_over_event_candidate(self.get_value_candidate())
+        return value_access.get_over_event_candidate(self)
 
     @property
     def over_event(self) -> AnyOverEvent | None:
@@ -207,10 +203,7 @@ class NodeTreeEvaluationState[
 
     def child_value_candidate(self, branch_key: BranchKey) -> Value | None:
         """Return the best available Value candidate for a child branch."""
-        child_tree_evaluation = self.child_tree_evaluation(branch_key)
-        if child_tree_evaluation is None:
-            return None
-        return child_tree_evaluation.get_value_candidate()
+        return value_access.child_value_candidate(self, branch_key)
 
     def child_tree_evaluation(
         self,
@@ -257,22 +250,18 @@ class NodeTreeEvaluationState[
 
     def _child_pv_version(self, child: Any) -> int:
         """Return one child's PV version with a conservative fallback."""
-        return int(getattr(child.tree_evaluation, "pv_version", 0))
+        return principal_variation_runtime.child_pv_version(child)
 
     def _child_best_branch_sequence(self, child: Any) -> list[BranchKey]:
         """Return one child's current PV sequence."""
-        return list(child.tree_evaluation.best_branch_sequence)
+        return principal_variation_runtime.child_best_branch_sequence(child)
 
     def _pv_child_version_for_sequence(self, sequence: list[BranchKey]) -> int | None:
         """Return the cached best-child PV version for a given PV sequence head."""
-        if not sequence:
-            return None
-
-        best_child_tree_evaluation = self.child_tree_evaluation(sequence[0])
-        if best_child_tree_evaluation is None:
-            return None
-
-        return int(getattr(best_child_tree_evaluation, "pv_version", 0))
+        return principal_variation_runtime.pv_child_version_for_sequence(
+            sequence=sequence,
+            child_tree_evaluation_getter=self,
+        )
 
     def sync_branch_frontier(self, branches_to_refresh: set[BranchKey]) -> None:
         """Refresh frontier bookkeeping from updated child values."""
@@ -296,34 +285,10 @@ class NodeTreeEvaluationState[
         preferred_ordered_branches: Iterable[BranchKey],
     ) -> tuple[BranchKey, ...]:
         """Return preferred branches first, then any remaining child branches."""
-        ordered_branches: list[BranchKey] = []
-        seen_branches: set[BranchKey] = set()
-
-        for branch in preferred_ordered_branches:
-            if (
-                branch in self.tree_node.branches_children
-                and branch not in seen_branches
-            ):
-                ordered_branches.append(branch)
-                seen_branches.add(branch)
-
-        for branch in self.tree_node.branches_children:
-            if branch not in seen_branches:
-                ordered_branches.append(branch)
-                seen_branches.add(branch)
-
-        return tuple(ordered_branches)
-
-    def _branches_with_ordering_key_available(
-        self,
-        branches_to_consider: set[BranchKey],
-    ) -> set[BranchKey]:
-        """Return branches that currently have enough information for ordering-key update."""
-        return {
-            branch_key
-            for branch_key in branches_to_consider
-            if self.child_value_candidate(branch_key) is not None
-        }
+        return branch_ordering_runtime.ordered_candidate_branches_with_child_fallback(
+            preferred_ordered_branches=preferred_ordered_branches,
+            available_child_branches=self.tree_node.branches_children,
+        )
 
     def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
         """Return candidate branches from cached decision ordering plus fallback."""
@@ -367,8 +332,8 @@ class NodeTreeEvaluationState[
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Delegate backup work to the configured tree-evaluation backup policy."""
-        assert self.backup_policy is not None
-        return self.backup_policy.backup_from_children(
+        return backup_orchestration.backup_from_children(
+            backup_policy=self.backup_policy,
             node_eval=self,
             branches_with_updated_value=branches_with_updated_value,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
@@ -440,13 +405,12 @@ class NodeTreeEvaluationState[
         best_branch: BranchKey,
     ) -> bool:
         """Return whether two branches share Value and tactical quality."""
-        branch_value = self.child_value_candidate(branch)
-        best_value = self.child_value_candidate(best_branch)
-        assert branch_value is not None
-        assert best_value is not None
-        return branch_value == best_value and self._branch_tactical_quality_key(
-            branch
-        ) == self._branch_tactical_quality_key(best_branch)
+        return best_branch_equivalence.branch_values_are_equal(
+            branch=branch,
+            best_branch=best_branch,
+            child_value_candidate_getter=self.child_value_candidate,
+            tactical_quality_key_getter=self._branch_tactical_quality_key,
+        )
 
     def _branch_tactical_quality_key(self, branch: BranchKey) -> int:
         """Return the shared tactical-quality key used for exact branch equality."""
@@ -500,25 +464,20 @@ class NodeTreeEvaluationState[
 
     def _branch_logistic_equivalence_score(self, branch: BranchKey) -> float:
         """Return the score used by logistic-style best-branch equivalence."""
-        return self._logistic_equivalence_score(self._branch_equivalence_score(branch))
+        return best_branch_equivalence.logistic_equivalence_score(
+            self._branch_equivalence_score(branch)
+        )
 
     def _are_almost_equal_scores(self, left: float, right: float) -> bool:
         """Return whether two scalar branch-equivalence scores are close enough."""
-        epsilon = 0.01
-        return left > right - epsilon and right > left - epsilon
-
-    def _logistic_equivalence_score(self, x: float) -> float:
-        """Apply the shared logistic-style transform used for branch equivalence."""
-        y = min(max(x * 0.5 + 0.5, 0.000000000000000000000001), 0.9999999999999999)
-        return log(y / (1 - y)) * max(
-            1,
-            abs(x),
-        )  # the * min(1,x) is a hack to prioritize game over
+        return best_branch_equivalence.are_almost_equal_scores(left, right)
 
     def update_branches_values(self, branches_to_consider: set[BranchKey]) -> None:
         """Refresh cached branch-ordering keys for branches that currently have a value."""
-        self.decision_ordering.update_branch_ordering_keys(
-            self._branches_with_ordering_key_available(branches_to_consider),
+        branch_ordering_runtime.update_branches_values(
+            decision_ordering=self.decision_ordering,
+            branches_to_consider=branches_to_consider,
+            child_value_candidate_getter=self.child_value_candidate,
             branch_ordering_key_getter=self._compute_branch_ordering_key,
         )
 
@@ -529,36 +488,30 @@ class NodeTreeEvaluationState[
         best_branch: BranchKey,
     ) -> bool:
         """Return whether two branches tie under the node's decision semantics."""
-        branch_value = self.child_value_candidate(branch)
-        best_value = self.child_value_candidate(best_branch)
-        assert branch_value is not None
-        assert best_value is not None
-        return (
-            self.required_objective.semantic_compare(
-                branch_value,
-                best_value,
-                self.tree_node.state,
-            )
-            == 0
+        return best_branch_equivalence.branch_values_are_considered_equal(
+            branch=branch,
+            best_branch=best_branch,
+            child_value_candidate_getter=self.child_value_candidate,
+            semantic_compare=lambda left, right: (
+                self.required_objective.semantic_compare(
+                    left,
+                    right,
+                    self.tree_node.state,
+                )
+            ),
         )
 
     def _compute_branch_ordering_key(self, branch_key: BranchKey) -> BranchOrderingKey:
         """Build the cached branch-ordering key for one child branch."""
-        child = self.tree_node.branches_children[branch_key]
-        assert child is not None
-
-        child_value = self.child_value_candidate(branch_key)
-        assert child_value is not None, (
-            f"Cannot compute branch-ordering key: child {branch_key} has no Value yet. "
-            "Ensure children are evaluated directly or backed up before ordering."
-        )
-
-        return BranchOrderingKey(
-            primary_score=self.required_objective.evaluate_value(
-                child_value, self.tree_node.state
+        return branch_ordering_runtime.compute_branch_ordering_key(
+            branch_key=branch_key,
+            child_node_getter=self.tree_node.branches_children.get,
+            child_value_candidate_getter=self.child_value_candidate,
+            primary_score_getter=lambda key: self.required_objective.evaluate_value(
+                cast("Value", self.child_value_candidate(key)),
+                self.tree_node.state,
             ),
-            tactical_tiebreak=self._branch_exact_line_tactical_quality(branch_key),
-            stable_tiebreak_id=child.id,
+            tactical_quality_getter=self._branch_exact_line_tactical_quality,
         )
 
     def update_best_branch_sequence(
@@ -571,24 +524,26 @@ class NodeTreeEvaluationState[
             if best_branch_key is not None
             else None
         )
-        return self.pv_state.try_update_from_best_child(
+        return principal_variation_runtime.update_best_branch_sequence(
+            pv_state=self.pv_state,
             best_branch_key=best_branch_key,
             best_child=best_child,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
-            child_pv_version_getter=self._child_pv_version,
-            child_best_branch_sequence_getter=self._child_best_branch_sequence,
         )
 
     def set_best_branch_sequence(self, new_seq: list[BranchKey]) -> bool:
         """Replace PV content and update child-version tracking when it changes."""
-        return self.pv_state.set_sequence(
-            new_seq,
+        return principal_variation_runtime.set_best_branch_sequence(
+            pv_state=self.pv_state,
+            new_sequence=new_seq,
             current_best_child_version=self._pv_child_version_for_sequence(new_seq),
         )
 
     def clear_best_branch_sequence(self) -> bool:
         """Clear the stored principal variation content."""
-        return self.pv_state.clear()
+        return principal_variation_runtime.clear_best_branch_sequence(
+            pv_state=self.pv_state
+        )
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Rebuild the PV head from the current best child."""
@@ -623,32 +578,19 @@ class NodeTreeEvaluationState[
 
     def print_best_line(self) -> None:
         """Log the current best line by following the stored PV through children."""
-        info_string = f"Best line from node {self.tree_node.id!s}: "
-        node_eval: Any = self
-        for branch in self.best_branch_sequence:
-            child = node_eval.tree_node.branches_children[branch]
-            assert child is not None
-            info_string += f"{branch} ({child.id!s}) "
-            node_eval = child.tree_evaluation
-        anemone_logger.info(info_string)
+        debug_printing.print_best_line(self)
 
     def print_branch_ordering(
         self,
         dynamics: SearchDynamics[Any, Any],
     ) -> None:
         """Log child branches in the current decision order."""
-        ordered_branches = self.decision_ordered_branches()
-        anemone_logger.info(
-            "here are the %s branches in decision order:",
-            len(ordered_branches),
+        debug_printing.print_branch_ordering(
+            tree_node=self.tree_node,
+            ordered_branches=self.decision_ordered_branches(),
+            branch_ordering_key_getter=self._branch_ordering_key,
+            dynamics=dynamics,
         )
-
-        string_info = ""
-        for branch_key in ordered_branches:
-            ordering_key = self._branch_ordering_key(branch_key)
-            branch_name = dynamics.action_name(self.tree_node.state, branch_key)
-            string_info += f" {branch_name} {ordering_key.primary_score} $$ "
-        anemone_logger.info(string_info)
 
 
 class NodeTreeEvaluation[StateT: State = State](
