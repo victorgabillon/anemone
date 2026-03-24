@@ -49,6 +49,17 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 NodeSelectorFactory = Callable[[], node_selectors.NodeSelector]
 
 
+def _missing_selector_factory_dependency_error(
+    dependency_name: str,
+    *,
+    details: str = "",
+) -> ValueError:
+    return ValueError(
+        "SearchFactory.create_node_selector_factory() requires "
+        f"`{dependency_name}`{details}."
+    )
+
+
 class SearchFactoryP(Protocol):
     """Create dependent factories for node selection and node-index creation.
 
@@ -134,24 +145,26 @@ class SearchFactory:
             A callable object that creates the node selector.
 
         Raises:
-            AssertionError: If the random generator is not provided.
+            ValueError: If selector configuration is incomplete.
 
         """
         # creates the opening instructor
 
-        assert self.random_generator is not None
-        opening_instructor: OpeningInstructor | None = (
-            OpeningInstructor(
-                opening_type=self.opening_type,
-                random_generator=self.random_generator,
-                dynamics=self.dynamics,
+        if self.random_generator is None:
+            raise _missing_selector_factory_dependency_error("random_generator")
+        if self.node_selector_args is None:
+            raise _missing_selector_factory_dependency_error("node_selector_args")
+        if self.opening_type is None:
+            raise _missing_selector_factory_dependency_error(
+                "opening_type",
+                details=" to build the OpeningInstructor",
             )
-            if self.opening_type is not None
-            else None
-        )
 
-        assert self.node_selector_args is not None
-        assert opening_instructor is not None
+        opening_instructor = OpeningInstructor(
+            opening_type=self.opening_type,
+            random_generator=self.random_generator,
+            dynamics=self.dynamics,
+        )
 
         node_selector_create: NodeSelectorFactory = partial(
             create_composed_node_selector,

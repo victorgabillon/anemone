@@ -30,6 +30,77 @@ class _StateWithTurn(State, Protocol):
     turn: Color
 
 
+def _wrong_interval_data_error(
+    *,
+    node_role: str,
+    node_id: object,
+    actual_data: object | None,
+) -> TypeError:
+    return TypeError(
+        "Interval exploration strategy requires IntervalExplo data on "
+        f"{node_role} node {node_id}, got {type(actual_data).__name__}."
+    )
+
+
+def _missing_parent_state_error(
+    *,
+    child_node_id: object,
+    parent_node_id: object,
+) -> RuntimeError:
+    return RuntimeError(
+        "Cannot update interval exploration indices for child node "
+        f"{child_node_id}: parent node {parent_node_id} state was not provided."
+    )
+
+
+def _missing_parent_interval_error(
+    *,
+    child_node_id: object,
+    parent_node_id: object,
+) -> RuntimeError:
+    return RuntimeError(
+        "Cannot update interval exploration indices for child node "
+        f"{child_node_id}: parent node {parent_node_id} has an initialized "
+        "index but no interval."
+    )
+
+
+def _missing_best_branch_error(
+    *,
+    child_node_id: object,
+    parent_node_id: object,
+) -> RuntimeError:
+    return RuntimeError(
+        "Cannot compute interval exploration update for child node "
+        f"{child_node_id}: parent node {parent_node_id} has no best branch yet."
+    )
+
+
+def _missing_best_child_error(
+    *,
+    parent_node_id: object,
+    best_branch: object,
+) -> RuntimeError:
+    return RuntimeError(
+        "Cannot compute interval exploration update: "
+        f"parent node {parent_node_id} selected best branch {best_branch!r} "
+        "but no child is linked to it."
+    )
+
+
+def _missing_comparison_child_error(
+    *,
+    parent_node_id: object,
+    best_branch: object,
+    second_best_branch: object,
+) -> RuntimeError:
+    return RuntimeError(
+        "Cannot compute interval exploration update: "
+        f"parent node {parent_node_id} has no comparison child for branches "
+        f"{best_branch!r}/{second_best_branch!r}."
+    )
+
+
 class UpdateIndexLocalMinChange:
     """Update exploration indices using the interval/local-min-change strategy."""
 
@@ -41,9 +112,12 @@ class UpdateIndexLocalMinChange:
         root_node_exploration_index_data: NodeExplorationData[NodeT, Any] | None,
     ) -> None:
         """Initialize root exploration data for the interval strategy."""
-        del root_node
-
-        assert isinstance(root_node_exploration_index_data, IntervalExplo)
+        if not isinstance(root_node_exploration_index_data, IntervalExplo):
+            raise _wrong_interval_data_error(
+                node_role="root",
+                node_id=root_node.id,
+                actual_data=root_node_exploration_index_data,
+            )
         root_node_exploration_index_data.index = 0
         root_node_exploration_index_data.interval = Interval(
             min_value=-inf,
@@ -63,16 +137,34 @@ class UpdateIndexLocalMinChange:
         """Update one child exploration index under the interval strategy."""
         del child_rank, tree
 
-        assert parent_node_state is not None
+        if parent_node_state is None:
+            raise _missing_parent_state_error(
+                child_node_id=child_node.id,
+                parent_node_id=parent_node.id,
+            )
         parent_state_with_turn = cast("_StateWithTurn", parent_node_state)
-        assert isinstance(parent_node_exploration_index_data, IntervalExplo)
-        assert isinstance(child_node_exploration_index_data, IntervalExplo)
+        if not isinstance(parent_node_exploration_index_data, IntervalExplo):
+            raise _wrong_interval_data_error(
+                node_role="parent",
+                node_id=parent_node.id,
+                actual_data=parent_node_exploration_index_data,
+            )
+        if not isinstance(child_node_exploration_index_data, IntervalExplo):
+            raise _wrong_interval_data_error(
+                node_role="child",
+                node_id=child_node.id,
+                actual_data=child_node_exploration_index_data,
+            )
 
         if parent_node_exploration_index_data.index is None:
             child_node_exploration_index_data.index = None
             return
 
-        assert parent_node_exploration_index_data.interval is not None
+        if parent_node_exploration_index_data.interval is None:
+            raise _missing_parent_interval_error(
+                child_node_id=child_node.id,
+                parent_node_id=parent_node.id,
+            )
         inter_level_interval: Interval | None
         local_index: float | None
         if len(parent_node.branches_children) == 1:
@@ -131,18 +223,38 @@ class UpdateIndexLocalMinChange:
         """Return the best child plus the branch that constrains ``child_node``."""
         top_two_branches = require_second_best_branch_aware(parent_node.tree_evaluation)
         best_branch = top_two_branches.best_branch()
+        if best_branch is None:
+            raise _missing_best_branch_error(
+                child_node_id=child_node.id,
+                parent_node_id=parent_node.id,
+            )
         second_best_branch = top_two_branches.second_best_branch()
-        assert best_branch is not None
-        assert second_best_branch is not None
 
         best_child = parent_node.branches_children[best_branch]
+        if best_child is None:
+            raise _missing_best_child_error(
+                parent_node_id=parent_node.id,
+                best_branch=best_branch,
+            )
         comparison_child = parent_node.branches_children[
             second_best_branch
             if child_node == parent_node.branches_children[best_branch]
             else best_branch
         ]
-        assert isinstance(best_child, AlgorithmNode)
-        assert isinstance(comparison_child, AlgorithmNode)
+        if comparison_child is None:
+            raise _missing_comparison_child_error(
+                parent_node_id=parent_node.id,
+                best_branch=best_branch,
+                second_best_branch=second_best_branch,
+            )
+        assert isinstance(best_child, AlgorithmNode), (
+            "Interval exploration strategy expects AlgorithmNode children for "
+            "best-branch comparisons."
+        )
+        assert isinstance(comparison_child, AlgorithmNode), (
+            "Interval exploration strategy expects AlgorithmNode children for "
+            "best-branch comparisons."
+        )
         return best_child, comparison_child
 
     def _local_interval_for_child(

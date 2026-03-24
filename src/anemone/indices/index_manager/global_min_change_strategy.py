@@ -18,6 +18,30 @@ if TYPE_CHECKING:
     from anemone.trees.tree import Tree
 
 
+def _wrong_minmax_path_value_data_error(
+    *,
+    node_role: str,
+    node_id: object,
+    actual_data: object | None,
+) -> TypeError:
+    return TypeError(
+        "Global-min-change strategy requires MinMaxPathValue data on "
+        f"{node_role} node {node_id}, got {type(actual_data).__name__}."
+    )
+
+
+def _missing_parent_path_value_error(
+    *,
+    child_node_id: object,
+    parent_node_id: object,
+    field_name: str,
+) -> RuntimeError:
+    return RuntimeError(
+        "Cannot update global-min-change indices for child node "
+        f"{child_node_id}: parent node {parent_node_id} has no {field_name} yet."
+    )
+
+
 class UpdateIndexGlobalMinChange:
     """Update exploration indices using the global minimum-change strategy."""
 
@@ -31,7 +55,12 @@ class UpdateIndexGlobalMinChange:
         """Initialize root exploration data for the global-min-change strategy."""
         root_value = node_score(root_node)
 
-        assert isinstance(root_node_exploration_index_data, MinMaxPathValue)
+        if not isinstance(root_node_exploration_index_data, MinMaxPathValue):
+            raise _wrong_minmax_path_value_data_error(
+                node_role="root",
+                node_id=root_node.id,
+                actual_data=root_node_exploration_index_data,
+            )
         root_node_exploration_index_data.min_path_value = root_value
         root_node_exploration_index_data.max_path_value = root_value
         root_node_exploration_index_data.index = 0
@@ -47,12 +76,32 @@ class UpdateIndexGlobalMinChange:
         child_rank: int,
     ) -> None:
         """Update one child exploration index under the global-min-change rule."""
-        del child_rank, parent_node, parent_node_state, tree
+        del child_rank, parent_node_state, tree
 
-        assert isinstance(parent_node_exploration_index_data, MinMaxPathValue)
-        assert parent_node_exploration_index_data.min_path_value is not None
-        assert parent_node_exploration_index_data.max_path_value is not None
-        assert isinstance(child_node_exploration_index_data, MinMaxPathValue)
+        if not isinstance(parent_node_exploration_index_data, MinMaxPathValue):
+            raise _wrong_minmax_path_value_data_error(
+                node_role="parent",
+                node_id=parent_node.id,
+                actual_data=parent_node_exploration_index_data,
+            )
+        if parent_node_exploration_index_data.min_path_value is None:
+            raise _missing_parent_path_value_error(
+                child_node_id=child_node.id,
+                parent_node_id=parent_node.id,
+                field_name="min_path_value",
+            )
+        if parent_node_exploration_index_data.max_path_value is None:
+            raise _missing_parent_path_value_error(
+                child_node_id=child_node.id,
+                parent_node_id=parent_node.id,
+                field_name="max_path_value",
+            )
+        if not isinstance(child_node_exploration_index_data, MinMaxPathValue):
+            raise _wrong_minmax_path_value_data_error(
+                node_role="child",
+                node_id=child_node.id,
+                actual_data=child_node_exploration_index_data,
+            )
 
         child_min_path_value, child_max_path_value, child_index = (
             global_min_change_metrics(
@@ -68,8 +117,14 @@ class UpdateIndexGlobalMinChange:
             child_node_exploration_index_data.min_path_value = child_min_path_value
             return
 
-        assert child_node_exploration_index_data.max_path_value is not None
-        assert child_node_exploration_index_data.min_path_value is not None
+        assert child_node_exploration_index_data.max_path_value is not None, (
+            "Global-min-change exploration data with an existing index must also "
+            "store max_path_value."
+        )
+        assert child_node_exploration_index_data.min_path_value is not None, (
+            "Global-min-change exploration data with an existing index must also "
+            "store min_path_value."
+        )
         child_node_exploration_index_data.index = min(
             child_node_exploration_index_data.index,
             child_index,

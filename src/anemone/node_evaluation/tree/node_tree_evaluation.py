@@ -44,6 +44,36 @@ if TYPE_CHECKING:
 BackupPolicyFactory = Callable[[], BackupPolicy[Any]]
 
 
+def _missing_objective_error(node_id: object) -> RuntimeError:
+    return RuntimeError(
+        f"Cannot use tree evaluation for node {node_id}: no objective is configured."
+    )
+
+
+def _missing_pv_child_for_branch_error(
+    *,
+    node_id: object,
+    branch_key: BranchKey,
+) -> RuntimeError:
+    return RuntimeError(
+        "Cannot build PV line for node "
+        f"{node_id}: no child is linked to branch {branch_key!r}."
+    )
+
+
+def _missing_backup_policy_error(node_id: object) -> RuntimeError:
+    return RuntimeError(
+        f"Cannot back up child values for node {node_id}: no backup_policy is configured."
+    )
+
+
+def _missing_best_branch_for_pv_rebuild_error(node_id: object) -> RuntimeError:
+    return RuntimeError(
+        "Cannot rebuild the principal variation for node "
+        f"{node_id}: no current best branch is available."
+    )
+
+
 def make_branch_frontier_factory() -> BranchFrontierState:
     """Create the generic frontier bookkeeping helper for one node."""
     return BranchFrontierState()
@@ -138,8 +168,9 @@ class NodeTreeEvaluationState[
 
     @property
     def required_objective(self) -> Objective[StateT]:
-        """Return the configured objective, asserting it exists."""
-        assert self.objective is not None, "Tree evaluation requires an objective."
+        """Return the configured objective or raise a clear configuration error."""
+        if self.objective is None:
+            raise _missing_objective_error(self.tree_node.id)
         return self.objective
 
     @property
@@ -217,9 +248,11 @@ class NodeTreeEvaluationState[
     def best_branch_line_from_child(self, branch_key: BranchKey) -> list[BranchKey]:
         """Return the PV line that starts by taking one concrete child branch."""
         child_tree_evaluation = self.child_tree_evaluation(branch_key)
-        assert child_tree_evaluation is not None, (
-            f"Cannot build PV line: missing child for branch {branch_key!r}."
-        )
+        if child_tree_evaluation is None:
+            raise _missing_pv_child_for_branch_error(
+                node_id=self.tree_node.id,
+                branch_key=branch_key,
+            )
         return [branch_key, *child_tree_evaluation.best_branch_sequence]
 
     def on_branch_opened(self, branch: BranchKey) -> None:
@@ -331,7 +364,8 @@ class NodeTreeEvaluationState[
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult:
         """Delegate backup work to the configured tree-evaluation backup policy."""
-        assert self.backup_policy is not None
+        if self.backup_policy is None:
+            raise _missing_backup_policy_error(self.tree_node.id)
         return self.backup_policy.backup_from_children(
             node_eval=self,
             branches_with_updated_value=branches_with_updated_value,
@@ -423,10 +457,15 @@ class NodeTreeEvaluationState[
         node, which makes longer lines compare as tactically better.
         """
         child_value = self.child_value_candidate(branch)
-        assert child_value is not None
+        assert child_value is not None, (
+            f"Exact-line tactical quality requires a child Value for branch {branch!r}."
+        )
 
         child_tree_evaluation = self.child_tree_evaluation(branch)
-        assert child_tree_evaluation is not None
+        assert child_tree_evaluation is not None, (
+            "Exact-line tactical quality requires an existing child evaluation for "
+            f"branch {branch!r}."
+        )
         pv_length = len(child_tree_evaluation.best_branch_sequence)
 
         over_event = child_value.over_event
@@ -547,11 +586,15 @@ class NodeTreeEvaluationState[
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Rebuild the PV head from the current best child."""
         best_branch_key = self.best_branch()
-        assert best_branch_key is not None
+        if best_branch_key is None:
+            raise _missing_best_branch_for_pv_rebuild_error(self.tree_node.id)
         has_best_branch_seq_changed = self.set_best_branch_sequence(
             self.best_branch_line_from_child(best_branch_key)
         )
-        assert self.best_branch_sequence
+        assert self.best_branch_sequence, (
+            "Rebuilding the principal variation from a best child must produce "
+            "a non-empty PV."
+        )
         return has_best_branch_seq_changed
 
     def assert_pv_invariants(self) -> None:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 from valanga import BranchKey
 
@@ -20,12 +20,28 @@ type ChildValueCandidateGetter = Callable[[BranchKey], Value | None]
 type TacticalQualityGetter = Callable[[BranchKey], int]
 type PrimaryScoreGetter = Callable[[BranchKey], float]
 type BranchOrderingKeyGetter = Callable[[BranchKey], BranchOrderingKey]
+type ChildNodeGetter = Callable[[BranchKey], object | None]
 
 
 class StableIdChild(Protocol):
     """Minimal child-node surface needed for stable branch ordering."""
 
     id: int
+
+
+def _missing_branch_child_error(branch_key: BranchKey) -> RuntimeError:
+    return RuntimeError(
+        "Cannot compute branch-ordering key for branch "
+        f"{branch_key!r}: no child node is linked to it."
+    )
+
+
+def _missing_branch_value_error(branch_key: BranchKey) -> RuntimeError:
+    return RuntimeError(
+        "Cannot compute branch-ordering key for branch "
+        f"{branch_key!r}: no Value is available yet. "
+        "Evaluate or back up the child before ordering branches."
+    )
 
 
 def ordered_candidate_branches_with_child_fallback(
@@ -70,20 +86,19 @@ def branches_with_ordering_key_available(
 def compute_branch_ordering_key(
     *,
     branch_key: BranchKey,
-    child_node_getter: Callable[[BranchKey], Any | None],
+    child_node_getter: ChildNodeGetter,
     child_value_candidate_getter: ChildValueCandidateGetter,
     primary_score_getter: PrimaryScoreGetter,
     tactical_quality_getter: TacticalQualityGetter,
 ) -> BranchOrderingKey:
     """Build the cached branch-ordering key for one child branch."""
     child = cast("StableIdChild | None", child_node_getter(branch_key))
-    assert child is not None
+    if child is None:
+        raise _missing_branch_child_error(branch_key)
 
     child_value = child_value_candidate_getter(branch_key)
-    assert child_value is not None, (
-        f"Cannot compute branch-ordering key: child {branch_key} has no Value yet. "
-        "Ensure children are evaluated directly or backed up before ordering."
-    )
+    if child_value is None:
+        raise _missing_branch_value_error(branch_key)
     del child_value
 
     return BranchOrderingKey(

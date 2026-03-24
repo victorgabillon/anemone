@@ -34,6 +34,14 @@ type ChildValueCandidateGetter = Callable[[BranchKey], Value | None]
 type SemanticCompare = Callable[[Value, Value], int]
 
 
+def _missing_second_best_branch_error(ordered_count: int) -> RuntimeError:
+    return RuntimeError(
+        "Cannot select a second-best branch: "
+        "need at least two ordered branches with available values, "
+        f"got {ordered_count}."
+    )
+
+
 def make_branch_ordering_keys_factory() -> dict[BranchKey, BranchOrderingKey]:
     """Create the cached branch-ordering-key storage."""
     return {}
@@ -126,5 +134,6 @@ class DecisionOrderingState:
             child_value_candidate_getter=child_value_candidate_getter,
             semantic_compare=semantic_compare,
         )
-        assert len(ordered) >= 2
+        if len(ordered) < 2:
+            raise _missing_second_best_branch_error(len(ordered))
         return ordered[1]

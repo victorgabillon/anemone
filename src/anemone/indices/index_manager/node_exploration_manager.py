@@ -27,6 +27,13 @@ if TYPE_CHECKING:
     from anemone.trees.tree import Tree
 
 
+def _null_index_manager_bypassed_error() -> RuntimeError:
+    return RuntimeError(
+        "NullNodeExplorationIndexManager should be filtered out before "
+        "child-index updates are attempted."
+    )
+
+
 class NodeExplorationIndexManager(Protocol):
     """Strategy surface for recomputing exploration indices across a tree."""
 
@@ -87,7 +94,7 @@ class NullNodeExplorationIndexManager(NodeExplorationIndexManager):
             tree,
             child_rank,
         )
-        raise NotImplementedError("should not be raised")
+        raise _null_index_manager_bypassed_error()
 
 
 def update_all_indices[NodeT: AlgorithmNode[Any]](

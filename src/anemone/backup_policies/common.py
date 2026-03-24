@@ -52,6 +52,13 @@ class ChildValueReader(Protocol):
         """Return the candidate value for one child branch."""
 
 
+def _missing_terminal_over_event_error() -> ValueError:
+    return ValueError(
+        "Cannot construct a TERMINAL Value without an over_event in "
+        "ProofClassification."
+    )
+
+
 def all_child_values_exact(node_eval: ChildValueReader) -> bool:
     """Return True when every existing child branch has an exact Value."""
     if not node_eval.tree_node.branches_children:
@@ -96,7 +103,7 @@ def has_value_changed(*, value_before: Value | None, value_after: Value | None) 
     """
     if value_before is None or value_after is None:
         return value_before != value_after
-    return (
+    return bool(
         value_before.score != value_after.score
         or value_before.certainty != value_after.certainty
         or value_before.over_event != value_after.over_event
@@ -118,7 +125,8 @@ def make_value_from_proof_classification(
         )
     if proof.certainty == Certainty.TERMINAL:
         over_event = proof.over_event
-        assert over_event is not None, "TERMINAL values must carry an OverEvent."
+        if over_event is None:
+            raise _missing_terminal_over_event_error()
         return canonical_value.make_terminal_value(
             score=score,
             over_event=over_event,

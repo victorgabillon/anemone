@@ -26,13 +26,24 @@ class BestLinePrintableNodeEval(Protocol):
         ...
 
 
+def _missing_pv_child_error(*, node_id: object, branch: BranchKey) -> RuntimeError:
+    return RuntimeError(
+        "Cannot print best line for node "
+        f"{node_id!s}: PV branch {branch!r} has no linked child."
+    )
+
+
 def print_best_line(node_eval: BestLinePrintableNodeEval) -> None:
     """Log the current best line by following the stored PV through children."""
     info_string = f"Best line from node {node_eval.tree_node.id!s}: "
     running_node_eval: Any = node_eval
     for branch in node_eval.best_branch_sequence:
         child = running_node_eval.tree_node.branches_children[branch]
-        assert child is not None
+        if child is None:
+            raise _missing_pv_child_error(
+                node_id=running_node_eval.tree_node.id,
+                branch=branch,
+            )
         info_string += f"{branch} ({child.id!s}) "
         running_node_eval = child.tree_evaluation
     anemone_logger.info(info_string)
