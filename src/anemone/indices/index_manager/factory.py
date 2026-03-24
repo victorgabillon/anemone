@@ -1,4 +1,4 @@
-"""Provide a factory for node exploration index managers."""
+"""Create exploration-index update strategies for configured search modes."""
 
 from anemone.indices.index_manager.node_exploration_manager import (
     NodeExplorationIndexManager,
@@ -13,29 +13,30 @@ from anemone.indices.node_indices.index_types import (
 
 
 class UnknownIndexComputationError(ValueError):
-    """Raised when an index computation type is not recognized."""
+    """Raised when an exploration-index computation mode is not recognized."""
 
     def __init__(self, index_computation: IndexComputationType) -> None:
         """Initialize the error with the unsupported computation type."""
         super().__init__(
-            f"player creator: can not find {index_computation} in {__name__}"
+            f"Unsupported exploration-index computation mode: {index_computation!s}."
         )
 
 
 def create_exploration_index_manager(
     index_computation: IndexComputationType | None = None,
 ) -> NodeExplorationIndexManager:
-    """Create a node exploration index manager for the given index computation type.
+    """Create the exploration-index update strategy for one computation mode.
 
     Args:
-        index_computation (IndexComputationType | None): The type of index computation to be used.
-        Defaults to None.
+        index_computation: Configured exploration-index computation mode. ``None``
+            selects the null/no-op strategy.
 
     Returns:
-        NodeExplorationIndexManager: The created node exploration index manager.
+        The coordinator/strategy object responsible for recomputing exploration
+        payloads.
 
     Raises:
-        ValueError: If the given index computation type is not found.
+        UnknownIndexComputationError: If the computation mode is unsupported.
 
     """
     node_exploration_manager: NodeExplorationIndexManager

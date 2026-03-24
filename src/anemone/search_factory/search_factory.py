@@ -1,22 +1,8 @@
-"""Provide the implementation of the SearchFactory abstract factory.
+"""Coordinate node-selector construction with exploration-index payload creation.
 
-The SearchFactory class creates
-dependent factories for selecting nodes to open and creating indices. These factories need to
-operate on the same data, so they are created in a coherent way.
-
-The SearchFactory class provides methods to create the node selector factory and
-to create node indices for a given tree node.
-
-Classes:
-- SearchFactory: An abstract factory for creating dependent factories for selecting nodes to open, creating indices,
-and exploring them coherently.
-
-Protocols:
-- SearchFactoryP: A protocol that defines the abstract methods for the SearchFactory class.
-
-Functions:
-- create_node_selector_factory: A function that creates the node selector factory.
-- node_index_create: A function that creates node indices for a given tree node.
+``SearchFactory`` is an assembly helper used by :mod:`anemone._runtime_assembly`.
+It is not the main public runtime entry point; contributors should usually start
+from :mod:`anemone.factory`, which builds the full search runtime.
 """
 
 from collections.abc import Callable
@@ -61,38 +47,19 @@ def _missing_selector_factory_dependency_error(
 
 
 class SearchFactoryP(Protocol):
-    """Create dependent factories for node selection and node-index creation.
-
-    - the node selector
-    - the index creator
-    These collaborators need to operate on the same data, so they must be
-    created coherently.
-    """
+    """Coordinate node-selector creation with per-node exploration data creation."""
 
     depth_index: bool
 
     def create_node_selector_factory(self) -> NodeSelectorFactory:
-        """Create a NodeSelectorFactory object.
-
-        Returns:
-            NodeSelectorFactory: The created NodeSelectorFactory object.
-
-        """
+        """Create the node-selector factory used by the runtime assembly layer."""
         ...
 
     def node_index_create[StateT: State](
         self,
         tree_node: nodes.TreeNode[AlgorithmNode[StateT], StateT],
     ) -> node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None:
-        """Create a node index for the given tree node.
-
-        Args:
-            tree_node (nodes.TreeNode): The tree node for which to create the index.
-
-        Returns:
-            node_indices.NodeExplorationData | None: The created node index, or None if the index could not be created.
-
-        """
+        """Create the exploration-index payload for one concrete tree node."""
         ...
 
 
@@ -106,13 +73,7 @@ def _base_selector_args(args: Any) -> Any:
 
 @dataclass
 class SearchFactory:
-    """Create dependent factories for node selection and node-index creation.
-
-    - the node selector
-    - the index creator
-    These collaborators need to operate on the same data, so they must be
-    created coherently.
-    """
+    """Assembly helper that keeps selector wiring and index-data wiring coherent."""
 
     node_selector_args: ComposedNodeSelectorArgs | None
     opening_type: OpeningType | None
@@ -139,15 +100,7 @@ class SearchFactory:
             self.depth_index = False
 
     def create_node_selector_factory(self) -> NodeSelectorFactory:
-        """Create the node selector factory.
-
-        Returns:
-            A callable object that creates the node selector.
-
-        Raises:
-            ValueError: If selector configuration is incomplete.
-
-        """
+        """Create the node-selector factory consumed by the runtime."""
         # creates the opening instructor
 
         if self.random_generator is None:
@@ -179,15 +132,7 @@ class SearchFactory:
         self,
         tree_node: nodes.TreeNode[AlgorithmNode[StateT], StateT],
     ) -> node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None:
-        """Create node indices for a given tree node.
-
-        Args:
-            tree_node: The tree node for which to create the node indices.
-
-        Returns:
-            An instance of the NodeExplorationData class if depth indexing is enabled, otherwise None.
-
-        """
+        """Create the exploration-index payload for one tree node."""
         exploration_index_data: (
             node_indices.NodeExplorationData[AlgorithmNode[StateT], StateT] | None
         ) = create_exploration_index_data(

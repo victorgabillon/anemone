@@ -1,4 +1,4 @@
-"""init file for algorithm_node module."""
+"""Runtime/search-facing node wrapper exports."""
 
 from .algorithm_node import AlgorithmNode
 

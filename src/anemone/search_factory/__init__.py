@@ -1,11 +1,8 @@
-"""Provide factories for creating search objects and node selectors.
+"""Assembly-facing helpers for search runtime construction.
 
-The factories included in this module are:
-- SearchFactoryP: A factory for creating search objects with parallel execution.
-- SearchFactory: A factory for creating search objects with sequential execution.
-- NodeSelectorFactory: A factory for creating node selectors.
-
-To use this module, import the desired factory class from this module and use it to create the desired objects.
+This package is lower-level than :mod:`anemone.factory`: it coordinates
+node-selector creation with exploration-index payload creation so the runtime
+assembly layer can wire consistent collaborators together.
 """
 
 from .search_factory import NodeSelectorFactory, SearchFactory, SearchFactoryP

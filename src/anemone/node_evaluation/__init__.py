@@ -1,4 +1,19 @@
-"""Node evaluation utilities and evaluation families."""
+"""Public node-evaluation vocabulary and family entrypoints.
+
+Canonical value terms used across Anemone:
+
+* ``direct_value``: the immediate evaluator output for one node
+* ``backed_up_value``: the subtree-aggregated value propagated from children
+* ``candidate value``: the best currently available value, preferring backed-up
+  over direct when both exist
+* ``canonical value``: the required concrete ``Value`` returned to consumers
+  that need one; it is obtained from the current candidate value and therefore
+  raises if no value is available yet
+
+Public entrypoints here expose shared value semantics, direct evaluation, and
+tree-evaluation families without forcing contributors to know the internal
+subpackage layout first.
+"""
 
 from importlib import import_module
 from typing import TYPE_CHECKING, Any

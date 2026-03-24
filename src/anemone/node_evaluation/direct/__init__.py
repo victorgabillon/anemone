@@ -1,14 +1,7 @@
-"""Provide functionality for evaluating nodes in a tree structure.
+"""Direct state-evaluation family.
 
-The module includes a factory function for creating node evaluators, as well as classes for representing
-node evaluators, evaluation queries, and node evaluator arguments.
-
-Available objects:
-- AllNodeEvaluatorArgs: A named tuple representing all the arguments for creating a node evaluator.
-- NodeEvaluator: A class representing a node evaluator.
-- create_node_evaluator: A factory function for creating a node evaluator.
-- EvaluationQueries: An enumeration representing different types of evaluation queries.
-- NodeEvaluatorArgs: A class representing the arguments for creating a node evaluator.
+This subpackage exposes the immediate evaluator layer that fills ``direct_value``
+before any tree backup or principal-variation logic is involved.
 """
 
 from .factory import create_node_evaluator

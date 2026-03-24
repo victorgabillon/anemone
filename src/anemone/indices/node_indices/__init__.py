@@ -1,12 +1,8 @@
-"""Provide functionality for managing node indices in the tree value package.
+"""Per-node exploration-index payloads and their construction helpers.
 
-The following classes and functions are available:
-
-- NodeExplorationData: Represents exploration data for a node.
-- ExplorationIndexDataFactory: Factory class for creating exploration index data.
-- IndexComputationType: Enum class representing different types of index computations.
-- create_exploration_index_data: Function for creating exploration index data.
-
+Use this package when you need the data stored on each node for exploration
+prioritization. Strategy selection and tree-wide recomputation live in
+``anemone.indices.index_manager``.
 """
 
 from .factory import ExplorationIndexDataFactory, create_exploration_index_data

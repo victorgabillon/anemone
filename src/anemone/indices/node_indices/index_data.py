@@ -1,4 +1,4 @@
-"""Module that contains the classes for the exploration data of a tree node."""
+"""Per-node payloads used by exploration-index strategies."""
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -15,13 +15,7 @@ class NodeExplorationData[
     Node: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ]:
-    """Represents the exploration data for a tree node.
-
-    Attributes:
-        tree_node (TreeNode): The tree node associated with the exploration data.
-        index (float | None): The index value associated with the node. Defaults to None.
-
-    """
+    """Base exploration payload stored on one structural tree node."""
 
     tree_node: TreeNode[Node, StateT]
     index: float | None = None
@@ -32,13 +26,7 @@ class RecurZipfQuoolExplorationData[
     Node: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ](NodeExplorationData[Node, StateT]):
-    """Represents the exploration data for a tree node with recursive zipf-quool factor.
-
-    Attributes:
-        zipf_factored_proba (float | None): The probability associated with the node, factored by zipf-quool factor.
-            Defaults to None.
-
-    """
+    """Exploration payload for the recursive Zipf/factored-probability strategy."""
 
     # the 'proba' associated by recursively multiplying 1/rank of the node with the max zipf_factor of the parents
     zipf_factored_proba: float | None = None
@@ -49,13 +37,7 @@ class MinMaxPathValue[
     Node: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ](NodeExplorationData[Node, StateT]):
-    """Represents the exploration data for a tree node with minimum and maximum path values.
-
-    Attributes:
-        min_path_value (float | None): The minimum path value associated with the node. Defaults to None.
-        max_path_value (float | None): The maximum path value associated with the node. Defaults to None.
-
-    """
+    """Exploration payload for the global-min-change strategy."""
 
     min_path_value: float | None = None
     max_path_value: float | None = None
@@ -66,12 +48,7 @@ class IntervalExplo[
     Node: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ](NodeExplorationData[Node, StateT]):
-    """Represents the exploration data for a tree node with an interval.
-
-    Attributes:
-        interval (Interval | None): The interval associated with the node. Defaults to None.
-
-    """
+    """Exploration payload for the interval/local-min-change strategy."""
 
     interval: Interval | None = field(default_factory=Interval)
 
@@ -81,7 +58,7 @@ class MaxDepthDescendants[
     Node: ITreeNode[Any] = ITreeNode[Any],
     StateT: State = State,
 ](NodeExplorationData[Node, StateT]):
-    """Represents the exploration data for a tree node with maximum depth of descendants."""
+    """Exploration payload for descendant-depth tracking."""
 
     max_depth_descendants: int = 0
 

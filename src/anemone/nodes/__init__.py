@@ -1,11 +1,16 @@
-"""Provide the implementation of tree nodes for branch selection.
+"""Public node-layer vocabulary for structural and runtime-facing tree nodes.
 
-The tree nodes are used in the branch selector to represent different branches and their values.
+Preferred meanings:
 
-Classes:
-- TreeNode: Represents a tree node for branch selection.
-- ITreeNode: Interface for tree nodes.
+* ``ITreeNode``: structural/navigation protocol
+* ``TreeNode``: concrete structural implementation
+* ``AlgorithmNode``: runtime/search wrapper in
+  ``anemone.nodes.algorithm_node`` that adds evaluation and exploration state
+  on top of ``TreeNode``
 
+This package re-exports the structural surfaces only; import
+``AlgorithmNode`` from ``anemone.nodes.algorithm_node`` when you need the
+runtime wrapper explicitly.
 """
 
 from .itree_node import ITreeNode

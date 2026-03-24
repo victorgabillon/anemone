@@ -1,11 +1,20 @@
-"""Provide functionality for managing exploration index managers.
+"""Public coordination surface for exploration-index update strategies.
 
-The module includes the following functions and classes:
-- create_exploration_index_manager: A function to create an exploration index manager.
-- NodeExplorationIndexManager: A class representing a node exploration index manager.
+Use ``create_exploration_index_manager(...)`` to choose the strategy/coordinator
+for one search configuration, then ``update_all_indices(...)`` to recompute the
+current exploration payloads across a tree.
 """
 
 from .factory import create_exploration_index_manager
-from .node_exploration_manager import NodeExplorationIndexManager
+from .node_exploration_manager import (
+    NodeExplorationIndexManager,
+    NullNodeExplorationIndexManager,
+    update_all_indices,
+)
 
-__all__ = ["NodeExplorationIndexManager", "create_exploration_index_manager"]
+__all__ = [
+    "NodeExplorationIndexManager",
+    "NullNodeExplorationIndexManager",
+    "create_exploration_index_manager",
+    "update_all_indices",
+]

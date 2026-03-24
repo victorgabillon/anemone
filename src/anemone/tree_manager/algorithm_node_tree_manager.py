@@ -8,8 +8,6 @@ from anemone import trees
 from anemone.dynamics import SearchDynamics
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
-)
-from anemone.indices.index_manager.node_exploration_manager import (
     update_all_indices,
 )
 from anemone.node_evaluation.common.branch_frontier import (

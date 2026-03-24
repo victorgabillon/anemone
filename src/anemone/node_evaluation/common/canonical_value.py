@@ -1,4 +1,4 @@
-"""Shared helpers for canonical Value access and certainty semantics.
+"""Shared helpers for candidate/canonical ``Value`` access and certainty semantics.
 
 `Certainty` carries two related but distinct ideas:
 
@@ -6,8 +6,13 @@
 - `FORCED`: the node is not terminal, but its backed-up value is exact.
 - `ESTIMATE`: the value is still heuristic or otherwise not fully solved.
 
-The helpers below keep exactness checks separate from state-terminality checks so
-callers can be explicit about which notion they need.
+The helpers below also preserve Anemone's vocabulary split:
+
+- a candidate value is the best currently available value and may be missing
+- a canonical value is the required concrete ``Value`` returned by ``get_value``
+
+Exactness checks stay separate from state-terminality checks so callers can be
+explicit about which notion they need.
 """
 
 from __future__ import annotations
@@ -59,7 +64,7 @@ def validate_value_semantics(value: Value) -> Value:
 
 
 def require_value(value: Value | None) -> Value:
-    """Return ``value`` once presence and semantics are both validated."""
+    """Return the canonical ``Value`` once presence and semantics are validated."""
     if value is None:
         raise ValueSemanticsError.missing_value()
     return validate_value_semantics(value)
@@ -77,7 +82,7 @@ def get_value_candidate(
     backed_up_value: Value | None,
     direct_value: Value | None,
 ) -> Value | None:
-    """Return backed-up value when available, else direct value."""
+    """Return the candidate value, preferring backed-up over direct when present."""
     if backed_up_value is not None:
         return validate_value_semantics(backed_up_value)
     return _validated_optional_value(direct_value)
@@ -88,7 +93,7 @@ def get_value(
     backed_up_value: Value | None,
     direct_value: Value | None,
 ) -> Value:
-    """Return the canonical Value for a node-evaluation family."""
+    """Return the canonical ``Value`` for a node-evaluation family."""
     return require_value(
         get_value_candidate(
             backed_up_value=backed_up_value,
@@ -197,7 +202,7 @@ def make_backed_up_value(
 
 
 def get_over_event_candidate(value: Value | None) -> AnyOverEvent | None:
-    """Return exact outcome metadata from a candidate Value when present."""
+    """Return exact outcome metadata from the current candidate value when present."""
     validated_value = _validated_optional_value(value)
     if validated_value is None:
         return None
