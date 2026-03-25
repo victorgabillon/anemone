@@ -19,7 +19,10 @@ from anemone.profiling.suite_artifacts import (
 if TYPE_CHECKING:
     from anemone.profiling.artifacts import RunResult
     from anemone.profiling.component_summary import ComponentSummary
-    from anemone.profiling.suite_artifacts import SuiteRunResult
+    from anemone.profiling.suite_artifacts import (
+        ScenarioRepetitionSummary,
+        SuiteRunResult,
+    )
 
 _GUI_RUN_JSON_SOURCE_NOTE = "_gui_run_json_source_path"
 _GUI_SUITE_JSON_SOURCE_NOTE = "_gui_suite_json_source_path"
@@ -145,6 +148,43 @@ def read_text_artifact(
         return candidate.read_text(encoding="utf-8")
     except OSError:
         return None
+
+
+def resolve_run_artifact_path(
+    run: RunResult,
+    path: str | Path | None,
+    *,
+    default_name: str | None = None,
+) -> Path | None:
+    """Resolve one run-scoped artifact path for reuse in view helpers."""
+    return _resolve_run_artifact_path(run, path, default_name=default_name)
+
+
+def resolve_suite_artifact_path(
+    suite: SuiteRunResult,
+    path: str | Path | None,
+) -> Path | None:
+    """Resolve one suite-scoped artifact path for linked drill-downs."""
+    return _resolve_artifact_path(
+        path,
+        source_artifact_path=_suite_source_path(suite),
+    )
+
+
+def load_suite_repetition_run(
+    suite: SuiteRunResult,
+    repetition: ScenarioRepetitionSummary,
+) -> RunResult | None:
+    """Load the run linked from one suite repetition when it can be resolved."""
+    run_json_path = resolve_suite_artifact_path(suite, repetition.run_json_path)
+    if run_json_path is None or not run_json_path.exists():
+        return None
+    try:
+        run = load_run_result(run_json_path)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+    _record_run_source_path(run, run_json_path.resolve())
+    return run
 
 
 def _resolve_run_json_path(run_dir: Path) -> Path:

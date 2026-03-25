@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from anemone.profiling.gui import get_pandas, get_streamlit
+from anemone.profiling.gui.components.charts import render_comparison_chart
+from anemone.profiling.gui.components.layout import render_breadcrumbs
 from anemone.profiling.gui.components.selectors import select_run, select_suite
 from anemone.profiling.gui.data_loading import (
     discover_runs,
@@ -12,6 +14,7 @@ from anemone.profiling.gui.data_loading import (
     extract_component_summary,
     run_dir_from_result,
 )
+from anemone.profiling.gui.metrics import component_breakdown_rows, suite_scenario_metric_rows
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,6 +27,7 @@ def render_comparison_view(base_dir: Path) -> None:
     """Render run-vs-run and suite-vs-suite comparisons."""
     st = get_streamlit()
     st.title("Compare")
+    render_breadcrumbs("Profiling", "Compare")
 
     runs = discover_runs(base_dir)
     st.subheader("Run vs run")
@@ -32,9 +36,19 @@ def render_comparison_view(base_dir: Path) -> None:
     else:
         columns = st.columns(2)
         with columns[0]:
-            run_a = select_run(runs, label="Run A", key="profiling_compare_run_a")
+            run_a = select_run(
+                runs,
+                label="Run A",
+                key="profiling_compare_run_a",
+                default_index=0,
+            )
         with columns[1]:
-            run_b = select_run(runs, label="Run B", key="profiling_compare_run_b")
+            run_b = select_run(
+                runs,
+                label="Run B",
+                key="profiling_compare_run_b",
+                default_index=1,
+            )
         if run_a is not None and run_b is not None:
             _render_run_comparison(run_a, run_b)
 
@@ -50,12 +64,14 @@ def render_comparison_view(base_dir: Path) -> None:
             suites,
             label="Suite A",
             key="profiling_compare_suite_a",
+            default_index=0,
         )
     with columns[1]:
         suite_b = select_suite(
             suites,
             label="Suite B",
             key="profiling_compare_suite_b",
+            default_index=1,
         )
     if suite_a is not None and suite_b is not None:
         _render_suite_comparison(suite_a, suite_b)
@@ -68,15 +84,15 @@ def _render_run_comparison(run_a: RunResult, run_b: RunResult) -> None:
     metrics[0].metric("Run A wall time (s)", f"{run_a.timing.wall_time_seconds:.6f}")
     metrics[1].metric("Run B wall time (s)", f"{run_b.timing.wall_time_seconds:.6f}")
     metrics[2].metric("Delta (B - A)", f"{delta:.6f}")
+    threshold = st.number_input(
+        "Regression threshold (seconds)",
+        min_value=0.0,
+        value=0.05,
+        step=0.01,
+        key="profiling_compare_run_threshold",
+    )
 
-    rows: list[dict[str, object]] = [
-        {
-            "metric": "total_wall_time_seconds",
-            "run_a": run_a.timing.wall_time_seconds,
-            "run_b": run_b.timing.wall_time_seconds,
-            "delta_b_minus_a": delta,
-        }
-    ]
+    rows: list[dict[str, object]] = [_comparison_row("Total wall time", delta, run_a.timing.wall_time_seconds, run_b.timing.wall_time_seconds)]
 
     summary_a = (
         extract_component_summary(run_dir_a)
@@ -90,43 +106,31 @@ def _render_run_comparison(run_a: RunResult, run_b: RunResult) -> None:
     )
     if summary_a is not None and summary_b is not None:
         rows.extend(
-            [
-                _component_delta_row(
-                    "evaluator",
-                    0.0
-                    if summary_a.evaluator is None
-                    else summary_a.evaluator.total_wall_time_seconds,
-                    0.0
-                    if summary_b.evaluator is None
-                    else summary_b.evaluator.total_wall_time_seconds,
-                ),
-                _component_delta_row(
-                    "dynamics_step",
-                    0.0
-                    if summary_a.dynamics_step is None
-                    else summary_a.dynamics_step.total_wall_time_seconds,
-                    0.0
-                    if summary_b.dynamics_step is None
-                    else summary_b.dynamics_step.total_wall_time_seconds,
-                ),
-                _component_delta_row(
-                    "dynamics_legal_actions",
-                    0.0
-                    if summary_a.dynamics_legal_actions is None
-                    else summary_a.dynamics_legal_actions.total_wall_time_seconds,
-                    0.0
-                    if summary_b.dynamics_legal_actions is None
-                    else summary_b.dynamics_legal_actions.total_wall_time_seconds,
-                ),
-                _component_delta_row(
-                    "residual_framework",
-                    summary_a.residual_framework_wall_time_seconds or 0.0,
-                    summary_b.residual_framework_wall_time_seconds or 0.0,
-                ),
-            ]
+            _component_comparison_rows(
+                summary_a_rows=component_breakdown_rows(summary_a),
+                summary_b_rows=component_breakdown_rows(summary_b),
+            )
         )
 
-    st.dataframe(rows, use_container_width=True, hide_index=True)
+    regressions = [
+        row
+        for row in rows
+        if float(row["delta_b_minus_a_seconds"]) > float(threshold)
+    ]
+    if regressions:
+        st.error(
+            "Potential regression detected in: "
+            + ", ".join(str(row["metric"]) for row in regressions)
+        )
+    else:
+        st.success("No compared metric exceeds the regression threshold.")
+
+    render_comparison_chart(
+        rows,
+        left_label="Run A",
+        right_label="Run B",
+    )
+    _render_comparison_table(rows, threshold=threshold)
 
 
 def _render_suite_comparison(
@@ -134,38 +138,42 @@ def _render_suite_comparison(
     suite_b: SuiteRunResult,
 ) -> None:
     st = get_streamlit()
-    aggregates_a = {
-        aggregate.scenario_name: aggregate for aggregate in suite_a.scenario_aggregates
-    }
-    aggregates_b = {
-        aggregate.scenario_name: aggregate for aggregate in suite_b.scenario_aggregates
-    }
-    scenario_names = sorted(set(aggregates_a) | set(aggregates_b))
+    rows_a = {row["scenario_name"]: row for row in suite_scenario_metric_rows(suite_a)}
+    rows_b = {row["scenario_name"]: row for row in suite_scenario_metric_rows(suite_b)}
+    scenario_names = sorted(set(rows_a) | set(rows_b))
     rows = [
         {
-            "scenario_name": scenario_name,
-            "suite_a_mean_seconds": (
-                None
-                if scenario_name not in aggregates_a
-                else aggregates_a[scenario_name].wall_time_mean_seconds
+            "metric": scenario_name,
+            "left_seconds": (
+                0.0
+                if scenario_name not in rows_a
+                or rows_a[scenario_name]["mean_wall_time_seconds"] is None
+                else float(rows_a[scenario_name]["mean_wall_time_seconds"])
             ),
-            "suite_b_mean_seconds": (
-                None
-                if scenario_name not in aggregates_b
-                else aggregates_b[scenario_name].wall_time_mean_seconds
-            ),
-            "delta_b_minus_a": _delta_or_none(
-                None
-                if scenario_name not in aggregates_a
-                else aggregates_a[scenario_name].wall_time_mean_seconds,
-                None
-                if scenario_name not in aggregates_b
-                else aggregates_b[scenario_name].wall_time_mean_seconds,
+            "right_seconds": (
+                0.0
+                if scenario_name not in rows_b
+                or rows_b[scenario_name]["mean_wall_time_seconds"] is None
+                else float(rows_b[scenario_name]["mean_wall_time_seconds"])
             ),
         }
         for scenario_name in scenario_names
     ]
-    st.dataframe(rows, use_container_width=True, hide_index=True)
+    normalized_rows = [
+        _comparison_row(
+            str(row["metric"]),
+            float(row["right_seconds"]) - float(row["left_seconds"]),
+            float(row["left_seconds"]),
+            float(row["right_seconds"]),
+        )
+        for row in rows
+    ]
+    render_comparison_chart(
+        normalized_rows,
+        left_label="Suite A",
+        right_label="Suite B",
+    )
+    _render_comparison_table(normalized_rows, threshold=0.0)
 
     pandas_module = get_pandas()
     if pandas_module is None:
@@ -174,28 +182,82 @@ def _render_suite_comparison(
     dataframe = pandas_module.DataFrame(
         [
             {
-                "scenario_name": row["scenario_name"],
-                "suite_a": row["suite_a_mean_seconds"] or 0.0,
-                "suite_b": row["suite_b_mean_seconds"] or 0.0,
+                "scenario_name": row["metric"],
+                "suite_a": row["left_seconds"],
+                "suite_b": row["right_seconds"],
             }
-            for row in rows
+            for row in normalized_rows
         ]
     ).set_index("scenario_name")
     st.bar_chart(dataframe)
 
 
-def _component_delta_row(
-    name: str, value_a: float, value_b: float
+def _component_comparison_rows(
+    *,
+    summary_a_rows: list[dict[str, object]],
+    summary_b_rows: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    rows_b_by_component = {
+        str(row["component"]): row for row in summary_b_rows
+    }
+    return [
+        _comparison_row(
+            component_name,
+            float(rows_b_by_component[component_name]["wall_time_seconds"])
+            - float(row["wall_time_seconds"]),
+            float(row["wall_time_seconds"]),
+            float(rows_b_by_component[component_name]["wall_time_seconds"]),
+        )
+        for component_name, row in (
+            (str(summary_row["component"]), summary_row) for summary_row in summary_a_rows
+        )
+        if component_name in rows_b_by_component
+    ]
+
+
+def _comparison_row(
+    metric: str,
+    delta_seconds: float,
+    left_seconds: float,
+    right_seconds: float,
 ) -> dict[str, object]:
     return {
-        "metric": name,
-        "run_a": value_a,
-        "run_b": value_b,
-        "delta_b_minus_a": value_b - value_a,
+        "metric": metric,
+        "left_seconds": left_seconds,
+        "right_seconds": right_seconds,
+        "delta_b_minus_a_seconds": delta_seconds,
+        "percent_change": _percent_change(left_seconds, right_seconds),
     }
 
 
-def _delta_or_none(value_a: float | None, value_b: float | None) -> float | None:
-    if value_a is None or value_b is None:
+def _render_comparison_table(
+    rows: list[dict[str, object]],
+    *,
+    threshold: float,
+) -> None:
+    st = get_streamlit()
+    pandas_module = get_pandas()
+    if pandas_module is None:
+        st.dataframe(rows, use_container_width=True, hide_index=True)
+        return
+
+    dataframe = pandas_module.DataFrame(rows)
+    styled = dataframe.style.apply(
+        lambda series: [
+            (
+                "background-color: rgba(185, 28, 28, 0.18)"
+                if series.name == "delta_b_minus_a_seconds"
+                and float(value) > threshold
+                else ""
+            )
+            for value in series
+        ],
+        axis=0,
+    )
+    st.dataframe(styled, use_container_width=True, hide_index=True)
+
+
+def _percent_change(left_seconds: float, right_seconds: float) -> float | None:
+    if left_seconds == 0.0:
         return None
-    return value_b - value_a
+    return ((right_seconds - left_seconds) / left_seconds) * 100.0

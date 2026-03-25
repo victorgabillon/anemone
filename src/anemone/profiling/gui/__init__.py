@@ -22,6 +22,14 @@ def get_pandas() -> Any | None:
         return None
 
 
+def get_altair() -> Any | None:
+    """Return altair when available, otherwise ``None`` for graceful fallbacks."""
+    try:
+        return import_module("altair")
+    except ImportError:  # pragma: no cover - optional dependency fallback
+        return None
+
+
 def _missing_streamlit_error() -> RuntimeError:
     return RuntimeError(
         "Streamlit is not installed. Install the GUI extra with "

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from anemone.profiling.external_profilers import SUPPORTED_EXTERNAL_PROFILERS
 from anemone.profiling.gui import get_streamlit
+from anemone.profiling.gui.components.layout import render_breadcrumbs
 from anemone.profiling.runner import run_scenario
 from anemone.profiling.scenarios import list_scenarios
 from anemone.profiling.suite_artifacts import SUITE_JSON_FILENAME
@@ -18,6 +19,7 @@ def render_run_launcher(base_dir: Path) -> None:
     """Render scenario and suite launch controls."""
     st = get_streamlit()
     st.title("Run launcher")
+    render_breadcrumbs("Profiling", "Run Launcher")
     st.caption(f"New artifacts will be written under `{base_dir}`.")
 
     st.subheader("Run scenario")

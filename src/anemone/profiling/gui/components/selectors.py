@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from anemone.profiling.gui import get_streamlit
-from anemone.profiling.gui.state import get_base_dir, set_base_dir
+from anemone.profiling.gui.state import get_base_dir
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -26,7 +26,6 @@ def render_base_dir_selector() -> Path:
         help="Base directory used to discover and launch profiling artifacts.",
     )
     selected_path = Path(selected_text).expanduser()
-    set_base_dir(selected_path)
     if not selected_path.exists():
         st.sidebar.warning("The selected directory does not exist yet.")
     return selected_path
@@ -37,14 +36,20 @@ def select_run(
     *,
     label: str,
     key: str,
+    default_index: int = 0,
 ) -> RunResult | None:
     """Render a run selector and return the selected run, if any."""
     st = get_streamlit()
     if not runs:
-        st.info("No runs found in the selected directory.")
+        st.info(
+            "No profiling runs yet.\n\n"
+            "Run `python -m anemone.profiling.cli run --scenario cheap_eval "
+            "--output-dir profiling_runs --component-summary` to create one."
+        )
         return None
 
     options = [run.metadata.run_id for run in runs]
+    _initialize_selector_key(st, key=key, options=options, default_index=default_index)
 
     def _format(run_id: str) -> str:
         return _format_run_option(_run_by_id(runs, run_id))
@@ -63,14 +68,20 @@ def select_suite(
     *,
     label: str,
     key: str,
+    default_index: int = 0,
 ) -> SuiteRunResult | None:
     """Render a suite selector and return the selected suite, if any."""
     st = get_streamlit()
     if not suites:
-        st.info("No suites found in the selected directory.")
+        st.info(
+            "No profiling suites yet.\n\n"
+            "Run `python -m anemone.profiling.cli run-suite --suite baseline "
+            "--output-dir profiling_runs` to create one."
+        )
         return None
 
     options = [suite.run_id for suite in suites]
+    _initialize_selector_key(st, key=key, options=options, default_index=default_index)
 
     def _format(run_id: str) -> str:
         return _format_suite_option(_suite_by_id(suites, run_id))
@@ -110,3 +121,18 @@ def _format_suite_option(suite: SuiteRunResult) -> str:
         f"{suite.run_id} | {suite.suite_name} | "
         f"{suite.requested_repetitions} reps | profiler={suite.profiler}"
     )
+
+
+def _initialize_selector_key(
+    st: object,
+    *,
+    key: str,
+    options: Sequence[str],
+    default_index: int,
+) -> None:
+    session_state = st.session_state
+    current_value = session_state.get(key)
+    if current_value in options:
+        return
+    safe_index = min(max(default_index, 0), len(options) - 1)
+    session_state[key] = options[safe_index]
