@@ -17,7 +17,8 @@ documentation for details.
 
    search_iteration_architecture
    debug_live_session
-
+   profiling_foundation
+   
 .. automodule:: anemone
    :members:
    :undoc-members:

@@ -73,6 +73,12 @@ gui = [
   "streamlit>=1.44.0",
 ]
 
+docs = [
+  "sphinx>=7",
+  "sphinx-rtd-theme",
+  "myst-parser",
+]
+
 
 [project.urls]
 Homepage = "https://github.com/victorgabillon/anemone"
