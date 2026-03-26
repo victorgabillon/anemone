@@ -209,3 +209,7 @@ __marimo__/
 
 runs/
 .zip
+
+
+# Local profiling outputs (do not commit)
+profiling_runs/

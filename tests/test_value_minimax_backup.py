@@ -13,6 +13,8 @@ from anemone.backup_policies.common import (
     has_value_changed,
 )
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
+from anemone.backup_policies.types import BackupResult
+from anemone.node_evaluation.common import FieldChange
 from anemone.node_evaluation.common.canonical_value import ValueSemanticsError
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
@@ -72,6 +74,26 @@ class _ForcedProofPolicy:
         return ProofClassification(
             certainty=Certainty.FORCED,
             over_event=_FakeOverEvent(winner=Color.WHITE),
+        )
+
+
+class _FlipAllBranchesGeneratedPolicy:
+    def __init__(self, *, new_value: bool) -> None:
+        self.new_value = new_value
+
+    def backup_from_children(
+        self,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> BackupResult:
+        del branches_with_updated_value
+        del branches_with_updated_best_branch_seq
+        node_eval.tree_node.all_branches_generated = self.new_value
+        return BackupResult(
+            value_changed=False,
+            pv_changed=False,
+            over_changed=False,
         )
 
 
@@ -417,6 +439,9 @@ def test_direct_eval_change_without_minmax_change_reports_no_value_change() -> N
 
     assert parent.minmax_value == child_value
     assert not result.value_changed
+    assert not result.pv_changed
+    assert not result.over_changed
+    assert result.node_delta.is_empty()
 
 
 def test_partial_expansion_pv_does_not_depend_on_float_field() -> None:
@@ -523,6 +548,7 @@ def test_best_branch_tail_update_propagates_without_head_rebuild() -> None:
     assert parent.best_branch_sequence == [0, 9]
 
     child.tree_evaluation.set_best_branch_sequence([8, 7])
+    version_before = parent.pv_version
     result = parent.backup_from_children(
         branches_with_updated_value=set(),
         branches_with_updated_best_branch_seq={0},
@@ -530,6 +556,43 @@ def test_best_branch_tail_update_propagates_without_head_rebuild() -> None:
 
     assert parent.best_branch_sequence == [0, 8, 7]
     assert result.pv_changed
+    assert not result.value_changed
+    assert not result.over_changed
+    assert result.node_delta.value is None
+    assert result.node_delta.best_branch is None
+    assert result.node_delta.all_branches_generated is None
+    assert result.node_delta.pv_version == FieldChange(
+        old=version_before,
+        new=version_before + 1,
+    )
+
+
+def test_backup_delta_reports_all_branches_generated_change() -> None:
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={0: _make_leaf(1, Value(score=0.3, certainty=Certainty.ESTIMATE))},
+        all_generated=False,
+        direct_value=Value(score=0.5, certainty=Certainty.ESTIMATE),
+    )
+    parent.backup_policy = _FlipAllBranchesGeneratedPolicy(new_value=True)
+
+    result = parent.backup_from_children(
+        branches_with_updated_value=set(),
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert parent.get_value() == Value(score=0.5, certainty=Certainty.ESTIMATE)
+    assert parent.tree_node.all_branches_generated is True
+    assert not result.value_changed
+    assert not result.pv_changed
+    assert not result.over_changed
+    assert result.node_delta.value is None
+    assert result.node_delta.pv_version is None
+    assert result.node_delta.best_branch is None
+    assert result.node_delta.all_branches_generated == FieldChange(
+        old=False,
+        new=True,
+    )
 
 
 def test_best_branch_selection_uses_semantic_compare_terminal_over_estimate() -> None:

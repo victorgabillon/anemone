@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, assert_never, cast
 
@@ -13,6 +13,7 @@ from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
 from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
+from anemone.node_evaluation.common.node_delta import FieldChange, NodeDelta
 from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 from anemone.node_evaluation.common.principal_variation import (
     PrincipalVariationState,
@@ -132,6 +133,40 @@ class _TreeEvaluationContext:
     children: Mapping[BranchKey, TreeEvaluationChild[Any] | None]
 
 
+@dataclass(slots=True, frozen=True)
+class _NodeDeltaSnapshot:
+    """Relevant observable node fields captured around one backup call."""
+
+    value: Value | None
+    pv_version: int
+    best_branch: BranchKey | None
+    all_branches_generated: bool
+
+
+def _field_change_if_needed[T](old: T, new: T) -> FieldChange[T] | None:
+    """Return one field change only when the value actually changed."""
+    if old == new:
+        return None
+    return FieldChange(old=old, new=new)
+
+
+def _build_node_delta(
+    *,
+    before: _NodeDeltaSnapshot,
+    after: _NodeDeltaSnapshot,
+) -> NodeDelta[BranchKey]:
+    """Build the public node delta from one before/after snapshot pair."""
+    return NodeDelta(
+        value=_field_change_if_needed(before.value, after.value),
+        pv_version=_field_change_if_needed(before.pv_version, after.pv_version),
+        best_branch=_field_change_if_needed(before.best_branch, after.best_branch),
+        all_branches_generated=_field_change_if_needed(
+            before.all_branches_generated,
+            after.all_branches_generated,
+        ),
+    )
+
+
 @dataclass(slots=True)
 class NodeTreeEvaluationState[
     NodeT: TreeEvaluationChild[Any] = TreeEvaluationChild[Any],
@@ -213,6 +248,15 @@ class NodeTreeEvaluationState[
             node_id=self.tree_node.id,
             state=self.tree_node.state,
             children=self.tree_node.branches_children,
+        )
+
+    def _capture_node_delta_snapshot(self) -> _NodeDeltaSnapshot:
+        """Capture the node-observable fields tracked by ``NodeDelta``."""
+        return _NodeDeltaSnapshot(
+            value=self.get_value_candidate(),
+            pv_version=self.pv_version,
+            best_branch=self.best_branch(),
+            all_branches_generated=self.tree_node.all_branches_generated,
         )
 
     def get_value_candidate(self) -> Value | None:
@@ -386,10 +430,16 @@ class NodeTreeEvaluationState[
         context = self._context()
         if self.backup_policy is None:
             raise _missing_backup_policy_error(context.node_id)
-        return self.backup_policy.backup_from_children(
+        before = self._capture_node_delta_snapshot()
+        backup_result = self.backup_policy.backup_from_children(
             node_eval=self,
             branches_with_updated_value=branches_with_updated_value,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+        )
+        after = self._capture_node_delta_snapshot()
+        return replace(
+            backup_result,
+            node_delta=_build_node_delta(before=before, after=after),
         )
 
     def best_equivalent_branches(

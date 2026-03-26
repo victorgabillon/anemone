@@ -12,6 +12,7 @@ from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies.common import ProofClassification, SelectedValue
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
+from anemone.node_evaluation.common import FieldChange
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BestBranchEquivalenceMode,
 )
@@ -317,13 +318,111 @@ def test_explicit_max_backup_updates_pv_tail_for_best_child_changes() -> None:
     assert node.best_branch_sequence == [1, 8]
 
     children[1].tree_evaluation.set_best_branch_sequence([10, 11])
+    version_before = node.pv_version
     result = node.backup_from_children(
         branches_with_updated_value=set(),
         branches_with_updated_best_branch_seq={1},
     )
 
     assert result.pv_changed
+    assert not result.value_changed
+    assert not result.over_changed
     assert node.best_branch_sequence == [1, 10, 11]
+    assert result.node_delta.value is None
+    assert result.node_delta.best_branch is None
+    assert result.node_delta.all_branches_generated is None
+    assert result.node_delta.pv_version == FieldChange(
+        old=version_before,
+        new=version_before + 1,
+    )
+
+
+def test_explicit_max_backup_emits_value_only_delta_for_stable_best_branch() -> None:
+    children = {
+        0: _child(10, Value(score=0.6, certainty=Certainty.ESTIMATE)),
+        1: _child(11, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    node.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _set_child_value(children[0], Value(score=0.8, certainty=Certainty.ESTIMATE))
+
+    result = node.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert result.value_changed
+    assert not result.pv_changed
+    assert not result.over_changed
+    assert node.backed_up_value == Value(score=0.8, certainty=Certainty.ESTIMATE)
+    assert node.best_branch() == 0
+    assert node.best_branch_sequence == [0]
+    assert result.node_delta.value == FieldChange(
+        old=Value(score=0.6, certainty=Certainty.ESTIMATE),
+        new=Value(score=0.8, certainty=Certainty.ESTIMATE),
+    )
+    assert result.node_delta.pv_version is None
+    assert result.node_delta.best_branch is None
+    assert result.node_delta.all_branches_generated is None
+
+
+def test_explicit_max_backup_emits_best_branch_delta_when_best_child_flips() -> None:
+    children = {
+        0: _child(
+            10,
+            None,
+            best_branch_sequence=[7],
+        ),
+        1: _child(
+            11,
+            Value(score=0.9, certainty=Certainty.ESTIMATE),
+            best_branch_sequence=[8],
+        ),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    node.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq={0, 1},
+    )
+    version_before = node.pv_version
+    _set_child_value(children[0], Value(score=1.0, certainty=Certainty.ESTIMATE))
+
+    result = node.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+
+    assert result.value_changed
+    assert result.pv_changed
+    assert not result.over_changed
+    assert node.backed_up_value == Value(score=1.0, certainty=Certainty.ESTIMATE)
+    assert node.best_branch() == 0
+    assert node.best_branch_sequence == [0, 7]
+    assert result.node_delta.value == FieldChange(
+        old=Value(score=0.9, certainty=Certainty.ESTIMATE),
+        new=Value(score=1.0, certainty=Certainty.ESTIMATE),
+    )
+    assert result.node_delta.best_branch == FieldChange(old=1, new=0)
+    assert result.node_delta.pv_version == FieldChange(
+        old=version_before,
+        new=version_before + 1,
+    )
+    assert result.node_delta.all_branches_generated is None
 
 
 def test_explicit_max_backup_uses_injected_aggregation_policy() -> None:
