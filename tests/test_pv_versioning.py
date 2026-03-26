@@ -9,11 +9,23 @@ from typing import Any
 
 from valanga import Color
 
+from anemone.backup_policies.common import SelectedValue
 from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from tests.fakes_tree_evaluation import set_estimate_value
+
+
+class _SelectDirectAggregationPolicy:
+    def select_value(
+        self,
+        *,
+        node_eval: NodeMinmaxEvaluation[Any, Any],
+        branches_with_updated_value: set[int],
+    ) -> SelectedValue:
+        del branches_with_updated_value
+        return SelectedValue(value=node_eval.direct_value, from_child=False)
 
 
 @dataclass
@@ -261,3 +273,60 @@ def test_partial_expansion_pv_invariant_helper_black_allows_non_empty_pv() -> No
     assert parent.best_branch() is not None
     assert parent.best_branch_sequence
     parent.assert_pv_invariants()
+
+
+def test_pv_transition_sequence_handles_non_best_updates_and_direct_value_mode_switch() -> (
+    None
+):
+    parent, children = _make_parent_eval()
+
+    first = parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq={0, 1},
+    )
+    assert first.pv_changed
+    assert parent.best_branch_sequence == [0, 4]
+    assert parent.pv_version == 1
+
+    # Non-best child PV churn should not perturb the parent PV.
+    children[1].tree_evaluation.set_best_branch_sequence([77])
+    second = parent.backup_from_children(
+        branches_with_updated_value=set(),
+        branches_with_updated_best_branch_seq={1},
+    )
+    assert not second.pv_changed
+    assert parent.best_branch_sequence == [0, 4]
+    assert parent.pv_version == 1
+
+    # Best child PV tail changes should rebuild only the tail.
+    children[0].tree_evaluation.set_best_branch_sequence([88, 89])
+    third = parent.backup_from_children(
+        branches_with_updated_value=set(),
+        branches_with_updated_best_branch_seq={0},
+    )
+    assert third.pv_changed
+    assert parent.best_branch_sequence == [0, 88, 89]
+    assert parent.pv_version == 2
+
+    # Direct-value selection clears the PV because the parent is no longer
+    # selecting a child-backed line.
+    parent.backup_policy = ExplicitMinimaxBackupPolicy(
+        aggregation_policy=_SelectDirectAggregationPolicy()
+    )
+    fourth = parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert fourth.pv_changed
+    assert parent.best_branch_sequence == []
+    assert parent.pv_version == 3
+
+    # Returning to child-backed selection rebuilds the PV head and tail.
+    parent.backup_policy = ExplicitMinimaxBackupPolicy()
+    fifth = parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq={0},
+    )
+    assert fifth.pv_changed
+    assert parent.best_branch_sequence == [0, 88, 89]
+    assert parent.pv_version == 4

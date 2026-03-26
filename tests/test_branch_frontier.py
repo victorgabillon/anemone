@@ -335,3 +335,70 @@ def test_single_agent_frontier_uses_explicit_ordering_cache_updates() -> None:
             stable_tiebreak_id=2,
         ),
     }
+
+
+def test_minimax_frontier_reappears_and_resorts_after_exactness_reversal() -> None:
+    winning_child = _minimax_leaf(
+        1,
+        Value(
+            score=1.0,
+            certainty=Certainty.TERMINAL,
+            over_event=_FakeOverEvent(winner=Color.WHITE),
+        ),
+    )
+    live_child = _minimax_leaf(
+        2,
+        Value(score=0.2, certainty=Certainty.ESTIMATE),
+    )
+    parent_tree_node = SimpleNamespace(
+        id=0,
+        state=SimpleNamespace(turn=Color.WHITE),
+        branches_children={"win": winning_child, "live": live_child},
+        all_branches_generated=False,
+    )
+    parent = NodeMinmaxEvaluation(
+        tree_node=parent_tree_node,
+        backup_policy=ExplicitMinimaxBackupPolicy(),
+    )
+    parent.direct_value = Value(score=0.0, certainty=Certainty.ESTIMATE)
+    parent.minmax_value = parent.direct_value
+
+    parent.backup_from_children(
+        branches_with_updated_value={"win", "live"},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert parent.has_exact_value()
+    assert parent.frontier_branches_in_order() == []
+
+    # When the proving child becomes only an estimate, unresolved branches return.
+    winning_child.tree_evaluation.direct_value = Value(
+        score=1.0,
+        certainty=Certainty.ESTIMATE,
+    )
+    winning_child.tree_evaluation.minmax_value = Value(
+        score=1.0,
+        certainty=Certainty.ESTIMATE,
+    )
+    parent.backup_from_children(
+        branches_with_updated_value={"win"},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert not parent.has_exact_value()
+    assert parent.frontier_branches_in_order() == ["win", "live"]
+
+    # Frontier order should continue to track the current decision order after
+    # the reversal as other children improve.
+    live_child.tree_evaluation.direct_value = Value(
+        score=1.2,
+        certainty=Certainty.ESTIMATE,
+    )
+    live_child.tree_evaluation.minmax_value = Value(
+        score=1.2,
+        certainty=Certainty.ESTIMATE,
+    )
+    parent.backup_from_children(
+        branches_with_updated_value={"live"},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert parent.best_branch() == "live"
+    assert parent.frontier_branches_in_order() == ["live", "win"]

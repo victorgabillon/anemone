@@ -69,8 +69,11 @@ nn = [
   "torch",
 ]
 
-gui = [
-  "streamlit>=1.44.0",
+
+profiling-viz = [
+   "streamlit>=1.44.0",
+  "snakeviz",
+  "gprof2dot",
 ]
 
 docs = [

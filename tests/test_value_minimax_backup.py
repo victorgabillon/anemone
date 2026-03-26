@@ -121,6 +121,25 @@ def _make_parent(
     return parent
 
 
+def _set_leaf_value(child: Any, value: Value) -> None:
+    child.tree_evaluation.direct_value = value
+    child.tree_evaluation.minmax_value = value
+
+
+def _assert_minimax_ordering(
+    parent: NodeMinmaxEvaluation[Any, Any],
+    *,
+    best_branch: int,
+    second_best_branch: int,
+    ordered_branches: list[int],
+    score: float,
+) -> None:
+    assert parent.best_branch() == best_branch
+    assert parent.second_best_branch() == second_best_branch
+    assert parent.decision_ordered_branches() == ordered_branches
+    assert parent.minmax_value == Value(score=score, certainty=Certainty.ESTIMATE)
+
+
 def test_estimate_children_respect_side_to_move_ordering() -> None:
     white_parent = _make_parent(
         turn=Color.WHITE,
@@ -705,3 +724,194 @@ def test_exact_win_child_keeps_winning_over_event_on_forced_parent() -> None:
         certainty=Certainty.FORCED,
         over_event=forced_win.over_event,
     )
+
+
+def test_minimax_best_and_second_best_transition_sequence_with_three_children() -> (
+    None
+):
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={
+            0: _make_leaf(1, Value(score=0.9, certainty=Certainty.ESTIMATE)),
+            1: _make_leaf(2, Value(score=0.6, certainty=Certainty.ESTIMATE)),
+            2: _make_leaf(3, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+        },
+        all_generated=True,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    parent.backup_from_children(
+        branches_with_updated_value={0, 1, 2},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_minimax_ordering(
+        parent,
+        best_branch=0,
+        second_best_branch=1,
+        ordered_branches=[0, 1, 2],
+        score=0.9,
+    )
+
+    _set_leaf_value(
+        parent.tree_node.branches_children[1],
+        Value(score=0.8, certainty=Certainty.ESTIMATE),
+    )
+    parent.backup_from_children(
+        branches_with_updated_value={1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_minimax_ordering(
+        parent,
+        best_branch=0,
+        second_best_branch=1,
+        ordered_branches=[0, 1, 2],
+        score=0.9,
+    )
+
+    _set_leaf_value(
+        parent.tree_node.branches_children[1],
+        Value(score=1.0, certainty=Certainty.ESTIMATE),
+    )
+    parent.backup_from_children(
+        branches_with_updated_value={1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_minimax_ordering(
+        parent,
+        best_branch=1,
+        second_best_branch=0,
+        ordered_branches=[1, 0, 2],
+        score=1.0,
+    )
+
+    _set_leaf_value(
+        parent.tree_node.branches_children[1],
+        Value(score=0.85, certainty=Certainty.ESTIMATE),
+    )
+    parent.backup_from_children(
+        branches_with_updated_value={1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_minimax_ordering(
+        parent,
+        best_branch=0,
+        second_best_branch=1,
+        ordered_branches=[0, 1, 2],
+        score=0.9,
+    )
+
+    _set_leaf_value(
+        parent.tree_node.branches_children[2],
+        Value(score=0.88, certainty=Certainty.ESTIMATE),
+    )
+    parent.backup_from_children(
+        branches_with_updated_value={2},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_minimax_ordering(
+        parent,
+        best_branch=0,
+        second_best_branch=2,
+        ordered_branches=[0, 2, 1],
+        score=0.9,
+    )
+
+    _set_leaf_value(
+        parent.tree_node.branches_children[2],
+        Value(score=0.9, certainty=Certainty.ESTIMATE),
+    )
+    parent.backup_from_children(
+        branches_with_updated_value={2},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_minimax_ordering(
+        parent,
+        best_branch=0,
+        second_best_branch=2,
+        ordered_branches=[0, 2, 1],
+        score=0.9,
+    )
+
+    _set_leaf_value(
+        parent.tree_node.branches_children[2],
+        Value(score=0.91, certainty=Certainty.ESTIMATE),
+    )
+    parent.backup_from_children(
+        branches_with_updated_value={2},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_minimax_ordering(
+        parent,
+        best_branch=2,
+        second_best_branch=0,
+        ordered_branches=[2, 0, 1],
+        score=0.91,
+    )
+
+
+def test_minimax_exactness_reverses_when_winning_child_loses_and_recovers_proof() -> (
+    None
+):
+    parent = _make_parent(
+        turn=Color.WHITE,
+        children={
+            0: _make_leaf(
+                1,
+                Value(
+                    score=1.0,
+                    certainty=Certainty.TERMINAL,
+                    over_event=_FakeOverEvent(winner=Color.WHITE),
+                ),
+            ),
+            1: _make_leaf(2, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+        },
+        all_generated=False,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+    )
+
+    first = parent.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert parent.minmax_value == Value(
+        score=1.0,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
+    assert parent.has_exact_value()
+    assert parent.has_over_event()
+    assert first.over_changed
+
+    _set_leaf_value(
+        parent.tree_node.branches_children[0],
+        Value(score=1.0, certainty=Certainty.ESTIMATE),
+    )
+    second = parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert parent.minmax_value == Value(score=1.0, certainty=Certainty.ESTIMATE)
+    assert not parent.has_exact_value()
+    assert not parent.has_over_event()
+    assert second.over_changed
+
+    _set_leaf_value(
+        parent.tree_node.branches_children[0],
+        Value(
+            score=1.0,
+            certainty=Certainty.TERMINAL,
+            over_event=_FakeOverEvent(winner=Color.WHITE),
+        ),
+    )
+    third = parent.backup_from_children(
+        branches_with_updated_value={0},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert parent.minmax_value == Value(
+        score=1.0,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=Color.WHITE),
+    )
+    assert parent.has_exact_value()
+    assert parent.has_over_event()
+    assert third.over_changed

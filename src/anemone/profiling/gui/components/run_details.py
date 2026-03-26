@@ -6,10 +6,13 @@ from pathlib import Path
 
 from anemone.profiling.gui import get_altair, get_pandas, get_streamlit
 from anemone.profiling.gui.components.charts import render_component_breakdown
+from anemone.profiling.gui.components.profiler_views import (
+    render_profiler_tooling_section,
+)
 from anemone.profiling.gui.data_loading import (
     extract_component_summary,
     read_text_artifact,
-    resolve_run_artifact_path,
+    resolve_cprofile_pstats_path,
     run_dir_from_result,
 )
 from anemone.profiling.gui.profilers.cprofile_parser import parse_cprofile_stats
@@ -33,6 +36,11 @@ def render_run_details(run: object, *, key_prefix: str, heading: str) -> None:
         st.info("No component summary artifact is available for this run.")
 
     _render_profiler_details(run, key_prefix=key_prefix)
+    render_profiler_tooling_section(
+        run_dir=run_dir,
+        pstats_path=resolve_cprofile_pstats_path(run),
+        key_prefix=key_prefix,
+    )
 
 
 def _render_run_summary(run: object) -> None:
@@ -112,10 +120,7 @@ def _render_profiler_details(
 
 
 def _load_cprofile_rows(run: object) -> list[dict[str, object]]:
-    pstats_path = resolve_run_artifact_path(
-        run,
-        run.artifacts.extra_paths.get("cprofile_pstats"),
-    )
+    pstats_path = resolve_cprofile_pstats_path(run)
     if pstats_path is None or not pstats_path.exists():
         return []
     try:

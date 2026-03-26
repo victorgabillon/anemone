@@ -37,6 +37,7 @@ In particular, PR1 does not touch:
 - `component_summary.json` artifact output when enabled
 - `cprofile.pstats` and `cprofile_top.txt` artifacts for `cprofile`
 - `pyinstrument.txt` artifact when `pyinstrument` is requested and installed
+- optional GUI integrations for SnakeViz and gprof2dot call-graph generation
 - deterministic synthetic profiling scenarios:
   - `cheap_eval`
   - `expensive_eval`
@@ -52,8 +53,8 @@ In particular, PR1 does not touch:
 
 - process-level profilers such as py-spy
 - viztracer integration
-- GUI tooling, charts, or HTML reports
 - CI performance regression gates
+- flamegraph and speedscope-style timeline views
 
 ## Running It
 
@@ -73,6 +74,15 @@ GUI launcher:
 pip install -e .[gui]
 python -m anemone.profiling.gui
 ```
+
+Optional profiler-visualization extras:
+
+```bash
+pip install -e .[gui,profiling-viz]
+```
+
+Graph rendering for gprof2dot also requires the Graphviz `dot` executable to be
+installed on the system.
 
 Convenience runner entrypoint:
 
@@ -138,6 +148,8 @@ The dashboard can:
 - browse existing runs and suites
 - display component timing breakdowns
 - show readable profiler text artifacts
+- expose SnakeViz launch commands for `cprofile.pstats` artifacts
+- generate and display gprof2dot call graphs on demand
 - compare two runs or two suites
 
 The GUI reads the existing profiling artifacts only. It does not add new
@@ -152,6 +164,44 @@ residual_framework_wall_time_seconds
 ```
 
 This residual is useful, but intentionally approximate.
+
+## Interactive cProfile visualization
+
+For runs that include `cprofile.pstats`, the GUI exposes two optional tools:
+
+- SnakeViz for interactive browser-based inspection of the call stack
+- gprof2dot for caller/callee call-graph generation
+
+Suggested setup:
+
+```bash
+pip install -e .[gui,profiling-viz]
+python -m anemone.profiling.gui
+```
+
+When a run includes `cprofile.pstats`, the run page can:
+
+- show the exact `snakeviz /absolute/path/to/cprofile.pstats` command
+- generate DOT, SVG, or PNG call-graph artifacts under
+  `profiler_visualizations/`
+- render generated SVG and PNG call graphs directly in the dashboard
+
+Use the flat top-functions table when you want to answer:
+
+- which function is hot?
+
+Use SnakeViz when you want to answer:
+
+- why is this function being reached?
+- which call path dominates cumulative time?
+
+Use gprof2dot when you want to answer:
+
+- who calls the bottleneck?
+- which caller/callee relationships are shaping the hotspot?
+
+gprof2dot thresholds control graph pruning, which makes it easier to simplify
+dense profiles before rendering a call graph image.
 
 ## Scenario Roles
 

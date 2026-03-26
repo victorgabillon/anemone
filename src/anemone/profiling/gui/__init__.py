@@ -30,6 +30,14 @@ def get_altair() -> Any | None:
         return None
 
 
+def get_streamlit_components_v1() -> Any | None:
+    """Return Streamlit's HTML component helpers when available."""
+    try:
+        return import_module("streamlit.components.v1")
+    except ImportError:  # pragma: no cover - optional dependency fallback
+        return None
+
+
 def _missing_streamlit_error() -> RuntimeError:
     return RuntimeError(
         "Streamlit is not installed. Install the GUI extra with "

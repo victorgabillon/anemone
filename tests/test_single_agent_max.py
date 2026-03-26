@@ -142,6 +142,25 @@ def _child(
     )
 
 
+def _set_child_value(child: Any, value: Value) -> None:
+    child.tree_evaluation.direct_value = value
+    child.tree_evaluation.backed_up_value = value
+
+
+def _assert_single_agent_ordering(
+    node: NodeMaxEvaluation[Any],
+    *,
+    best_branch: int,
+    second_best_branch: int,
+    ordered_branches: list[int],
+    score: float,
+) -> None:
+    assert node.best_branch() == best_branch
+    assert node.second_best_branch() == second_best_branch
+    assert node.decision_ordered_branches() == ordered_branches
+    assert node.backed_up_value == Value(score=score, certainty=Certainty.ESTIMATE)
+
+
 def test_single_agent_objective_uses_raw_score_without_turn() -> None:
     objective = SingleAgentMaxObjective(terminal_score_value=-7.0)
     state = _state()
@@ -709,3 +728,202 @@ def test_single_agent_pv_invariant_helper_is_available_from_shared_state() -> No
     node.set_best_branch_sequence([1, 8, 9])
 
     node.assert_pv_invariants()
+
+
+def test_single_agent_best_and_second_best_transition_sequence_with_three_children() -> (
+    None
+):
+    children = {
+        0: _child(10, Value(score=0.9, certainty=Certainty.ESTIMATE)),
+        1: _child(20, Value(score=0.6, certainty=Certainty.ESTIMATE)),
+        2: _child(30, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    node.backup_from_children(
+        branches_with_updated_value={0, 1, 2},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_single_agent_ordering(
+        node,
+        best_branch=0,
+        second_best_branch=1,
+        ordered_branches=[0, 1, 2],
+        score=0.9,
+    )
+
+    # Non-best improves but remains second-best.
+    _set_child_value(children[1], Value(score=0.8, certainty=Certainty.ESTIMATE))
+    node.backup_from_children(
+        branches_with_updated_value={1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_single_agent_ordering(
+        node,
+        best_branch=0,
+        second_best_branch=1,
+        ordered_branches=[0, 1, 2],
+        score=0.9,
+    )
+
+    # Second-best overtakes the current best.
+    _set_child_value(children[1], Value(score=1.0, certainty=Certainty.ESTIMATE))
+    node.backup_from_children(
+        branches_with_updated_value={1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_single_agent_ordering(
+        node,
+        best_branch=1,
+        second_best_branch=0,
+        ordered_branches=[1, 0, 2],
+        score=1.0,
+    )
+
+    # Current best worsens below the former second-best.
+    _set_child_value(children[1], Value(score=0.85, certainty=Certainty.ESTIMATE))
+    node.backup_from_children(
+        branches_with_updated_value={1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_single_agent_ordering(
+        node,
+        best_branch=0,
+        second_best_branch=1,
+        ordered_branches=[0, 1, 2],
+        score=0.9,
+    )
+
+    # Third child becomes second-best without becoming best.
+    _set_child_value(children[2], Value(score=0.88, certainty=Certainty.ESTIMATE))
+    node.backup_from_children(
+        branches_with_updated_value={2},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_single_agent_ordering(
+        node,
+        best_branch=0,
+        second_best_branch=2,
+        ordered_branches=[0, 2, 1],
+        score=0.9,
+    )
+
+    # A tie appears and stable tie-breaking keeps the lower-id child first.
+    _set_child_value(children[2], Value(score=0.9, certainty=Certainty.ESTIMATE))
+    node.backup_from_children(
+        branches_with_updated_value={2},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_single_agent_ordering(
+        node,
+        best_branch=0,
+        second_best_branch=2,
+        ordered_branches=[0, 2, 1],
+        score=0.9,
+    )
+
+    # The tie disappears and the former third child becomes best.
+    _set_child_value(children[2], Value(score=0.91, certainty=Certainty.ESTIMATE))
+    node.backup_from_children(
+        branches_with_updated_value={2},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    _assert_single_agent_ordering(
+        node,
+        best_branch=2,
+        second_best_branch=0,
+        ordered_branches=[2, 0, 1],
+        score=0.91,
+    )
+
+
+def test_single_agent_exactness_reverses_when_child_exactness_and_generation_change() -> (
+    None
+):
+    children = {
+        0: _child(
+            10,
+            Value(
+                score=1.0,
+                certainty=Certainty.TERMINAL,
+                over_event=_FakeOverEvent(winner=_SoloRole.SOLO),
+            ),
+        ),
+        1: _child(
+            11,
+            Value(
+                score=0.2,
+                certainty=Certainty.TERMINAL,
+                over_event=_FakeOverEvent(loser=_SoloRole.SOLO),
+            ),
+        ),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.0, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    first = node.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert node.backed_up_value == Value(
+        score=1.0,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=_SoloRole.SOLO),
+    )
+    assert node.has_exact_value()
+    assert node.has_over_event()
+    assert first.over_changed
+
+    # Losing one exact child makes the parent fall back to an estimate.
+    _set_child_value(children[1], Value(score=0.2, certainty=Certainty.ESTIMATE))
+    second = node.backup_from_children(
+        branches_with_updated_value={1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert node.backed_up_value == Value(score=1.0, certainty=Certainty.ESTIMATE)
+    assert not node.has_exact_value()
+    assert not node.has_over_event()
+    assert second.over_changed
+
+    # Restoring child exactness is not enough if generation completeness is broken.
+    _set_child_value(
+        children[1],
+        Value(
+            score=0.2,
+            certainty=Certainty.TERMINAL,
+            over_event=_FakeOverEvent(loser=_SoloRole.SOLO),
+        ),
+    )
+    node.tree_node.all_branches_generated = False
+    third = node.backup_from_children(
+        branches_with_updated_value={1},
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert node.backed_up_value == Value(score=1.0, certainty=Certainty.ESTIMATE)
+    assert not node.has_exact_value()
+    assert not node.has_over_event()
+    assert not third.over_changed
+
+    # Re-enabling full generation restores the exact parent result.
+    node.tree_node.all_branches_generated = True
+    fourth = node.backup_from_children(
+        branches_with_updated_value=set(),
+        branches_with_updated_best_branch_seq=set(),
+    )
+    assert node.backed_up_value == Value(
+        score=1.0,
+        certainty=Certainty.FORCED,
+        over_event=_FakeOverEvent(winner=_SoloRole.SOLO),
+    )
+    assert node.has_exact_value()
+    assert node.has_over_event()
+    assert fourth.over_changed

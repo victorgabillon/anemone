@@ -160,6 +160,22 @@ def resolve_run_artifact_path(
     return _resolve_run_artifact_path(run, path, default_name=default_name)
 
 
+def resolve_cprofile_pstats_path(run: RunResult) -> Path | None:
+    """Resolve the ``cprofile.pstats`` artifact for one run when present."""
+    return resolve_run_artifact_path(
+        run,
+        run.artifacts.extra_paths.get("cprofile_pstats"),
+    )
+
+
+def resolve_cprofile_top_txt_path(run: RunResult) -> Path | None:
+    """Resolve the ``cprofile_top.txt`` artifact for one run when present."""
+    return resolve_run_artifact_path(
+        run,
+        run.artifacts.extra_paths.get("cprofile_top_txt"),
+    )
+
+
 def resolve_suite_artifact_path(
     suite: SuiteRunResult,
     path: str | Path | None,
