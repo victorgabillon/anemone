@@ -13,7 +13,7 @@ class _FakePolicy:
     """Capture full-snapshot backup calls made through one parent recomputation."""
 
     calls: list[tuple[set[int], set[int]]] = field(default_factory=list)
-    result: BackupResult = field(
+    result: BackupResult[int] = field(
         default_factory=lambda: BackupResult(
             value_changed=True,
             pv_changed=True,
@@ -26,7 +26,7 @@ class _FakePolicy:
         node_eval: object,
         branches_with_updated_value: set[int],
         branches_with_updated_best_branch_seq: set[int],
-    ) -> BackupResult:
+    ) -> BackupResult[int]:
         """Record one delegated backup call from the active propagation path."""
         del node_eval
         self.calls.append(
@@ -48,7 +48,7 @@ class _FakeTreeEvaluation:
         self,
         branches_with_updated_value: set[int],
         branches_with_updated_best_branch_seq: set[int],
-    ) -> BackupResult:
+    ) -> BackupResult[int]:
         """Forward recomputation to the injected policy."""
         return self.backup_policy.backup_from_children(
             node_eval=self,

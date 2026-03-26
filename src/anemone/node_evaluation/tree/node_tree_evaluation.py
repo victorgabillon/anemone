@@ -425,7 +425,7 @@ class NodeTreeEvaluationState[
         self,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> BackupResult:
+    ) -> BackupResult[BranchKey]:
         """Delegate backup work to the configured tree-evaluation backup policy."""
         context = self._context()
         if self.backup_policy is None:
@@ -737,7 +737,7 @@ class NodeTreeEvaluation[StateT: State = State](
         self,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> BackupResult:
+    ) -> BackupResult[BranchKey]:
         """Run family-specific backup after child updates."""
         ...
 

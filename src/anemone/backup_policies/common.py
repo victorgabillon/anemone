@@ -201,7 +201,7 @@ def run_backup_pipeline(
     value_after: Value | None,
     branches_with_updated_value: set[BranchKey],
     update_pv: Callable[[], bool],
-) -> BackupResult:
+) -> BackupResult[BranchKey]:
     """Run the shared backup orchestration around family-specific selection logic."""
     snapshot = BackupSnapshot.capture(node_eval)
 
@@ -227,7 +227,7 @@ def finalize_selection_with_proof(
     proof: ProofClassification | None,
     branches_with_updated_value: set[BranchKey],
     update_pv: Callable[[], bool],
-) -> BackupResult:
+) -> BackupResult[BranchKey]:
     """Finalize one selected candidate once proof classification is known."""
     value_after = make_value_from_selection_and_proof(
         selection=selection,

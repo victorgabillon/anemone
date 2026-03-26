@@ -53,7 +53,7 @@ class ExplicitTreeBackupPolicy[NodeEvalT: ExplicitTreeBackupNodeEval]:
         node_eval: NodeEvalT,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> BackupResult:
+    ) -> BackupResult[BranchKey]:
         """Recompute ``backed_up_value`` and PV from updated child values."""
         best_branch_before_update = node_eval.best_branch()
         self.prepare_aggregation(

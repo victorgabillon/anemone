@@ -20,14 +20,14 @@ from anemone.updates.value_propagator import ValuePropagator
 class _FakeEvaluation:
     """Minimal backup surface for testing propagation orchestration."""
 
-    results: list[BackupResult] = field(default_factory=list)
+    results: list[BackupResult[int]] = field(default_factory=list)
     calls: list[tuple[set[int], set[int]]] = field(default_factory=list)
 
     def backup_from_children(
         self,
         branches_with_updated_value: set[int],
         branches_with_updated_best_branch_seq: set[int],
-    ) -> BackupResult:
+    ) -> BackupResult[int]:
         """Record one backup call and return the next configured result."""
         self.calls.append(
             (

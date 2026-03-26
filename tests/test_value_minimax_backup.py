@@ -86,7 +86,7 @@ class _FlipAllBranchesGeneratedPolicy:
         node_eval: NodeMinmaxEvaluation[Any, Any],
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> BackupResult:
+    ) -> BackupResult[BranchKey]:
         del branches_with_updated_value
         del branches_with_updated_best_branch_seq
         node_eval.tree_node.all_branches_generated = self.new_value

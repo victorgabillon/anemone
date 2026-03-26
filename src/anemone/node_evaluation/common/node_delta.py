@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from valanga import BranchKey
-from valanga.evaluations import Value
+if TYPE_CHECKING:
+    from valanga.evaluations import Value
 
 
 @dataclass(slots=True, frozen=True)

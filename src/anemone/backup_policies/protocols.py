@@ -21,7 +21,7 @@ class BackupPolicy[NodeEvalT](Protocol):
         node_eval: NodeEvalT,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
-    ) -> BackupResult:
+    ) -> BackupResult[BranchKey]:
         """Perform subtree backup operations and return family-neutral change flags."""
         ...
 
