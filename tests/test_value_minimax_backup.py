@@ -726,9 +726,7 @@ def test_exact_win_child_keeps_winning_over_event_on_forced_parent() -> None:
     )
 
 
-def test_minimax_best_and_second_best_transition_sequence_with_three_children() -> (
-    None
-):
+def test_minimax_best_and_second_best_transition_sequence_with_three_children() -> None:
     parent = _make_parent(
         turn=Color.WHITE,
         children={

@@ -2,44 +2,48 @@
 
 from __future__ import annotations
 
-from anemone.profiling.gui import get_altair, get_pandas, get_streamlit
+from typing import TypedDict
+
+from anemone.profiling.gui.components.chart_utils import build_chart
+
+
+class ComparisonRow(TypedDict):
+    """Pairwise comparison row used by grouped charts and tables."""
+
+    metric: str
+    left_seconds: float
+    right_seconds: float
+    delta_b_minus_a_seconds: float
+    percent_change: float | None
 
 
 def render_comparison_chart(
-    rows: list[dict[str, object]],
+    rows: list[ComparisonRow],
     *,
     left_label: str,
     right_label: str,
 ) -> None:
     """Render a grouped comparison chart for two entities."""
-    st = get_streamlit()
-    pandas_module = get_pandas()
-    altair_module = get_altair()
-    if pandas_module is None or altair_module is None:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+    chart_rows = [
+        {
+            "metric": row["metric"],
+            "run": left_label,
+            "seconds": row["left_seconds"],
+        }
+        for row in rows
+    ] + [
+        {
+            "metric": row["metric"],
+            "run": right_label,
+            "seconds": row["right_seconds"],
+        }
+        for row in rows
+    ]
+    if (chart_context := build_chart(chart_rows, fallback_rows=rows)) is None:
         return
-
-    dataframe = pandas_module.DataFrame(
-        [
-            {
-                "metric": str(row["metric"]),
-                "run": left_label,
-                "seconds": float(row["left_seconds"]),
-            }
-            for row in rows
-        ]
-        + [
-            {
-                "metric": str(row["metric"]),
-                "run": right_label,
-                "seconds": float(row["right_seconds"]),
-            }
-            for row in rows
-        ]
-    )
+    st, altair_module, chart = chart_context
     chart = (
-        altair_module.Chart(dataframe)
-        .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
+        chart.mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
         .encode(
             x=altair_module.X("metric:N", title=None),
             y=altair_module.Y("seconds:Q", title="Seconds"),

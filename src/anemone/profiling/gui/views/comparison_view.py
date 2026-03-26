@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from anemone.profiling.gui import get_pandas, get_streamlit
+from anemone.profiling.gui.components.chart_utils import render_table_fallback
 from anemone.profiling.gui.components.charts import render_comparison_chart
 from anemone.profiling.gui.components.layout import render_breadcrumbs
 from anemone.profiling.gui.components.selectors import select_run, select_suite
@@ -14,13 +15,28 @@ from anemone.profiling.gui.data_loading import (
     extract_component_summary,
     run_dir_from_result,
 )
-from anemone.profiling.gui.metrics import component_breakdown_rows, suite_scenario_metric_rows
+from anemone.profiling.gui.metrics import (
+    ComponentBreakdownRow,
+    SuiteScenarioMetricRow,
+    component_breakdown_rows,
+    suite_scenario_metric_rows,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
     from pathlib import Path
 
     from anemone.profiling.artifacts import RunResult
+    from anemone.profiling.gui.components.charts.comparison import ComparisonRow
     from anemone.profiling.suite_artifacts import SuiteRunResult
+
+
+class _SeriesLike(Protocol):
+    """Minimal series protocol needed for DataFrame style callbacks."""
+
+    name: object
+
+    def __iter__(self) -> Iterator[object]: ...
 
 
 def render_comparison_view(base_dir: Path) -> None:
@@ -92,7 +108,14 @@ def _render_run_comparison(run_a: RunResult, run_b: RunResult) -> None:
         key="profiling_compare_run_threshold",
     )
 
-    rows: list[dict[str, object]] = [_comparison_row("Total wall time", delta, run_a.timing.wall_time_seconds, run_b.timing.wall_time_seconds)]
+    rows: list[ComparisonRow] = [
+        _comparison_row(
+            "Total wall time",
+            delta,
+            run_a.timing.wall_time_seconds,
+            run_b.timing.wall_time_seconds,
+        )
+    ]
 
     summary_a = (
         extract_component_summary(run_dir_a)
@@ -113,14 +136,12 @@ def _render_run_comparison(run_a: RunResult, run_b: RunResult) -> None:
         )
 
     regressions = [
-        row
-        for row in rows
-        if float(row["delta_b_minus_a_seconds"]) > float(threshold)
+        row for row in rows if row["delta_b_minus_a_seconds"] > float(threshold)
     ]
     if regressions:
         st.error(
             "Potential regression detected in: "
-            + ", ".join(str(row["metric"]) for row in regressions)
+            + ", ".join(row["metric"] for row in regressions)
         )
     else:
         st.success("No compared metric exceeds the regression threshold.")
@@ -141,32 +162,15 @@ def _render_suite_comparison(
     rows_a = {row["scenario_name"]: row for row in suite_scenario_metric_rows(suite_a)}
     rows_b = {row["scenario_name"]: row for row in suite_scenario_metric_rows(suite_b)}
     scenario_names = sorted(set(rows_a) | set(rows_b))
-    rows = [
-        {
-            "metric": scenario_name,
-            "left_seconds": (
-                0.0
-                if scenario_name not in rows_a
-                or rows_a[scenario_name]["mean_wall_time_seconds"] is None
-                else float(rows_a[scenario_name]["mean_wall_time_seconds"])
-            ),
-            "right_seconds": (
-                0.0
-                if scenario_name not in rows_b
-                or rows_b[scenario_name]["mean_wall_time_seconds"] is None
-                else float(rows_b[scenario_name]["mean_wall_time_seconds"])
-            ),
-        }
-        for scenario_name in scenario_names
-    ]
-    normalized_rows = [
+    normalized_rows: list[ComparisonRow] = [
         _comparison_row(
-            str(row["metric"]),
-            float(row["right_seconds"]) - float(row["left_seconds"]),
-            float(row["left_seconds"]),
-            float(row["right_seconds"]),
+            scenario_name,
+            _scenario_mean_seconds(rows_b.get(scenario_name))
+            - _scenario_mean_seconds(rows_a.get(scenario_name)),
+            _scenario_mean_seconds(rows_a.get(scenario_name)),
+            _scenario_mean_seconds(rows_b.get(scenario_name)),
         )
-        for row in rows
+        for scenario_name in scenario_names
     ]
     render_comparison_chart(
         normalized_rows,
@@ -194,22 +198,20 @@ def _render_suite_comparison(
 
 def _component_comparison_rows(
     *,
-    summary_a_rows: list[dict[str, object]],
-    summary_b_rows: list[dict[str, object]],
-) -> list[dict[str, object]]:
-    rows_b_by_component = {
-        str(row["component"]): row for row in summary_b_rows
-    }
+    summary_a_rows: list[ComponentBreakdownRow],
+    summary_b_rows: list[ComponentBreakdownRow],
+) -> list[ComparisonRow]:
+    rows_b_by_component = {row["component"]: row for row in summary_b_rows}
     return [
         _comparison_row(
             component_name,
-            float(rows_b_by_component[component_name]["wall_time_seconds"])
-            - float(row["wall_time_seconds"]),
-            float(row["wall_time_seconds"]),
-            float(rows_b_by_component[component_name]["wall_time_seconds"]),
+            rows_b_by_component[component_name]["wall_time_seconds"]
+            - row["wall_time_seconds"],
+            row["wall_time_seconds"],
+            rows_b_by_component[component_name]["wall_time_seconds"],
         )
         for component_name, row in (
-            (str(summary_row["component"]), summary_row) for summary_row in summary_a_rows
+            (summary_row["component"], summary_row) for summary_row in summary_a_rows
         )
         if component_name in rows_b_by_component
     ]
@@ -220,7 +222,7 @@ def _comparison_row(
     delta_seconds: float,
     left_seconds: float,
     right_seconds: float,
-) -> dict[str, object]:
+) -> ComparisonRow:
     return {
         "metric": metric,
         "left_seconds": left_seconds,
@@ -231,33 +233,71 @@ def _comparison_row(
 
 
 def _render_comparison_table(
-    rows: list[dict[str, object]],
+    rows: list[ComparisonRow],
     *,
     threshold: float,
 ) -> None:
     st = get_streamlit()
     pandas_module = get_pandas()
     if pandas_module is None:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        render_table_fallback(rows)
         return
 
     dataframe = pandas_module.DataFrame(rows)
     styled = dataframe.style.apply(
-        lambda series: [
-            (
-                "background-color: rgba(185, 28, 28, 0.18)"
-                if series.name == "delta_b_minus_a_seconds"
-                and float(value) > threshold
-                else ""
-            )
-            for value in series
-        ],
+        _style_comparison_series_with_threshold(threshold),
         axis=0,
     )
-    st.dataframe(styled, use_container_width=True, hide_index=True)
+    st.dataframe(styled, width="stretch", hide_index=True)
 
 
 def _percent_change(left_seconds: float, right_seconds: float) -> float | None:
     if left_seconds == 0.0:
         return None
     return ((right_seconds - left_seconds) / left_seconds) * 100.0
+
+
+def _scenario_mean_seconds(row: SuiteScenarioMetricRow | None) -> float:
+    if row is None or row["mean_wall_time_seconds"] is None:
+        return 0.0
+    return row["mean_wall_time_seconds"]
+
+
+def _style_comparison_series_with_threshold(
+    threshold: float,
+) -> Callable[[_SeriesLike], list[str]]:
+    def _inner(series: _SeriesLike) -> list[str]:
+        return _style_comparison_series(series, threshold=threshold)
+
+    return _inner
+
+
+def _style_comparison_series(
+    series: _SeriesLike,
+    *,
+    threshold: float,
+) -> list[str]:
+    series_name = str(series.name)
+    return [
+        _comparison_cell_style(
+            column_name=series_name,
+            value=value,
+            threshold=threshold,
+        )
+        for value in series
+    ]
+
+
+def _comparison_cell_style(
+    *,
+    column_name: str,
+    value: object,
+    threshold: float,
+) -> str:
+    if column_name != "delta_b_minus_a_seconds":
+        return ""
+    if not isinstance(value, int | float):
+        return ""
+    return (
+        "background-color: rgba(185, 28, 28, 0.18)" if float(value) > threshold else ""
+    )

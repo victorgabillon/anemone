@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 import shlex
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from anemone.profiling.gui import (
     get_streamlit,
     get_streamlit_components_v1,
 )
 from anemone.profiling.gui.profiler_tools import (
+    build_gprof2dot_graph,
     callgraph_artifact_path,
     detect_tool_availability,
     generate_gprof2dot_dot,
     generate_gprof2dot_svg,
-    render_dot_graph,
     snakeviz_command,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def render_profiler_tooling_section(
@@ -120,9 +123,8 @@ def render_gprof2dot_section(
         action_label = (
             "Regenerate call graph" if output_path.exists() else "Generate call graph"
         )
-        generation_disabled = (
-            not availability.gprof2dot
-            or (output_format in {"svg", "png"} and not availability.graphviz_dot)
+        generation_disabled = not availability.gprof2dot or (
+            output_format in {"svg", "png"} and not availability.graphviz_dot
         )
         if st.button(
             action_label,
@@ -159,7 +161,7 @@ def render_callgraph_artifact(output_path: Path) -> None:
         render_callgraph_svg(output_path)
         return
     if output_format == "png":
-        st.image(str(output_path), use_container_width=True)
+        st.image(str(output_path), width="stretch")
         return
     if output_format == "dot":
         try:
@@ -204,13 +206,14 @@ def _generate_call_graph(
                 edge_threshold=edge_threshold,
             )
         elif output_format == "png":
-            generate_gprof2dot_dot(
-                pstats_path,
-                dot_path,
+            build_gprof2dot_graph(
+                pstats_path=pstats_path,
+                dot_path=dot_path,
+                output_path=output_path,
+                output_format="png",
                 node_threshold=node_threshold,
                 edge_threshold=edge_threshold,
             )
-            render_dot_graph(dot_path, output_path, output_format="png")
         elif output_format == "dot":
             generate_gprof2dot_dot(
                 pstats_path,

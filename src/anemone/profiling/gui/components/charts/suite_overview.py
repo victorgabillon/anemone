@@ -2,15 +2,27 @@
 
 from __future__ import annotations
 
-from anemone.profiling.gui import get_altair, get_pandas, get_streamlit
+from typing import TYPE_CHECKING
+
+from anemone.profiling.gui import get_pandas, get_streamlit
+from anemone.profiling.gui.components.chart_utils import (
+    build_chart,
+    get_chart_modules,
+    render_table_fallback,
+)
 from anemone.profiling.gui.metrics import (
+    SuiteRepetitionMetricRow,
+    SuiteScenarioMetricRow,
     suite_repetition_metric_rows,
     suite_scenario_metric_rows,
     suite_summary_metrics,
 )
 
+if TYPE_CHECKING:
+    from anemone.profiling.suite_artifacts import SuiteRunResult
 
-def render_suite_overview(suite: object, *, key_prefix: str) -> None:
+
+def render_suite_overview(suite: SuiteRunResult, *, key_prefix: str) -> None:
     """Render high-signal suite charts and summary metrics."""
     st = get_streamlit()
     summary = suite_summary_metrics(suite)
@@ -60,7 +72,7 @@ def plot_repetition_series(values: list[float]) -> None:
                 }
                 for index, value in enumerate(values, start=1)
             ],
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )
         return
@@ -77,18 +89,12 @@ def plot_repetition_series(values: list[float]) -> None:
     st.line_chart(dataframe)
 
 
-def _render_scenario_bar_chart(rows: list[dict[str, object]]) -> None:
-    st = get_streamlit()
-    pandas_module = get_pandas()
-    altair_module = get_altair()
-    if pandas_module is None or altair_module is None:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+def _render_scenario_bar_chart(rows: list[SuiteScenarioMetricRow]) -> None:
+    if (chart_context := build_chart(rows)) is None:
         return
-
-    dataframe = pandas_module.DataFrame(rows)
+    st, altair_module, chart = chart_context
     chart = (
-        altair_module.Chart(dataframe)
-        .mark_bar(cornerRadiusTopRight=6, cornerRadiusBottomRight=6)
+        chart.mark_bar(cornerRadiusTopRight=6, cornerRadiusBottomRight=6)
         .encode(
             y=altair_module.Y(
                 "scenario_name:N",
@@ -134,7 +140,7 @@ def _render_scenario_bar_chart(rows: list[dict[str, object]]) -> None:
 
 
 def _render_variability_chart(
-    repetition_rows: list[dict[str, object]],
+    repetition_rows: list[SuiteRepetitionMetricRow],
     *,
     key_prefix: str,
 ) -> None:
@@ -143,22 +149,17 @@ def _render_variability_chart(
         st.info("No successful repetitions available for variability analysis.")
         return
 
-    pandas_module = get_pandas()
-    altair_module = get_altair()
-    if pandas_module is None or altair_module is None:
-        st.dataframe(repetition_rows, use_container_width=True, hide_index=True)
-        return
-
-    dataframe = pandas_module.DataFrame(repetition_rows)
     use_box_plot = st.toggle(
         "Use box plot",
         value=True,
         key=f"{key_prefix}_suite_boxplot_toggle",
     )
+    if (chart_context := build_chart(repetition_rows)) is None:
+        return
+    _unused_st, altair_module, chart = chart_context
     if use_box_plot:
         chart = (
-            altair_module.Chart(dataframe)
-            .mark_boxplot(size=32, color="#b45309")
+            chart.mark_boxplot(size=32, color="#b45309")
             .encode(
                 x=altair_module.X("scenario_name:N", title="Scenario"),
                 y=altair_module.Y(
@@ -179,13 +180,11 @@ def _render_variability_chart(
         st.altair_chart(chart, use_container_width=True)
         return
 
-    st.dataframe(repetition_rows, use_container_width=True, hide_index=True)
+    st.dataframe(repetition_rows, width="stretch", hide_index=True)
 
 
-def _render_heatmap(rows: list[dict[str, object]]) -> None:
-    st = get_streamlit()
-    pandas_module = get_pandas()
-    altair_module = get_altair()
+def _render_heatmap(rows: list[SuiteScenarioMetricRow]) -> None:
+    st, pandas_module, altair_module = get_chart_modules()
     metrics = [
         "mean_wall_time_seconds",
         "std_wall_time_seconds",
@@ -194,7 +193,7 @@ def _render_heatmap(rows: list[dict[str, object]]) -> None:
     ]
 
     if pandas_module is None or altair_module is None:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        render_table_fallback(rows)
         return
 
     dataframe = pandas_module.DataFrame(rows)
@@ -243,10 +242,10 @@ def _render_heatmap(rows: list[dict[str, object]]) -> None:
         ],
         cmap="OrRd",
     )
-    st.dataframe(styled, use_container_width=True, hide_index=True)
+    st.dataframe(styled, width="stretch", hide_index=True)
 
 
-def _format_seconds(value: object) -> str:
+def _format_seconds(value: float | None) -> str:
     if value is None:
         return "n/a"
-    return f"{float(value):.4f}s"
+    return f"{value:.4f}s"

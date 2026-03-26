@@ -3,16 +3,66 @@
 from __future__ import annotations
 
 from statistics import stdev
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from anemone.profiling.artifacts import RunStatus
 
 if TYPE_CHECKING:
-    from anemone.profiling.component_summary import ComponentSummary
+    from anemone.profiling.component_summary import ComponentSummary, TimedCallStats
     from anemone.profiling.suite_artifacts import SuiteRunResult
 
 
-def component_breakdown_rows(summary: ComponentSummary) -> list[dict[str, object]]:
+class ComponentBreakdownRow(TypedDict):
+    """High-level run component row for charts and metric cards."""
+
+    component: str
+    wall_time_seconds: float
+    share_of_total: float
+
+
+class ComponentDetailRow(TypedDict):
+    """Detailed timed-component row for drill-down tables."""
+
+    component: str
+    wall_time_seconds: float
+    share_of_total: float
+    call_count: int | None
+    mean_wall_time_seconds: float | None
+    max_wall_time_seconds: float | None
+
+
+class SuiteScenarioMetricRow(TypedDict):
+    """Derived per-scenario aggregate metrics for one suite."""
+
+    scenario_name: str
+    successful_repetitions: int
+    failed_repetitions: int
+    success_rate: float
+    mean_wall_time_seconds: float | None
+    median_wall_time_seconds: float | None
+    min_wall_time_seconds: float | None
+    max_wall_time_seconds: float | None
+    std_wall_time_seconds: float | None
+
+
+class SuiteRepetitionMetricRow(TypedDict):
+    """Successful per-repetition timing row for variability plots."""
+
+    scenario_name: str
+    repetition_index: int
+    wall_time_seconds: float
+
+
+class SuiteSummaryMetrics(TypedDict):
+    """Compact suite-level summary metrics shown above the charts."""
+
+    scenario_count: int
+    mean_of_means_seconds: float | None
+    fastest_scenario_name: str | None
+    slowest_scenario_name: str | None
+
+
+def component_breakdown_rows(summary: ComponentSummary) -> list[ComponentBreakdownRow]:
     """Return high-level run component rows for charts and metrics."""
     total_seconds = max(summary.total_run_wall_time_seconds, 0.0)
     evaluator_seconds = _timed_stat_seconds(summary.evaluator)
@@ -40,10 +90,10 @@ def component_breakdown_rows(summary: ComponentSummary) -> list[dict[str, object
     ]
 
 
-def component_detail_rows(summary: ComponentSummary) -> list[dict[str, object]]:
+def component_detail_rows(summary: ComponentSummary) -> list[ComponentDetailRow]:
     """Return lower-level component rows for detailed inspection."""
     total_seconds = max(summary.total_run_wall_time_seconds, 0.0)
-    rows: list[dict[str, object]] = []
+    rows: list[ComponentDetailRow] = []
 
     rows.append(
         _timed_component_row(
@@ -82,10 +132,10 @@ def component_detail_rows(summary: ComponentSummary) -> list[dict[str, object]]:
     return rows
 
 
-def suite_scenario_metric_rows(suite: SuiteRunResult) -> list[dict[str, object]]:
+def suite_scenario_metric_rows(suite: SuiteRunResult) -> list[SuiteScenarioMetricRow]:
     """Return suite scenario metrics with variability derived from repetitions."""
     successful_times_by_scenario = _successful_wall_times_by_scenario(suite)
-    rows: list[dict[str, object]] = []
+    rows: list[SuiteScenarioMetricRow] = []
     for aggregate in suite.scenario_aggregates:
         successful_times = successful_times_by_scenario.get(aggregate.scenario_name, [])
         rows.append(
@@ -106,18 +156,16 @@ def suite_scenario_metric_rows(suite: SuiteRunResult) -> list[dict[str, object]]
         )
     return sorted(
         rows,
-        key=lambda row: (
-            0.0
-            if row["mean_wall_time_seconds"] is None
-            else float(row["mean_wall_time_seconds"])
-        ),
+        key=_scenario_mean_sort_key,
         reverse=True,
     )
 
 
-def suite_repetition_metric_rows(suite: SuiteRunResult) -> list[dict[str, object]]:
+def suite_repetition_metric_rows(
+    suite: SuiteRunResult,
+) -> list[SuiteRepetitionMetricRow]:
     """Return successful per-repetition timings for plotting variability."""
-    rows: list[dict[str, object]] = []
+    rows: list[SuiteRepetitionMetricRow] = []
     for repetition in suite.scenario_runs:
         if (
             repetition.status is not RunStatus.SUCCESS
@@ -133,11 +181,11 @@ def suite_repetition_metric_rows(suite: SuiteRunResult) -> list[dict[str, object
         )
     return sorted(
         rows,
-        key=lambda row: (str(row["scenario_name"]), int(row["repetition_index"])),
+        key=lambda row: (row["scenario_name"], row["repetition_index"]),
     )
 
 
-def suite_summary_metrics(suite: SuiteRunResult) -> dict[str, object]:
+def suite_summary_metrics(suite: SuiteRunResult) -> SuiteSummaryMetrics:
     """Return a compact summary of suite-wide performance metrics."""
     rows = suite_scenario_metric_rows(suite)
     if not rows:
@@ -149,26 +197,18 @@ def suite_summary_metrics(suite: SuiteRunResult) -> dict[str, object]:
         }
 
     mean_values = [
-        float(row["mean_wall_time_seconds"])
+        row["mean_wall_time_seconds"]
         for row in rows
         if row["mean_wall_time_seconds"] is not None
     ]
     fastest_row = min(
-        (
-            row
-            for row in rows
-            if row["mean_wall_time_seconds"] is not None
-        ),
-        key=lambda row: float(row["mean_wall_time_seconds"]),
+        (row for row in rows if row["mean_wall_time_seconds"] is not None),
+        key=lambda row: _require_float(row["mean_wall_time_seconds"]),
         default=None,
     )
     slowest_row = max(
-        (
-            row
-            for row in rows
-            if row["mean_wall_time_seconds"] is not None
-        ),
-        key=lambda row: float(row["mean_wall_time_seconds"]),
+        (row for row in rows if row["mean_wall_time_seconds"] is not None),
+        key=lambda row: _require_float(row["mean_wall_time_seconds"]),
         default=None,
     )
     return {
@@ -190,7 +230,7 @@ def _component_row(
     component: str,
     wall_time_seconds: float,
     total_seconds: float,
-) -> dict[str, object]:
+) -> ComponentBreakdownRow:
     return {
         "component": component,
         "wall_time_seconds": wall_time_seconds,
@@ -201,9 +241,9 @@ def _component_row(
 def _timed_component_row(
     *,
     component: str,
-    timed_stat: object | None,
+    timed_stat: TimedCallStats | None,
     total_seconds: float,
-) -> dict[str, object]:
+) -> ComponentDetailRow:
     if timed_stat is None:
         return {
             "component": component,
@@ -214,21 +254,21 @@ def _timed_component_row(
             "max_wall_time_seconds": 0.0,
         }
 
-    total_wall_time_seconds = float(timed_stat.total_wall_time_seconds)
+    total_wall_time_seconds = timed_stat.total_wall_time_seconds
     return {
         "component": component,
         "wall_time_seconds": total_wall_time_seconds,
         "share_of_total": _ratio(total_wall_time_seconds, total_seconds),
-        "call_count": int(timed_stat.call_count),
-        "mean_wall_time_seconds": float(timed_stat.mean_wall_time_seconds),
-        "max_wall_time_seconds": float(timed_stat.max_wall_time_seconds),
+        "call_count": timed_stat.call_count,
+        "mean_wall_time_seconds": timed_stat.mean_wall_time_seconds,
+        "max_wall_time_seconds": timed_stat.max_wall_time_seconds,
     }
 
 
-def _timed_stat_seconds(timed_stat: object | None) -> float:
+def _timed_stat_seconds(timed_stat: TimedCallStats | None) -> float:
     if timed_stat is None:
         return 0.0
-    return float(timed_stat.total_wall_time_seconds)
+    return timed_stat.total_wall_time_seconds
 
 
 def _overhead_seconds(summary: ComponentSummary) -> float:
@@ -264,6 +304,22 @@ def _standard_deviation(values: list[float]) -> float | None:
     if len(values) == 1:
         return 0.0
     return stdev(values)
+
+
+def _require_float(value: float | None) -> float:
+    if value is None:
+        raise _missing_float_error()
+    return value
+
+
+def _scenario_mean_sort_key(row: SuiteScenarioMetricRow) -> float:
+    return (
+        0.0 if row["mean_wall_time_seconds"] is None else row["mean_wall_time_seconds"]
+    )
+
+
+def _missing_float_error() -> TypeError:
+    return TypeError("Expected a float value, got None")
 
 
 def _ratio(numerator: float | int, denominator: float | int) -> float:

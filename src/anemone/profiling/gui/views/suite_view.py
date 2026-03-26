@@ -18,7 +18,10 @@ from anemone.profiling.gui.components.tables import (
     suite_aggregate_rows,
     suite_rows,
 )
-from anemone.profiling.gui.data_loading import discover_suites, load_suite_repetition_run
+from anemone.profiling.gui.data_loading import (
+    discover_suites,
+    load_suite_repetition_run,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -68,7 +71,10 @@ def render_suite_view(base_dir: Path) -> None:
     if not scenario_names:
         return
 
-    if st.session_state.get("profiling_selected_suite_scenario_name") not in scenario_names:
+    if (
+        st.session_state.get("profiling_selected_suite_scenario_name")
+        not in scenario_names
+    ):
         st.session_state["profiling_selected_suite_scenario_name"] = scenario_names[0]
     selected_scenario_name = st.selectbox(
         "Repetition distribution",

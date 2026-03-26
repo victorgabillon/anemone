@@ -8,7 +8,7 @@ The main functions in this module are:
 """
 
 from enum import Enum
-from math import isclose
+from math import inf, isclose
 from random import Random
 from typing import TYPE_CHECKING, Any
 
@@ -25,6 +25,7 @@ from anemone.indices.index_manager.factory import (
 from anemone.indices.index_manager.node_exploration_manager import (
     update_all_indices,
 )
+from anemone.indices.node_indices.index_data import IntervalExplo
 from anemone.indices.node_indices.index_types import (
     IndexComputationType,
 )
@@ -209,6 +210,17 @@ def build_tree_from_yaml_clean(
     return tree
 
 
+def _build_inline_yaml_tree(
+    tmp_path,
+    *,
+    nodes: list[dict[str, object]],
+    index_computation: IndexComputationType,
+) -> Tree[AlgorithmNode[FakeYamlState]]:
+    tree_path = tmp_path / "inline_tree.yaml"
+    tree_path.write_text(yaml.safe_dump({"nodes": nodes}), encoding="utf-8")
+    return build_tree_from_yaml_clean(str(tree_path), index_computation)
+
+
 def check_from_file(file_path: MyPath, tree: Tree[AlgorithmNode]) -> None:
     """Check the values in the given file against the values in the tree.
 
@@ -313,6 +325,189 @@ def test_indices() -> None:
                 results[res] = 1
     print(f"finished Test: {results}")
     assert results[TestResult.PASSED] == 5
+
+
+def test_interval_index_tracks_top_two_transitions_without_unrelated_non_top_two_noise(
+    tmp_path,
+) -> None:
+    """
+    Characterize the interval/local-min-change index under the exact top-2
+    transitions that a future cached-best/cached-second-best refactor could break.
+
+    The tree is a root with three leaf children. For the interval strategy on a
+    WHITE parent:
+    - the best child is constrained by the second-best child
+    - every non-best child is constrained by the best child
+    """
+
+    def build_three_leaf_tree(
+        *,
+        child_scores: tuple[float, float, float],
+    ) -> Tree[AlgorithmNode[FakeYamlState]]:
+        score_0, score_1, score_2 = child_scores
+        return _build_inline_yaml_tree(
+            tmp_path,
+            nodes=[
+                {"id": 0, "parents": None, "value": 0.0},
+                {"id": 1, "parents": 0, "value": score_0},
+                {"id": 2, "parents": 0, "value": score_1},
+                {"id": 3, "parents": 0, "value": score_2},
+            ],
+            index_computation=IndexComputationType.MIN_LOCAL_CHANGE,
+        )
+
+    def assert_interval_child(
+        tree: Tree[AlgorithmNode[FakeYamlState]],
+        *,
+        branch: int,
+        expected_index: float,
+        expected_min: float,
+        expected_max: float,
+    ) -> None:
+        child = tree.root_node.branches_children[branch]
+        assert child is not None
+        assert isinstance(child.exploration_index_data, IntervalExplo)
+
+        assert child.exploration_index_data.index is not None
+        assert isclose(
+            child.exploration_index_data.index,
+            expected_index,
+            abs_tol=1e-6,
+        )
+
+        assert child.exploration_index_data.interval is not None
+        assert child.exploration_index_data.interval.min_value is not None
+        assert child.exploration_index_data.interval.max_value is not None
+        assert isclose(
+            child.exploration_index_data.interval.min_value,
+            expected_min,
+            abs_tol=1e-6,
+        )
+        assert child.exploration_index_data.interval.max_value == expected_max
+
+    index_manager = create_exploration_index_manager(
+        index_computation=IndexComputationType.MIN_LOCAL_CHANGE
+    )
+
+    tree = build_three_leaf_tree(child_scores=(0.90, 0.70, 0.10))
+    update_all_indices(tree, index_manager)
+
+    root = tree.root_node
+    assert root.tree_evaluation.best_branch() == 0
+    assert root.tree_evaluation.second_best_branch() == 1
+    assert root.tree_evaluation.decision_ordered_branches() == [0, 1, 2]
+
+    assert_interval_child(
+        tree,
+        branch=0,
+        expected_index=0.0,
+        expected_min=0.70,
+        expected_max=inf,
+    )
+    assert_interval_child(
+        tree,
+        branch=1,
+        expected_index=0.20,
+        expected_min=0.90,
+        expected_max=inf,
+    )
+    assert_interval_child(
+        tree,
+        branch=2,
+        expected_index=0.80,
+        expected_min=0.90,
+        expected_max=inf,
+    )
+
+    tree = build_three_leaf_tree(child_scores=(0.90, 0.70, 0.20))
+    update_all_indices(tree, index_manager)
+
+    root = tree.root_node
+    assert root.tree_evaluation.best_branch() == 0
+    assert root.tree_evaluation.second_best_branch() == 1
+    assert root.tree_evaluation.decision_ordered_branches() == [0, 1, 2]
+
+    assert_interval_child(
+        tree,
+        branch=0,
+        expected_index=0.0,
+        expected_min=0.70,
+        expected_max=inf,
+    )
+    assert_interval_child(
+        tree,
+        branch=1,
+        expected_index=0.20,
+        expected_min=0.90,
+        expected_max=inf,
+    )
+    assert_interval_child(
+        tree,
+        branch=2,
+        expected_index=0.70,
+        expected_min=0.90,
+        expected_max=inf,
+    )
+
+    tree = build_three_leaf_tree(child_scores=(0.90, 0.95, 0.20))
+    update_all_indices(tree, index_manager)
+
+    root = tree.root_node
+    assert root.tree_evaluation.best_branch() == 1
+    assert root.tree_evaluation.second_best_branch() == 0
+    assert root.tree_evaluation.decision_ordered_branches() == [1, 0, 2]
+
+    assert_interval_child(
+        tree,
+        branch=1,
+        expected_index=0.0,
+        expected_min=0.90,
+        expected_max=inf,
+    )
+    assert_interval_child(
+        tree,
+        branch=0,
+        expected_index=0.05,
+        expected_min=0.95,
+        expected_max=inf,
+    )
+    assert_interval_child(
+        tree,
+        branch=2,
+        expected_index=0.75,
+        expected_min=0.95,
+        expected_max=inf,
+    )
+
+    tree = build_three_leaf_tree(child_scores=(0.90, 0.95, 0.93))
+    update_all_indices(tree, index_manager)
+
+    root = tree.root_node
+    assert root.tree_evaluation.best_branch() == 1
+    assert root.tree_evaluation.second_best_branch() == 2
+    assert root.tree_evaluation.decision_ordered_branches() == [1, 2, 0]
+
+    assert_interval_child(
+        tree,
+        branch=1,
+        expected_index=0.0,
+        expected_min=0.93,
+        expected_max=inf,
+    )
+    assert_interval_child(
+        tree,
+        branch=2,
+        expected_index=0.02,
+        expected_min=0.95,
+        expected_max=inf,
+    )
+    assert_interval_child(
+        tree,
+        branch=0,
+        expected_index=0.05,
+        expected_min=0.95,
+        expected_max=inf,
+    )
 
 
 if __name__ == "__main__":

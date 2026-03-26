@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-from anemone.profiling.gui import get_altair, get_pandas, get_streamlit
+from typing import TYPE_CHECKING
+
+from anemone.profiling.gui import get_streamlit
+from anemone.profiling.gui.components.chart_utils import build_chart
 from anemone.profiling.gui.metrics import (
+    ComponentBreakdownRow,
     component_breakdown_rows,
     component_detail_rows,
 )
+
+if TYPE_CHECKING:
+    from anemone.profiling.component_summary import ComponentSummary
 
 _COMPONENT_COLORS = {
     "Evaluator": "#0f766e",
@@ -15,7 +22,7 @@ _COMPONENT_COLORS = {
 }
 
 
-def render_component_breakdown(summary: object, *, key_prefix: str) -> None:
+def render_component_breakdown(summary: ComponentSummary, *, key_prefix: str) -> None:
     """Render a richer run-level component breakdown view."""
     st = get_streamlit()
     rows = component_breakdown_rows(summary)
@@ -26,8 +33,8 @@ def render_component_breakdown(summary: object, *, key_prefix: str) -> None:
     for column, row in zip(metric_columns, rows, strict=False):
         share_percent = float(row["share_of_total"]) * 100.0
         column.metric(
-            str(row["component"]),
-            f"{float(row['wall_time_seconds']):.4f}s",
+            row["component"],
+            f"{row['wall_time_seconds']:.4f}s",
             f"{share_percent:.1f}% of total",
         )
 
@@ -50,52 +57,44 @@ def render_component_breakdown(summary: object, *, key_prefix: str) -> None:
         if show_pie:
             _render_pie_chart(rows)
         else:
-            st.dataframe(detail_rows, use_container_width=True, hide_index=True)
+            st.dataframe(detail_rows, width="stretch", hide_index=True)
 
     with st.expander("Detailed component metrics"):
-        st.dataframe(detail_rows, use_container_width=True, hide_index=True)
+        st.dataframe(detail_rows, width="stretch", hide_index=True)
 
 
 def _render_stacked_chart(
-    rows: list[dict[str, object]],
+    rows: list[ComponentBreakdownRow],
     *,
     normalize: bool,
 ) -> None:
-    st = get_streamlit()
-    pandas_module = get_pandas()
-    altair_module = get_altair()
-    if pandas_module is None or altair_module is None:
-        display_rows = [
-            {
-                "component": row["component"],
-                "wall_time_seconds": row["wall_time_seconds"],
-                "share_percent": float(row["share_of_total"]) * 100.0,
-            }
-            for row in rows
-        ]
-        st.dataframe(display_rows, use_container_width=True, hide_index=True)
+    display_rows = [
+        {
+            "component": row["component"],
+            "wall_time_seconds": row["wall_time_seconds"],
+            "share_percent": row["share_of_total"] * 100.0,
+        }
+        for row in rows
+    ]
+    chart_rows = [
+        {
+            "view": "Run time",
+            "component": row["component"],
+            "value": (
+                row["share_of_total"] * 100.0 if normalize else row["wall_time_seconds"]
+            ),
+            "wall_time_seconds": row["wall_time_seconds"],
+            "share_percent": row["share_of_total"] * 100.0,
+        }
+        for row in rows
+    ]
+    chart_context = build_chart(chart_rows, fallback_rows=display_rows)
+    if chart_context is None:
         return
-
-    dataframe = pandas_module.DataFrame(
-        [
-            {
-                "view": "Run time",
-                "component": row["component"],
-                "value": (
-                    float(row["share_of_total"]) * 100.0
-                    if normalize
-                    else float(row["wall_time_seconds"])
-                ),
-                "wall_time_seconds": float(row["wall_time_seconds"]),
-                "share_percent": float(row["share_of_total"]) * 100.0,
-            }
-            for row in rows
-        ]
-    )
+    st, altair_module, chart = chart_context
     title = "Share of total run (%)" if normalize else "Wall time (s)"
     chart = (
-        altair_module.Chart(dataframe)
-        .mark_bar(size=42)
+        chart.mark_bar(size=42)
         .encode(
             y=altair_module.Y("view:N", axis=None),
             x=altair_module.X("value:Q", title=title, stack="zero"),
@@ -126,27 +125,21 @@ def _render_stacked_chart(
     st.altair_chart(chart, use_container_width=True)
 
 
-def _render_pie_chart(rows: list[dict[str, object]]) -> None:
-    st = get_streamlit()
-    pandas_module = get_pandas()
-    altair_module = get_altair()
-    if pandas_module is None or altair_module is None:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+def _render_pie_chart(rows: list[ComponentBreakdownRow]) -> None:
+    chart_rows = [
+        {
+            "component": row["component"],
+            "wall_time_seconds": row["wall_time_seconds"],
+            "share_percent": row["share_of_total"] * 100.0,
+        }
+        for row in rows
+    ]
+    chart_context = build_chart(chart_rows, fallback_rows=rows)
+    if chart_context is None:
         return
-
-    dataframe = pandas_module.DataFrame(
-        [
-            {
-                "component": row["component"],
-                "wall_time_seconds": float(row["wall_time_seconds"]),
-                "share_percent": float(row["share_of_total"]) * 100.0,
-            }
-            for row in rows
-        ]
-    )
+    st, altair_module, chart = chart_context
     chart = (
-        altair_module.Chart(dataframe)
-        .mark_arc(innerRadius=36)
+        chart.mark_arc(innerRadius=36)
         .encode(
             theta=altair_module.Theta("wall_time_seconds:Q"),
             color=altair_module.Color(

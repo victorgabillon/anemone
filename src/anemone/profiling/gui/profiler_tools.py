@@ -101,17 +101,38 @@ def generate_gprof2dot_svg(
 ) -> None:
     """Generate an SVG call graph from one ``cProfile`` stats file."""
     dot_path = Path(output_svg_path).with_suffix(".dot")
+    build_gprof2dot_graph(
+        pstats_path=pstats_path,
+        dot_path=dot_path,
+        output_path=output_svg_path,
+        output_format="svg",
+        node_threshold=node_threshold,
+        edge_threshold=edge_threshold,
+    )
+
+
+def build_gprof2dot_graph(
+    *,
+    pstats_path: Path,
+    dot_path: Path,
+    output_path: Path,
+    output_format: GraphOutputFormat,
+    node_threshold: float,
+    edge_threshold: float,
+) -> None:
+    """Generate DOT and optional rendered graph artifacts from cProfile stats."""
     generate_gprof2dot_dot(
         pstats_path,
         dot_path,
         node_threshold=node_threshold,
         edge_threshold=edge_threshold,
     )
-    render_dot_graph(
-        dot_path,
-        output_svg_path,
-        output_format="svg",
-    )
+    if output_format != "dot":
+        render_dot_graph(
+            dot_path,
+            output_path,
+            output_format=output_format,
+        )
 
 
 def render_dot_graph(
@@ -122,7 +143,7 @@ def render_dot_graph(
 ) -> None:
     """Render one DOT graph to an image format using Graphviz ``dot``."""
     if output_format == "dot":
-        raise ValueError("DOT output does not require Graphviz rendering.")
+        raise _dot_render_not_needed_error()
 
     dot_binary = _require_binary("dot")
     destination = Path(output_path)
@@ -151,8 +172,16 @@ def render_dot_graph(
 def _require_binary(name: str) -> str:
     binary = shutil.which(name)
     if binary is None:
-        raise RuntimeError(f"`{name}` is not installed in this environment.")
+        raise _missing_binary_error(name)
     return binary
+
+
+def _dot_render_not_needed_error() -> ValueError:
+    return ValueError("DOT output does not require Graphviz rendering.")
+
+
+def _missing_binary_error(name: str) -> RuntimeError:
+    return RuntimeError(f"`{name}` is not installed in this environment.")
 
 
 def _threshold_argument(value: float) -> str:

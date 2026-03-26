@@ -370,7 +370,9 @@ def test_minimax_frontier_reappears_and_resorts_after_exactness_reversal() -> No
     assert parent.has_exact_value()
     assert parent.frontier_branches_in_order() == []
 
-    # When the proving child becomes only an estimate, unresolved branches return.
+    # When the proving child becomes only an estimate, the updated unresolved
+    # branch re-enters the frontier. Other unresolved branches return once they
+    # are refreshed by a later backup.
     winning_child.tree_evaluation.direct_value = Value(
         score=1.0,
         certainty=Certainty.ESTIMATE,
@@ -384,7 +386,7 @@ def test_minimax_frontier_reappears_and_resorts_after_exactness_reversal() -> No
         branches_with_updated_best_branch_seq=set(),
     )
     assert not parent.has_exact_value()
-    assert parent.frontier_branches_in_order() == ["win", "live"]
+    assert parent.frontier_branches_in_order() == ["win"]
 
     # Frontier order should continue to track the current decision order after
     # the reversal as other children improve.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from anemone.profiling.gui import get_streamlit
 from anemone.profiling.gui.state import get_base_dir
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 def render_base_dir_selector() -> Path:
     """Render the sidebar base-directory selector and return the chosen path."""
-    st = get_streamlit()
+    st: Any = get_streamlit()
     current = str(get_base_dir())
     selected_text = st.sidebar.text_input(
         "Profiling directory",
@@ -39,7 +39,7 @@ def select_run(
     default_index: int = 0,
 ) -> RunResult | None:
     """Render a run selector and return the selected run, if any."""
-    st = get_streamlit()
+    st: Any = get_streamlit()
     if not runs:
         st.info(
             "No profiling runs yet.\n\n"
@@ -54,11 +54,14 @@ def select_run(
     def _format(run_id: str) -> str:
         return _format_run_option(_run_by_id(runs, run_id))
 
-    selected_id = st.selectbox(
-        label,
-        options=options,
-        key=key,
-        format_func=_format,
+    selected_id = cast(
+        "str",
+        st.selectbox(
+            label,
+            options=options,
+            key=key,
+            format_func=_format,
+        ),
     )
     return _run_by_id(runs, selected_id)
 
@@ -71,7 +74,7 @@ def select_suite(
     default_index: int = 0,
 ) -> SuiteRunResult | None:
     """Render a suite selector and return the selected suite, if any."""
-    st = get_streamlit()
+    st: Any = get_streamlit()
     if not suites:
         st.info(
             "No profiling suites yet.\n\n"
@@ -86,11 +89,14 @@ def select_suite(
     def _format(run_id: str) -> str:
         return _format_suite_option(_suite_by_id(suites, run_id))
 
-    selected_id = st.selectbox(
-        label,
-        options=options,
-        key=key,
-        format_func=_format,
+    selected_id = cast(
+        "str",
+        st.selectbox(
+            label,
+            options=options,
+            key=key,
+            format_func=_format,
+        ),
     )
     return _suite_by_id(suites, selected_id)
 
@@ -124,7 +130,7 @@ def _format_suite_option(suite: SuiteRunResult) -> str:
 
 
 def _initialize_selector_key(
-    st: object,
+    st: Any,
     *,
     key: str,
     options: Sequence[str],

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from anemone.profiling.gui import get_streamlit
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def render_breadcrumbs(*parts: str) -> None:

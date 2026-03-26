@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-from anemone.profiling.gui import get_altair, get_pandas, get_streamlit
+from anemone.profiling.gui import get_streamlit
+from anemone.profiling.gui.components.chart_utils import build_chart
 from anemone.profiling.gui.components.charts import render_component_breakdown
 from anemone.profiling.gui.components.profiler_views import (
     render_profiler_tooling_section,
@@ -17,10 +18,14 @@ from anemone.profiling.gui.data_loading import (
 )
 from anemone.profiling.gui.profilers.cprofile_parser import parse_cprofile_stats
 
+if TYPE_CHECKING:
+    from anemone.profiling.artifacts import RunResult
+    from anemone.profiling.gui.profilers.cprofile_parser import CProfileRow
 
-def render_run_details(run: object, *, key_prefix: str, heading: str) -> None:
+
+def render_run_details(run: RunResult, *, key_prefix: str, heading: str) -> None:
     """Render the full detail panel for one selected run."""
-    st = get_streamlit()
+    st: Any = get_streamlit()
     st.subheader(heading)
     _render_run_summary(run)
 
@@ -43,8 +48,8 @@ def render_run_details(run: object, *, key_prefix: str, heading: str) -> None:
     )
 
 
-def _render_run_summary(run: object) -> None:
-    st = get_streamlit()
+def _render_run_summary(run: RunResult) -> None:
+    st: Any = get_streamlit()
     details = st.columns(3)
     details[0].metric("Scenario", str(run.metadata.scenario_name))
     details[1].metric("Status", str(run.status.value))
@@ -64,7 +69,7 @@ def _render_run_summary(run: object) -> None:
         {"field": "git_commit", "value": run.metadata.git_commit or ""},
         {"field": "cwd", "value": run.metadata.cwd},
     ]
-    st.dataframe(metadata_rows, use_container_width=True, hide_index=True)
+    st.dataframe(metadata_rows, width="stretch", hide_index=True)
 
     if run.metadata.command:
         st.code(" ".join(run.metadata.command), language="bash")
@@ -73,11 +78,11 @@ def _render_run_summary(run: object) -> None:
 
 
 def _render_profiler_details(
-    run: object,
+    run: RunResult,
     *,
     key_prefix: str,
 ) -> None:
-    st = get_streamlit()
+    st: Any = get_streamlit()
     cprofile_rows = _load_cprofile_rows(run)
     cprofile_text = read_text_artifact(
         run.artifacts.extra_paths.get("cprofile_top_txt"),
@@ -108,7 +113,7 @@ def _render_profiler_details(
             _render_cprofile_chart(cprofile_rows[:top_n])
             st.dataframe(
                 cprofile_rows,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
         if cprofile_text is not None:
@@ -119,7 +124,7 @@ def _render_profiler_details(
                 st.code(pyinstrument_text, language="text")
 
 
-def _load_cprofile_rows(run: object) -> list[dict[str, object]]:
+def _load_cprofile_rows(run: RunResult) -> list[CProfileRow]:
     pstats_path = resolve_cprofile_pstats_path(run)
     if pstats_path is None or not pstats_path.exists():
         return []
@@ -129,18 +134,13 @@ def _load_cprofile_rows(run: object) -> list[dict[str, object]]:
         return []
 
 
-def _render_cprofile_chart(rows: list[dict[str, object]]) -> None:
-    st = get_streamlit()
-    pandas_module = get_pandas()
-    altair_module = get_altair()
-    if pandas_module is None or altair_module is None:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+def _render_cprofile_chart(rows: list[CProfileRow]) -> None:
+    chart_context = build_chart(rows)
+    if chart_context is None:
         return
-
-    dataframe = pandas_module.DataFrame(rows)
+    st, altair_module, chart = chart_context
     chart = (
-        altair_module.Chart(dataframe)
-        .transform_fold(
+        chart.transform_fold(
             ["cumulative_time_seconds", "self_time_seconds"],
             as_=["metric_name", "seconds"],
         )
