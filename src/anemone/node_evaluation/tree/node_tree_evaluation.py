@@ -8,9 +8,18 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, assert_never, cast
 
 from valanga import BranchKey, State
+from valanga.evaluations import Certainty
 
 from anemone._valanga_types import AnyOverEvent, AnyTurnState
+from anemone.backup_policies.aggregation import BestChildAggregationPolicy
+from anemone.backup_policies.common import (
+    ProofClassification,
+    SelectedValue,
+    finalize_selection_with_proof,
+)
+from anemone.backup_policies.proof import MaxProofPolicy, MinimaxProofPolicy
 from anemone.backup_policies.protocols import BackupPolicy
+from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
 from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
 from anemone.node_evaluation.common.node_delta import FieldChange, NodeDelta
@@ -23,6 +32,7 @@ from anemone.node_evaluation.tree import (
     branch_ordering_runtime,
     debug_printing,
     principal_variation_runtime,
+    top2_exactness_pv_runtime,
     value_access,
 )
 from anemone.node_evaluation.tree.decision_ordering import (
@@ -38,6 +48,7 @@ if TYPE_CHECKING:
 
     from anemone.backup_policies.types import BackupResult
     from anemone.dynamics import SearchDynamics
+    from anemone.node_evaluation.tree.backup_runtime_protocol import BackupRuntime
     from anemone.nodes.tree_node import TreeNode
     from anemone.objectives.objective import Objective
 
@@ -75,6 +86,15 @@ def _missing_best_branch_for_pv_rebuild_error(node_id: object) -> RuntimeError:
     )
 
 
+def _unsupported_runtime_best_child_proof_policy_error(
+    proof_policy: object,
+) -> RuntimeError:
+    return RuntimeError(
+        "Runtime best-child proof classification requires one supported proof "
+        f"policy, got {type(proof_policy)!r}."
+    )
+
+
 def make_branch_frontier_factory() -> BranchFrontierState:
     """Create the generic frontier bookkeeping helper for one node."""
     return BranchFrontierState()
@@ -83,6 +103,14 @@ def make_branch_frontier_factory() -> BranchFrontierState:
 def make_principal_variation_state_factory() -> PrincipalVariationState:
     """Create the generic principal-variation bookkeeping helper for one node."""
     return PrincipalVariationState()
+
+
+def make_backup_runtime_factory() -> BackupRuntime[BranchKey]:
+    """Create the specialized parent-side backup runtime."""
+    runtime: top2_exactness_pv_runtime.Top2ExactnessPvRuntime[BranchKey] = (
+        top2_exactness_pv_runtime.Top2ExactnessPvRuntime()
+    )
+    return runtime
 
 
 class BestBranchEquivalenceMode(StrEnum):
@@ -196,6 +224,9 @@ class NodeTreeEvaluationState[
     )
     branch_frontier: BranchFrontierState = field(
         default_factory=make_branch_frontier_factory
+    )
+    backup_runtime: BackupRuntime[BranchKey] = field(
+        default_factory=make_backup_runtime_factory
     )
 
     def __post_init__(self) -> None:
@@ -400,6 +431,39 @@ class NodeTreeEvaluationState[
             left, right, self.tree_node.state
         )
 
+    def compare_candidate_values(self, left: Value, right: Value) -> int:
+        """Compare two candidate values using the node's decision semantics."""
+        return self._decision_semantic_compare(left, right)
+
+    def compare_child_branches(
+        self,
+        left_branch: BranchKey,
+        right_branch: BranchKey,
+    ) -> int:
+        """Compare two child branches using semantic ordering plus tie-breaks."""
+        left_value = self.child_value_candidate(left_branch)
+        right_value = self.child_value_candidate(right_branch)
+        if left_value is None:
+            return 0 if right_value is None else -1
+        if right_value is None:
+            return 1
+
+        semantic = self.compare_candidate_values(left_value, right_value)
+        if semantic != 0:
+            return semantic
+
+        left_key = self.branch_ordering_key(left_branch)
+        right_key = self.branch_ordering_key(right_branch)
+        if left_key < right_key:
+            return 1
+        if right_key < left_key:
+            return -1
+        if str(left_branch) < str(right_branch):
+            return 1
+        if str(right_branch) < str(left_branch):
+            return -1
+        return 0
+
     def decision_ordered_branches(self) -> list[BranchKey]:
         """Return child branches ordered by node-local semantics plus cached tie-breaks."""
         return self.decision_ordering.decision_ordered_branches(
@@ -425,22 +489,178 @@ class NodeTreeEvaluationState[
         self,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
+        child_deltas: Mapping[BranchKey, NodeDelta[BranchKey]] | None = None,
     ) -> BackupResult[BranchKey]:
         """Delegate backup work to the configured tree-evaluation backup policy."""
         context = self._context()
         if self.backup_policy is None:
             raise _missing_backup_policy_error(context.node_id)
         before = self._capture_node_delta_snapshot()
-        backup_result = self.backup_policy.backup_from_children(
-            node_eval=self,
+        backup_result = self._backup_from_children_with_runtime(
             branches_with_updated_value=branches_with_updated_value,
             branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+            child_deltas=child_deltas,
         )
         after = self._capture_node_delta_snapshot()
         return replace(
             backup_result,
             node_delta=_build_node_delta(before=before, after=after),
         )
+
+    def _backup_from_children_with_runtime(
+        self,
+        *,
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+        child_deltas: Mapping[BranchKey, NodeDelta[BranchKey]] | None,
+    ) -> BackupResult[BranchKey]:
+        """Use the specialized runtime when safe, else fall back to full recompute."""
+        runtime_result = self.backup_runtime.try_apply_child_deltas(
+            node_eval=self,
+            branches_with_updated_value=branches_with_updated_value,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+            child_deltas=child_deltas,
+        )
+        if runtime_result is not None:
+            return runtime_result
+        return self._backup_from_children_full_recompute(
+            branches_with_updated_value=branches_with_updated_value,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+        )
+
+    def _backup_from_children_full_recompute(
+        self,
+        *,
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> BackupResult[BranchKey]:
+        """Run the existing local full recompute path, then refresh runtime caches."""
+        assert self.backup_policy is not None, "backup_policy must be configured."
+        backup_result = self.backup_policy.backup_from_children(
+            node_eval=self,
+            branches_with_updated_value=branches_with_updated_value,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+        )
+        self.backup_runtime.refresh_from_node_eval(node_eval=self)
+        return backup_result
+
+    def supports_runtime_best_child_selection(self) -> bool:
+        """Return whether runtime best-child updates preserve current policy semantics."""
+        backup_policy = self.backup_policy
+        aggregation_policy = getattr(backup_policy, "aggregation_policy", None)
+        proof_policy = getattr(backup_policy, "proof_policy", None)
+        return isinstance(aggregation_policy, BestChildAggregationPolicy) and (
+            isinstance(proof_policy, (MaxProofPolicy, MinimaxProofPolicy))
+        )
+
+    def finalize_runtime_best_child_selection(
+        self,
+        *,
+        best_branch_before_update: BranchKey | None,
+        exact_child_count: int,
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> BackupResult[BranchKey]:
+        """Finalize one runtime-managed best-child selection update."""
+        best_branch_after_update = self.best_branch()
+        selected_child_value = (
+            self.child_value_candidate(best_branch_after_update)
+            if best_branch_after_update is not None
+            else None
+        )
+        selection = SelectedValue(
+            value=selected_child_value,
+            from_child=selected_child_value is not None,
+        )
+        proof = self._runtime_best_child_proof(
+            selected_child_value=selected_child_value,
+            exact_child_count=exact_child_count,
+        )
+        return finalize_selection_with_proof(
+            node_eval=self,
+            selection=selection,
+            proof=proof,
+            branches_with_updated_value=branches_with_updated_value,
+            update_pv=lambda: self._runtime_update_pv_for_best_child_selection(
+                best_branch_before_update=best_branch_before_update,
+                branches_with_updated_best_branch_seq=(
+                    branches_with_updated_best_branch_seq
+                ),
+                selection_from_child=selection.from_child,
+            ),
+        )
+
+    def _runtime_best_child_proof(
+        self,
+        *,
+        selected_child_value: Value | None,
+        exact_child_count: int,
+    ) -> ProofClassification | None:
+        """Classify proof/exactness for one runtime-managed best-child selection."""
+        if selected_child_value is None:
+            return None
+
+        proof_policy = getattr(self.backup_policy, "proof_policy", None)
+        child_count = len(self.tree_node.branches_children)
+        exact_from_all_children = (
+            self.tree_node.all_branches_generated and exact_child_count == child_count
+        )
+
+        if isinstance(proof_policy, MaxProofPolicy):
+            return ProofClassification(
+                certainty=(
+                    Certainty.FORCED if exact_from_all_children else Certainty.ESTIMATE
+                ),
+                over_event=(
+                    selected_child_value.over_event if exact_from_all_children else None
+                ),
+            )
+
+        if isinstance(proof_policy, MinimaxProofPolicy):
+            exact = False
+            if canonical_value.is_exact_value(selected_child_value):
+                over_event = selected_child_value.over_event
+                exact = (
+                    over_event is not None
+                    and over_event.is_win_for(self.tree_node.state.turn)
+                ) or exact_from_all_children
+            return ProofClassification(
+                certainty=Certainty.FORCED if exact else Certainty.ESTIMATE,
+                over_event=selected_child_value.over_event if exact else None,
+            )
+
+        raise _unsupported_runtime_best_child_proof_policy_error(proof_policy)
+
+    def _runtime_update_pv_for_best_child_selection(
+        self,
+        *,
+        best_branch_before_update: BranchKey | None,
+        branches_with_updated_best_branch_seq: set[BranchKey],
+        selection_from_child: bool,
+    ) -> bool:
+        """Update PV for one runtime-managed best-child selection change."""
+        best_branch_after_update = self.best_branch()
+        if best_branch_after_update is None or not selection_from_child:
+            return self.clear_best_branch_sequence()
+
+        pv_changed = False
+        if (
+            best_branch_before_update != best_branch_after_update
+            or not self.best_branch_sequence
+            or self.best_branch_sequence[0] != best_branch_after_update
+        ):
+            pv_changed = self.one_of_best_children_becomes_best_next_node()
+
+        if (
+            self.best_branch_sequence
+            and self.best_branch_sequence[0] == best_branch_after_update
+            and branches_with_updated_best_branch_seq
+        ):
+            pv_changed = (
+                self.update_best_branch_sequence(branches_with_updated_best_branch_seq)
+                or pv_changed
+            )
+        return pv_changed
 
     def best_equivalent_branches(
         self,
@@ -737,6 +957,7 @@ class NodeTreeEvaluation[StateT: State = State](
         self,
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
+        child_deltas: Mapping[BranchKey, NodeDelta[BranchKey]] | None = None,
     ) -> BackupResult[BranchKey]:
         """Run family-specific backup after child updates."""
         ...

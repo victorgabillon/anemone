@@ -5,7 +5,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from types import SimpleNamespace
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey
 from valanga.evaluations import Certainty, Value
@@ -13,15 +13,20 @@ from valanga.evaluations import Certainty, Value
 from anemone.backup_policies.common import ProofClassification, SelectedValue
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.node_evaluation.common import FieldChange
+from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BestBranchEquivalenceMode,
 )
-from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
 from anemone.objectives import SingleAgentMaxObjective
 from anemone.recommender_rule.recommender_rule import AlmostEqualLogistic
+
+if TYPE_CHECKING:
+    from anemone.node_evaluation.tree.top2_exactness_pv_runtime import (
+        Top2ExactnessPvRuntime,
+    )
 
 
 class _SoloRole(Enum):
@@ -335,6 +340,39 @@ def test_explicit_max_backup_updates_pv_tail_for_best_child_changes() -> None:
         old=version_before,
         new=version_before + 1,
     )
+
+
+def test_single_agent_backup_runtime_smoke_refreshes_after_full_recompute() -> None:
+    children = {
+        0: _child(10, Value(score=0.2, certainty=Certainty.ESTIMATE)),
+        1: _child(
+            11,
+            Value(score=0.9, certainty=Certainty.ESTIMATE),
+            best_branch_sequence=[8],
+        ),
+    }
+    node = _node(
+        node_id=0,
+        direct_value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+        children=children,
+        all_branches_generated=True,
+    )
+
+    result = node.backup_from_children(
+        branches_with_updated_value={0, 1},
+        branches_with_updated_best_branch_seq={1},
+    )
+
+    runtime = cast("Top2ExactnessPvRuntime[BranchKey]", node.backup_runtime)
+
+    assert result.value_changed
+    assert result.pv_changed
+    assert node.backed_up_value == Value(score=0.9, certainty=Certainty.ESTIMATE)
+    assert node.best_branch() == 1
+    assert node.best_branch_sequence == [1, 8]
+    assert runtime.best_branch == 1
+    assert runtime.second_best_branch == 0
+    assert runtime.selected_child_pv_version == node.pv_cached_best_child_version
 
 
 def test_explicit_max_backup_emits_value_only_delta_for_stable_best_branch() -> None:
