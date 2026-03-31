@@ -66,8 +66,8 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
         if child_deltas is None:
             return None
 
-        updated_branches = (
-            set(branches_with_updated_value) | set(branches_with_updated_best_branch_seq)
+        updated_branches = set(branches_with_updated_value) | set(
+            branches_with_updated_best_branch_seq
         )
         if not updated_branches.issubset(child_deltas):
             return None
@@ -177,7 +177,12 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
         branches_with_updated_value: set[BranchKeyT],
         branches_with_updated_best_branch_seq: set[BranchKeyT],
     ) -> BackupResult[BranchKeyT] | None:
-        """Handle one single-child value delta when top-two reasoning is sufficient."""
+        """Handle one single-child value delta when cached top-two reasoning is safe.
+
+        PR3 intentionally accepts only one value delta at a time and keeps the
+        fast-path envelope narrow. Mixed or structurally ambiguous cases still
+        fall back to the reference full recompute path.
+        """
         if not node_eval.supports_runtime_best_child_selection():
             return None
 
@@ -271,7 +276,12 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
         old_second_best_branch: BranchKeyT | None,
         new_value: Value | None,
     ) -> _ResolvedTop2Update[BranchKeyT] | None:
-        """Resolve one value change on the currently selected best branch."""
+        """Resolve one value change on the currently selected best branch.
+
+        Safe case: only the ordering relationship between the current best and
+        the cached second-best can affect the selected branch here. If the best
+        drops out or top-two alone cannot prove it still wins, we fall back.
+        """
         if old_second_best_branch is None:
             if new_value is None:
                 return _ResolvedTop2Update(best_branch=None, second_best_branch=None)
@@ -283,10 +293,7 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
         if new_value is None:
             return None
 
-        if (
-            node_eval.compare_child_branches(changed_branch, old_second_best_branch)
-            > 0
-        ):
+        if node_eval.compare_child_branches(changed_branch, old_second_best_branch) > 0:
             return _ResolvedTop2Update(
                 best_branch=changed_branch,
                 second_best_branch=old_second_best_branch,
@@ -303,7 +310,12 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
         old_value: Value | None,
         new_value: Value | None,
     ) -> _ResolvedTop2Update[BranchKeyT] | None:
-        """Resolve one value change on the cached second-best branch."""
+        """Resolve one value change on the cached second-best branch.
+
+        Safe case: an improving second-best may overtake the winner or remain
+        second. A worsening second-best is deliberately not repaired here,
+        because a third branch may need to be considered.
+        """
         if old_best_branch is None:
             return None
 
@@ -316,11 +328,14 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
                 second_best_branch=old_best_branch,
             )
 
-        if self._compare_value_change(
-            node_eval=node_eval,
-            old_value=old_value,
-            new_value=new_value,
-        ) >= 0:
+        if (
+            self._compare_value_change(
+                node_eval=node_eval,
+                old_value=old_value,
+                new_value=new_value,
+            )
+            >= 0
+        ):
             return _ResolvedTop2Update(
                 best_branch=old_best_branch,
                 second_best_branch=old_second_best_branch,
@@ -336,7 +351,12 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
         old_second_best_branch: BranchKeyT | None,
         new_value: Value | None,
     ) -> _ResolvedTop2Update[BranchKeyT] | None:
-        """Resolve one value change on a branch outside the cached top-two."""
+        """Resolve one value change on a branch outside the cached top-two.
+
+        Safe case: a previously non-top-two branch can only affect selection by
+        overtaking the cached best or cached second-best. If neither happens,
+        the cached top-two remains valid.
+        """
         if old_best_branch is None:
             if new_value is None:
                 return _ResolvedTop2Update(best_branch=None, second_best_branch=None)
@@ -363,10 +383,7 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
                 second_best_branch=changed_branch,
             )
 
-        if (
-            node_eval.compare_child_branches(changed_branch, old_second_best_branch)
-            > 0
-        ):
+        if node_eval.compare_child_branches(changed_branch, old_second_best_branch) > 0:
             return _ResolvedTop2Update(
                 best_branch=old_best_branch,
                 second_best_branch=changed_branch,
@@ -424,6 +441,8 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
         for branch_key, child in node_eval.tree_node.branches_children.items():
             if child is None:
                 continue
-            if canonical_value.is_exact_value(node_eval.child_value_candidate(branch_key)):
+            if canonical_value.is_exact_value(
+                node_eval.child_value_candidate(branch_key)
+            ):
                 exact_child_count += 1
         return exact_child_count

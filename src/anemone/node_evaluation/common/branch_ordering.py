@@ -29,20 +29,46 @@ def ordered_branches_from_candidates[T: _Orderable](
         left: tuple[BranchKey, Value, T],
         right: tuple[BranchKey, Value, T],
     ) -> int:
-        semantic = semantic_compare(left[1], right[1])
-        if semantic != 0:
-            return -semantic
-        if left[2] < right[2]:
-            return -1
-        if left[2] > right[2]:
-            return 1
-        return (
-            -1
-            if str(left[0]) < str(right[0])
-            else (1 if str(left[0]) > str(right[0]) else 0)
+        return -compare_branch_candidates(
+            left_branch=left[0],
+            left_value=left[1],
+            left_tiebreak=left[2],
+            right_branch=right[0],
+            right_value=right[1],
+            right_tiebreak=right[2],
+            semantic_compare=semantic_compare,
         )
 
     return [branch_key for branch_key, _, _ in sorted(candidates, key=cmp_to_key(_cmp))]
+
+
+def compare_branch_candidates[T: _Orderable](
+    *,
+    left_branch: BranchKey,
+    left_value: Value,
+    left_tiebreak: T,
+    right_branch: BranchKey,
+    right_value: Value,
+    right_tiebreak: T,
+    semantic_compare: Callable[[Value, Value], int],
+) -> int:
+    """Compare two branch candidates using the shared full-order semantics.
+
+    Positive means the left branch is preferred, negative means the right branch
+    is preferred, and zero means a full tie.
+    """
+    semantic = semantic_compare(left_value, right_value)
+    if semantic != 0:
+        return semantic
+    if left_tiebreak < right_tiebreak:
+        return 1
+    if left_tiebreak > right_tiebreak:
+        return -1
+    if str(left_branch) < str(right_branch):
+        return 1
+    if str(left_branch) > str(right_branch):
+        return -1
+    return 0
 
 
 @runtime_checkable

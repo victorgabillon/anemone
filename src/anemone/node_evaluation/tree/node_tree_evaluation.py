@@ -21,7 +21,10 @@ from anemone.backup_policies.proof import MaxProofPolicy, MinimaxProofPolicy
 from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
-from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
+from anemone.node_evaluation.common.branch_ordering import (
+    DecisionOrderedEvaluation,
+    compare_branch_candidates,
+)
 from anemone.node_evaluation.common.node_delta import FieldChange, NodeDelta
 from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 from anemone.node_evaluation.common.principal_variation import (
@@ -440,7 +443,7 @@ class NodeTreeEvaluationState[
         left_branch: BranchKey,
         right_branch: BranchKey,
     ) -> int:
-        """Compare two child branches using semantic ordering plus tie-breaks."""
+        """Compare two child branches using the shared full-order semantics."""
         left_value = self.child_value_candidate(left_branch)
         right_value = self.child_value_candidate(right_branch)
         if left_value is None:
@@ -448,21 +451,15 @@ class NodeTreeEvaluationState[
         if right_value is None:
             return 1
 
-        semantic = self.compare_candidate_values(left_value, right_value)
-        if semantic != 0:
-            return semantic
-
-        left_key = self.branch_ordering_key(left_branch)
-        right_key = self.branch_ordering_key(right_branch)
-        if left_key < right_key:
-            return 1
-        if right_key < left_key:
-            return -1
-        if str(left_branch) < str(right_branch):
-            return 1
-        if str(right_branch) < str(left_branch):
-            return -1
-        return 0
+        return compare_branch_candidates(
+            left_branch=left_branch,
+            left_value=left_value,
+            left_tiebreak=self.branch_ordering_key(left_branch),
+            right_branch=right_branch,
+            right_value=right_value,
+            right_tiebreak=self.branch_ordering_key(right_branch),
+            semantic_compare=self.compare_candidate_values,
+        )
 
     def decision_ordered_branches(self) -> list[BranchKey]:
         """Return child branches ordered by node-local semantics plus cached tie-breaks."""
@@ -545,7 +542,12 @@ class NodeTreeEvaluationState[
         return backup_result
 
     def supports_runtime_best_child_selection(self) -> bool:
-        """Return whether runtime best-child updates preserve current policy semantics."""
+        """Return whether the current policy shape supports runtime best-child updates.
+
+        This guard is intentionally narrow in PR3: only the current explicit
+        best-child aggregation plus the built-in max/minimax proof policies are
+        admitted to the runtime-managed value fast paths.
+        """
         backup_policy = self.backup_policy
         aggregation_policy = getattr(backup_policy, "aggregation_policy", None)
         proof_policy = getattr(backup_policy, "proof_policy", None)
@@ -561,7 +563,7 @@ class NodeTreeEvaluationState[
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult[BranchKey]:
-        """Finalize one runtime-managed best-child selection update."""
+        """Runtime support: finalize one runtime-managed best-child selection update."""
         best_branch_after_update = self.best_branch()
         selected_child_value = (
             self.child_value_candidate(best_branch_after_update)
@@ -596,14 +598,13 @@ class NodeTreeEvaluationState[
         selected_child_value: Value | None,
         exact_child_count: int,
     ) -> ProofClassification | None:
-        """Classify proof/exactness for one runtime-managed best-child selection."""
+        """Runtime support: classify proof/exactness for one managed selection."""
         if selected_child_value is None:
             return None
 
         proof_policy = getattr(self.backup_policy, "proof_policy", None)
-        child_count = len(self.tree_node.branches_children)
-        exact_from_all_children = (
-            self.tree_node.all_branches_generated and exact_child_count == child_count
+        exact_from_all_children = self._runtime_all_child_values_exact_from_cache(
+            exact_child_count=exact_child_count
         )
 
         if isinstance(proof_policy, MaxProofPolicy):
@@ -631,6 +632,21 @@ class NodeTreeEvaluationState[
 
         raise _unsupported_runtime_best_child_proof_policy_error(proof_policy)
 
+    def _runtime_all_child_values_exact_from_cache(
+        self,
+        *,
+        exact_child_count: int,
+    ) -> bool:
+        """Mirror ``all_child_values_exact`` using the runtime's exact-count cache.
+
+        Important: this intentionally counts branch slots, not only linked
+        non-``None`` child objects, because the full proof policies treat any
+        branch without an exact child value as keeping closure false.
+        """
+        return self.tree_node.all_branches_generated and (
+            exact_child_count == len(self.tree_node.branches_children)
+        )
+
     def _runtime_update_pv_for_best_child_selection(
         self,
         *,
@@ -638,7 +654,7 @@ class NodeTreeEvaluationState[
         branches_with_updated_best_branch_seq: set[BranchKey],
         selection_from_child: bool,
     ) -> bool:
-        """Update PV for one runtime-managed best-child selection change."""
+        """Runtime support: update PV for one managed best-child selection change."""
         best_branch_after_update = self.best_branch()
         if best_branch_after_update is None or not selection_from_child:
             return self.clear_best_branch_sequence()

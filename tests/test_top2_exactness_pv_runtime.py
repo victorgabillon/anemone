@@ -62,7 +62,9 @@ class _FakeChildNode:
 
 @dataclass(slots=True)
 class _CountingMinimaxPolicy:
-    wrapped: ExplicitMinimaxBackupPolicy = field(default_factory=ExplicitMinimaxBackupPolicy)
+    wrapped: ExplicitMinimaxBackupPolicy = field(
+        default_factory=ExplicitMinimaxBackupPolicy
+    )
     calls: int = 0
 
     @property
@@ -287,7 +289,9 @@ def test_runtime_handles_non_best_child_worsening_without_fallback() -> None:
     assert result.node_delta.is_empty()
 
 
-def test_runtime_handles_non_best_child_improving_below_second_without_fallback() -> None:
+def test_runtime_handles_non_best_child_improving_below_second_without_fallback() -> (
+    None
+):
     children = {
         _branch(0): _make_child(
             node_id=10,
