@@ -614,3 +614,63 @@ def test_runtime_refreshes_top2_and_exactness_cache_after_fallback() -> None:
     assert runtime.second_best_branch == 2
     assert runtime.exact_child_count == 1
     assert runtime.selected_child_pv_version == parent.pv_cached_best_child_version
+
+
+def test_runtime_falls_back_on_multiple_value_deltas() -> None:
+    children = {
+        _branch(0): _make_child(
+            node_id=10,
+            value=Value(score=0.9, certainty=Certainty.ESTIMATE),
+            pv_tail=[4],
+        ),
+        _branch(1): _make_child(
+            node_id=11,
+            value=Value(score=0.6, certainty=Certainty.ESTIMATE),
+            pv_tail=[5],
+        ),
+        _branch(2): _make_child(
+            node_id=12,
+            value=Value(score=0.1, certainty=Certainty.ESTIMATE),
+            pv_tail=[6],
+        ),
+    }
+    parent, built_children, policy = _make_parent_eval(children=children)
+    _initialize_runtime(parent, policy)
+
+    old_child_one_value = built_children[_branch(1)].tree_evaluation.minmax_value
+    old_child_two_value = built_children[_branch(2)].tree_evaluation.minmax_value
+    new_child_one_value = Value(score=0.7, certainty=Certainty.ESTIMATE)
+    new_child_two_value = Value(score=0.8, certainty=Certainty.ESTIMATE)
+    _set_child_value(built_children[_branch(1)], new_child_one_value)
+    _set_child_value(built_children[_branch(2)], new_child_two_value)
+
+    result = parent.backup_from_children(
+        branches_with_updated_value={_branch(1), _branch(2)},
+        branches_with_updated_best_branch_seq=set(),
+        child_deltas={
+            _branch(1): NodeDelta(
+                value=FieldChange(
+                    old=old_child_one_value,
+                    new=new_child_one_value,
+                )
+            ),
+            _branch(2): NodeDelta(
+                value=FieldChange(
+                    old=old_child_two_value,
+                    new=new_child_two_value,
+                )
+            ),
+        },
+    )
+
+    runtime = _runtime(parent)
+    assert policy.calls == 1
+    assert parent.best_branch() == 0
+    assert parent.second_best_branch() == 2
+    assert parent.minmax_value == Value(score=0.9, certainty=Certainty.ESTIMATE)
+    assert runtime.best_branch == 0
+    assert runtime.second_best_branch == 2
+    assert not result.value_changed
+    assert not result.pv_changed
+    assert not result.over_changed
+    assert result.node_delta.is_empty()

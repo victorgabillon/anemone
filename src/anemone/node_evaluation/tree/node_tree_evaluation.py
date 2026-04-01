@@ -109,7 +109,11 @@ def make_principal_variation_state_factory() -> PrincipalVariationState:
 
 
 def make_backup_runtime_factory() -> BackupRuntime[BranchKey]:
-    """Create the specialized parent-side backup runtime."""
+    """Create the specialized parent-side backup runtime.
+
+    The current refactor phase still uses one concrete runtime for the shared
+    tree-evaluation families, but the attachment point remains generic.
+    """
     runtime: top2_exactness_pv_runtime.Top2ExactnessPvRuntime[BranchKey] = (
         top2_exactness_pv_runtime.Top2ExactnessPvRuntime()
     )
@@ -511,7 +515,12 @@ class NodeTreeEvaluationState[
         branches_with_updated_best_branch_seq: set[BranchKey],
         child_deltas: Mapping[BranchKey, NodeDelta[BranchKey]] | None,
     ) -> BackupResult[BranchKey]:
-        """Use the specialized runtime when safe, else fall back to full recompute."""
+        """Use the specialized runtime when safe, else fall back to full recompute.
+
+        Delta-aware callers can take the specialized runtime path here. Callers
+        that only provide full child snapshots naturally continue through the
+        established full-recompute reference logic.
+        """
         runtime_result = self.backup_runtime.try_apply_child_deltas(
             node_eval=self,
             branches_with_updated_value=branches_with_updated_value,
@@ -541,12 +550,21 @@ class NodeTreeEvaluationState[
         self.backup_runtime.refresh_from_node_eval(node_eval=self)
         return backup_result
 
+    # Runtime-support surface for the current specialized parent backup runtime.
     def supports_runtime_best_child_selection(self) -> bool:
+        """Public protocol wrapper around the current runtime-support guard."""
+        return self._runtime_supports_best_child_selection()
+
+    def _runtime_supports_best_child_selection(self) -> bool:
         """Return whether the current policy shape supports runtime best-child updates.
 
-        This guard is intentionally narrow in PR3: only the current explicit
-        best-child aggregation plus the built-in max/minimax proof policies are
-        admitted to the runtime-managed value fast paths.
+        This guard is intentionally narrow in the current refactor phase: only
+        the explicit best-child aggregation plus the built-in max/minimax proof
+        policies are admitted to the runtime-managed value fast paths.
+
+        Keeping this helper private makes it clearer that it exists to support
+        the current specialized runtime rather than to define generic
+        tree-evaluation semantics.
         """
         backup_policy = self.backup_policy
         aggregation_policy = getattr(backup_policy, "aggregation_policy", None)
@@ -563,7 +581,28 @@ class NodeTreeEvaluationState[
         branches_with_updated_value: set[BranchKey],
         branches_with_updated_best_branch_seq: set[BranchKey],
     ) -> BackupResult[BranchKey]:
-        """Runtime support: finalize one runtime-managed best-child selection update."""
+        """Public protocol wrapper around the runtime finalization helper."""
+        return self._runtime_finalize_best_child_selection(
+            best_branch_before_update=best_branch_before_update,
+            exact_child_count=exact_child_count,
+            branches_with_updated_value=branches_with_updated_value,
+            branches_with_updated_best_branch_seq=branches_with_updated_best_branch_seq,
+        )
+
+    def _runtime_finalize_best_child_selection(
+        self,
+        *,
+        best_branch_before_update: BranchKey | None,
+        exact_child_count: int,
+        branches_with_updated_value: set[BranchKey],
+        branches_with_updated_best_branch_seq: set[BranchKey],
+    ) -> BackupResult[BranchKey]:
+        """Runtime support: finalize one runtime-managed best-child selection update.
+
+        This helper centralizes the shared pipeline reuse for runtime-managed
+        value updates so the specialized runtime does not reimplement proof,
+        frontier, or PV semantics locally.
+        """
         best_branch_after_update = self.best_branch()
         selected_child_value = (
             self.child_value_candidate(best_branch_after_update)

@@ -1,4 +1,8 @@
-"""Protocol for specialized parent-side backup runtimes."""
+"""Protocols for the current specialized parent-side backup runtime path.
+
+These protocols are intentionally internal and deliberately shaped around the
+current runtime-backed backup design. They are not a generic reducer/plugin API.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +20,14 @@ if TYPE_CHECKING:
 
 
 class BackupRuntimeNodeEvaluation[BranchKeyT: BranchKey](Protocol):
-    """Minimal node-evaluation surface shared by parent backup runtimes."""
+    """Minimal internal node-evaluation surface shared by parent backup runtimes.
+
+    This protocol intentionally models the current runtime-support seam for the
+    specialized top-2 runtime. It is not meant to be a general extension API.
+    The methods remain public only because the runtime lives on a separate
+    class and static typing treats underscore-prefixed cross-class access as
+    private-usage errors.
+    """
 
     tree_node: Any
 
@@ -77,7 +88,11 @@ class BackupRuntimeNodeEvaluation[BranchKeyT: BranchKey](Protocol):
 
 
 class BackupRuntime[BranchKeyT: BranchKey](Protocol):
-    """Specialized parent-side runtime attached to a node tree evaluation."""
+    """Specialized parent-side runtime attached to a node tree evaluation.
+
+    Construction-time selection stays outside the hot path; runtime calls here
+    are deliberately direct rather than registry- or plugin-driven.
+    """
 
     def refresh_from_node_eval(
         self,

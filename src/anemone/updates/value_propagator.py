@@ -81,7 +81,9 @@ class ValuePropagator:
         full-snapshot recomputation we intentionally pass *all* currently-open
         child branches, never a partial child-delta payload. This keeps the
         propagator focused on scheduling while preserving the repository's
-        current value semantics.
+        current value semantics. In other words, the specialized
+        ``backup_runtime`` fast paths are currently exercised only by callers
+        that already have explicit child deltas to provide.
         """
         current_child_branches = self._current_child_branches(node)
         if not current_child_branches:

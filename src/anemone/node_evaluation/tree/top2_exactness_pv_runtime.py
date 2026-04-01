@@ -31,7 +31,12 @@ class _ResolvedTop2Update[BranchKeyT: BranchKey]:
 
 @dataclass(slots=True)
 class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
-    """Conservative cache for top-2, exactness, and PV-related child updates."""
+    """Conservative cache for top-2, exactness, and PV-related child updates.
+
+    The runtime is intentionally narrow: it handles a handful of single-child
+    delta cases directly and leaves anything structurally ambiguous to the
+    full local recompute path.
+    """
 
     best_branch: BranchKeyT | None = None
     second_best_branch: BranchKeyT | None = None
@@ -87,6 +92,8 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
         if not value_delta_branches.issubset(branches_with_updated_value):
             return None
         if len(value_delta_branches) > 1:
+            # PR4 intentionally keeps multi-value child updates on the fallback
+            # path. Top-2 reasoning only proves the safe single-delta cases.
             return None
         if value_delta_branches:
             changed_branch = next(iter(value_delta_branches))
