@@ -29,7 +29,7 @@ class OpeningInstruction[NodeT: nodes.ITreeNode[Any] = nodes.ITreeNode[Any]]:
         """Print information about the opening instruction."""
         print(
             f"OpeningInstruction: node_to_open {self.node_to_open.id} at hm {self.node_to_open.tree_depth} {self.node_to_open.state}| "
-            f"a path from root to node_to_open is {a_branch_key_sequence_from_root(self.node_to_open)} "
+            f"a representative path from root to node_to_open is {a_branch_key_sequence_from_root(self.node_to_open)} "
             f"{a_branch_str_sequence_from_root(self.node_to_open, dynamics=dynamics)}| "
             f"self.branch {self.branch} {dynamics.action_name(self.node_to_open.state, self.branch)}"
         )

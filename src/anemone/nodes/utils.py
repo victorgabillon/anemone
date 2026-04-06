@@ -13,6 +13,29 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 from .itree_node import ITreeNode
 
 
+def _representative_parent[StateT: State](
+    child: ITreeNode[StateT],
+) -> ITreeNode[StateT]:
+    """Return one deterministic representative parent for ``child``."""
+    assert child.parent_nodes
+    return min(child.parent_nodes, key=lambda parent: (parent.id, repr(parent)))
+
+
+def _representative_branch_key(branch_keys: set[BranchKey]) -> BranchKey:
+    """Return one deterministic representative branch key."""
+    assert branch_keys
+    return min(branch_keys, key=repr)
+
+
+def _representative_parent_and_branch_key[StateT: State](
+    child: ITreeNode[StateT],
+) -> tuple[ITreeNode[StateT], BranchKey]:
+    """Select one representative incoming edge for ``child``."""
+    parent = _representative_parent(child)
+    branch_key = _representative_branch_key(child.parent_nodes[parent])
+    return parent, branch_key
+
+
 def are_all_branches_and_children_opened(tree_node: ITreeNode[Any]) -> bool:
     """Check if all structural branches of a node have been opened.
 
@@ -29,22 +52,24 @@ def are_all_branches_and_children_opened(tree_node: ITreeNode[Any]) -> bool:
 def a_branch_key_sequence_from_root[StateT: State](
     tree_node: ITreeNode[StateT],
 ) -> list[str]:
-    """Return a list of branch sequences from the root node to a given tree node.
+    """Return a representative branch-key sequence from the root to this node.
+
+    If the structure is a DAG or multiedge graph, there may be multiple valid
+    root-to-node paths. This helper selects one representative incoming edge at
+    each step.
 
     Args:
-        tree_node (ITreeNode): The tree node to get the branch sequence for.
+        tree_node (ITreeNode): The tree node to get a representative path for.
 
     Returns:
-        list[str]: A list of branch sequences from the root node to the given tree node.
+        list[str]: A representative branch-key sequence from the root node to
+        the given tree node.
 
     """
     branch_sequence_from_root: list[BranchKey] = []
     child: ITreeNode[StateT] = tree_node
     while child.parent_nodes:
-        parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
-        branch_keys = child.parent_nodes[parent]
-        assert branch_keys
-        branch: BranchKey = next(iter(branch_keys))
+        parent, branch = _representative_parent_and_branch_key(child)
         branch_sequence_from_root.append(branch)
         child = parent
     branch_sequence_from_root.reverse()
@@ -54,23 +79,25 @@ def a_branch_key_sequence_from_root[StateT: State](
 def a_branch_str_sequence_from_root[StateT: State](
     tree_node: ITreeNode[StateT], dynamics: SearchDynamics[StateT, Any]
 ) -> list[str]:
-    """Return a list of branch sequences from the root node to a given tree node.
+    """Return a representative branch-label sequence from the root to this node.
+
+    If the structure is a DAG or multiedge graph, there may be multiple valid
+    root-to-node paths. This helper selects one representative incoming edge at
+    each step.
 
     Args:
-        tree_node (ITreeNode): The tree node to get the branch sequence for.
+        tree_node (ITreeNode): The tree node to get a representative path for.
         dynamics (SearchDynamics): The dynamics used for labeling the edges in the visualization.
 
     Returns:
-        list[str]: A list of branch sequences from the root node to the given tree node.
+        list[str]: A representative branch-label sequence from the root node to
+        the given tree node.
 
     """
     branch_sequence_from_root: list[str] = []
     child: ITreeNode[StateT] = tree_node
     while child.parent_nodes:
-        parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
-        branch_keys = child.parent_nodes[parent]
-        assert branch_keys
-        branch_key: BranchKey = next(iter(branch_keys))
+        parent, branch_key = _representative_parent_and_branch_key(child)
         branch_str: str = dynamics.action_name(parent.state, branch_key)
         branch_sequence_from_root.append(branch_str)
         child = parent
@@ -107,10 +134,10 @@ def best_node_sequence_from_node[StateT: State](
 def print_a_branch_sequence_from_root[StateT: State](
     tree_node: ITreeNode[StateT],
 ) -> None:
-    """Print the branch sequence from the root node to a given tree node.
+    """Print a representative branch sequence from the root to a given node.
 
     Args:
-        tree_node (ITreeNode): The tree node to print the branch sequence for.
+        tree_node (ITreeNode): The tree node to print a representative path for.
 
     Returns:
         None
@@ -119,7 +146,7 @@ def print_a_branch_sequence_from_root[StateT: State](
     branch_sequence_from_root: list[str] = a_branch_key_sequence_from_root(
         tree_node=tree_node
     )
-    print(f"a_branch_sequence_from_root{branch_sequence_from_root}")
+    print(f"a_representative_branch_sequence_from_root{branch_sequence_from_root}")
 
 
 def is_winning(node_tree_evaluation: NodeValueEvaluation, color: Color) -> bool:
