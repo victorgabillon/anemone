@@ -18,6 +18,7 @@ def _representative_parent[StateT: State](
 ) -> ITreeNode[StateT]:
     """Return one deterministic representative parent for ``child``."""
     assert child.parent_nodes
+    # Use a stable representative choice for debug/path reconstruction.
     return min(child.parent_nodes, key=lambda parent: (parent.id, repr(parent)))
 
 
@@ -51,7 +52,7 @@ def are_all_branches_and_children_opened(tree_node: ITreeNode[Any]) -> bool:
 
 def a_branch_key_sequence_from_root[StateT: State](
     tree_node: ITreeNode[StateT],
-) -> list[str]:
+) -> list[BranchKey]:
     """Return a representative branch-key sequence from the root to this node.
 
     If the structure is a DAG or multiedge graph, there may be multiple valid
@@ -62,8 +63,8 @@ def a_branch_key_sequence_from_root[StateT: State](
         tree_node (ITreeNode): The tree node to get a representative path for.
 
     Returns:
-        list[str]: A representative branch-key sequence from the root node to
-        the given tree node.
+        list[BranchKey]: A representative branch-key sequence from the root
+        node to the given tree node.
 
     """
     branch_sequence_from_root: list[BranchKey] = []
@@ -73,7 +74,7 @@ def a_branch_key_sequence_from_root[StateT: State](
         branch_sequence_from_root.append(branch)
         child = parent
     branch_sequence_from_root.reverse()
-    return [str(i) for i in branch_sequence_from_root]
+    return branch_sequence_from_root
 
 
 def a_branch_str_sequence_from_root[StateT: State](
@@ -143,10 +144,10 @@ def print_a_branch_sequence_from_root[StateT: State](
         None
 
     """
-    branch_sequence_from_root: list[str] = a_branch_key_sequence_from_root(
+    branch_sequence_from_root: list[BranchKey] = a_branch_key_sequence_from_root(
         tree_node=tree_node
     )
-    print(f"a_representative_branch_sequence_from_root{branch_sequence_from_root}")
+    print(f"representative_branch_sequence_from_root {branch_sequence_from_root}")
 
 
 def is_winning(node_tree_evaluation: NodeValueEvaluation, color: Color) -> bool:
