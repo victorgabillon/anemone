@@ -42,7 +42,9 @@ def a_branch_key_sequence_from_root[StateT: State](
     child: ITreeNode[StateT] = tree_node
     while child.parent_nodes:
         parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
-        branch: BranchKey = child.parent_nodes[parent]
+        branch_keys = child.parent_nodes[parent]
+        assert branch_keys
+        branch: BranchKey = next(iter(branch_keys))
         branch_sequence_from_root.append(branch)
         child = parent
     branch_sequence_from_root.reverse()
@@ -66,7 +68,9 @@ def a_branch_str_sequence_from_root[StateT: State](
     child: ITreeNode[StateT] = tree_node
     while child.parent_nodes:
         parent: ITreeNode[StateT] = next(iter(child.parent_nodes))
-        branch_key: BranchKey = child.parent_nodes[parent]
+        branch_keys = child.parent_nodes[parent]
+        assert branch_keys
+        branch_key: BranchKey = next(iter(branch_keys))
         branch_str: str = dynamics.action_name(parent.state, branch_key)
         branch_sequence_from_root.append(branch_str)
         child = parent

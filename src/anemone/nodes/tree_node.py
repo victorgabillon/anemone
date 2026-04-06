@@ -25,7 +25,8 @@ class TreeNode[
         id\_ (int): The number to identify this node for easier debugging.
         tree_depth\_ (int): The depth of the node in the tree.
         state\_ (State): The state associated with the node.
-        parent_nodes\_ (dict[ITreeNode, BranchKey]): Parent nodes and the branch keys linking them.
+        parent_nodes\_ (dict[ITreeNode, set[BranchKey]]): Parent nodes and the
+            distinct branch keys linking them to this node.
         all_branches_generated (bool): Whether all branches have been generated.
         non_opened_branches (set[BranchKey]): The set of non-opened branches.
         branches_children\_ (dict[BranchKey, ITreeNode | None]): The dictionary mapping branches to child nodes.
@@ -53,8 +54,8 @@ class TreeNode[
     # the node holds a state.
     state_: StateT
 
-    # the set of parent nodes to this node. Note that a node can have multiple parents!
-    parent_nodes_: dict[FamilyT, BranchKey]
+    # Each parent can reach this node through multiple distinct branch keys.
+    parent_nodes_: dict[FamilyT, set[BranchKey]]
 
     # all_branches_generated is a boolean saying whether all branches have been generated.
     # If true the branches are either opened in which case the corresponding opened node is stored in
@@ -135,10 +136,11 @@ class TreeNode[
         return self.branches_children_
 
     @property
-    def parent_nodes(self) -> dict[FamilyT, BranchKey]:
-        """Returns the dictionary of parent nodes of the current tree node with associated branch.
+    def parent_nodes(self) -> dict[FamilyT, set[BranchKey]]:
+        """Return the incoming parent-edge mapping for this node.
 
-        :return: A dictionary of parent nodes of the current tree node with associated branch.
+        Each key is a parent node. Each value is the set of distinct branch keys
+        through which that parent reaches this node.
         """
         return self.parent_nodes_
 
@@ -159,17 +161,18 @@ class TreeNode[
             new_parent_node (ITreeNode): The new parent node to be added.
 
         Raises:
-            AssertionError: If the new parent node is already in the parent nodes set.
+            AssertionError: If the parent/branch edge already exists.
 
         Returns:
             None
 
         """
-        # debug
-        assert (
-            new_parent_node not in self.parent_nodes
-        )  # there cannot be two ways to link the same child-parent
-        self.parent_nodes[new_parent_node] = branch_key
+        branch_keys = self.parent_nodes.setdefault(new_parent_node, set())
+        assert branch_key not in branch_keys, (
+            f"Duplicate parent edge for child {self.id} from parent "
+            f"{new_parent_node.id} via branch {branch_key!r}"
+        )
+        branch_keys.add(branch_key)
 
     def is_over(self) -> bool:
         """Check if the state is terminal.

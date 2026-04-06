@@ -105,11 +105,8 @@ class AlgorithmNode[StateT: State = State]:
         return self.tree_node.branches_children
 
     @property
-    def parent_nodes(self) -> dict[Self, BranchKey]:
-        """Returns the dictionary of parent nodes of the current tree node with associated branch.
-
-        :return: A dictionary of parent nodes of the current tree node with associated branch.
-        """
+    def parent_nodes(self) -> dict[Self, set[BranchKey]]:
+        """Return the incoming parent-edge mapping for this node."""
         return self.tree_node.parent_nodes
 
     @property

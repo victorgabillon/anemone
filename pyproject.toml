@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=82.0.0"]
+requires = ["setuptools>=82.0.1"]
 build-backend = "setuptools.build_meta"
 
 
@@ -42,8 +42,8 @@ test = [
 ]
 
 lint = [
-  "ruff>=0.15.0",
-  "pylint>=4.0.4",
+  "ruff>=0.15.8",
+  "pylint>=4.0.5",
 ]
 
 typecheck = [
@@ -301,8 +301,8 @@ deps = [
   "graphviz",
 
   # tools
-  "ruff>=0.15.0",
-  "pylint>=4.0.4",
+  "ruff>=0.15.8",
+  "pylint>=4.0.5",
 ]
 set_env = { PYTHONPATH = "{toxinidir}/src" }
 commands = [

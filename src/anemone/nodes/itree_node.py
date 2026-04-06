@@ -56,10 +56,11 @@ class ITreeNode[StateT: State = State](Protocol):
         ...
 
     @property
-    def parent_nodes(self) -> dict[Self, BranchKey]:
-        """Returns the dictionary of parent nodes of the current tree node with associated branch.
+    def parent_nodes(self) -> dict[Self, set[BranchKey]]:
+        """Return the incoming parent-edge mapping for this node.
 
-        :return: A dictionary of parent nodes of the current tree node with associated branch.
+        Each key is a parent node. Each value is the set of distinct branch keys
+        through which that parent reaches this node.
         """
         ...
 
