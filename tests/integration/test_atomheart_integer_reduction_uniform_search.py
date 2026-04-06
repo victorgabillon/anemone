@@ -188,6 +188,7 @@ class _IntegerReductionSearchDynamics(SearchDynamics[_IntegerReductionTurnState,
     __anemone_search_dynamics__ = True
 
     base_dynamics: IntegerReductionDynamics
+    distinguish_incoming_edges: bool = True
 
     def legal_actions(
         self, state: _IntegerReductionTurnState
@@ -205,11 +206,14 @@ class _IntegerReductionSearchDynamics(SearchDynamics[_IntegerReductionTurnState,
         """Step the wrapped Atomheart state while preserving single-agent turn."""
         del depth
         transition = self.base_dynamics.step(state.base_state, action)
+        incoming_edge_token = (
+            (state.tag, action) if self.distinguish_incoming_edges else None
+        )
         return Transition(
             next_state=_IntegerReductionTurnState(
                 base_state=transition.next_state,
                 turn=state.turn,
-                incoming_edge_token=(state.tag, action),
+                incoming_edge_token=incoming_edge_token,
             ),
             modifications=transition.modifications,
             is_over=transition.is_over,
@@ -276,6 +280,7 @@ def make_integer_reduction_selector(
     *,
     start_value: int,
     search_depth: int,
+    distinguish_incoming_edges: bool = True,
 ) -> tuple[
     TreeAndValueBranchSelector[_IntegerReductionTurnState],
     _IntegerReductionTurnState,
@@ -290,7 +295,10 @@ def make_integer_reduction_selector(
     because the current public factory accepts only state-only evaluator hooks.
     """
     state = _IntegerReductionTurnState(base_state=IntegerReductionState(start_value))
-    dynamics = _IntegerReductionSearchDynamics(IntegerReductionDynamics())
+    dynamics = _IntegerReductionSearchDynamics(
+        IntegerReductionDynamics(),
+        distinguish_incoming_edges=distinguish_incoming_edges,
+    )
     master_evaluator = _FallbackIntegerReductionEvaluator()
     selector = create_tree_and_value_branch_selector_with_tree_eval_factory(
         state_type=_IntegerReductionTurnState,
@@ -315,6 +323,39 @@ def make_integer_reduction_selector(
     selector.tree_manager.node_evaluator = depth_aware_evaluator
 
     return selector, state, dynamics
+
+
+def test_integer_reduction_same_parent_two_branches_to_same_child_reuses_node_and_records_both_edges() -> (
+    None
+):
+    """Two real actions from ``2`` to ``1`` should reuse one child without crashing."""
+    selector, state, dynamics = make_integer_reduction_selector(
+        start_value=2,
+        search_depth=1,
+        distinguish_incoming_edges=False,
+    )
+    exploration = selector.create_tree_exploration(state=state)
+
+    exploration.step()
+
+    parent = exploration.tree.root_node
+    dec1_branch = dynamics.action_from_name(state, "dec1")
+    half_branch = dynamics.action_from_name(state, "half")
+
+    child_from_dec1 = parent.branches_children[dec1_branch]
+    child_from_half = parent.branches_children[half_branch]
+
+    assert child_from_dec1 is not None
+    assert child_from_half is not None
+    assert child_from_dec1 is child_from_half
+
+    shared_child = child_from_dec1
+    assert shared_child.parent_nodes[parent] == {dec1_branch, half_branch}
+    assert shared_child.state.value == 1
+    assert shared_child.tree_depth == 1
+    assert exploration.tree.nodes_count == 2
+    assert exploration.tree.branch_count == 2
+    assert len(exploration.tree.descendants[1]) == 1
 
 
 @pytest.mark.parametrize("start_value", [4, 5, 6, 8, 10])

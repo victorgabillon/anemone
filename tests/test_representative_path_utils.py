@@ -82,9 +82,7 @@ def test_representative_branch_sequence_uses_deterministic_branch_choice() -> No
     )
 
     assert a_branch_key_sequence_from_root(child) == [3]
-    assert a_branch_str_sequence_from_root(child, dynamics=_FakeDynamics()) == [
-        "10->3"
-    ]
+    assert a_branch_str_sequence_from_root(child, dynamics=_FakeDynamics()) == ["10->3"]
 
 
 def test_representative_branch_sequence_uses_deterministic_parent_choice() -> None:
@@ -102,6 +100,4 @@ def test_representative_branch_sequence_uses_deterministic_parent_choice() -> No
     )
 
     assert a_branch_key_sequence_from_root(child) == [9]
-    assert a_branch_str_sequence_from_root(child, dynamics=_FakeDynamics()) == [
-        "10->9"
-    ]
+    assert a_branch_str_sequence_from_root(child, dynamics=_FakeDynamics()) == ["10->9"]
