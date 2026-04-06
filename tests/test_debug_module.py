@@ -111,7 +111,7 @@ class FakeNode:
         FakeEvaluation | FakeMinmaxEvaluation | FakeHybridEvaluation | None
     ) = None
     exploration_index_data: FakeIndexData | None = None
-    parent_nodes_: dict[FakeNode, str] = field(default_factory=dict)
+    parent_nodes_: dict[FakeNode, set[str]] = field(default_factory=dict)
     branches_children_: dict[str, FakeNode | None] = field(default_factory=dict)
 
     @property
@@ -127,7 +127,7 @@ class FakeNode:
         return self.tree_depth_
 
     @property
-    def parent_nodes(self) -> dict[FakeNode, str]:
+    def parent_nodes(self) -> dict[FakeNode, set[str]]:
         return self.parent_nodes_
 
     @property
@@ -197,7 +197,7 @@ def test_evaluation_debug_inspector_resolver_prefers_generic_family() -> None:
 
 def test_tree_snapshot_adapter_captures_nodes_and_edges() -> None:
     root = FakeNode(id_=1, tree_depth_=0)
-    child = FakeNode(id_=2, tree_depth_=1, parent_nodes_={root: "a"})
+    child = FakeNode(id_=2, tree_depth_=1, parent_nodes_={root: {"a"}})
     root.branches_children_["a"] = child
 
     snapshot = TreeSnapshotAdapter().snapshot(cast("Any", root))
@@ -215,7 +215,7 @@ def test_tree_snapshot_adapter_captures_nodes_and_edges() -> None:
 
 def test_dot_renderer_outputs_nodes_and_edge() -> None:
     root = FakeNode(id_=1, tree_depth_=0)
-    child = FakeNode(id_=2, tree_depth_=1, parent_nodes_={root: "a"})
+    child = FakeNode(id_=2, tree_depth_=1, parent_nodes_={root: {"a"}})
     root.branches_children_["a"] = child
 
     snapshot = TreeSnapshotAdapter().snapshot(cast("Any", root))
@@ -238,7 +238,7 @@ def test_dot_renderer_styles_player_and_terminal_nodes() -> None:
         id_=2,
         tree_depth_=1,
         state_=FakeState(tag="reply", turn=FakeTurn(name="BLACK")),
-        parent_nodes_={root: "a"},
+        parent_nodes_={root: {"a"}},
         tree_evaluation=FakeEvaluation(
             over_event=FakeOverEvent("done"),
             exact=True,
@@ -291,7 +291,11 @@ def test_dot_renderer_styles_forced_nodes_distinct_from_terminal_nodes() -> None
 def test_tree_snapshot_adapter_supports_dag_parent_links() -> None:
     root_a = FakeNode(id_=1, tree_depth_=0)
     root_b = FakeNode(id_=2, tree_depth_=0)
-    shared = FakeNode(id_=3, tree_depth_=1, parent_nodes_={root_a: "a", root_b: "b"})
+    shared = FakeNode(
+        id_=3,
+        tree_depth_=1,
+        parent_nodes_={root_a: {"a"}, root_b: {"b"}},
+    )
     root_a.branches_children_["a"] = shared
     root_b.branches_children_["b"] = shared
 
@@ -371,8 +375,8 @@ def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> No
 
 def test_tree_snapshot_adapter_populates_child_ids_and_edge_labels() -> None:
     root = FakeNode(id_=10, tree_depth_=0)
-    child_a = FakeNode(id_=11, tree_depth_=1, parent_nodes_={root: "a"})
-    child_b = FakeNode(id_=12, tree_depth_=1, parent_nodes_={root: "b"})
+    child_a = FakeNode(id_=11, tree_depth_=1, parent_nodes_={root: {"a"}})
+    child_b = FakeNode(id_=12, tree_depth_=1, parent_nodes_={root: {"b"}})
     root.branches_children_["a"] = child_a
     root.branches_children_["b"] = child_b
 
@@ -446,7 +450,7 @@ def test_tree_visualization_display_does_not_require_dot_description() -> None:
         id_=2,
         tree_depth_=1,
         state_=FakeState(tag="child"),
-        parent_nodes_={root: "a"},
+        parent_nodes_={root: {"a"}},
     )
     root.branches_children_["a"] = child
 
@@ -475,7 +479,7 @@ def test_tree_visualization_display_special_preserves_legacy_edge_label_prefix()
         id_=2,
         tree_depth_=1,
         state_=FakeState(tag="child"),
-        parent_nodes_={root: "a"},
+        parent_nodes_={root: {"a"}},
     )
     root.branches_children_["a"] = child
 
@@ -499,7 +503,7 @@ def test_tree_visualization_display_special_uses_placeholder_for_missing_rank() 
         id_=2,
         tree_depth_=1,
         state_=FakeState(tag="child"),
-        parent_nodes_={root: "a"},
+        parent_nodes_={root: {"a"}},
     )
     root.branches_children_["a"] = child
 

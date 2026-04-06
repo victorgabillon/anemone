@@ -36,7 +36,7 @@ class _FakeNode:
     state: Any | None = None
     tree_evaluation: Any | None = None
     branches_children: dict[str, _FakeNode | None] = field(default_factory=dict)
-    parent_nodes: dict[_FakeNode, str] = field(default_factory=dict)
+    parent_nodes: dict[_FakeNode, set[str]] = field(default_factory=dict)
     exploration_index_data: Any | None = None
 
 
@@ -114,7 +114,7 @@ def test_make_tree_snapshot_provider_captures_current_root() -> None:
     child = _FakeNode(
         id=2,
         tree_depth=1,
-        parent_nodes={root: "a"},
+        parent_nodes={root: {"a"}},
     )
     root.branches_children["a"] = child
 
@@ -127,3 +127,4 @@ def test_make_tree_snapshot_provider_captures_current_root() -> None:
     assert {node.node_id for node in snapshot.nodes} == {"1", "2"}
     assert snapshot.edges[0].parent_id == "1"
     assert snapshot.edges[0].child_id == "2"
+    assert child.parent_nodes[root] == {"a"}

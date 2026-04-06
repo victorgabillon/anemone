@@ -70,10 +70,12 @@ class _FakeNode:
     state: Any
     tree_evaluation: _FakeTreeEvaluation = field(default_factory=_FakeTreeEvaluation)
     branches_children: dict[int, _FakeNode | None] = field(default_factory=dict)
-    parent_nodes: dict[_FakeNode, int] = field(default_factory=dict)
+    parent_nodes: dict[_FakeNode, set[int]] = field(default_factory=dict)
 
     def add_parent(self, branch_key: int, new_parent_node: _FakeNode) -> None:
-        self.parent_nodes[new_parent_node] = branch_key
+        branch_keys = self.parent_nodes.setdefault(new_parent_node, set())
+        assert branch_key not in branch_keys
+        branch_keys.add(branch_key)
 
 
 @dataclass
@@ -246,7 +248,7 @@ class _FakeObservedOpenManager:
                 tree_depth=opening_instruction.node_to_open.tree_depth + 1,
                 state=SimpleNamespace(tag=f"child-{opening_instruction.branch}"),
                 parent_nodes={
-                    opening_instruction.node_to_open: opening_instruction.branch
+                    opening_instruction.node_to_open: {opening_instruction.branch}
                 },
             )
             opening_instruction.node_to_open.branches_children[
@@ -652,7 +654,7 @@ def test_observable_tree_manager_update_backward_delegates_and_emits_events() ->
         id=2,
         tree_depth=1,
         state=SimpleNamespace(tag="child"),
-        parent_nodes={root: 5},
+        parent_nodes={root: {5}},
     )
     root.branches_children[5] = child
 
@@ -700,7 +702,7 @@ def test_observable_tree_exploration_emits_iteration_boundaries() -> None:
         id=2,
         tree_depth=1,
         state=SimpleNamespace(tag="child"),
-        parent_nodes={root: 4},
+        parent_nodes={root: {4}},
     )
     opening_instructions = _FakeOpeningInstructions([_FakeOpeningInstruction(root, 4)])
     base_exploration = _FakeObservedExploration(

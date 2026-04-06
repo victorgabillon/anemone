@@ -25,7 +25,7 @@ def _empty_branches_children() -> dict[str, Any | None]:
     return {}
 
 
-def _empty_parent_nodes() -> dict[Any, str]:
+def _empty_parent_nodes() -> dict[Any, set[str]]:
     return {}
 
 
@@ -78,7 +78,7 @@ class _FakeNode:
     branches_children: dict[str, Any | None] = field(
         default_factory=_empty_branches_children
     )
-    parent_nodes: dict[Any, str] = field(default_factory=_empty_parent_nodes)
+    parent_nodes: dict[Any, set[str]] = field(default_factory=_empty_parent_nodes)
 
 
 def test_build_live_debug_environment_happy_path(tmp_path: Path) -> None:

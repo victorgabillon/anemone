@@ -16,7 +16,7 @@ class _FakeNode:
     name: str
     tree_depth: int
     branches_children: dict[int, "_FakeNode | None"] = field(default_factory=dict)
-    parent_nodes: dict["_FakeNode", int] = field(default_factory=dict)
+    parent_nodes: dict["_FakeNode", set[int]] = field(default_factory=dict)
     exploration_index_data: MaxDepthDescendants[Any, Any] | object | None = None
 
     def __post_init__(self) -> None:
@@ -33,7 +33,7 @@ class _FakeNode:
 def _connect(parent: _FakeNode, branch: int, child: _FakeNode) -> None:
     """Connect two fake nodes through one branch."""
     parent.branches_children[branch] = child
-    child.parent_nodes[parent] = branch
+    child.parent_nodes[parent] = {branch}
 
 
 def _as_algorithm_node(node: _FakeNode) -> AlgorithmNode[Any]:

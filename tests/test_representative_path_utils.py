@@ -26,7 +26,7 @@ class _FakeNode:
     id: int
     tree_depth: int
     state: _ConcreteFakeYamlState
-    parent_nodes: dict["_FakeNode", set[object]] = field(default_factory=dict)
+    parent_nodes: dict["_FakeNode", set[int]] = field(default_factory=dict)
 
 
 class _FakeDynamics:

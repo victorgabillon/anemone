@@ -64,13 +64,13 @@ class _FakeNode:
     tree_depth: int
     tree_evaluation: _FakeTreeEvaluation
     branches_children: dict[int, "_FakeNode | None"] = field(default_factory=dict)
-    parent_nodes: dict["_FakeNode", int] = field(default_factory=dict)
+    parent_nodes: dict["_FakeNode", set[int]] = field(default_factory=dict)
 
 
 def _connect(parent: _FakeNode, branch: int, child: _FakeNode) -> None:
     """Connect one parent/child pair through a branch."""
     parent.branches_children[branch] = child
-    child.parent_nodes[parent] = branch
+    child.parent_nodes[parent] = {branch}
 
 
 def _as_algorithm_node(node: _FakeNode) -> AlgorithmNode[Any]:
@@ -99,4 +99,5 @@ def test_value_propagator_uses_injected_backup_policy_for_parent_recompute() -> 
     )
 
     assert affected == {parent}
+    assert changed_child.parent_nodes[parent] == {0}
     assert policy.calls == [({0, 1}, {0, 1})]

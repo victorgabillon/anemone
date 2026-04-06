@@ -47,7 +47,7 @@ class _FakeNode:
     name: str
     tree_depth: int
     branches_children: dict[int, "_FakeNode | None"] = field(default_factory=dict)
-    parent_nodes: dict["_FakeNode", int] = field(default_factory=dict)
+    parent_nodes: dict["_FakeNode", set[int]] = field(default_factory=dict)
     tree_evaluation: _FakeEvaluation = field(default_factory=_FakeEvaluation)
 
     def __repr__(self) -> str:
@@ -58,7 +58,7 @@ class _FakeNode:
 def _connect(parent: _FakeNode, branch: int, child: _FakeNode) -> None:
     """Connect two fake nodes through one branch."""
     parent.branches_children[branch] = child
-    child.parent_nodes[parent] = branch
+    child.parent_nodes[parent] = {branch}
 
 
 def _as_algorithm_node(node: _FakeNode) -> AlgorithmNode[Any]:
@@ -183,7 +183,7 @@ class _SemanticNode:
     tree_depth: int
     turn: Color
     branches_children: dict[int, "_SemanticNode | None"] = field(default_factory=dict)
-    parent_nodes: dict["_SemanticNode", int] = field(default_factory=dict)
+    parent_nodes: dict["_SemanticNode", set[int]] = field(default_factory=dict)
     tree_evaluation: NodeMinmaxEvaluation[Any, Any] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -213,7 +213,7 @@ class _SemanticNode:
 
 def _connect_semantic(parent: _SemanticNode, branch: int, child: _SemanticNode) -> None:
     parent.branches_children[branch] = child
-    child.parent_nodes[parent] = branch
+    child.parent_nodes[parent] = {branch}
 
 
 def _set_semantic_value(

@@ -75,7 +75,7 @@ class _FakeNode:
     state: Any
     tree_depth: int
     branches_children: dict[str, Any | None] = field(default_factory=dict)
-    parent_nodes: dict[Any, str] = field(default_factory=dict)
+    parent_nodes: dict[Any, set[str]] = field(default_factory=dict)
     all_branches_generated: bool = False
 
 

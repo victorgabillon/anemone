@@ -21,7 +21,7 @@ class _FakeNode:
     state: Any = field(default_factory=SimpleNamespace)
     tree_evaluation: Any = field(default_factory=SimpleNamespace)
     branches_children: dict[int, "_FakeNode | None"] = field(default_factory=dict)
-    parent_nodes: dict["_FakeNode", int] = field(default_factory=dict)
+    parent_nodes: dict["_FakeNode", set[int]] = field(default_factory=dict)
 
 
 class _SpyValuePropagator:
