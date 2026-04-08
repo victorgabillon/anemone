@@ -2,10 +2,21 @@
 
 from dataclasses import dataclass
 
+from valanga import Color
 from valanga.evaluations import Value
 
 from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.values import DEFAULT_EVALUATION_ORDERING, EvaluationOrdering
+
+
+def _require_color_turn(state: AnyTurnState) -> Color:
+    turn = state.turn
+    if not isinstance(turn, Color):
+        raise TypeError(
+            "AdversarialZeroSumObjective requires state.turn to be a valanga.Color, "
+            f"got {type(turn).__name__}"
+        )
+    return turn
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,7 +33,7 @@ class AdversarialZeroSumObjective[StateT: AnyTurnState = AnyTurnState]:
         """Project one child ``Value`` using the current node-local perspective."""
         return self.evaluation_ordering.search_sort_key(
             value,
-            side_to_move=state.turn,
+            side_to_move=_require_color_turn(state),
         )
 
     def semantic_compare(self, left: Value, right: Value, state: StateT) -> int:
@@ -30,12 +41,12 @@ class AdversarialZeroSumObjective[StateT: AnyTurnState = AnyTurnState]:
         return self.evaluation_ordering.semantic_compare(
             left,
             right,
-            side_to_move=state.turn,
+            side_to_move=_require_color_turn(state),
         )
 
     def terminal_score(self, over_event: AnyOverEvent, state: StateT) -> float:
         """Project terminal outcomes using the current node's side-to-move context."""
         return self.evaluation_ordering.terminal_score(
             over_event,
-            perspective=state.turn,
+            perspective=_require_color_turn(state),
         )

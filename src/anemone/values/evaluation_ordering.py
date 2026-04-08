@@ -37,6 +37,7 @@ class EvaluationOrdering:
 
     def terminal_score(self, over_event: AnyOverEvent, *, perspective: Color) -> float:
         """Project one exact terminal outcome to this policy's scalar score."""
+        perspective = _require_color(perspective, argument_name="perspective")
         if over_event.is_draw():
             return self.draw_score
         if over_event.is_win_for(perspective):
@@ -45,6 +46,7 @@ class EvaluationOrdering:
 
     def semantic_compare(self, a: Value, b: Value, *, side_to_move: Color) -> int:
         """Compare two ``Value`` objects using this policy's semantic rules."""
+        side_to_move = _require_color(side_to_move, argument_name="side_to_move")
         a_outcome = self._terminal_outcome_or_none(a, perspective=side_to_move)
         b_outcome = self._terminal_outcome_or_none(b, perspective=side_to_move)
 
@@ -80,6 +82,7 @@ class EvaluationOrdering:
         preserving legacy behavior where large-magnitude estimates can outrank
         projected terminal outcomes.
         """
+        side_to_move = _require_color(side_to_move, argument_name="side_to_move")
         projected_score = self._projected_score(value, perspective=side_to_move)
         if side_to_move == Color.WHITE:
             return -projected_score
@@ -152,6 +155,14 @@ def _compare_scores(a_score: float, b_score: float, *, side_to_move: Color) -> i
     if a_score > b_score:
         return -1
     return 0
+
+
+def _require_color(turn: Color, *, argument_name: str) -> Color:
+    if not isinstance(turn, Color):
+        raise TypeError(
+            f"{argument_name} must be a valanga.Color, got {type(turn).__name__}"
+        )
+    return turn
 
 
 def _compare_terminal_outcomes(a: TerminalOutcome, b: TerminalOutcome) -> int:

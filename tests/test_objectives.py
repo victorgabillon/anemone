@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
 from valanga import Color
 from valanga.evaluations import Certainty, Value
 
@@ -166,6 +167,18 @@ def test_adversarial_objective_terminal_order_matches_existing_behavior() -> Non
 
     assert objective.semantic_compare(win, draw, state) > 0
     assert objective.semantic_compare(draw, loss, state) > 0
+
+
+def test_adversarial_objective_rejects_unsupported_turn_types() -> None:
+    objective = AdversarialZeroSumObjective()
+    estimate = Value(score=0.5, certainty=Certainty.ESTIMATE)
+    state = SimpleNamespace(turn="solo")
+
+    with pytest.raises(
+        TypeError,
+        match="AdversarialZeroSumObjective requires state.turn to be a valanga.Color",
+    ):
+        objective.evaluate_value(estimate, state)
 
 
 def test_minimax_best_branch_uses_injected_objective() -> None:

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+import pytest
 from valanga import Color
 from valanga.evaluations import Certainty, Value
 
@@ -176,3 +177,14 @@ def test_semantic_compare_same_exact_loss_uses_score_tie_break_for_black() -> No
         )
         > 0
     )
+
+
+def test_ordering_rejects_unsupported_side_to_move_types() -> None:
+    ordering = EvaluationOrdering()
+    estimate = Value(score=0.5, certainty=Certainty.ESTIMATE)
+
+    with pytest.raises(TypeError, match="side_to_move must be a valanga.Color"):
+        ordering.semantic_compare(estimate, estimate, side_to_move="solo")
+
+    with pytest.raises(TypeError, match="side_to_move must be a valanga.Color"):
+        ordering.search_sort_key(estimate, side_to_move="solo")
