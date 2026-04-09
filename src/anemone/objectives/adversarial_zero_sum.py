@@ -9,13 +9,17 @@ from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.values import DEFAULT_EVALUATION_ORDERING, EvaluationOrdering
 
 
+def _state_turn_must_be_color_error(turn: object) -> TypeError:
+    return TypeError(
+        "AdversarialZeroSumObjective requires state.turn to be a valanga.Color, "
+        f"got {type(turn).__name__}"
+    )
+
+
 def _require_color_turn(state: AnyTurnState) -> Color:
     turn = state.turn
     if not isinstance(turn, Color):
-        raise TypeError(
-            "AdversarialZeroSumObjective requires state.turn to be a valanga.Color, "
-            f"got {type(turn).__name__}"
-        )
+        raise _state_turn_must_be_color_error(turn)
     return turn
 
 

@@ -6,6 +6,7 @@ from enum import StrEnum
 class NodeSelectorType(StrEnum):
     """Enumeration representing the types of node selectors."""
 
+    LINOO = "Linoo"
     RECUR_ZIPF_BASE = "RecurZipfBase"
     SEQUOOL = "Sequool"
     UNIFORM = "Uniform"

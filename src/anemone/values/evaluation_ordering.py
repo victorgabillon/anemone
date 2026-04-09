@@ -157,11 +157,15 @@ def _compare_scores(a_score: float, b_score: float, *, side_to_move: Color) -> i
     return 0
 
 
-def _require_color(turn: Color, *, argument_name: str) -> Color:
+def _color_argument_error(turn: object, *, argument_name: str) -> TypeError:
+    return TypeError(
+        f"{argument_name} must be a valanga.Color, got {type(turn).__name__}"
+    )
+
+
+def _require_color(turn: object, *, argument_name: str) -> Color:
     if not isinstance(turn, Color):
-        raise TypeError(
-            f"{argument_name} must be a valanga.Color, got {type(turn).__name__}"
-        )
+        raise _color_argument_error(turn, argument_name=argument_name)
     return turn
 
 

@@ -987,6 +987,11 @@ class NodeTreeEvaluation[StateT: State = State](
     """Shared tree-search evaluation surface exposed by all family wrappers."""
 
     @property
+    def required_objective(self) -> Objective[StateT]:
+        """Return the configured objective or raise a clear configuration error."""
+        ...
+
+    @property
     def best_branch_sequence(self) -> list[BranchKey]:
         """Return the current principal-variation branch sequence."""
         ...

@@ -7,6 +7,7 @@ from anemone.hooks.search_hooks import SearchHooks
 from .all_node_selector_args import AllNodeSelectorArgs
 from .composed.args import ComposedNodeSelectorArgs
 from .composed.composed_node_selector import ComposedNodeSelector
+from .linoo import Linoo, LinooArgs
 from .node_selector import NodeSelector
 from .node_selector_types import NodeSelectorType
 from .opening_instructions import OpeningInstructor
@@ -59,6 +60,9 @@ def create(
     node_branch_opening_selector: NodeSelector
 
     match args.type:
+        case NodeSelectorType.LINOO:
+            assert isinstance(args, LinooArgs)
+            node_branch_opening_selector = Linoo(opening_instructor=opening_instructor)
         case NodeSelectorType.UNIFORM:
             node_branch_opening_selector = Uniform(
                 opening_instructor=opening_instructor
