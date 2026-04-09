@@ -992,6 +992,8 @@ class NodeTreeEvaluation[StateT: State = State](
 ):
     """Shared tree-search evaluation surface exposed by all family wrappers."""
 
+    direct_evaluation_version: int | None
+
     @property
     def required_objective(self) -> Objective[StateT]:
         """Return the configured objective or raise a clear configuration error."""
@@ -1010,6 +1012,10 @@ class NodeTreeEvaluation[StateT: State = State](
 
     def one_of_best_children_becomes_best_next_node(self) -> bool:
         """Rebuild the principal variation from the current best child."""
+        ...
+
+    def clear_direct_evaluation(self) -> None:
+        """Clear direct-evaluation state while leaving backed-up state intact."""
         ...
 
     def best_equivalent_branches(

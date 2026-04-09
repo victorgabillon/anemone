@@ -69,21 +69,15 @@ class EvaluationQueries[StateT: AnyTurnState = AnyTurnState]:
         self.not_over_nodes = []
 
 
-def _empty_algorithm_node_list[StateT: AnyTurnState](
-) -> list[AlgorithmNode[StateT]]:
-    """Return a new typed list of algorithm nodes."""
-    return []
-
-
 @dataclass(slots=True)
 class DirectEvaluationOutcome[StateT: AnyTurnState = AnyTurnState]:
     """Outcome of directly evaluating a batch of nodes."""
 
     evaluated_nodes: list[AlgorithmNode[StateT]] = field(
-        default_factory=_empty_algorithm_node_list
+        default_factory=lambda: cast("list[AlgorithmNode[StateT]]", [])
     )
     changed_nodes: list[AlgorithmNode[StateT]] = field(
-        default_factory=_empty_algorithm_node_list
+        default_factory=lambda: cast("list[AlgorithmNode[StateT]]", [])
     )
     skipped_terminal_count: int = 0
 
@@ -123,9 +117,7 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
     ) -> None:
         """Store one direct evaluation and stamp its evaluator provenance."""
         node.tree_evaluation.direct_value = value
-        node.tree_evaluation.direct_evaluation_version = (
-            self.current_evaluator_version
-        )
+        node.tree_evaluation.direct_evaluation_version = self.current_evaluator_version
 
     def _is_structurally_terminal_state(self, node: AlgorithmNode[StateT]) -> bool:
         """Return whether ``node`` is terminal by its own game-state semantics.

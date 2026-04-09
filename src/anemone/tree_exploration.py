@@ -3,7 +3,7 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from random import Random
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey, State
 from valanga.evaluations import Value
@@ -12,8 +12,12 @@ from valanga.policy import NotifyProgressCallable, Recommendation
 
 from anemone._valanga_types import AnyTurnState
 from anemone.dynamics import SearchDynamics
+from anemone.node_evaluation.common.branch_frontier import (
+    require_branch_frontier_aware,
+)
 from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.nodes.utils import best_node_sequence_from_node
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
     ProgressMonitor,
@@ -32,6 +36,30 @@ if TYPE_CHECKING:
 
 type IterationProgressReporter = Callable[[Any, Random], None]
 type SearchResultReporter = Callable[[Any], None]
+
+
+_SUPPORTED_REFRESH_SCOPES = (
+    "root_children",
+    "pv",
+    "frontier",
+    "leaves",
+    "all",
+    "pv_and_root_children",
+)
+
+
+def _invalid_frontier_limit_error() -> ValueError:
+    """Return the canonical public error for invalid frontier limits."""
+    return ValueError("k must be non-negative or None")
+
+
+def _unsupported_refresh_scope_error(scope: str) -> ValueError:
+    """Return the canonical public error for invalid refresh scopes."""
+    supported_scopes = ", ".join(_SUPPORTED_REFRESH_SCOPES)
+    return ValueError(
+        f"Unsupported refresh scope {scope!r}. Supported scopes are: "
+        f"{supported_scopes}."
+    )
 
 
 @dataclass
@@ -158,6 +186,171 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             changed_count=outcome.changed_count,
             skipped_terminal_count=outcome.skipped_terminal_count,
         )
+
+    def _deduplicate_nodes_in_order(self, nodes: Sequence[NodeT]) -> list[NodeT]:
+        """Return one stable deduplicated node list keyed by object identity."""
+        deduplicated_nodes: list[NodeT] = []
+        seen_node_ids: set[int] = set()
+        for node in nodes:
+            node_id = id(node)
+            if node_id in seen_node_ids:
+                continue
+            seen_node_ids.add(node_id)
+            deduplicated_nodes.append(node)
+        return deduplicated_nodes
+
+    def _all_nodes_in_tree_order(self) -> list[NodeT]:
+        """Return all currently known nodes in stable depth/insertion order."""
+        descendants = self.tree.descendants
+        return [
+            node
+            for tree_depth in descendants.range()
+            for node in descendants[tree_depth].values()
+        ]
+
+    def _linked_child_nodes_in_tree_order(self, node: NodeT) -> list[NodeT]:
+        """Return linked children in stable structural child-link order.
+
+        The shared runtime does not currently expose one stronger generic child
+        ordering accessor here, so this helper intentionally follows the
+        insertion-ordered structural child mapping.
+        """
+        return [child for child in node.branches_children.values() if child is not None]
+
+    def _collect_root_children(self) -> list[NodeT]:
+        """Collect the current root's linked children."""
+        return self._linked_child_nodes_in_tree_order(self.tree.root_node)
+
+    def _collect_pv_nodes(self) -> list[NodeT]:
+        """Collect the current principal variation below the root."""
+        pv_nodes = cast(
+            "list[NodeT]", best_node_sequence_from_node(self.tree.root_node)
+        )
+        if len(pv_nodes) <= 1:
+            return []
+        return pv_nodes[1:]
+
+    def _collect_leaf_nodes(self) -> list[NodeT]:
+        """Collect structural leaves in stable tree order."""
+        return [
+            node
+            for node in self._all_nodes_in_tree_order()
+            if not self._linked_child_nodes_in_tree_order(node)
+        ]
+
+    def _collect_frontier_nodes(self, k: int | None = None) -> list[NodeT]:
+        """Collect frontier nodes via branch-frontier semantics, not all leaves.
+
+        This follows the currently stored branch-frontier ordering to find the
+        unresolved nodes that sit at the tips of search-relevant frontier
+        branches.
+        """
+        if k is not None and k < 0:
+            raise _invalid_frontier_limit_error()
+        if k == 0:
+            return []
+
+        frontier_nodes: list[NodeT] = []
+        visited_nodes: set[int] = set()
+
+        def visit(node: NodeT) -> None:
+            if k is not None and len(frontier_nodes) >= k:
+                return
+            node_identity = id(node)
+            if node_identity in visited_nodes:
+                return
+            visited_nodes.add(node_identity)
+
+            if node.tree_evaluation.has_exact_value():
+                return
+
+            frontier_aware = require_branch_frontier_aware(node.tree_evaluation)
+            if not frontier_aware.has_frontier_branches():
+                frontier_nodes.append(node)
+                return
+
+            for branch in frontier_aware.frontier_branches_in_order():
+                child = node.branches_children.get(branch)
+                if child is None:
+                    continue
+                visit(child)
+                if k is not None and len(frontier_nodes) >= k:
+                    return
+
+        visit(self.tree.root_node)
+        return frontier_nodes
+
+    def _collect_all_nodes(self) -> list[NodeT]:
+        """Collect all nodes currently present in the tree."""
+        return self._all_nodes_in_tree_order()
+
+    def _collect_pv_and_root_children(self) -> list[NodeT]:
+        """Collect the stable union of PV nodes and root children."""
+        return self._deduplicate_nodes_in_order(
+            [*self._collect_root_children(), *self._collect_pv_nodes()]
+        )
+
+    def _validate_refresh_scope_inputs(
+        self,
+        *,
+        scope: str,
+        k: int | None = None,
+    ) -> None:
+        """Validate public refresh-scope inputs before mutating runtime state."""
+        if scope not in _SUPPORTED_REFRESH_SCOPES:
+            raise _unsupported_refresh_scope_error(scope)
+        if scope == "frontier" and k is not None and k < 0:
+            raise _invalid_frontier_limit_error()
+
+    def _collect_nodes_for_refresh_scope(
+        self,
+        *,
+        scope: str,
+        k: int | None = None,
+    ) -> list[NodeT]:
+        """Collect nodes for one supported refresh scope."""
+        if scope == "root_children":
+            return self._collect_root_children()
+        if scope == "pv":
+            return self._collect_pv_nodes()
+        if scope == "frontier":
+            return self._collect_frontier_nodes(k=k)
+        if scope == "leaves":
+            return self._collect_leaf_nodes()
+        if scope == "all":
+            return self._collect_all_nodes()
+        if scope == "pv_and_root_children":
+            return self._collect_pv_and_root_children()
+        raise _unsupported_refresh_scope_error(scope)
+
+    def reevaluate_root_children(self) -> ReevaluationReport:
+        """Reevaluate the current root's immediate children."""
+        return self.reevaluate_nodes(self._collect_root_children())
+
+    def reevaluate_pv(self) -> ReevaluationReport:
+        """Reevaluate the current principal variation below the root."""
+        return self.reevaluate_nodes(self._collect_pv_nodes())
+
+    def reevaluate_frontier(self, k: int | None = None) -> ReevaluationReport:
+        """Reevaluate current branch-frontier nodes, optionally limited to ``k``."""
+        return self.reevaluate_nodes(self._collect_frontier_nodes(k=k))
+
+    def reevaluate_leaves(self) -> ReevaluationReport:
+        """Reevaluate the tree's current structural leaves."""
+        return self.reevaluate_nodes(self._collect_leaf_nodes())
+
+    def refresh_with_evaluator(
+        self,
+        new_evaluator: MasterStateValueEvaluator,
+        *,
+        scope: str = "frontier",
+        k: int | None = None,
+    ) -> ReevaluationReport:
+        """Swap evaluator, then reevaluate one selected tree region."""
+        self._validate_refresh_scope_inputs(scope=scope, k=k)
+        self.set_evaluator(new_evaluator)
+        nodes = self._collect_nodes_for_refresh_scope(scope=scope, k=k)
+        return self.reevaluate_nodes(nodes)
 
     def _select_node_for_expansion(self) -> node_sel.OpeningInstructions[NodeT]:
         """Ask the selector for the next branches to open."""

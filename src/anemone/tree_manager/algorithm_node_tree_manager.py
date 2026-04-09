@@ -196,9 +196,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         if not outcome.changed_nodes:
             return outcome
 
-        self.value_propagator.propagate_after_local_value_changes(
-            outcome.changed_nodes
-        )
+        self.value_propagator.propagate_after_local_value_changes(outcome.changed_nodes)
         self.refresh_exploration_indices(tree=tree)
         return outcome
 

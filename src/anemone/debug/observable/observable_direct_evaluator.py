@@ -11,7 +11,7 @@ from anemone.debug.observable.state_diff import summarize_node_evaluation
 from anemone.debug.sink import NullSearchDebugSink, SearchDebugSink
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Iterable, Sequence
 
 
 class ObservableDirectEvaluator:
@@ -60,6 +60,26 @@ class ObservableDirectEvaluator:
         self._observe_nodes(
             tuple(not_over_nodes),
             lambda: self._base.evaluate_all_not_over(not_over_nodes),
+        )
+
+    def evaluate_nodes(
+        self,
+        nodes: Sequence[Any],
+        *,
+        evaluation_queries: Any,
+        clear_existing_direct_values: bool,
+        skip_terminal_nodes: bool,
+    ) -> Any:
+        """Observe direct-value assignment for the shared node-batch path."""
+        observed_nodes = tuple(nodes)
+        return self._observe_nodes(
+            observed_nodes,
+            lambda: self._base.evaluate_nodes(
+                nodes=nodes,
+                evaluation_queries=evaluation_queries,
+                clear_existing_direct_values=clear_existing_direct_values,
+                skip_terminal_nodes=skip_terminal_nodes,
+            ),
         )
 
     def _observe_nodes(

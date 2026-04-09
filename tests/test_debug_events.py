@@ -150,6 +150,23 @@ class _FakeDirectEvaluator:
                 certainty="estimate",
             )
 
+    def evaluate_nodes(
+        self,
+        nodes: list[_FakeNode],
+        *,
+        evaluation_queries: Any,
+        clear_existing_direct_values: bool,
+        skip_terminal_nodes: bool,
+    ) -> None:
+        del evaluation_queries, skip_terminal_nodes
+        for node in nodes:
+            if clear_existing_direct_values:
+                node.tree_evaluation.direct_value = None
+            node.tree_evaluation.direct_value = _FakeValue(
+                score=node.state.base_score,
+                certainty="estimate",
+            )
+
 
 class _FakeNoChangeDirectEvaluator:
     def evaluate_all_not_over(self, not_over_nodes: list[_FakeNode]) -> None:
@@ -517,6 +534,33 @@ def test_observable_direct_evaluator_emits_events_for_queried_batches() -> None:
         DirectValueAssigned(
             node_id="6",
             value_repr="score=0.6, certainty=estimate",
+        ),
+    ]
+
+
+def test_observable_direct_evaluator_emits_events_for_shared_evaluate_nodes() -> None:
+    first = _FakeNode(id=15, tree_depth=0, state=SimpleNamespace(base_score=0.4))
+    second = _FakeNode(id=16, tree_depth=0, state=SimpleNamespace(base_score=0.9))
+    evaluator = ObservableDirectEvaluator(
+        _FakeDirectEvaluator(),
+        debug_sink := RecordingDebugSink(),
+    )
+
+    evaluator.evaluate_nodes(
+        [first, second],
+        evaluation_queries=_FakeEvaluationQueries(),
+        clear_existing_direct_values=True,
+        skip_terminal_nodes=False,
+    )
+
+    assert debug_sink.events == [
+        DirectValueAssigned(
+            node_id="15",
+            value_repr="score=0.4, certainty=estimate",
+        ),
+        DirectValueAssigned(
+            node_id="16",
+            value_repr="score=0.9, certainty=estimate",
         ),
     ]
 
