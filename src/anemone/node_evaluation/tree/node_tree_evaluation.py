@@ -222,6 +222,7 @@ class NodeTreeEvaluationState[
 
     backup_policy: BackupPolicy[Any] | None = None
     direct_value: Value | None = None
+    direct_evaluation_version: int | None = None
     _backed_up_value: Value | None = None
     decision_ordering: DecisionOrderingState = field(
         default_factory=DecisionOrderingState

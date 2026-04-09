@@ -12,6 +12,7 @@ from valanga.policy import NotifyProgressCallable, Recommendation
 
 from anemone._valanga_types import AnyTurnState
 from anemone.dynamics import SearchDynamics
+from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
@@ -80,6 +81,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     notify_percent_function: NotifyProgressCallable
     iteration_progress_reporter: IterationProgressReporter | None = None
     search_result_reporter: SearchResultReporter | None = None
+    evaluator_version: int = 0
     _latest_tree_expansions: tree_man.TreeExpansions[NodeT] = field(
         init=False,
         repr=False,
@@ -88,6 +90,9 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def __post_init__(self) -> None:
         """Seed selector-visible iteration state for the first step."""
         self._latest_tree_expansions = self._make_initial_tree_expansions()
+        node_evaluator = getattr(self.tree_manager, "node_evaluator", None)
+        if node_evaluator is not None:
+            node_evaluator.current_evaluator_version = self.evaluator_version
 
     def _make_initial_tree_expansions(self) -> tree_man.TreeExpansions[NodeT]:
         """Return the synthetic root creation log used before the first step."""
@@ -118,6 +123,19 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         if self.search_result_reporter is None:
             return
         self.search_result_reporter(self)
+
+    def set_evaluator(self, new_evaluator: MasterStateValueEvaluator) -> None:
+        """Replace the active evaluator for future direct evaluations only.
+
+        Existing node values, backups, and tree structure are left untouched.
+        Only direct evaluations that happen after this call use the new
+        evaluator and the incremented evaluator version.
+        """
+        node_evaluator = self.tree_manager.node_evaluator
+        assert node_evaluator is not None
+        node_evaluator.master_state_value_evaluator = new_evaluator
+        self.evaluator_version += 1
+        node_evaluator.current_evaluator_version = self.evaluator_version
 
     def _select_node_for_expansion(self) -> node_sel.OpeningInstructions[NodeT]:
         """Ask the selector for the next branches to open."""

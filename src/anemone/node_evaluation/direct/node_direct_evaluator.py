@@ -75,6 +75,7 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
     """
 
     master_state_value_evaluator: MasterStateValueEvaluator
+    current_evaluator_version: int
 
     def __init__(
         self,
@@ -82,6 +83,19 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
     ) -> None:
         """Initialize a new instance of the NodeDirectEvaluator class."""
         self.master_state_value_evaluator = master_state_evaluator
+        self.current_evaluator_version = 0
+
+    def _store_direct_value(
+        self,
+        *,
+        node: AlgorithmNode[StateT],
+        value: Value,
+    ) -> None:
+        """Store one direct evaluation and stamp its evaluator provenance."""
+        node.tree_evaluation.direct_value = value
+        node.tree_evaluation.direct_evaluation_version = (
+            self.current_evaluator_version
+        )
 
     def check_obvious_over_events(self, node: AlgorithmNode[StateT]) -> None:
         """Check for obvious over events in the given node and update its evaluation accordingly."""
@@ -97,9 +111,12 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
             evaluation=evaluation,
             canonical_over_event=over_event,
         )
-        node.tree_evaluation.direct_value = canonical_value.make_terminal_value(
-            score=terminal_score,
-            over_event=over_event,
+        self._store_direct_value(
+            node=node,
+            value=canonical_value.make_terminal_value(
+                score=terminal_score,
+                over_event=over_event,
+            ),
         )
         assert node.tree_evaluation.is_terminal()
 
@@ -193,7 +210,7 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
                 processed_value = canonical_value.make_estimate_value(
                     score=processed_score
                 )
-            node.tree_evaluation.direct_value = processed_value
+            self._store_direct_value(node=node, value=processed_value)
             assert node.tree_evaluation.direct_value is not None, (
                 f"direct_value must be set for non-terminal node {node.tree_node.id}"
             )
