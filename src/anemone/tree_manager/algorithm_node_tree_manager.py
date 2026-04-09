@@ -1,6 +1,6 @@
 """Algorithm-aware tree-side phases used by ``TreeExploration``."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol, cast
 
@@ -14,6 +14,7 @@ from anemone.node_evaluation.common.branch_frontier import (
     require_branch_frontier_aware,
 )
 from anemone.node_evaluation.direct import (
+    DirectEvaluationOutcome,
     EvaluationQueries,
     NodeDirectEvaluator,
 )
@@ -40,26 +41,35 @@ class BestLinePrintable(Protocol):
 
 
 @dataclass(slots=True)
-class _ExpansionDirectEvaluation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
-    """Direct-evaluation unit for nodes created by structural expansion."""
+class _DirectNodeEvaluation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
+    """Direct-evaluation unit shared by expansion and explicit reevaluation."""
 
     evaluation_queries: EvaluationQueries
     get_node_evaluator: Callable[[], NodeDirectEvaluator | None]
 
     def evaluate_expansions(self, tree_expansions: TreeExpansions[NodeT]) -> None:
         """Stage newly created children and run direct evaluation."""
+        self.evaluate_nodes(
+            self._created_nodes_for_direct_evaluation(tree_expansions=tree_expansions),
+            clear_existing_direct_values=False,
+            skip_terminal_nodes=False,
+        )
+
+    def evaluate_nodes(
+        self,
+        nodes: Sequence[NodeT],
+        *,
+        clear_existing_direct_values: bool,
+        skip_terminal_nodes: bool,
+    ) -> DirectEvaluationOutcome[Any]:
+        """Evaluate an arbitrary node batch through the shared direct-evaluator."""
         node_evaluator = self.get_node_evaluator()
         assert node_evaluator is not None
-        for node_to_evaluate in self._created_nodes_for_direct_evaluation(
-            tree_expansions=tree_expansions
-        ):
-            node_evaluator.add_evaluation_query(
-                node=node_to_evaluate,
-                evaluation_queries=self.evaluation_queries,
-            )
-
-        node_evaluator.evaluate_all_queried_nodes(
-            evaluation_queries=self.evaluation_queries
+        return node_evaluator.evaluate_nodes(
+            nodes=nodes,
+            evaluation_queries=self.evaluation_queries,
+            clear_existing_direct_values=clear_existing_direct_values,
+            skip_terminal_nodes=skip_terminal_nodes,
         )
 
     def _created_nodes_for_direct_evaluation(
@@ -128,7 +138,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     index_manager: NodeExplorationIndexManager
     value_propagator: ValuePropagator = field(default_factory=ValuePropagator)
     depth_index_propagator: DepthIndexPropagator | None = None
-    _direct_evaluation: _ExpansionDirectEvaluation[NodeT] = field(
+    _direct_evaluation: _DirectNodeEvaluation[NodeT] = field(
         init=False,
         repr=False,
     )
@@ -139,7 +149,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def __post_init__(self) -> None:
         """Assemble the narrow post-expansion units used by this phase API."""
-        self._direct_evaluation = _ExpansionDirectEvaluation(
+        self._direct_evaluation = _DirectNodeEvaluation(
             evaluation_queries=self.evaluation_queries,
             get_node_evaluator=lambda: self.node_evaluator,
         )
@@ -170,6 +180,27 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def evaluate_expansions(self, tree_expansions: TreeExpansions[NodeT]) -> None:
         """Delegate post-expansion direct evaluation to the direct-evaluation unit."""
         self._direct_evaluation.evaluate_expansions(tree_expansions)
+
+    def reevaluate_nodes(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        nodes: Sequence[NodeT],
+    ) -> DirectEvaluationOutcome[Any]:
+        """Reevaluate existing nodes, then propagate and refresh derived state."""
+        outcome = self._direct_evaluation.evaluate_nodes(
+            nodes,
+            clear_existing_direct_values=True,
+            skip_terminal_nodes=True,
+        )
+        if not outcome.changed_nodes:
+            return outcome
+
+        self.value_propagator.propagate_after_local_value_changes(
+            outcome.changed_nodes
+        )
+        self.refresh_exploration_indices(tree=tree)
+        return outcome
 
     # Upward propagation phases
     def update_backward(self, tree_expansions: TreeExpansions[NodeT]) -> None:

@@ -1,6 +1,7 @@
 """Module for evaluating algorithm nodes directly using a master state evaluator."""
 
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from enum import StrEnum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Protocol, cast
@@ -68,6 +69,35 @@ class EvaluationQueries[StateT: AnyTurnState = AnyTurnState]:
         self.not_over_nodes = []
 
 
+def _empty_algorithm_node_list[StateT: AnyTurnState](
+) -> list[AlgorithmNode[StateT]]:
+    """Return a new typed list of algorithm nodes."""
+    return []
+
+
+@dataclass(slots=True)
+class DirectEvaluationOutcome[StateT: AnyTurnState = AnyTurnState]:
+    """Outcome of directly evaluating a batch of nodes."""
+
+    evaluated_nodes: list[AlgorithmNode[StateT]] = field(
+        default_factory=_empty_algorithm_node_list
+    )
+    changed_nodes: list[AlgorithmNode[StateT]] = field(
+        default_factory=_empty_algorithm_node_list
+    )
+    skipped_terminal_count: int = 0
+
+    @property
+    def reevaluated_count(self) -> int:
+        """Return how many nodes were actually evaluated."""
+        return len(self.evaluated_nodes)
+
+    @property
+    def changed_count(self) -> int:
+        """Return how many nodes received a different direct value."""
+        return len(self.changed_nodes)
+
+
 class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
     """Evaluate the value of nodes in a tree structure.
 
@@ -96,6 +126,16 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
         node.tree_evaluation.direct_evaluation_version = (
             self.current_evaluator_version
         )
+
+    def _is_structurally_terminal_state(self, node: AlgorithmNode[StateT]) -> bool:
+        """Return whether ``node`` is terminal by its own game-state semantics.
+
+        Reevaluation skip logic must only exclude nodes whose *local state* is
+        terminal. We intentionally do not use ``node.tree_evaluation.is_terminal()``
+        here because canonical tree-evaluation state can become terminal/exact
+        through backed-up child values on a non-terminal parent.
+        """
+        return node.state.is_game_over()
 
     def check_obvious_over_events(self, node: AlgorithmNode[StateT]) -> None:
         """Check for obvious over events in the given node and update its evaluation accordingly."""
@@ -167,16 +207,62 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
         # Re-read into a local after the call: this breaks mypy's earlier narrowing.
         direct_value: Value | None = node.tree_evaluation.direct_value
 
-        if node.tree_evaluation.is_terminal():
-            if direct_value is None:
-                raise DirectValueInvariantError(
-                    node_id=node.tree_node.id,
-                    reason="direct_value must be set for terminal nodes after check_obvious_over_events",
-                )
+        if direct_value is not None:
             evaluation_queries.over_nodes.append(node)
             return
 
         evaluation_queries.not_over_nodes.append(node)
+
+    def evaluate_nodes(
+        self,
+        nodes: Sequence[AlgorithmNode[StateT]],
+        *,
+        evaluation_queries: EvaluationQueries[StateT],
+        clear_existing_direct_values: bool,
+        skip_terminal_nodes: bool,
+    ) -> DirectEvaluationOutcome[StateT]:
+        """Directly evaluate arbitrary nodes through the shared batch flow."""
+        evaluation_queries.clear_queries()
+
+        old_direct_values: dict[int, Value | None] = {}
+        evaluated_nodes: list[AlgorithmNode[StateT]] = []
+        skipped_terminal_count = 0
+        seen_node_ids: set[int] = set()
+
+        for node in nodes:
+            node_identity = id(node)
+            if node_identity in seen_node_ids:
+                continue
+            seen_node_ids.add(node_identity)
+
+            if skip_terminal_nodes and self._is_structurally_terminal_state(node):
+                skipped_terminal_count += 1
+                continue
+
+            old_direct_values[node_identity] = node.tree_evaluation.direct_value
+            if clear_existing_direct_values:
+                node.tree_evaluation.clear_direct_evaluation()
+
+            self.add_evaluation_query(node, evaluation_queries)
+            evaluated_nodes.append(node)
+
+        if not evaluated_nodes:
+            return DirectEvaluationOutcome(
+                skipped_terminal_count=skipped_terminal_count
+            )
+
+        self.evaluate_all_queried_nodes(evaluation_queries=evaluation_queries)
+
+        changed_nodes = [
+            node
+            for node in evaluated_nodes
+            if old_direct_values[id(node)] != node.tree_evaluation.direct_value
+        ]
+        return DirectEvaluationOutcome(
+            evaluated_nodes=evaluated_nodes,
+            changed_nodes=changed_nodes,
+            skipped_terminal_count=skipped_terminal_count,
+        )
 
     def evaluate_all_not_over(
         self, not_over_nodes: list[AlgorithmNode[StateT]]

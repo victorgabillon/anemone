@@ -6,6 +6,7 @@ before any tree backup or principal-variation logic is involved.
 
 from .factory import create_node_evaluator
 from .node_direct_evaluator import (
+    DirectEvaluationOutcome,
     DirectValueInvariantError,
     EvaluationQueries,
     NodeDirectEvaluator,
@@ -14,6 +15,7 @@ from .node_direct_evaluator import (
 from .protocols import MasterStateValueEvaluator, OverEventDetector
 
 __all__ = [
+    "DirectEvaluationOutcome",
     "DirectValueInvariantError",
     "EvaluationQueries",
     "MasterStateValueEvaluator",

@@ -302,6 +302,11 @@ class NodeTreeEvaluationState[
         """Return backed-up value when available, else direct value."""
         return value_access.get_value_candidate(self)
 
+    def clear_direct_evaluation(self) -> None:
+        """Clear direct-evaluation state while leaving backed-up state intact."""
+        self.direct_value = None
+        self.direct_evaluation_version = None
+
     def get_value(self) -> Value:
         """Return the canonical Value for this node."""
         return value_access.get_value(self)

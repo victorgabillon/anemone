@@ -71,6 +71,45 @@ class ValuePropagator:
             recompute_node=self._recompute_node_value_impl,
         )
 
+    def propagate_after_local_value_changes(
+        self,
+        changed_nodes: Iterable[AlgorithmNode[Any]],
+    ) -> set[AlgorithmNode[Any]]:
+        """Settle changed nodes locally, then propagate any parent-relevant deltas."""
+        parent_relevant_nodes = self._parent_relevant_nodes_after_local_value_changes(
+            changed_nodes
+        )
+        if not parent_relevant_nodes:
+            return set()
+        return self.propagate_from_changed_nodes(parent_relevant_nodes)
+
+    def _parent_relevant_nodes_after_local_value_changes(
+        self,
+        changed_nodes: Iterable[AlgorithmNode[Any]],
+    ) -> list[AlgorithmNode[Any]]:
+        """Return nodes whose local value change can affect their parents."""
+        parent_relevant_nodes: list[AlgorithmNode[Any]] = []
+        seen_node_ids: set[int] = set()
+        for node in changed_nodes:
+            node_identity = id(node)
+            if node_identity in seen_node_ids:
+                continue
+            seen_node_ids.add(node_identity)
+
+            if self._is_parent_relevant_after_local_value_change(node):
+                parent_relevant_nodes.append(node)
+
+        return parent_relevant_nodes
+
+    def _is_parent_relevant_after_local_value_change(
+        self,
+        node: AlgorithmNode[Any],
+    ) -> bool:
+        """Return whether one local node change should schedule ancestor updates."""
+        if not self._current_child_branches(node):
+            return True
+        return self._recompute_node_value_impl(node)
+
     def _recompute_node_value_from_full_child_snapshot(
         self,
         node: AlgorithmNode[Any],

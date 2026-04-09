@@ -1,6 +1,6 @@
 """Runnable tree-search runtime centered on ``TreeExploration``."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from random import Random
 from typing import TYPE_CHECKING, Any
@@ -40,6 +40,17 @@ class TreeExplorationResult[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     branch_recommendation: Recommendation
     tree: trees.Tree[NodeT]
+
+
+@dataclass(slots=True)
+class ReevaluationReport:
+    """Summary of one explicit node reevaluation request."""
+
+    evaluator_version: int
+    requested_count: int
+    reevaluated_count: int
+    changed_count: int
+    skipped_terminal_count: int = 0
 
 
 def compute_child_evals[StateT: State](
@@ -136,6 +147,17 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         node_evaluator.master_state_value_evaluator = new_evaluator
         self.evaluator_version += 1
         node_evaluator.current_evaluator_version = self.evaluator_version
+
+    def reevaluate_nodes(self, nodes: Sequence[NodeT]) -> ReevaluationReport:
+        """Reevaluate existing nodes without changing the current tree structure."""
+        outcome = self.tree_manager.reevaluate_nodes(tree=self.tree, nodes=nodes)
+        return ReevaluationReport(
+            evaluator_version=self.evaluator_version,
+            requested_count=len(nodes),
+            reevaluated_count=outcome.reevaluated_count,
+            changed_count=outcome.changed_count,
+            skipped_terminal_count=outcome.skipped_terminal_count,
+        )
 
     def _select_node_for_expansion(self) -> node_sel.OpeningInstructions[NodeT]:
         """Ask the selector for the next branches to open."""

@@ -4,7 +4,10 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any, cast
 
-from anemone.node_evaluation.direct.node_direct_evaluator import EvaluationQueries
+from anemone.node_evaluation.direct.node_direct_evaluator import (
+    DirectEvaluationOutcome,
+    EvaluationQueries,
+)
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.tree_manager.algorithm_node_tree_manager import (
     AlgorithmNodeTreeManager,
@@ -29,6 +32,7 @@ class _SpyValuePropagator:
 
     def __init__(self) -> None:
         self.calls: list[list[_FakeNode]] = []
+        self.local_change_calls: list[list[_FakeNode]] = []
 
     def propagate_from_changed_nodes(
         self,
@@ -36,6 +40,14 @@ class _SpyValuePropagator:
     ) -> set[_FakeNode]:
         """Record one propagation request."""
         self.calls.append(list(changed_nodes))
+        return set()
+
+    def propagate_after_local_value_changes(
+        self,
+        changed_nodes: list[_FakeNode],
+    ) -> set[_FakeNode]:
+        """Record one local-change propagation request."""
+        self.local_change_calls.append(list(changed_nodes))
         return set()
 
 
@@ -62,25 +74,29 @@ class _SpyNodeEvaluator:
     """Capture which created nodes are staged for direct evaluation."""
 
     def __init__(self) -> None:
-        self.add_calls: list[AlgorithmNode[Any]] = []
-        self.evaluate_calls: list[list[AlgorithmNode[Any]]] = []
+        self.evaluate_nodes_calls: list[
+            tuple[list[AlgorithmNode[Any]], bool, bool]
+        ] = []
+        self.next_outcome = DirectEvaluationOutcome[Any]()
 
-    def add_evaluation_query(
+    def evaluate_nodes(
         self,
-        node: AlgorithmNode[Any],
+        nodes: list[AlgorithmNode[Any]],
+        *,
         evaluation_queries: EvaluationQueries[Any],
-    ) -> None:
-        """Record that one node was staged for direct evaluation."""
-        self.add_calls.append(node)
-        evaluation_queries.not_over_nodes.append(node)
-
-    def evaluate_all_queried_nodes(
-        self,
-        evaluation_queries: EvaluationQueries[Any],
-    ) -> None:
-        """Record the current queued batch and clear it."""
-        self.evaluate_calls.append(list(evaluation_queries.not_over_nodes))
+        clear_existing_direct_values: bool,
+        skip_terminal_nodes: bool,
+    ) -> DirectEvaluationOutcome[Any]:
+        """Record one direct-evaluation batch request."""
+        self.evaluate_nodes_calls.append(
+            (
+                list(nodes),
+                clear_existing_direct_values,
+                skip_terminal_nodes,
+            )
+        )
         evaluation_queries.clear_queries()
+        return self.next_outcome
 
 
 def _build_manager(
@@ -191,8 +207,7 @@ def test_evaluate_expansions_only_stages_newly_created_nodes() -> None:
 
     manager.evaluate_expansions(tree_expansions=tree_expansions)
 
-    assert node_evaluator.add_calls == [created_child]
-    assert node_evaluator.evaluate_calls == [[created_child]]
+    assert node_evaluator.evaluate_nodes_calls == [([created_child], False, False)]
 
 
 def test_propagate_depth_index_routes_expansion_children_through_depth_propagator() -> (
@@ -254,4 +269,44 @@ def test_refresh_exploration_indices_remains_a_separate_explicit_step(
     tree = object()
     manager.refresh_exploration_indices(tree=tree)
 
+    assert recorded_calls == [(manager.index_manager, tree)]
+
+
+def test_reevaluate_nodes_routes_changed_nodes_through_local_propagation_and_refresh(
+    monkeypatch: Any,
+) -> None:
+    changed_child = _algorithm_node(2, tree_depth=1)
+    unchanged_child = _algorithm_node(3, tree_depth=1)
+    value_propagator = _SpyValuePropagator()
+    node_evaluator = _SpyNodeEvaluator()
+    node_evaluator.next_outcome = DirectEvaluationOutcome(
+        evaluated_nodes=[changed_child, unchanged_child],
+        changed_nodes=[changed_child],
+        skipped_terminal_count=1,
+    )
+    manager = _build_manager(
+        value_propagator=value_propagator,
+        node_evaluator=node_evaluator,
+    )
+    recorded_calls: list[tuple[object, object]] = []
+
+    def fake_update_all_indices(*, index_manager: object, tree: object) -> None:
+        recorded_calls.append((index_manager, tree))
+
+    monkeypatch.setattr(
+        "anemone.tree_manager.algorithm_node_tree_manager.update_all_indices",
+        fake_update_all_indices,
+    )
+
+    tree = object()
+    outcome = manager.reevaluate_nodes(
+        tree=cast("Any", tree),
+        nodes=[changed_child, unchanged_child],
+    )
+
+    assert node_evaluator.evaluate_nodes_calls == [
+        ([changed_child, unchanged_child], True, True)
+    ]
+    assert outcome is node_evaluator.next_outcome
+    assert value_propagator.local_change_calls == [[changed_child]]
     assert recorded_calls == [(manager.index_manager, tree)]
