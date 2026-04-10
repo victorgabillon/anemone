@@ -19,6 +19,11 @@ class EnumMemberPayload:
 type CheckpointAtomPayload = None | bool | int | float | str | EnumMemberPayload
 
 
+def _empty_checkpoint_atoms() -> list[CheckpointAtomPayload]:
+    """Return a typed empty checkpoint-atom list."""
+    return []
+
+
 @dataclass(frozen=True, slots=True)
 class SerializedOverEventPayload:
     """Serialized terminal-outcome metadata carried by a ``Value``."""
@@ -48,12 +53,17 @@ class BranchOrderingCheckpointPayload:
     stable_tiebreak_id: int
 
 
+def _empty_branch_ordering_payloads() -> list[BranchOrderingCheckpointPayload]:
+    """Return a typed empty branch-ordering payload list."""
+    return []
+
+
 @dataclass(slots=True)
 class DecisionOrderingCheckpointPayload:
     """Serialized decision-ordering cache for one node."""
 
     branch_ordering: list[BranchOrderingCheckpointPayload] = field(
-        default_factory=list
+        default_factory=_empty_branch_ordering_payloads
     )
 
 
@@ -61,7 +71,9 @@ class DecisionOrderingCheckpointPayload:
 class PrincipalVariationCheckpointPayload:
     """Serialized principal-variation state for one node."""
 
-    best_branch_sequence: list[CheckpointAtomPayload] = field(default_factory=list)
+    best_branch_sequence: list[CheckpointAtomPayload] = field(
+        default_factory=_empty_checkpoint_atoms
+    )
     pv_version: int = 0
     cached_best_child_version: int | None = None
 
@@ -70,7 +82,9 @@ class PrincipalVariationCheckpointPayload:
 class BranchFrontierCheckpointPayload:
     """Serialized branch-frontier membership for one node."""
 
-    frontier_branches: list[CheckpointAtomPayload] = field(default_factory=list)
+    frontier_branches: list[CheckpointAtomPayload] = field(
+        default_factory=_empty_checkpoint_atoms
+    )
 
 
 @dataclass(slots=True)
@@ -105,6 +119,11 @@ class ExplorationIndexCheckpointPayload:
     payload: object | None = None
 
 
+def _empty_linked_children_by_branch() -> dict[CheckpointAtomPayload, int]:
+    """Return a typed empty branch-to-child-id mapping."""
+    return {}
+
+
 @dataclass(slots=True)
 class AlgorithmNodeCheckpointPayload:
     """Serialized runtime/search payload for one algorithm node.
@@ -119,12 +138,19 @@ class AlgorithmNodeCheckpointPayload:
     depth: int
     state_ref: object
     generated_all_branches: bool
-    unopened_branches: list[CheckpointAtomPayload] = field(default_factory=list)
+    unopened_branches: list[CheckpointAtomPayload] = field(
+        default_factory=_empty_checkpoint_atoms
+    )
     linked_children_by_branch: dict[CheckpointAtomPayload, int] = field(
-        default_factory=dict
+        default_factory=_empty_linked_children_by_branch
     )
     evaluation: NodeEvaluationCheckpointPayload | None = None
     exploration_index: ExplorationIndexCheckpointPayload | None = None
+
+
+def _empty_algorithm_node_payloads() -> list[AlgorithmNodeCheckpointPayload]:
+    """Return a typed empty algorithm-node payload list."""
+    return []
 
 
 @dataclass(slots=True)
@@ -132,7 +158,9 @@ class TreeCheckpointPayload:
     """Serialized structural/search payload for one tree."""
 
     root_node_id: int
-    nodes: list[AlgorithmNodeCheckpointPayload] = field(default_factory=list)
+    nodes: list[AlgorithmNodeCheckpointPayload] = field(
+        default_factory=_empty_algorithm_node_payloads
+    )
 
 
 @dataclass(slots=True)
@@ -145,15 +173,20 @@ class TreeExpansionCheckpointPayload:
     creation_child_node: bool
 
 
+def _empty_tree_expansion_payloads() -> list[TreeExpansionCheckpointPayload]:
+    """Return a typed empty tree-expansion payload list."""
+    return []
+
+
 @dataclass(slots=True)
 class TreeExpansionsCheckpointPayload:
     """Serialized selector-visible expansion records from the latest iteration."""
 
     expansions_with_node_creation: list[TreeExpansionCheckpointPayload] = field(
-        default_factory=list
+        default_factory=_empty_tree_expansion_payloads
     )
     expansions_without_node_creation: list[TreeExpansionCheckpointPayload] = field(
-        default_factory=list
+        default_factory=_empty_tree_expansion_payloads
     )
 
 

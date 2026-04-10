@@ -14,7 +14,7 @@ classifiers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "valanga==0.2.3",
+    "valanga==0.2.4",
     "rich",
     "sortedcollections>=2.1.0",
     "PyYAML>=6.0",
@@ -38,11 +38,11 @@ test = [
   "pytest>=9.0.2",
   "coverage",
   "pytest-cov>=6.0.0",
-  "atomheart==0.2.6",
+  "atomheart==0.2.7",
 ]
 
 lint = [
-  "ruff>=0.15.8",
+  "ruff>=0.15.10",
   "pylint>=4.0.5",
 ]
 
@@ -295,13 +295,13 @@ description = "ruff + pylint (fast, no package build/install)"
 package = "skip"
 deps = [
   # runtime deps needed for pylint imports (match [project].dependencies)
-    "valanga==0.2.3",
+    "valanga==0.2.4",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",
 
   # tools
-  "ruff>=0.15.8",
+  "ruff>=0.15.10",
   "pylint>=4.0.5",
 ]
 set_env = { PYTHONPATH = "{toxinidir}/src" }
@@ -319,7 +319,7 @@ description = "mypy + pyright (fast, no package build/install)"
 package = "skip"
 deps = [
   # runtime deps for import resolution
-    "valanga==0.2.3",
+    "valanga==0.2.4",
   "rich",
   "sortedcollections>=2.1.0",
   "graphviz",

@@ -197,7 +197,9 @@ def _parent_signature(node: Any) -> dict[int, set[object]]:
     }
 
 
-def _latest_expansion_signature(runtime: Any) -> list[tuple[int, int | None, object, bool]]:
+def _latest_expansion_signature(
+    runtime: Any,
+) -> list[tuple[int, int | None, object, bool]]:
     """Return comparable selector-visible latest expansion records."""
     return [
         (
@@ -206,7 +208,7 @@ def _latest_expansion_signature(runtime: Any) -> list[tuple[int, int | None, obj
             serialize_checkpoint_atom(expansion.branch_key),
             expansion.creation_child_node,
         )
-        for expansion in runtime._latest_tree_expansions
+        for expansion in runtime.latest_tree_expansions
     ]
 
 
@@ -266,6 +268,28 @@ def test_checkpoint_restored_runtime_can_continue_search() -> None:
     restored.step()
 
     assert restored.tree.nodes_count > node_count_before
+
+
+def test_checkpoint_restored_runtime_supports_reevaluation() -> None:
+    """A restored runtime should still support evaluator hot-swap refreshes."""
+    runtime = _build_runtime()
+    runtime.step()
+    restored = _roundtrip_runtime(runtime)
+    root_children = [
+        child
+        for child in restored.tree.root_node.branches_children.values()
+        if child is not None
+    ]
+    new_values = {node_id: float(node_id + 100) for node_id in _CHILDREN_BY_ID}
+
+    restored.set_evaluator(MasterStateValueEvaluatorFromYaml(new_values))
+    report = restored.reevaluate_nodes(root_children)
+
+    assert report.evaluator_version == 1
+    assert report.requested_count == len(root_children)
+    assert report.reevaluated_count == len(root_children)
+    assert report.changed_count == len(root_children)
+    assert restored.tree.root_node.tree_evaluation.backed_up_value is not None
 
 
 def test_checkpoint_restore_does_not_evaluate_checkpointed_nodes() -> None:
@@ -362,7 +386,5 @@ def test_checkpoint_restore_preserves_exploration_index_data() -> None:
         )
         assert (
             restored_node.exploration_index_data.zipf_factored_proba
-            == pytest.approx(
-                original_node.exploration_index_data.zipf_factored_proba
-            )
+            == pytest.approx(original_node.exploration_index_data.zipf_factored_proba)
         )

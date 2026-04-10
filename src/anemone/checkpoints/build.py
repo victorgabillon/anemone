@@ -223,16 +223,16 @@ def _build_backup_runtime_payload(
 
     return BackupRuntimeCheckpointPayload(
         best_branch=_serialize_optional_atom(backup_runtime.best_branch),
-        second_best_branch=_serialize_optional_atom(
-            backup_runtime.second_best_branch
-        ),
+        second_best_branch=_serialize_optional_atom(backup_runtime.second_best_branch),
         exact_child_count=backup_runtime.exact_child_count,
         selected_child_pv_version=backup_runtime.selected_child_pv_version,
         is_initialized=backup_runtime.is_initialized,
     )
 
 
-def _serialize_branch_collection(branches: Iterable[Any]) -> list[CheckpointAtomPayload]:
+def _serialize_branch_collection(
+    branches: Iterable[Any],
+) -> list[CheckpointAtomPayload]:
     """Serialize a branch collection in deterministic checkpoint-atom order."""
     return sorted(
         (serialize_checkpoint_atom(branch) for branch in branches),
@@ -300,7 +300,7 @@ def _build_latest_tree_expansions_payload(
     search: TreeExploration[Any],
 ) -> TreeExpansionsCheckpointPayload:
     """Serialize selector-visible expansion records from the latest iteration."""
-    return _build_tree_expansions_payload(search._latest_tree_expansions)
+    return _build_tree_expansions_payload(search.latest_tree_expansions)
 
 
 def _build_tree_expansions_payload(

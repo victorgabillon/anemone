@@ -147,6 +147,19 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
         return tree_expansions
 
+    @property
+    def latest_tree_expansions(self) -> tree_man.TreeExpansions[NodeT]:
+        """Return selector-visible expansion records from the latest iteration."""
+        return self._latest_tree_expansions
+
+    @latest_tree_expansions.setter
+    def latest_tree_expansions(
+        self,
+        value: tree_man.TreeExpansions[NodeT],
+    ) -> None:
+        """Restore selector-visible expansion records from a checkpoint payload."""
+        self._latest_tree_expansions = value
+
     def _report_iteration_progress(self, random_generator: Random) -> None:
         """Invoke the optional iteration-progress reporter for this runtime."""
         if self.iteration_progress_reporter is None:

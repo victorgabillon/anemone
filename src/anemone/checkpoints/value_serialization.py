@@ -21,6 +21,8 @@ from .payloads import (
 if TYPE_CHECKING:
     from collections.abc import Hashable
 
+    from anemone._valanga_types import AnyOverEvent
+
 
 class CheckpointSerializationError(ValueError):
     """Raised when checkpoint serialization cannot represent a runtime object."""
@@ -72,9 +74,7 @@ class CheckpointSerializationError(ValueError):
         root: object,
     ) -> CheckpointSerializationError:
         """Return the error for qualnames that cannot be resolved."""
-        return cls(
-            f"Cannot resolve checkpoint qualname {qualname!r} from {root!r}."
-        )
+        return cls(f"Cannot resolve checkpoint qualname {qualname!r} from {root!r}.")
 
 
 def serialize_checkpoint_atom(value: object) -> CheckpointAtomPayload:
@@ -134,13 +134,13 @@ def serialize_over_event(
 
 def deserialize_over_event(
     payload: SerializedOverEventPayload | None,
-) -> OverEvent[object] | None:
+) -> AnyOverEvent | None:
     """Deserialize one serialized over-event payload."""
     if payload is None:
         return None
 
     termination = cast("Enum | None", deserialize_checkpoint_atom(payload.termination))
-    winner = cast("Hashable | None", deserialize_checkpoint_atom(payload.winner))
+    winner = deserialize_checkpoint_atom(payload.winner)
     return OverEvent(
         outcome=Outcome[payload.outcome],
         termination=termination,

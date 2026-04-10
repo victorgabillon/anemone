@@ -1,4 +1,5 @@
 """Public checkpoint schema and serialization entrypoints."""
+# pylint: disable=duplicate-code
 
 from .build import build_search_checkpoint_payload
 from .load import CheckpointRestoreError, load_search_from_checkpoint_payload

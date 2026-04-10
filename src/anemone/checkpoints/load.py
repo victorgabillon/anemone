@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from random import Random
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 from anemone import trees
 from anemone._runtime_assembly import assemble_search_runtime_dependencies
@@ -93,9 +93,7 @@ class CheckpointRestoreError(ValueError):
     @classmethod
     def invalid_exploration_index_payload(cls) -> CheckpointRestoreError:
         """Return the error for unsupported exploration-index payload shape."""
-        return cls(
-            "Exploration index payloads must be dicts produced by the exporter."
-        )
+        return cls("Exploration index payloads must be dicts produced by the exporter.")
 
     @classmethod
     def live_tree_node_in_index_payload(cls) -> CheckpointRestoreError:
@@ -114,6 +112,13 @@ class CheckpointRestoreError(ValueError):
     def unknown_node_id(cls, node_id: int) -> CheckpointRestoreError:
         """Return the error for a node reference that cannot be resolved."""
         return cls(f"Checkpoint references unknown node id {node_id}.")
+
+
+@runtime_checkable
+class _DepthCursorSelector(Protocol):
+    """Selector component with a restorable depth cursor."""
+
+    current_depth_to_expand: int
 
 
 def load_search_from_checkpoint_payload[
@@ -138,9 +143,13 @@ def load_search_from_checkpoint_payload[
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """Restore a live search runtime from one in-memory checkpoint payload.
 
-    The loader restores already-checkpointed values and runtime caches directly;
-    the supplied evaluator is kept for future expansions after the runtime
-    resumes.
+    The loader restores exported tree, node, value, and evaluation-cache state
+    directly without evaluating checkpointed nodes. Selector-visible latest
+    expansions are restored exactly from the payload. Selector-private state is
+    only restored where this module has an explicit, narrow runtime contract;
+    currently that means inferring Uniform's depth cursor from the latest
+    expansion depth. The supplied evaluator is kept for future expansions and
+    explicit reevaluations after the runtime resumes.
     """
     _validate_payload(payload)
 
@@ -156,7 +165,10 @@ def load_search_from_checkpoint_payload[
         ),
         hooks=hooks,
     )
-    states_by_id = _load_states(payload=payload, state_codec=state_codec)
+    states_by_id: dict[int, StateT] = _load_states(
+        payload=payload,
+        state_codec=state_codec,
+    )
     _ = state_type
 
     nodes_by_id = _create_nodes(
@@ -194,9 +206,7 @@ def load_search_from_checkpoint_payload[
 def _validate_payload(payload: SearchRuntimeCheckpointPayload) -> None:
     """Validate the minimal structural facts needed before restoring."""
     if payload.format_version != CHECKPOINT_FORMAT_VERSION:
-        raise CheckpointRestoreError.unsupported_format_version(
-            payload.format_version
-        )
+        raise CheckpointRestoreError.unsupported_format_version(payload.format_version)
     if not payload.tree.nodes:
         raise CheckpointRestoreError.empty_tree()
 
@@ -229,7 +239,12 @@ def _create_nodes[
     payload: SearchRuntimeCheckpointPayload,
     states_by_id: Mapping[int, StateT],
 ) -> dict[int, AlgorithmNode[StateT]]:
-    """Create every node without linking parent/child edges yet."""
+    """Create every node without linking parent/child edges yet.
+
+    ``AlgorithmNodeFactory`` forwards ``count`` to ``TreeNode.id_``. Supplying
+    the checkpoint id here keeps restored ids stable without relying on any
+    hidden global counter.
+    """
     nodes_by_id: dict[int, AlgorithmNode[StateT]] = {}
     for node_payload in sorted(payload.tree.nodes, key=lambda item: item.depth):
         node = node_factory.create(
@@ -252,7 +267,10 @@ def _link_nodes(
     """Restore graph edges from authoritative parent child-link payloads."""
     for node_payload in node_payloads:
         parent_node = nodes_by_id[node_payload.node_id]
-        for branch_payload, child_node_id in node_payload.linked_children_by_branch.items():
+        for (
+            branch_payload,
+            child_node_id,
+        ) in node_payload.linked_children_by_branch.items():
             child_node = _require_node(nodes_by_id, child_node_id)
             branch = _deserialize_branch(branch_payload)
             parent_node.branches_children[branch] = child_node
@@ -293,6 +311,8 @@ def _restore_evaluation(
         else None
     )
     node_eval.direct_evaluation_version = payload.direct_evaluation_version
+    # ``backed_up_value`` is the canonical writable property over
+    # ``NodeTreeEvaluationState._backed_up_value``.
     node_eval.backed_up_value = (
         deserialize_value(payload.backed_up_value)
         if payload.backed_up_value is not None
@@ -395,11 +415,12 @@ def _restore_exploration_index(
     if not isinstance(index_payload, dict):
         raise CheckpointRestoreError.invalid_exploration_index_payload()
 
+    index_fields = cast("dict[str, object]", index_payload)
     index_data = _make_exploration_index_data(
         kind=payload.kind,
         node=node,
     )
-    for field_name, field_value in index_payload.items():
+    for field_name, field_value in index_fields.items():
         if field_name == "tree_node":
             raise CheckpointRestoreError.live_tree_node_in_index_payload()
         setattr(index_data, field_name, _restore_index_field_value(field_value))
@@ -426,14 +447,14 @@ def _make_exploration_index_data(
 
 def _restore_index_field_value(value: object) -> object:
     """Restore one exploration-index field value."""
-    if (
-        isinstance(value, dict)
-        and set(value.keys()) == {"min_value", "max_value"}
-    ):
-        return Interval(
-            min_value=cast("float | None", value["min_value"]),
-            max_value=cast("float | None", value["max_value"]),
-        )
+    if isinstance(value, dict):
+        fields = cast("dict[str, object]", value)
+        if set(fields) == {"min_value", "max_value"}:
+            return Interval(
+                min_value=cast("float | None", fields["min_value"]),
+                max_value=cast("float | None", fields["max_value"]),
+            )
+        return fields
     return value
 
 
@@ -476,12 +497,12 @@ def _restore_runtime_state(
         random_generator.setstate(cast("tuple[Any, ...]", payload.rng_state))
 
     if payload.latest_tree_expansions is not None:
-        runtime._latest_tree_expansions = _restore_tree_expansions(
+        runtime.latest_tree_expansions = _restore_tree_expansions(
             payload.latest_tree_expansions,
             nodes_by_id=nodes_by_id,
         )
 
-    _restore_depth_selector_state(
+    _restore_inferred_depth_selector_state(
         runtime=runtime,
         payload=payload.latest_tree_expansions,
         nodes_by_id=nodes_by_id,
@@ -525,13 +546,20 @@ def _restore_tree_expansion(
     )
 
 
-def _restore_depth_selector_state(
+def _restore_inferred_depth_selector_state(
     *,
     runtime: TreeExploration[AlgorithmNode[Any]],
     payload: TreeExpansionsCheckpointPayload | None,
     nodes_by_id: Mapping[int, AlgorithmNode[Any]],
 ) -> None:
-    """Restore simple depth selector cursors inferred from latest expansions."""
+    """Restore simple depth selector cursors inferred from latest expansions.
+
+    This is intentionally marked as inferred, not exact generic selector
+    restoration. Uniform's only local mutable state is the next depth cursor,
+    and after a completed Uniform iteration the latest touched child depth is
+    exactly that next cursor. Other selector-local state should become explicit
+    checkpoint payload in a future selector checkpointing PR.
+    """
     if payload is None:
         return
     next_depth = _infer_latest_expansion_depth(
@@ -542,7 +570,7 @@ def _restore_depth_selector_state(
         return
 
     for selector in _iter_selector_components(runtime.node_selector):
-        if hasattr(selector, "current_depth_to_expand"):
+        if isinstance(selector, _DepthCursorSelector):
             selector.current_depth_to_expand = next_depth
 
 
@@ -594,10 +622,12 @@ def _deserialize_optional_branch(
 
 def _deserialize_branch(payload: CheckpointAtomPayload) -> BranchKey:
     """Deserialize a branch key checkpoint atom."""
-    return cast("BranchKey", deserialize_checkpoint_atom(payload))
+    return deserialize_checkpoint_atom(payload)
 
 
-_EXPLORATION_INDEX_TYPES_BY_NAME: dict[str | None, type[NodeExplorationData[Any, Any]]] = {
+_EXPLORATION_INDEX_TYPES_BY_NAME: dict[
+    str | None, type[NodeExplorationData[Any, Any]]
+] = {
     "NodeExplorationData": NodeExplorationData,
     "RecurZipfQuoolExplorationData": RecurZipfQuoolExplorationData,
     "MinMaxPathValue": MinMaxPathValue,
