@@ -136,6 +136,28 @@ class TreeCheckpointPayload:
 
 
 @dataclass(slots=True)
+class TreeExpansionCheckpointPayload:
+    """Serialized selector-visible record for one recent tree expansion."""
+
+    child_node_id: int
+    parent_node_id: int | None
+    branch_key: CheckpointAtomPayload | None
+    creation_child_node: bool
+
+
+@dataclass(slots=True)
+class TreeExpansionsCheckpointPayload:
+    """Serialized selector-visible expansion records from the latest iteration."""
+
+    expansions_with_node_creation: list[TreeExpansionCheckpointPayload] = field(
+        default_factory=list
+    )
+    expansions_without_node_creation: list[TreeExpansionCheckpointPayload] = field(
+        default_factory=list
+    )
+
+
+@dataclass(slots=True)
 class SearchRuntimeCheckpointPayload:
     """Top-level runtime checkpoint payload for a search session."""
 
@@ -143,7 +165,7 @@ class SearchRuntimeCheckpointPayload:
     tree: TreeCheckpointPayload
     format_version: int = CHECKPOINT_FORMAT_VERSION
     rng_state: object | None = None
-    latest_tree_expansions: object | None = None
+    latest_tree_expansions: TreeExpansionsCheckpointPayload | None = None
 
 
 __all__ = [
@@ -162,4 +184,6 @@ __all__ = [
     "SerializedOverEventPayload",
     "SerializedValuePayload",
     "TreeCheckpointPayload",
+    "TreeExpansionCheckpointPayload",
+    "TreeExpansionsCheckpointPayload",
 ]

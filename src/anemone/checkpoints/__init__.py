@@ -1,5 +1,6 @@
 """Public checkpoint schema and serialization entrypoints."""
 
+from .build import build_search_checkpoint_payload
 from .payloads import (
     CHECKPOINT_FORMAT_VERSION,
     AlgorithmNodeCheckpointPayload,
@@ -16,6 +17,8 @@ from .payloads import (
     SerializedOverEventPayload,
     SerializedValuePayload,
     TreeCheckpointPayload,
+    TreeExpansionCheckpointPayload,
+    TreeExpansionsCheckpointPayload,
 )
 from .value_serialization import (
     CheckpointSerializationError,
@@ -44,6 +47,9 @@ __all__ = [
     "SerializedOverEventPayload",
     "SerializedValuePayload",
     "TreeCheckpointPayload",
+    "TreeExpansionCheckpointPayload",
+    "TreeExpansionsCheckpointPayload",
+    "build_search_checkpoint_payload",
     "deserialize_checkpoint_atom",
     "deserialize_over_event",
     "deserialize_value",
