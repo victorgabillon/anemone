@@ -11,6 +11,7 @@ from valanga import Color
 from anemone import SearchArgs, create_search
 from anemone.checkpoints import (
     CHECKPOINT_FORMAT_VERSION,
+    LinkedChildCheckpointPayload,
     SearchRuntimeCheckpointPayload,
     TreeExpansionsCheckpointPayload,
     build_search_checkpoint_payload,
@@ -198,11 +199,17 @@ def test_structural_parent_and_child_relationships_are_exported() -> None:
 
     assert root_payload.parent_node_id is None
     assert root_payload.branch_from_parent is None
-    assert root_payload.linked_children_by_branch == {
-        serialize_checkpoint_atom(branch): child.id
-        for branch, child in root.branches_children.items()
-        if child is not None
-    }
+    assert root_payload.linked_children == sorted(
+        [
+            LinkedChildCheckpointPayload(
+                branch_key=serialize_checkpoint_atom(branch),
+                child_node_id=child.id,
+            )
+            for branch, child in root.branches_children.items()
+            if child is not None
+        ],
+        key=lambda item: (repr(item.branch_key), item.child_node_id),
+    )
 
     for branch, child in root.branches_children.items():
         assert child is not None

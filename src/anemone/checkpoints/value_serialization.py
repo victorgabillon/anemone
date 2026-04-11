@@ -1,4 +1,4 @@
-"""Low-level serialization helpers for checkpointed ``Value`` objects."""
+"""Low-level serialization helpers for recursive checkpoint atoms and ``Value`` objects."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from .payloads import (
     EnumMemberPayload,
     SerializedOverEventPayload,
     SerializedValuePayload,
+    TupleAtomPayload,
 )
 
 if TYPE_CHECKING:
@@ -31,8 +32,27 @@ class CheckpointSerializationError(ValueError):
     def unsupported_atom(cls, value: object) -> CheckpointSerializationError:
         """Return the error for unsupported checkpoint atom values."""
         return cls(
-            "Checkpoint payloads currently support only None, bool, int, float, "
-            f"str, or Enum members, got {type(value)!r}."
+            "Checkpoint payloads support only None, bool, int, float, str, Enum "
+            f"members, or recursively nested tuples of those atoms, got {type(value)!r}."
+        )
+
+    @classmethod
+    def invalid_atom_payload(cls, payload: object) -> CheckpointSerializationError:
+        """Return the error for malformed checkpoint atom payloads."""
+        return cls(
+            "Checkpoint atom payloads must be scalars, Enum payloads, or tagged "
+            f"tuple payloads, got {type(payload)!r}: {payload!r}."
+        )
+
+    @classmethod
+    def invalid_tuple_payload_items(
+        cls,
+        payload: object,
+    ) -> CheckpointSerializationError:
+        """Return the error for tagged tuple payloads without list items."""
+        return cls(
+            "Checkpoint tuple payloads require an 'items' list, "
+            f"got {payload!r}."
         )
 
     @classmethod
@@ -77,13 +97,28 @@ class CheckpointSerializationError(ValueError):
         return cls(f"Cannot resolve checkpoint qualname {qualname!r} from {root!r}.")
 
 
+type CheckpointAtom = None | bool | int | float | str | Enum | tuple[CheckpointAtom, ...]
+
+
 def serialize_checkpoint_atom(value: object) -> CheckpointAtomPayload:
-    """Serialize one small scalar/enum value used inside checkpoint payloads."""
+    """Serialize one recursive checkpoint atom into an explicit payload.
+
+    Supported checkpoint atoms are ``None``, booleans, integers, floats, strings,
+    Enum members, and recursively nested tuples of checkpoint atoms. Tuples are
+    encoded explicitly as ``{"type": "tuple", "items": [...]}`` so roundtrips
+    preserve tuple structure exactly.
+    """
     if isinstance(value, Enum):
         return EnumMemberPayload(
             module=value.__class__.__module__,
             qualname=value.__class__.__qualname__,
             name=value.name,
+        )
+
+    if isinstance(value, tuple):
+        return TupleAtomPayload(
+            type="tuple",
+            items=[serialize_checkpoint_atom(item) for item in value],
         )
 
     if value is None or isinstance(value, (bool, int, float, str)):
@@ -92,10 +127,25 @@ def serialize_checkpoint_atom(value: object) -> CheckpointAtomPayload:
     raise CheckpointSerializationError.unsupported_atom(value)
 
 
-def deserialize_checkpoint_atom(payload: CheckpointAtomPayload) -> object:
-    """Deserialize one small scalar/enum checkpoint payload."""
-    if not isinstance(payload, EnumMemberPayload):
+def deserialize_checkpoint_atom(payload: CheckpointAtomPayload) -> CheckpointAtom:
+    """Deserialize one recursive checkpoint atom payload.
+
+    Tagged tuple payloads are restored back into Python tuples so checkpointed
+    branch labels and ``Value.line`` entries keep their exact runtime structure.
+    """
+    if payload is None or isinstance(payload, (bool, int, float, str)):
         return payload
+
+    if isinstance(payload, dict):
+        if payload.get("type") != "tuple":
+            raise CheckpointSerializationError.invalid_atom_payload(payload)
+        items = payload.get("items")
+        if not isinstance(items, list):
+            raise CheckpointSerializationError.invalid_tuple_payload_items(payload)
+        return tuple(deserialize_checkpoint_atom(item) for item in items)
+
+    if not isinstance(payload, EnumMemberPayload):
+        raise CheckpointSerializationError.invalid_atom_payload(payload)
 
     module = import_module(payload.module)
     enum_type = _resolve_qualname(module, payload.qualname)
@@ -197,6 +247,7 @@ def _resolve_qualname(root: object, qualname: str) -> object:
 
 
 __all__ = [
+    "CheckpointAtom",
     "CheckpointSerializationError",
     "deserialize_checkpoint_atom",
     "deserialize_over_event",

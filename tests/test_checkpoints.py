@@ -16,6 +16,7 @@ from anemone.checkpoints import (
     BranchOrderingCheckpointPayload,
     DecisionOrderingCheckpointPayload,
     ExplorationIndexCheckpointPayload,
+    LinkedChildCheckpointPayload,
     NodeEvaluationCheckpointPayload,
     PrincipalVariationCheckpointPayload,
     SearchRuntimeCheckpointPayload,
@@ -110,7 +111,9 @@ def test_checkpoint_payload_dataclasses_support_nested_runtime_state() -> None:
                     state_ref={"tag": "root"},
                     generated_all_branches=True,
                     unopened_branches=[2, 3],
-                    linked_children_by_branch={0: 2},
+                    linked_children=[
+                        LinkedChildCheckpointPayload(branch_key=0, child_node_id=2)
+                    ],
                     evaluation=NodeEvaluationCheckpointPayload(
                         direct_value=direct_value,
                         direct_evaluation_version=5,
@@ -156,7 +159,9 @@ def test_checkpoint_payload_dataclasses_support_nested_runtime_state() -> None:
     assert checkpoint.tree.nodes[0].evaluation.direct_value == direct_value
     assert checkpoint.tree.nodes[0].evaluation.backup_runtime is not None
     assert checkpoint.tree.nodes[0].evaluation.backup_runtime.best_branch == 0
-    assert checkpoint.tree.nodes[0].linked_children_by_branch == {0: 2}
+    assert checkpoint.tree.nodes[0].linked_children == [
+        LinkedChildCheckpointPayload(branch_key=0, child_node_id=2)
+    ]
     assert checkpoint.tree.nodes[0].exploration_index is not None
     assert checkpoint.tree.nodes[0].exploration_index.kind == "interval"
 

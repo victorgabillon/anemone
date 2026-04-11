@@ -16,6 +16,7 @@ from .payloads import (
     CheckpointAtomPayload,
     DecisionOrderingCheckpointPayload,
     ExplorationIndexCheckpointPayload,
+    LinkedChildCheckpointPayload,
     NodeEvaluationCheckpointPayload,
     PrincipalVariationCheckpointPayload,
     SearchRuntimeCheckpointPayload,
@@ -96,11 +97,7 @@ def _build_node_payload(
         state_ref=state_codec.dump_state_ref(node.state),
         generated_all_branches=node.all_branches_generated,
         unopened_branches=_serialize_branch_collection(node.non_opened_branches),
-        linked_children_by_branch={
-            serialize_checkpoint_atom(branch): child.id
-            for branch, child in node.branches_children.items()
-            if child is not None
-        },
+        linked_children=_serialize_linked_children(node.branches_children),
         evaluation=_build_node_evaluation_payload(node),
         exploration_index=_build_exploration_index_payload(node),
     )
@@ -112,13 +109,30 @@ def _representative_parent_edge(
     """Return a deterministic representative incoming edge for this node.
 
     Full incoming edge information is recoverable from every parent's
-    ``linked_children_by_branch`` mapping. The node-local parent fields keep the
+    ``linked_children`` edge list. The node-local parent fields keep the
     legacy one-parent shape by storing the first runtime parent edge.
     """
     for parent_node, branch_keys in node.parent_nodes.items():
         branch = _first_branch_in_stable_order(branch_keys)
         return parent_node.id, serialize_checkpoint_atom(branch)
     return None, None
+
+
+def _serialize_linked_children(
+    branches_children: dict[Any, AlgorithmNode[Any] | None],
+) -> list[LinkedChildCheckpointPayload]:
+    """Serialize linked children in stable checkpoint-atom order."""
+    return sorted(
+        [
+            LinkedChildCheckpointPayload(
+                branch_key=serialize_checkpoint_atom(branch),
+                child_node_id=child.id,
+            )
+            for branch, child in branches_children.items()
+            if child is not None
+        ],
+        key=lambda item: (repr(item.branch_key), item.child_node_id),
+    )
 
 
 def _first_branch_in_stable_order(branches: Iterable[Any]) -> Any:

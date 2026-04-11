@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal, TypedDict
 
 CHECKPOINT_FORMAT_VERSION = 1
 
@@ -16,7 +17,16 @@ class EnumMemberPayload:
     name: str
 
 
-type CheckpointAtomPayload = None | bool | int | float | str | EnumMemberPayload
+class TupleAtomPayload(TypedDict):
+    """Explicit tagged payload that preserves tuple atoms across checkpoints."""
+
+    type: Literal["tuple"]
+    items: list[CheckpointAtomPayload]
+
+
+type CheckpointAtomPayload = (
+    None | bool | int | float | str | EnumMemberPayload | TupleAtomPayload
+)
 
 
 def _empty_checkpoint_atoms() -> list[CheckpointAtomPayload]:
@@ -119,9 +129,17 @@ class ExplorationIndexCheckpointPayload:
     payload: object | None = None
 
 
-def _empty_linked_children_by_branch() -> dict[CheckpointAtomPayload, int]:
-    """Return a typed empty branch-to-child-id mapping."""
-    return {}
+@dataclass(frozen=True, slots=True)
+class LinkedChildCheckpointPayload:
+    """Serialized parent-child edge keyed by one checkpoint atom payload."""
+
+    branch_key: CheckpointAtomPayload
+    child_node_id: int
+
+
+def _empty_linked_children() -> list[LinkedChildCheckpointPayload]:
+    """Return a typed empty linked-child payload list."""
+    return []
 
 
 @dataclass(slots=True)
@@ -141,8 +159,8 @@ class AlgorithmNodeCheckpointPayload:
     unopened_branches: list[CheckpointAtomPayload] = field(
         default_factory=_empty_checkpoint_atoms
     )
-    linked_children_by_branch: dict[CheckpointAtomPayload, int] = field(
-        default_factory=_empty_linked_children_by_branch
+    linked_children: list[LinkedChildCheckpointPayload] = field(
+        default_factory=_empty_linked_children
     )
     evaluation: NodeEvaluationCheckpointPayload | None = None
     exploration_index: ExplorationIndexCheckpointPayload | None = None
@@ -211,6 +229,7 @@ __all__ = [
     "DecisionOrderingCheckpointPayload",
     "EnumMemberPayload",
     "ExplorationIndexCheckpointPayload",
+    "LinkedChildCheckpointPayload",
     "NodeEvaluationCheckpointPayload",
     "PrincipalVariationCheckpointPayload",
     "SearchRuntimeCheckpointPayload",
@@ -219,4 +238,5 @@ __all__ = [
     "TreeCheckpointPayload",
     "TreeExpansionCheckpointPayload",
     "TreeExpansionsCheckpointPayload",
+    "TupleAtomPayload",
 ]

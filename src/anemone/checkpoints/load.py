@@ -267,12 +267,9 @@ def _link_nodes(
     """Restore graph edges from authoritative parent child-link payloads."""
     for node_payload in node_payloads:
         parent_node = nodes_by_id[node_payload.node_id]
-        for (
-            branch_payload,
-            child_node_id,
-        ) in node_payload.linked_children_by_branch.items():
-            child_node = _require_node(nodes_by_id, child_node_id)
-            branch = _deserialize_branch(branch_payload)
+        for linked_child in node_payload.linked_children:
+            child_node = _require_node(nodes_by_id, linked_child.child_node_id)
+            branch = _deserialize_branch(linked_child.branch_key)
             parent_node.branches_children[branch] = child_node
             child_node.add_parent(branch_key=branch, new_parent_node=parent_node)
 
@@ -474,7 +471,7 @@ def _build_tree[
     restored_tree = trees.Tree(root_node=root_node, descendants=descendants)
     restored_tree.nodes_count = len(nodes_by_id)
     restored_tree.branch_count = sum(
-        len(node_payload.linked_children_by_branch)
+        len(node_payload.linked_children)
         for node_payload in payload.tree.nodes
     )
     return restored_tree

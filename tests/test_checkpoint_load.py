@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import valanga
+from dataclasses import dataclass
 from random import Random
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import pytest
-from valanga import Color
+from valanga import BranchKey, Color, State, StateModifications, StateTag
 
 from anemone import SearchArgs, create_search
 from anemone.checkpoints import (
@@ -97,6 +99,179 @@ _DAG_CHILDREN_BY_ID = {
     3: [],
 }
 
+type _TupleBranch = tuple[int, int, int, int]
+
+_TUPLE_BRANCH_CHILDREN_BY_ID = {
+    0: [((1, 2, 3, 4), 1), ((5, 6, 7, 8), 2)],
+    1: [],
+    2: [],
+}
+
+
+class _TupleBranchKeyGenerator:
+    """Simple branch-key generator that yields tuple branch labels in order."""
+
+    sort_branch_keys: bool = False
+
+    def __init__(self, keys: list[_TupleBranch]) -> None:
+        """Store the tuple branch keys exposed by one test state."""
+        self._keys = keys
+        self._index = 0
+
+    @property
+    def all_generated_keys(self) -> list[_TupleBranch]:
+        """Return the full ordered key list for checkpoint consumers."""
+        return list(self._keys)
+
+    def __iter__(self) -> Self:
+        """Reset iteration state before yielding branch keys."""
+        self._index = 0
+        return self
+
+    def __next__(self) -> _TupleBranch:
+        """Yield the next tuple branch key."""
+        if self._index >= len(self._keys):
+            raise StopIteration
+        key = self._keys[self._index]
+        self._index += 1
+        return key
+
+    def more_than_one(self) -> bool:
+        """Report whether this generator exposes multiple keys."""
+        return len(self._keys) > 1
+
+    def get_all(self) -> list[_TupleBranch]:
+        """Return all tuple branch keys without advancing iteration state."""
+        return list(self._keys)
+
+    def copy_with_reset(self) -> _TupleBranchKeyGenerator:
+        """Return an equivalent generator rewound to the first key."""
+        return _TupleBranchKeyGenerator(list(self._keys))
+
+
+@dataclass(slots=True)
+class _TupleBranchState(State):
+    """Small test state whose outgoing branches are tuple labels."""
+
+    node_id: int
+    children_by_id: dict[int, list[tuple[_TupleBranch, int]]]
+    turn: Color = Color.WHITE
+
+    @property
+    def tag(self) -> StateTag:
+        """Return the stable integer state tag used by the evaluator."""
+        return int(self.node_id)
+
+    @property
+    def branch_keys(self) -> _TupleBranchKeyGenerator:
+        """Expose tuple branch labels in their configured order."""
+        return _TupleBranchKeyGenerator(
+            [branch for branch, _ in self.children_by_id.get(self.node_id, [])]
+        )
+
+    def branch_name_from_key(self, key: BranchKey) -> str:
+        """Return a readable tuple-branch edge label for diagnostics."""
+        return f"{self.node_id}->{key!r}"
+
+    def is_game_over(self) -> bool:
+        """Report whether this state has any outgoing tuple branches left."""
+        return len(self.children_by_id.get(self.node_id, [])) == 0
+
+    def copy(self, stack: bool, deep_copy_legal_moves: bool = True) -> Self:
+        """Return a shallow copy compatible with the Valanga state contract."""
+        del stack, deep_copy_legal_moves
+        return _TupleBranchState(
+            node_id=self.node_id,
+            children_by_id=self.children_by_id,
+            turn=self.turn,
+        )
+
+    def step(self, branch_key: BranchKey) -> StateModifications | None:
+        """Mutate in place by following one tuple-labeled edge."""
+        self.node_id = self._child_id_from_branch(branch_key)
+        self.turn = Color.BLACK if self.turn == Color.WHITE else Color.WHITE
+        return None
+
+    def _child_id_from_branch(self, branch_key: BranchKey) -> int:
+        """Resolve a tuple branch label to its configured child node id."""
+        if not isinstance(branch_key, tuple):
+            raise TypeError(
+                f"branch_key must be a tuple label, got {type(branch_key)}: {branch_key!r}"
+            )
+
+        for candidate_branch, child_id in self.children_by_id.get(self.node_id, []):
+            if candidate_branch == branch_key:
+                return child_id
+
+        raise ValueError(
+            f"Invalid tuple branch {branch_key!r} for node {self.node_id}."
+        )
+
+
+class _TupleBranchDynamics:
+    """Minimal search dynamics for tuple-branch checkpoint tests."""
+
+    __anemone_search_dynamics__ = True
+
+    def legal_actions(
+        self, state: _TupleBranchState
+    ) -> _TupleBranchKeyGenerator:
+        """Return the tuple branch keys currently available from this state."""
+        return state.branch_keys
+
+    def step(
+        self, state: _TupleBranchState, action: BranchKey, *, depth: int
+    ) -> valanga.Transition[_TupleBranchState]:
+        """Return the next state reached by one tuple branch label."""
+        del depth
+        child_id = state._child_id_from_branch(action)
+        next_turn = Color.BLACK if state.turn == Color.WHITE else Color.WHITE
+        next_state = _TupleBranchState(
+            node_id=child_id,
+            children_by_id=state.children_by_id,
+            turn=next_turn,
+        )
+        return valanga.Transition(
+            next_state=next_state,
+            modifications=None,
+            is_over=next_state.is_game_over(),
+            over_event=None,
+            info={},
+        )
+
+    def action_name(self, state: _TupleBranchState, action: BranchKey) -> str:
+        """Return a stable string form for one tuple branch label."""
+        return state.branch_name_from_key(action)
+
+    def action_from_name(self, state: _TupleBranchState, name: str) -> BranchKey:
+        """Resolve a tuple branch label from its diagnostic string form."""
+        del state
+        for branch, _child_id in _TUPLE_BRANCH_CHILDREN_BY_ID[0]:
+            if repr(branch) == name or f"0->{branch!r}" == name:
+                return branch
+        raise ValueError(f"Unknown tuple branch name {name!r}.")
+
+
+class _TupleBranchStateCheckpointCodec:
+    """External state-ref codec for the tuple-branch fake domain."""
+
+    def dump_state_ref(self, state: _TupleBranchState) -> object:
+        """Return an opaque state reference produced outside Anemone."""
+        return {
+            "codec": "tuple-branch",
+            "node_id": state.node_id,
+            "turn": state.turn.name,
+        }
+
+    def load_state_ref(self, state_ref: object) -> _TupleBranchState:
+        """Rebuild a tuple-branch state from one external state reference."""
+        data = cast("dict[str, object]", state_ref)
+        return _TupleBranchState(
+            node_id=cast("int", data["node_id"]),
+            children_by_id=_TUPLE_BRANCH_CHILDREN_BY_ID,
+            turn=Color[cast("str", data["turn"])],
+        )
+
 
 def _values_for(children_by_id: dict[int, list[int]]) -> dict[int, float]:
     """Return deterministic values for every fake graph node."""
@@ -165,6 +340,44 @@ def _roundtrip_runtime(
         state_type=_ConcreteFakeYamlState,
         master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
             _values_for(children_by_id)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+
+
+def _build_tuple_branch_runtime() -> Any:
+    """Build a small search runtime whose live branch labels are tuples."""
+    starting_state = _TupleBranchState(
+        node_id=0,
+        children_by_id=_TUPLE_BRANCH_CHILDREN_BY_ID,
+        turn=Color.WHITE,
+    )
+    return create_search(
+        state_type=_TupleBranchState,
+        dynamics=_TupleBranchDynamics(),
+        starting_state=starting_state,
+        args=_build_args(),
+        random_generator=Random(0),
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for({node_id: [child_id for _, child_id in children] for node_id, children in _TUPLE_BRANCH_CHILDREN_BY_ID.items()})
+        ),
+        state_representation_factory=None,
+    )
+
+
+def _roundtrip_tuple_branch_runtime(runtime: Any) -> Any:
+    """Export and restore one runtime whose tree edges use tuple labels."""
+    codec = _TupleBranchStateCheckpointCodec()
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec)
+    return load_search_from_checkpoint_payload(
+        payload,
+        state_codec=codec,
+        dynamics=_TupleBranchDynamics(),
+        args=_build_args(),
+        state_type=_TupleBranchState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for({node_id: [child_id for _, child_id in children] for node_id, children in _TUPLE_BRANCH_CHILDREN_BY_ID.items()})
         ),
         random_generator=Random(0),
         state_representation_factory=None,
@@ -352,6 +565,37 @@ def test_checkpoint_restore_preserves_dag_parent_edges() -> None:
         parent.state.node_id: {serialize_checkpoint_atom(branch) for branch in branches}
         for parent, branches in shared_node.parent_nodes.items()
     } == {1: {0}, 2: {0}}
+
+
+def test_checkpoint_restore_preserves_tuple_branch_labels() -> None:
+    """Tuple branch labels should survive checkpoint build and restore unchanged."""
+    runtime = _build_tuple_branch_runtime()
+    runtime.step()
+
+    restored = _roundtrip_tuple_branch_runtime(runtime)
+
+    original_root = runtime.tree.root_node
+    restored_root = restored.tree.root_node
+    assert sorted(
+        [
+            (serialize_checkpoint_atom(branch), child.id)
+            for branch, child in restored_root.branches_children.items()
+            if child is not None
+        ],
+        key=lambda item: (repr(item[0]), item[1]),
+    ) == sorted(
+        [
+            (serialize_checkpoint_atom(branch), child.id)
+            for branch, child in original_root.branches_children.items()
+            if child is not None
+        ],
+        key=lambda item: (repr(item[0]), item[1]),
+    )
+    assert {
+        branch
+        for branch, child in restored_root.branches_children.items()
+        if child is not None
+    } == {(1, 2, 3, 4), (5, 6, 7, 8)}
 
 
 def test_checkpoint_restore_preserves_latest_expansions() -> None:
