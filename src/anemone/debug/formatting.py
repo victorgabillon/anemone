@@ -5,15 +5,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from anemone import _best_effort
+
 _SCORE_FRAGMENT_PATTERN = re.compile(r"(score=)(-?\d+(?:\.\d+)?)")
 
-
-def safe_getattr(obj: Any, attribute_name: str) -> Any | None:
-    """Return ``obj.attribute_name`` when available for best-effort debug output."""
-    try:
-        return getattr(obj, attribute_name)
-    except (AttributeError, TypeError):
-        return None
+safe_getattr = _best_effort.safe_getattr
+format_over_event = _best_effort.format_over_event
+resolve_evaluation_over_event = _best_effort.resolve_evaluation_over_event
 
 
 def safe_hasattr(obj: Any, attribute_name: str) -> bool:
@@ -23,33 +21,6 @@ def safe_hasattr(obj: Any, attribute_name: str) -> bool:
     except (AttributeError, TypeError):
         return False
     return True
-
-
-def format_over_event(over_event: Any) -> str:
-    """Render an over-event-like object."""
-    get_over_tag = safe_getattr(over_event, "get_over_tag")
-    if callable(get_over_tag):
-        try:
-            return str(get_over_tag())
-        except (AttributeError, TypeError):
-            return str(over_event)
-    return str(over_event)
-
-
-def resolve_evaluation_over_event(evaluation: Any) -> Any | None:
-    """Return the best-effort over-event exposed by ``evaluation``."""
-    over_event = safe_getattr(evaluation, "over_event")
-    if over_event is not None:
-        return over_event
-
-    getter = safe_getattr(evaluation, "get_over_event_candidate")
-    if callable(getter):
-        try:
-            return getter()
-        except (AttributeError, TypeError):
-            return None
-
-    return None
 
 
 def format_branch_sequence(sequence: Any) -> str:

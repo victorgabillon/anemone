@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from .model import TrainingNodeSnapshot, TrainingTreeSnapshot
+from anemone._best_effort import coerce_int as _coerce_int
+from anemone.training_export.model import TrainingNodeSnapshot, TrainingTreeSnapshot
 
 
 class MalformedTrainingTreeSnapshotError(TypeError):
@@ -16,9 +17,7 @@ class MalformedNodesFieldError(MalformedTrainingTreeSnapshotError):
 
     def __init__(self) -> None:
         """Initialize with a stable explanation."""
-        super().__init__(
-            "Training tree snapshot `nodes` must be a list of objects."
-        )
+        super().__init__("Training tree snapshot `nodes` must be a list of objects.")
 
 
 class MalformedNodeEntryError(MalformedTrainingTreeSnapshotError):
@@ -26,9 +25,7 @@ class MalformedNodeEntryError(MalformedTrainingTreeSnapshotError):
 
     def __init__(self) -> None:
         """Initialize with a stable explanation."""
-        super().__init__(
-            "Each training tree snapshot node must be a dictionary."
-        )
+        super().__init__("Each training tree snapshot node must be a dictionary.")
 
 
 def training_tree_snapshot_to_dict(
@@ -50,11 +47,12 @@ def training_tree_snapshot_from_dict(
     nodes_data = data.get("nodes")
     if not isinstance(nodes_data, list):
         raise MalformedNodesFieldError
+    loaded_nodes_data = cast("list[object]", nodes_data)
     return TrainingTreeSnapshot(
         root_node_id=_optional_str(data.get("root_node_id")),
         nodes=tuple(
             _node_snapshot_from_dict(_require_node_dict(item))
-            for item in nodes_data
+            for item in loaded_nodes_data
         ),
         created_at_unix_s=_optional_float(data.get("created_at_unix_s")),
         metadata=_metadata_dict(data.get("metadata")),
@@ -81,10 +79,8 @@ def _node_snapshot_to_dict(snapshot: TrainingNodeSnapshot) -> dict[str, object]:
 
 def _node_snapshot_from_dict(data: dict[str, object]) -> TrainingNodeSnapshot:
     """Deserialize one node snapshot from JSON-friendly data."""
-    parent_ids = data.get("parent_ids", [])
-    child_ids = data.get("child_ids", [])
-    loaded_parent_ids = parent_ids if isinstance(parent_ids, list) else []
-    loaded_child_ids = child_ids if isinstance(child_ids, list) else []
+    loaded_parent_ids = _object_list(data.get("parent_ids"))
+    loaded_child_ids = _object_list(data.get("child_ids"))
     return TrainingNodeSnapshot(
         node_id=str(data["node_id"]),
         parent_ids=tuple(str(parent_id) for parent_id in loaded_parent_ids),
@@ -106,6 +102,13 @@ def _require_node_dict(value: object) -> dict[str, object]:
     if not isinstance(value, dict):
         raise MalformedNodeEntryError
     return cast("dict[str, object]", value)
+
+
+def _object_list(value: object) -> list[object]:
+    """Return a shallow-copied object list when possible."""
+    if not isinstance(value, list):
+        return []
+    return list(cast("list[object]", value))
 
 
 def _optional_str(value: object) -> str | None:
@@ -136,19 +139,6 @@ def _metadata_dict(value: object) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
     return dict(cast("dict[str, Any]", value))
-
-
-def _coerce_int(value: object, *, default: int | None = None) -> int:
-    """Return ``value`` as ``int`` for supported scalar payloads."""
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, int | str):
-        return int(value)
-    if isinstance(value, float):
-        return int(value)
-    if default is not None:
-        return default
-    raise TypeError
 
 
 __all__ = [

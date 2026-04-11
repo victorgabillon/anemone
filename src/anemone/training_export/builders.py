@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from .model import (
+from anemone._best_effort import coerce_int as _coerce_int
+from anemone._best_effort import format_over_event as _format_over_event
+from anemone._best_effort import safe_getattr as _safe_getattr
+from anemone.training_export.model import (
     TRAINING_TREE_SNAPSHOT_FORMAT_KIND,
     TRAINING_TREE_SNAPSHOT_FORMAT_VERSION,
     TrainingNodeSnapshot,
@@ -13,7 +16,7 @@ from .model import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
 
 class MissingNodeIdError(TypeError):
@@ -103,14 +106,6 @@ def build_training_tree_snapshot(
     )
 
 
-def _safe_getattr(obj: object, attribute_name: str) -> object | None:
-    """Return ``obj.attribute_name`` when available."""
-    try:
-        return cast("object", getattr(obj, attribute_name))
-    except (AttributeError, TypeError):
-        return None
-
-
 def _call_optional_no_arg(callable_candidate: object | None) -> object | None:
     """Call a no-arg callable candidate when possible."""
     if callable_candidate is None:
@@ -150,13 +145,20 @@ def _get_parent_ids(node: object) -> tuple[str, ...]:
     """Return stable parent ids from direct ids or parent-node mappings."""
     parent_ids = _safe_getattr(node, "parent_ids")
     if isinstance(parent_ids, tuple | list):
-        return tuple(_normalize_node_id(parent_id) for parent_id in parent_ids)
+        loaded_parent_ids = cast("tuple[object, ...] | list[object]", parent_ids)
+        return tuple(_normalize_node_id(parent_id) for parent_id in loaded_parent_ids)
     if isinstance(parent_ids, set | frozenset):
-        return tuple(sorted(_normalize_node_id(parent_id) for parent_id in parent_ids))
+        loaded_parent_id_set = cast("set[object] | frozenset[object]", parent_ids)
+        return tuple(
+            sorted(_normalize_node_id(parent_id) for parent_id in loaded_parent_id_set)
+        )
 
     parent_nodes = _safe_getattr(node, "parent_nodes")
     if isinstance(parent_nodes, Mapping):
-        return tuple(sorted(_normalize_node_id(parent) for parent in parent_nodes))
+        loaded_parent_nodes = cast("Mapping[object, object]", parent_nodes)
+        return tuple(
+            sorted(_normalize_node_id(parent) for parent in loaded_parent_nodes)
+        )
 
     return ()
 
@@ -165,17 +167,22 @@ def _get_child_ids(node: object) -> tuple[str, ...]:
     """Return stable child ids from direct ids or branch-to-child mappings."""
     child_ids = _safe_getattr(node, "child_ids")
     if isinstance(child_ids, tuple | list):
-        return tuple(_normalize_node_id(child_id) for child_id in child_ids)
+        loaded_child_ids = cast("tuple[object, ...] | list[object]", child_ids)
+        return tuple(_normalize_node_id(child_id) for child_id in loaded_child_ids)
     if isinstance(child_ids, set | frozenset):
-        return tuple(sorted(_normalize_node_id(child_id) for child_id in child_ids))
+        loaded_child_id_set = cast("set[object] | frozenset[object]", child_ids)
+        return tuple(
+            sorted(_normalize_node_id(child_id) for child_id in loaded_child_id_set)
+        )
 
     branches_children = _safe_getattr(node, "branches_children")
     if not isinstance(branches_children, Mapping):
         return ()
+    loaded_branches_children = cast("Mapping[object, object]", branches_children)
 
     unique_child_ids = {
         _normalize_node_id(child)
-        for child in branches_children.values()
+        for child in loaded_branches_children.values()
         if child is not None
     }
     return tuple(sorted(unique_child_ids))
@@ -193,7 +200,7 @@ def _get_depth(node: object) -> int:
 
 def _get_state(node: object) -> object | None:
     """Return the node state when available."""
-    return _safe_getattr(node, "state")
+    return cast("object | None", _safe_getattr(node, "state"))
 
 
 def _dump_state_ref(
@@ -215,8 +222,8 @@ def _get_tree_evaluation(node: object) -> object | None:
     """Return the tree-evaluation-like object when present."""
     evaluation = _safe_getattr(node, "tree_evaluation")
     if evaluation is not None:
-        return evaluation
-    return _safe_getattr(node, "evaluation")
+        return cast("object", evaluation)
+    return cast("object | None", _safe_getattr(node, "evaluation"))
 
 
 def _get_direct_value(node: object) -> object | None:
@@ -225,8 +232,8 @@ def _get_direct_value(node: object) -> object | None:
     if evaluation is not None:
         direct_value = _safe_getattr(evaluation, "direct_value")
         if direct_value is not None:
-            return direct_value
-    return _safe_getattr(node, "direct_value")
+            return cast("object", direct_value)
+    return cast("object | None", _safe_getattr(node, "direct_value"))
 
 
 def _get_backed_up_value(node: object) -> object | None:
@@ -235,16 +242,16 @@ def _get_backed_up_value(node: object) -> object | None:
     if evaluation is not None:
         backed_up_value = _safe_getattr(evaluation, "backed_up_value")
         if backed_up_value is not None:
-            return backed_up_value
+            return cast("object", backed_up_value)
 
         minmax_value = _safe_getattr(evaluation, "minmax_value")
         if minmax_value is not None:
-            return minmax_value
+            return cast("object", minmax_value)
 
     backed_up_value = _safe_getattr(node, "backed_up_value")
     if backed_up_value is not None:
-        return backed_up_value
-    return _safe_getattr(node, "minmax_value")
+        return cast("object", backed_up_value)
+    return cast("object | None", _safe_getattr(node, "minmax_value"))
 
 
 def _extract_value_scalar(
@@ -270,7 +277,9 @@ def _get_is_terminal(node: object) -> bool:
 
     evaluation = _get_tree_evaluation(node)
     if evaluation is not None:
-        evaluation_flag = _coerce_optional_bool(_safe_getattr(evaluation, "is_terminal"))
+        evaluation_flag = _coerce_optional_bool(
+            _safe_getattr(evaluation, "is_terminal")
+        )
         if evaluation_flag is not None:
             return evaluation_flag
 
@@ -336,7 +345,7 @@ def _get_metadata(node: object) -> dict[str, Any]:
     """Return a shallow-copied metadata mapping when available."""
     metadata = _safe_getattr(node, "metadata")
     if isinstance(metadata, Mapping):
-        return dict(metadata)
+        return dict(cast("Mapping[str, Any]", metadata))
     return {}
 
 
@@ -385,15 +394,7 @@ def _format_over_event_label(over_event: object | None) -> str | None:
     """Return a compact string label for an over-event-like object."""
     if over_event is None:
         return None
-
-    get_over_tag = _safe_getattr(over_event, "get_over_tag")
-    if callable(get_over_tag):
-        try:
-            return str(get_over_tag())
-        except (AttributeError, TypeError):
-            return str(over_event)
-
-    return str(over_event)
+    return _format_over_event(over_event)
 
 
 def _resolve_root_node_id(
@@ -422,19 +423,6 @@ def _build_tree_metadata(
     if metadata is not None:
         built_metadata.update(metadata)
     return built_metadata
-
-
-def _coerce_int(value: object, *, default: int | None = None) -> int:
-    """Return ``value`` as an ``int`` for supported scalar payloads."""
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, int | str):
-        return int(value)
-    if isinstance(value, float):
-        return int(value)
-    if default is not None:
-        return default
-    raise TypeError
 
 
 __all__ = [

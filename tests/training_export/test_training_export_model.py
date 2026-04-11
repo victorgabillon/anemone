@@ -86,7 +86,9 @@ def test_build_training_tree_snapshot_with_dummy_nodes() -> None:
     snapshot = build_training_tree_snapshot(
         [root, child],
         state_ref_dumper=lambda state: {"state_key": state},
-        direct_value_extractor=lambda value: float(value) if value is not None else None,
+        direct_value_extractor=lambda value: (
+            float(value) if value is not None else None
+        ),
         backed_up_value_extractor=lambda value: (
             float(value) if value is not None else None
         ),
@@ -152,7 +154,9 @@ def test_build_training_node_snapshot_handles_missing_optional_fields() -> None:
     assert snapshot.metadata == {}
 
 
-def test_build_training_node_snapshot_without_value_extractors_keeps_scalars_none() -> None:
+def test_build_training_node_snapshot_without_value_extractors_keeps_scalars_none() -> (
+    None
+):
     """Builder should leave scalar fields unset when no extractors are given."""
     node = _RichDummyNode(
         node_id="rich",
@@ -172,14 +176,14 @@ def test_build_training_node_snapshot_without_value_extractors_keeps_scalars_non
         state_ref_dumper=lambda state: {"state_key": state},
     )
 
-    assert snapshot.state_ref_payload == {
-        "state_key": {"nested": {"board": [0, 1]}}
-    }
+    assert snapshot.state_ref_payload == {"state_key": {"nested": {"board": [0, 1]}}}
     assert snapshot.direct_value_scalar is None
     assert snapshot.backed_up_value_scalar is None
 
 
-def test_build_training_node_snapshot_keeps_structured_payloads_and_numeric_scalars() -> None:
+def test_build_training_node_snapshot_keeps_structured_payloads_and_numeric_scalars() -> (
+    None
+):
     """Builder should keep payloads structured and value scalars numeric."""
     node = _RichDummyNode(
         node_id="rich",
@@ -197,16 +201,16 @@ def test_build_training_node_snapshot_keeps_structured_payloads_and_numeric_scal
     snapshot = build_training_node_snapshot(
         node,
         state_ref_dumper=lambda state: {"state_key": state},
-        direct_value_extractor=lambda value: float(value) if value is not None else None,
+        direct_value_extractor=lambda value: (
+            float(value) if value is not None else None
+        ),
         backed_up_value_extractor=lambda value: (
             float(value) if value is not None else None
         ),
     )
 
     assert isinstance(snapshot.state_ref_payload, dict)
-    assert snapshot.state_ref_payload == {
-        "state_key": {"nested": {"board": [0, 1]}}
-    }
+    assert snapshot.state_ref_payload == {"state_key": {"nested": {"board": [0, 1]}}}
     assert isinstance(snapshot.direct_value_scalar, float)
     assert isinstance(snapshot.backed_up_value_scalar, float)
     assert snapshot.direct_value_scalar == 3.0
