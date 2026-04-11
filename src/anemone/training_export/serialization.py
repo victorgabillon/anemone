@@ -7,6 +7,30 @@ from typing import Any, cast
 from .model import TrainingNodeSnapshot, TrainingTreeSnapshot
 
 
+class MalformedTrainingTreeSnapshotError(TypeError):
+    """Raised when training tree snapshot data is structurally malformed."""
+
+
+class MalformedNodesFieldError(MalformedTrainingTreeSnapshotError):
+    """Raised when the top-level nodes field is not a list of dictionaries."""
+
+    def __init__(self) -> None:
+        """Initialize with a stable explanation."""
+        super().__init__(
+            "Training tree snapshot `nodes` must be a list of objects."
+        )
+
+
+class MalformedNodeEntryError(MalformedTrainingTreeSnapshotError):
+    """Raised when one node entry is not a dictionary."""
+
+    def __init__(self) -> None:
+        """Initialize with a stable explanation."""
+        super().__init__(
+            "Each training tree snapshot node must be a dictionary."
+        )
+
+
 def training_tree_snapshot_to_dict(
     snapshot: TrainingTreeSnapshot,
 ) -> dict[str, object]:
@@ -23,14 +47,14 @@ def training_tree_snapshot_from_dict(
     data: dict[str, object],
 ) -> TrainingTreeSnapshot:
     """Deserialize a ``TrainingTreeSnapshot`` from JSON-friendly data."""
-    nodes_data = data.get("nodes", [])
-    loaded_nodes = nodes_data if isinstance(nodes_data, list) else []
+    nodes_data = data.get("nodes")
+    if not isinstance(nodes_data, list):
+        raise MalformedNodesFieldError
     return TrainingTreeSnapshot(
         root_node_id=_optional_str(data.get("root_node_id")),
         nodes=tuple(
-            _node_snapshot_from_dict(cast("dict[str, object]", item))
-            for item in loaded_nodes
-            if isinstance(item, dict)
+            _node_snapshot_from_dict(_require_node_dict(item))
+            for item in nodes_data
         ),
         created_at_unix_s=_optional_float(data.get("created_at_unix_s")),
         metadata=_metadata_dict(data.get("metadata")),
@@ -77,6 +101,13 @@ def _node_snapshot_from_dict(data: dict[str, object]) -> TrainingNodeSnapshot:
     )
 
 
+def _require_node_dict(value: object) -> dict[str, object]:
+    """Return one node payload or raise for malformed entries."""
+    if not isinstance(value, dict):
+        raise MalformedNodeEntryError
+    return cast("dict[str, object]", value)
+
+
 def _optional_str(value: object) -> str | None:
     """Return ``value`` as ``str`` unless it is ``None``."""
     return None if value is None else str(value)
@@ -121,6 +152,9 @@ def _coerce_int(value: object, *, default: int | None = None) -> int:
 
 
 __all__ = [
+    "MalformedNodeEntryError",
+    "MalformedNodesFieldError",
+    "MalformedTrainingTreeSnapshotError",
     "training_tree_snapshot_from_dict",
     "training_tree_snapshot_to_dict",
 ]

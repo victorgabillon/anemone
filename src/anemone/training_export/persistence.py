@@ -1,4 +1,8 @@
-"""Persistence helpers for training-oriented tree snapshots."""
+"""Persistence helpers for training-oriented tree snapshots.
+
+The saved payload is JSON, so snapshot contents, especially
+``state_ref_payload``, must already be JSON-serializable.
+"""
 
 from __future__ import annotations
 
@@ -19,7 +23,11 @@ def save_training_tree_snapshot(
     snapshot: TrainingTreeSnapshot,
     path: str | Path,
 ) -> None:
-    """Write ``snapshot`` as UTF-8 JSON to ``path``."""
+    """Write ``snapshot`` as UTF-8 JSON to ``path``.
+
+    Snapshot contents, especially ``state_ref_payload``, must be
+    JSON-serializable before calling this helper.
+    """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(

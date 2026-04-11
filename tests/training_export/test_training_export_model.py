@@ -114,6 +114,26 @@ def test_build_training_tree_snapshot_with_dummy_nodes() -> None:
     assert snapshot.nodes[1].child_ids == ()
 
 
+def test_build_training_tree_snapshot_preserves_explicit_root_node_id() -> None:
+    """Builder should keep an explicit root override unchanged."""
+    root = _RichDummyNode(
+        node_id="root",
+        parent_ids=(),
+        child_ids=(),
+        depth=0,
+        state={"raw_state": [1]},
+        direct_value=None,
+        backed_up_value=None,
+        is_terminal=False,
+        is_exact=False,
+        visit_count=1,
+    )
+
+    snapshot = build_training_tree_snapshot([root], root_node_id="manual-root")
+
+    assert snapshot.root_node_id == "manual-root"
+
+
 def test_build_training_node_snapshot_handles_missing_optional_fields() -> None:
     """Builder should default missing optional fields cleanly."""
     snapshot = build_training_node_snapshot(_MinimalDummyNode())
@@ -130,6 +150,33 @@ def test_build_training_node_snapshot_handles_missing_optional_fields() -> None:
     assert snapshot.over_event_label is None
     assert snapshot.visit_count is None
     assert snapshot.metadata == {}
+
+
+def test_build_training_node_snapshot_without_value_extractors_keeps_scalars_none() -> None:
+    """Builder should leave scalar fields unset when no extractors are given."""
+    node = _RichDummyNode(
+        node_id="rich",
+        parent_ids=(),
+        child_ids=(),
+        depth=2,
+        state={"nested": {"board": [0, 1]}},
+        direct_value=3,
+        backed_up_value=4,
+        is_terminal=False,
+        is_exact=True,
+        visit_count=9,
+    )
+
+    snapshot = build_training_node_snapshot(
+        node,
+        state_ref_dumper=lambda state: {"state_key": state},
+    )
+
+    assert snapshot.state_ref_payload == {
+        "state_key": {"nested": {"board": [0, 1]}}
+    }
+    assert snapshot.direct_value_scalar is None
+    assert snapshot.backed_up_value_scalar is None
 
 
 def test_build_training_node_snapshot_keeps_structured_payloads_and_numeric_scalars() -> None:

@@ -16,6 +16,17 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+class MissingNodeIdError(TypeError):
+    """Raised when a node snapshot cannot determine an explicit node id."""
+
+    def __init__(self) -> None:
+        """Initialize with a stable explanation."""
+        super().__init__(
+            "Could not determine an explicit node id. Expected a raw string/int "
+            "id or an object exposing `node_id` or `id`."
+        )
+
+
 class StateRefDumper(Protocol):
     """Protocol for caller-supplied reversible state-reference dumping."""
 
@@ -113,16 +124,21 @@ def _call_optional_no_arg(callable_candidate: object | None) -> object | None:
 
 
 def _normalize_node_id(value: object) -> str:
-    """Return a stable string node id from one node-like object or raw id."""
+    """Return a stable string node id from one explicit id source."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+
     node_id = _safe_getattr(value, "node_id")
     if node_id is not None:
-        return str(node_id)
+        return _normalize_node_id(node_id)
 
     generic_id = _safe_getattr(value, "id")
     if generic_id is not None:
-        return str(generic_id)
+        return _normalize_node_id(generic_id)
 
-    return str(value)
+    raise MissingNodeIdError
 
 
 def _get_node_id(node: object) -> str:
@@ -422,6 +438,7 @@ def _coerce_int(value: object, *, default: int | None = None) -> int:
 
 
 __all__ = [
+    "MissingNodeIdError",
     "StateRefDumper",
     "ValueScalarExtractor",
     "build_training_node_snapshot",
