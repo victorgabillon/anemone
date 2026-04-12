@@ -471,8 +471,7 @@ def _build_tree[
     restored_tree = trees.Tree(root_node=root_node, descendants=descendants)
     restored_tree.nodes_count = len(nodes_by_id)
     restored_tree.branch_count = sum(
-        len(node_payload.linked_children)
-        for node_payload in payload.tree.nodes
+        len(node_payload.linked_children) for node_payload in payload.tree.nodes
     )
     return restored_tree
 

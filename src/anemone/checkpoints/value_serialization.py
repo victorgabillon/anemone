@@ -16,7 +16,6 @@ from .payloads import (
     EnumMemberPayload,
     SerializedOverEventPayload,
     SerializedValuePayload,
-    TupleAtomPayload,
 )
 
 if TYPE_CHECKING:
@@ -51,8 +50,7 @@ class CheckpointSerializationError(ValueError):
     ) -> CheckpointSerializationError:
         """Return the error for tagged tuple payloads without list items."""
         return cls(
-            "Checkpoint tuple payloads require an 'items' list, "
-            f"got {payload!r}."
+            f"Checkpoint tuple payloads require an 'items' list, got {payload!r}."
         )
 
     @classmethod
@@ -97,7 +95,9 @@ class CheckpointSerializationError(ValueError):
         return cls(f"Cannot resolve checkpoint qualname {qualname!r} from {root!r}.")
 
 
-type CheckpointAtom = None | bool | int | float | str | Enum | tuple[CheckpointAtom, ...]
+type CheckpointAtom = (
+    None | bool | int | float | str | Enum | tuple[CheckpointAtom, ...]
+)
 
 
 def serialize_checkpoint_atom(value: object) -> CheckpointAtomPayload:
@@ -116,10 +116,11 @@ def serialize_checkpoint_atom(value: object) -> CheckpointAtomPayload:
         )
 
     if isinstance(value, tuple):
-        return TupleAtomPayload(
-            type="tuple",
-            items=[serialize_checkpoint_atom(item) for item in value],
-        )
+        tuple_items = cast("tuple[object, ...]", value)
+        return {
+            "type": "tuple",
+            "items": [serialize_checkpoint_atom(item) for item in tuple_items],
+        }
 
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
@@ -127,7 +128,7 @@ def serialize_checkpoint_atom(value: object) -> CheckpointAtomPayload:
     raise CheckpointSerializationError.unsupported_atom(value)
 
 
-def deserialize_checkpoint_atom(payload: CheckpointAtomPayload) -> CheckpointAtom:
+def deserialize_checkpoint_atom(payload: object) -> CheckpointAtom:
     """Deserialize one recursive checkpoint atom payload.
 
     Tagged tuple payloads are restored back into Python tuples so checkpointed
@@ -137,12 +138,15 @@ def deserialize_checkpoint_atom(payload: CheckpointAtomPayload) -> CheckpointAto
         return payload
 
     if isinstance(payload, dict):
-        if payload.get("type") != "tuple":
-            raise CheckpointSerializationError.invalid_atom_payload(payload)
-        items = payload.get("items")
+        payload_dict = cast("dict[str, object]", payload)
+        if payload_dict.get("type") != "tuple":
+            raise CheckpointSerializationError.invalid_atom_payload(payload_dict)
+        items = payload_dict.get("items")
         if not isinstance(items, list):
-            raise CheckpointSerializationError.invalid_tuple_payload_items(payload)
-        return tuple(deserialize_checkpoint_atom(item) for item in items)
+            raise CheckpointSerializationError.invalid_tuple_payload_items(payload_dict)
+        return tuple(
+            deserialize_checkpoint_atom(item) for item in cast("list[object]", items)
+        )
 
     if not isinstance(payload, EnumMemberPayload):
         raise CheckpointSerializationError.invalid_atom_payload(payload)

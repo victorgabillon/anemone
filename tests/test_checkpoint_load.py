@@ -213,9 +213,7 @@ class _TupleBranchDynamics:
 
     __anemone_search_dynamics__ = True
 
-    def legal_actions(
-        self, state: _TupleBranchState
-    ) -> _TupleBranchKeyGenerator:
+    def legal_actions(self, state: _TupleBranchState) -> _TupleBranchKeyGenerator:
         """Return the tuple branch keys currently available from this state."""
         return state.branch_keys
 
@@ -360,7 +358,12 @@ def _build_tuple_branch_runtime() -> Any:
         args=_build_args(),
         random_generator=Random(0),
         master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
-            _values_for({node_id: [child_id for _, child_id in children] for node_id, children in _TUPLE_BRANCH_CHILDREN_BY_ID.items()})
+            _values_for(
+                {
+                    node_id: [child_id for _, child_id in children]
+                    for node_id, children in _TUPLE_BRANCH_CHILDREN_BY_ID.items()
+                }
+            )
         ),
         state_representation_factory=None,
     )
@@ -377,7 +380,12 @@ def _roundtrip_tuple_branch_runtime(runtime: Any) -> Any:
         args=_build_args(),
         state_type=_TupleBranchState,
         master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
-            _values_for({node_id: [child_id for _, child_id in children] for node_id, children in _TUPLE_BRANCH_CHILDREN_BY_ID.items()})
+            _values_for(
+                {
+                    node_id: [child_id for _, child_id in children]
+                    for node_id, children in _TUPLE_BRANCH_CHILDREN_BY_ID.items()
+                }
+            )
         ),
         random_generator=Random(0),
         state_representation_factory=None,

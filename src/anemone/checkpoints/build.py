@@ -28,7 +28,7 @@ from .payloads import (
 from .value_serialization import serialize_checkpoint_atom, serialize_value
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, MutableMapping
 
     from valanga.checkpoints import StateCheckpointCodec
     from valanga.evaluations import Value
@@ -119,7 +119,7 @@ def _representative_parent_edge(
 
 
 def _serialize_linked_children(
-    branches_children: dict[Any, AlgorithmNode[Any] | None],
+    branches_children: MutableMapping[Any, AlgorithmNode[Any] | None],
 ) -> list[LinkedChildCheckpointPayload]:
     """Serialize linked children in stable checkpoint-atom order."""
     return sorted(
