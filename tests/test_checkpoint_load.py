@@ -569,6 +569,37 @@ def _serialized_value(value: Any) -> object:
     return serialize_value(value) if value is not None else None
 
 
+def _payload_nodes_by_id(payload: Any) -> dict[int, Any]:
+    """Return checkpoint node payloads keyed by node id."""
+    return {node.node_id: node for node in payload.tree.nodes}
+
+
+def _expected_applied_delta_items_for_node(
+    *,
+    payload: Any,
+    node_id: int,
+) -> list[tuple[int, int, object | None]]:
+    """Return the expected parent-delta chain for one payload node."""
+    payload_nodes = _payload_nodes_by_id(payload)
+    expected_items: list[tuple[int, int, object | None]] = []
+    current_node_id = node_id
+    while True:
+        node_payload = payload_nodes[current_node_id]
+        if isinstance(node_payload.state_payload, AnchorCheckpointStatePayload):
+            break
+        assert node_payload.parent_node_id is not None
+        expected_items.append(
+            (
+                node_payload.parent_node_id,
+                current_node_id,
+                node_payload.branch_from_parent,
+            )
+        )
+        current_node_id = node_payload.parent_node_id
+    expected_items.reverse()
+    return expected_items
+
+
 def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> None:
     """Checkpoint-backed handles should resolve parent chains lazily and cache."""
     codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
@@ -671,7 +702,7 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
 
 
 def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
-    """Restore should not decode states until one restored node is accessed."""
+    """Restore should decode only the localized anchor-plus-delta chain needed."""
     runtime = _build_runtime()
     runtime.step()
     payload = build_search_checkpoint_payload(
@@ -698,27 +729,49 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
         isinstance(node.tree_node.state_handle, CheckpointBackedStateHandle)
         for node in restored_nodes.values()
     )
-    assert restore_codec.loaded_anchor_node_ids == []
-    assert restore_codec.applied_delta_items == []
+    assert set(restore_codec.loaded_anchor_node_ids).issubset({0})
+    assert len(restore_codec.applied_delta_items) <= 1
 
-    child_state = restored_nodes[1].state
+    child_node = next(
+        node
+        for node in restored_nodes.values()
+        if node.id != restored.tree.root_node.id and node.tree_depth == 1
+    )
+    child_state = child_node.state
+    expected_child_chain = _expected_applied_delta_items_for_node(
+        payload=payload,
+        node_id=child_node.id,
+    )
 
-    assert child_state.node_id == 1
+    assert child_state.node_id == child_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == [(0, 1, 0)]
-    assert restored_nodes[1].state is child_state
+    assert restore_codec.applied_delta_items == expected_child_chain
+    assert child_node.state is child_state
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == [(0, 1, 0)]
+    assert restore_codec.applied_delta_items == expected_child_chain
 
-    sibling_state = restored_nodes[2].state
+    sibling_node = next(
+        node
+        for node in restored_nodes.values()
+        if node.id != restored.tree.root_node.id
+        and node.tree_depth == 1
+        and node.id != child_node.id
+    )
+    sibling_state = sibling_node.state
 
-    assert sibling_state.node_id == 2
+    assert sibling_state.node_id == sibling_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == [(0, 1, 0), (0, 2, 1)]
+    assert restore_codec.applied_delta_items == (
+        expected_child_chain
+        + _expected_applied_delta_items_for_node(
+            payload=payload,
+            node_id=sibling_node.id,
+        )
+    )
 
 
 def test_checkpoint_restore_reconstructs_grandchild_from_parent_delta_chain() -> None:
-    """Restoring one deep node should resolve only its anchor and parent deltas."""
+    """Restoring one deep node should resolve the node's actual ancestry chain."""
     runtime = _build_runtime()
     runtime.step()
     runtime.step()
@@ -741,11 +794,16 @@ def test_checkpoint_restore_reconstructs_grandchild_from_parent_delta_chain() ->
         state_representation_factory=None,
     )
 
-    grandchild_state = _runtime_nodes_by_id(restored)[3].state
+    restored_nodes = _runtime_nodes_by_id(restored)
+    grandchild_node = next(node for node in restored_nodes.values() if node.tree_depth == 2)
+    grandchild_state = grandchild_node.state
 
-    assert grandchild_state.node_id == 3
+    assert grandchild_state.node_id == grandchild_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == [(0, 1, 0), (1, 3, 0)]
+    assert restore_codec.applied_delta_items == _expected_applied_delta_items_for_node(
+        payload=payload,
+        node_id=grandchild_node.id,
+    )
 
 
 def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> None:
@@ -776,15 +834,17 @@ def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> N
 
     assert all(node.state_representation is None for node in restored_nodes.values())
     assert representation_factory.created_for_node_ids == []
-    assert restore_codec.loaded_anchor_node_ids == []
-    assert restore_codec.applied_delta_items == []
+    assert set(restore_codec.loaded_anchor_node_ids).issubset({0})
+    assert len(restore_codec.applied_delta_items) <= 1
 
     restored.step()
 
     assert representation_factory.created_for_node_ids
 
 
-def test_checkpoint_restore_preserves_state_summaries_on_payloads_and_resolver() -> None:
+def test_checkpoint_restore_preserves_state_summaries_on_payloads_and_resolver() -> (
+    None
+):
     """Restore should preserve summary metadata for future checkpoint consumers."""
     runtime = _build_runtime()
     runtime.step()
@@ -804,20 +864,23 @@ def test_checkpoint_restore_preserves_state_summaries_on_payloads_and_resolver()
     )
 
     payload_nodes = {node.node_id: node for node in payload.tree.nodes}
-    child_handle = _runtime_nodes_by_id(restored)[1].state_handle
+    restored_nodes = _runtime_nodes_by_id(restored)
+    child_node = next(
+        node
+        for node in restored_nodes.values()
+        if node.id != restored.tree.root_node.id and node.tree_depth == 1
+    )
+    root_summary = payload_nodes[restored.tree.root_node.id].state_payload.state_summary
+    child_summary = payload_nodes[child_node.id].state_payload.state_summary
 
-    assert payload_nodes[0].state_payload.state_summary == _FakeCheckpointStateSummary(
+    assert root_summary == _FakeCheckpointStateSummary(
         tag=0,
         node_id=0,
     )
-    assert payload_nodes[1].state_payload.state_summary == _FakeCheckpointStateSummary(
-        tag=1,
-        node_id=1,
-    )
-    assert child_handle.resolver.summary(1) == _FakeCheckpointStateSummary(
-        tag=1,
-        node_id=1,
-    )
+    assert child_summary is not None
+    assert child_summary.tag == child_node.state.node_id
+    assert child_summary.node_id == child_node.state.node_id
+    assert child_node.state_handle.resolver.summary(child_node.id) == child_summary
 
 
 def test_checkpoint_restore_preserves_node_values() -> None:

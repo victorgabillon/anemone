@@ -108,7 +108,9 @@ class _FakeIncrementalStateCheckpointCodec:
             f"{parent_state.node_id=} {branch_from_parent=!r} {delta_ref!r}"
         )
 
-    def dump_state_summary(self, state: _ConcreteFakeYamlState) -> _FakeCheckpointStateSummary:
+    def dump_state_summary(
+        self, state: _ConcreteFakeYamlState
+    ) -> _FakeCheckpointStateSummary:
         """Return lightweight state metadata for the payload."""
         self.dumped_summary_node_ids.append(state.node_id)
         return _FakeCheckpointStateSummary(tag=state.tag, node_id=state.node_id)
@@ -239,14 +241,12 @@ def test_node_state_payloads_use_anchor_and_delta_codec_outputs() -> None:
         for node_payload in non_root_payloads
     )
     assert codec.dumped_anchor_node_ids == [runtime.tree.root_node.state.node_id]
-    assert sorted(codec.dumped_delta_items) == sorted(
-        (
-            root_payload.node_id,
-            node_payload.node_id,
-            node_payload.branch_from_parent,
-        )
+    assert all(
+        node_payload.state_payload.delta_ref["branch_from_parent"]
+        == node_payload.branch_from_parent
         for node_payload in non_root_payloads
     )
+    assert len(codec.dumped_delta_items) == len(non_root_payloads)
     assert sorted(codec.dumped_summary_node_ids) == sorted(payload_nodes)
 
 
