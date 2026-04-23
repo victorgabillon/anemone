@@ -13,7 +13,6 @@ from anemone.node_evaluation.common import canonical_value
 
 from .payloads import (
     CheckpointAtomPayload,
-    EnumMemberPayload,
     SerializedOverEventPayload,
     SerializedValuePayload,
 )
@@ -105,15 +104,17 @@ def serialize_checkpoint_atom(value: object) -> CheckpointAtomPayload:
 
     Supported checkpoint atoms are ``None``, booleans, integers, floats, strings,
     Enum members, and recursively nested tuples of checkpoint atoms. Tuples are
-    encoded explicitly as ``{"type": "tuple", "items": [...]}`` so roundtrips
-    preserve tuple structure exactly.
+    encoded explicitly as ``{"type": "tuple", "items": [...]}``, while Enum
+    members use ``{"type": "enum", "module": ..., "qualname": ..., "name": ...}``.
+    This tagged representation is the single canonical checkpoint atom format.
     """
     if isinstance(value, Enum):
-        return EnumMemberPayload(
-            module=value.__class__.__module__,
-            qualname=value.__class__.__qualname__,
-            name=value.name,
-        )
+        return {
+            "type": "enum",
+            "module": value.__class__.__module__,
+            "qualname": value.__class__.__qualname__,
+            "name": value.name,
+        }
 
     if isinstance(value, tuple):
         tuple_items = cast("tuple[object, ...]", value)
@@ -139,33 +140,44 @@ def deserialize_checkpoint_atom(payload: object) -> CheckpointAtom:
 
     if isinstance(payload, dict):
         payload_dict = cast("dict[str, object]", payload)
-        if payload_dict.get("type") != "tuple":
+        payload_type = payload_dict.get("type")
+        if payload_type == "tuple":
+            items = payload_dict.get("items")
+            if not isinstance(items, list):
+                raise CheckpointSerializationError.invalid_tuple_payload_items(
+                    payload_dict
+                )
+            return tuple(
+                deserialize_checkpoint_atom(item)
+                for item in cast("list[object]", items)
+            )
+        if payload_type != "enum":
             raise CheckpointSerializationError.invalid_atom_payload(payload_dict)
-        items = payload_dict.get("items")
-        if not isinstance(items, list):
-            raise CheckpointSerializationError.invalid_tuple_payload_items(payload_dict)
-        return tuple(
-            deserialize_checkpoint_atom(item) for item in cast("list[object]", items)
-        )
 
-    if not isinstance(payload, EnumMemberPayload):
-        raise CheckpointSerializationError.invalid_atom_payload(payload)
+        module_name = payload_dict.get("module")
+        qualname = payload_dict.get("qualname")
+        member_name = payload_dict.get("name")
+        if not isinstance(module_name, str) or not isinstance(qualname, str):
+            raise CheckpointSerializationError.invalid_atom_payload(payload_dict)
+        if not isinstance(member_name, str):
+            raise CheckpointSerializationError.invalid_atom_payload(payload_dict)
+        module = import_module(module_name)
+        enum_type = _resolve_qualname(module, qualname)
+        if not isinstance(enum_type, type) or not issubclass(enum_type, Enum):
+            raise CheckpointSerializationError.unresolved_enum_type(
+                module=module_name,
+                qualname=qualname,
+            )
 
-    module = import_module(payload.module)
-    enum_type = _resolve_qualname(module, payload.qualname)
-    if not isinstance(enum_type, type) or not issubclass(enum_type, Enum):
-        raise CheckpointSerializationError.unresolved_enum_type(
-            module=payload.module,
-            qualname=payload.qualname,
-        )
+        try:
+            return enum_type[member_name]
+        except KeyError as exc:
+            raise CheckpointSerializationError.unknown_enum_member(
+                member_name=member_name,
+                enum_type=enum_type,
+            ) from exc
 
-    try:
-        return enum_type[payload.name]
-    except KeyError as exc:
-        raise CheckpointSerializationError.unknown_enum_member(
-            member_name=payload.name,
-            enum_type=enum_type,
-        ) from exc
+    raise CheckpointSerializationError.invalid_atom_payload(payload)
 
 
 def serialize_over_event(

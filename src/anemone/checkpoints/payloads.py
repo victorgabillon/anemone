@@ -8,10 +8,10 @@ from typing import Literal, TypedDict
 CHECKPOINT_FORMAT_VERSION = 1
 
 
-@dataclass(frozen=True, slots=True)
-class EnumMemberPayload:
-    """Serializable reference to one Enum member."""
+class EnumAtomPayload(TypedDict):
+    """Explicit tagged payload that preserves Enum members across checkpoints."""
 
+    type: Literal["enum"]
     module: str
     qualname: str
     name: str
@@ -25,7 +25,7 @@ class TupleAtomPayload(TypedDict):
 
 
 type CheckpointAtomPayload = (
-    None | bool | int | float | str | EnumMemberPayload | TupleAtomPayload
+    None | bool | int | float | str | EnumAtomPayload | TupleAtomPayload
 )
 
 
@@ -227,7 +227,7 @@ __all__ = [
     "BranchOrderingCheckpointPayload",
     "CheckpointAtomPayload",
     "DecisionOrderingCheckpointPayload",
-    "EnumMemberPayload",
+    "EnumAtomPayload",
     "ExplorationIndexCheckpointPayload",
     "LinkedChildCheckpointPayload",
     "NodeEvaluationCheckpointPayload",
