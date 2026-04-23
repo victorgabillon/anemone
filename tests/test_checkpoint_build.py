@@ -10,7 +10,9 @@ from valanga import Color
 
 from anemone import SearchArgs, create_search
 from anemone.checkpoints import (
+    AnchorCheckpointStatePayload,
     CHECKPOINT_FORMAT_VERSION,
+    DeltaCheckpointStatePayload,
     LinkedChildCheckpointPayload,
     SearchRuntimeCheckpointPayload,
     TreeExpansionsCheckpointPayload,
@@ -43,16 +45,61 @@ class _ConcreteFakeYamlState(FakeYamlState):
         return str(self.node_id)
 
 
-class _FakeStateCheckpointCodec:
-    """Tiny external-state-ref codec for checkpoint exporter tests."""
+class _FakeIncrementalStateCheckpointCodec:
+    """Tiny incremental checkpoint codec for exporter tests."""
 
-    def dump_state_ref(self, state: _ConcreteFakeYamlState) -> object:
-        """Return an opaque state reference produced outside Anemone."""
+    def __init__(self) -> None:
+        """Initialize the codec call logs."""
+        self.dumped_anchor_node_ids: list[int] = []
+        self.dumped_delta_pairs: list[tuple[int, int]] = []
+        self.dumped_summary_node_ids: list[int] = []
+
+    def dump_anchor_ref(self, state: _ConcreteFakeYamlState) -> object:
+        """Return an opaque anchor snapshot produced outside Anemone."""
+        self.dumped_anchor_node_ids.append(state.node_id)
         return {
-            "codec": "fake-yaml",
-            "tag": state.tag,
+            "kind": "anchor",
             "node_id": state.node_id,
             "turn": state.turn.name,
+        }
+
+    def dump_delta_from_parent(
+        self,
+        *,
+        parent_state: _ConcreteFakeYamlState,
+        child_state: _ConcreteFakeYamlState,
+    ) -> object:
+        """Return an opaque delta from one concrete parent state."""
+        self.dumped_delta_pairs.append((parent_state.node_id, child_state.node_id))
+        return {
+            "kind": "delta",
+            "parent_node_id": parent_state.node_id,
+            "child_node_id": child_state.node_id,
+            "turn": child_state.turn.name,
+        }
+
+    def load_anchor_ref(self, anchor_ref: object) -> _ConcreteFakeYamlState:
+        """Exporter tests do not restore anchors."""
+        raise AssertionError(f"Exporter tests should not load anchors: {anchor_ref!r}")
+
+    def load_delta_from_parent(
+        self,
+        *,
+        parent_state: _ConcreteFakeYamlState,
+        delta_ref: object,
+    ) -> _ConcreteFakeYamlState:
+        """Exporter tests do not restore deltas."""
+        raise AssertionError(
+            "Exporter tests should not load deltas: "
+            f"{parent_state.node_id=} {delta_ref!r}"
+        )
+
+    def dump_state_summary(self, state: _ConcreteFakeYamlState) -> object:
+        """Return lightweight state metadata for the payload."""
+        self.dumped_summary_node_ids.append(state.node_id)
+        return {
+            "tag": state.tag,
+            "node_id": state.node_id,
         }
 
 
@@ -115,11 +162,15 @@ def _build_runtime(
     )
 
 
-def _build_payload(runtime: Any) -> SearchRuntimeCheckpointPayload:
-    """Export a runtime using the fake external state-ref codec."""
+def _build_payload(
+    runtime: Any,
+    *,
+    state_codec: _FakeIncrementalStateCheckpointCodec | None = None,
+) -> SearchRuntimeCheckpointPayload:
+    """Export a runtime using the fake incremental checkpoint codec."""
     return build_search_checkpoint_payload(
         runtime,
-        state_codec=_FakeStateCheckpointCodec(),
+        state_codec=state_codec or _FakeIncrementalStateCheckpointCodec(),
     )
 
 
@@ -144,21 +195,58 @@ def test_build_search_checkpoint_payload_from_live_search() -> None:
     assert isinstance(payload.latest_tree_expansions, TreeExpansionsCheckpointPayload)
 
 
-def test_node_state_refs_come_from_external_codec() -> None:
-    """Exported node state refs should be exactly the codec-produced objects."""
+def test_node_state_payloads_use_anchor_and_delta_codec_outputs() -> None:
+    """Exported nodes should use explicit anchor/delta payloads from the codec."""
+    runtime = _build_runtime()
+    runtime.step()
+    codec = _FakeIncrementalStateCheckpointCodec()
+
+    payload = _build_payload(runtime, state_codec=codec)
+    payload_nodes = _nodes_by_id(payload)
+    root_payload = payload_nodes[runtime.tree.root_node.id]
+
+    assert isinstance(root_payload.state_payload, AnchorCheckpointStatePayload)
+    assert root_payload.state_payload.anchor_ref == {
+        "kind": "anchor",
+        "node_id": root_payload.node_id,
+        "turn": runtime.tree.root_node.state.turn.name,
+    }
+    assert root_payload.state_payload.state_summary == {
+        "tag": runtime.tree.root_node.state.tag,
+        "node_id": runtime.tree.root_node.state.node_id,
+    }
+
+    non_root_payloads = [
+        payload_nodes[node.id]
+        for tree_depth in runtime.tree.descendants.range()
+        for node in runtime.tree.descendants[tree_depth].values()
+        if node.id != runtime.tree.root_node.id
+    ]
+    assert non_root_payloads
+    assert all(
+        isinstance(node_payload.state_payload, DeltaCheckpointStatePayload)
+        for node_payload in non_root_payloads
+    )
+    assert codec.dumped_anchor_node_ids == [runtime.tree.root_node.state.node_id]
+    assert sorted(codec.dumped_delta_pairs) == sorted(
+        (root_payload.node_id, node_payload.node_id) for node_payload in non_root_payloads
+    )
+    assert sorted(codec.dumped_summary_node_ids) == sorted(payload_nodes)
+
+
+def test_root_is_anchor_and_non_root_nodes_use_deltas_under_default_policy() -> None:
+    """The default exporter policy should anchor the root and delta-encode children."""
     runtime = _build_runtime()
     runtime.step()
 
-    payload = _build_payload(runtime)
+    payload_nodes = _nodes_by_id(_build_payload(runtime))
+    root_payload = payload_nodes[runtime.tree.root_node.id]
 
-    assert {
-        node_payload.node_id: node_payload.state_ref
-        for node_payload in payload.tree.nodes
-    } == {
-        node.id: _FakeStateCheckpointCodec().dump_state_ref(node.state)
-        for tree_depth in runtime.tree.descendants.range()
-        for node in runtime.tree.descendants[tree_depth].values()
-    }
+    assert isinstance(root_payload.state_payload, AnchorCheckpointStatePayload)
+    for branch_child in runtime.tree.root_node.branches_children.values():
+        assert branch_child is not None
+        child_payload = payload_nodes[branch_child.id]
+        assert isinstance(child_payload.state_payload, DeltaCheckpointStatePayload)
 
 
 def test_direct_and_backed_up_values_are_serialized_from_live_nodes() -> None:

@@ -11,10 +11,12 @@ from valanga.evaluations import Certainty, Value
 from anemone.checkpoints import (
     CHECKPOINT_FORMAT_VERSION,
     AlgorithmNodeCheckpointPayload,
+    AnchorCheckpointStatePayload,
     BackupRuntimeCheckpointPayload,
     BranchFrontierCheckpointPayload,
     BranchOrderingCheckpointPayload,
     DecisionOrderingCheckpointPayload,
+    DeltaCheckpointStatePayload,
     ExplorationIndexCheckpointPayload,
     LinkedChildCheckpointPayload,
     NodeEvaluationCheckpointPayload,
@@ -27,19 +29,35 @@ from anemone.checkpoints import (
 from anemone.node_evaluation.common import canonical_value
 
 
-def test_node_checkpoint_can_store_opaque_external_state_ref() -> None:
-    """Node checkpoint payloads should treat domain state refs as opaque."""
-    state_ref = {"domain": "morpion", "variant": "5T", "played_moves": []}
-    node = AlgorithmNodeCheckpointPayload(
+def test_node_checkpoint_can_store_explicit_anchor_and_delta_payloads() -> None:
+    """Node checkpoint payloads should treat anchor and delta refs as opaque."""
+    anchor_payload = AnchorCheckpointStatePayload(
+        anchor_ref={"domain": "morpion", "snapshot": [0, 1]},
+        state_summary={"tag": 17},
+    )
+    delta_payload = DeltaCheckpointStatePayload(
+        delta_ref={"move": 12},
+        state_summary={"tag": 18},
+    )
+    root_node = AlgorithmNodeCheckpointPayload(
         node_id=1,
         parent_node_id=None,
         branch_from_parent=None,
         depth=0,
-        state_ref=state_ref,
+        state_payload=anchor_payload,
+        generated_all_branches=False,
+    )
+    child_node = AlgorithmNodeCheckpointPayload(
+        node_id=2,
+        parent_node_id=1,
+        branch_from_parent=0,
+        depth=1,
+        state_payload=delta_payload,
         generated_all_branches=False,
     )
 
-    assert node.state_ref == state_ref
+    assert root_node.state_payload == anchor_payload
+    assert child_node.state_payload == delta_payload
 
 
 def test_valanga_checkpoint_protocol_import_path_when_available() -> None:
@@ -49,7 +67,9 @@ def test_valanga_checkpoint_protocol_import_path_when_available() -> None:
         reason="Valanga checkpoint protocol is not installed in this environment.",
     )
 
-    assert hasattr(checkpoints, "StateCheckpointCodec")
+    assert hasattr(checkpoints, "IncrementalStateCheckpointCodec")
+    assert hasattr(checkpoints, "CheckpointStateSummary")
+    assert hasattr(checkpoints, "StateCheckpointSummaryCodec")
 
 
 def test_value_serialization_round_trip_preserves_semantics() -> None:
@@ -108,7 +128,10 @@ def test_checkpoint_payload_dataclasses_support_nested_runtime_state() -> None:
                     parent_node_id=None,
                     branch_from_parent=None,
                     depth=0,
-                    state_ref={"tag": "root"},
+                    state_payload=AnchorCheckpointStatePayload(
+                        anchor_ref={"tag": "root"},
+                        state_summary={"tag": 1},
+                    ),
                     generated_all_branches=True,
                     unopened_branches=[2, 3],
                     linked_children=[
@@ -156,6 +179,10 @@ def test_checkpoint_payload_dataclasses_support_nested_runtime_state() -> None:
     assert checkpoint.format_version == CHECKPOINT_FORMAT_VERSION
     assert checkpoint.tree.root_node_id == 1
     assert checkpoint.tree.nodes[0].evaluation is not None
+    assert isinstance(
+        checkpoint.tree.nodes[0].state_payload,
+        AnchorCheckpointStatePayload,
+    )
     assert checkpoint.tree.nodes[0].evaluation.direct_value == direct_value
     assert checkpoint.tree.nodes[0].evaluation.backup_runtime is not None
     assert checkpoint.tree.nodes[0].evaluation.backup_runtime.best_branch == 0

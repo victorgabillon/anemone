@@ -38,6 +38,7 @@ from anemone.tree_manager import TreeExpansion, TreeExpansions
 from anemone.trees.descendants import RangedDescendants
 from anemone.utils.small_tools import Interval
 
+from ._protocols import IncrementalStateCheckpointCodec
 from .payloads import (
     CHECKPOINT_FORMAT_VERSION,
     AlgorithmNodeCheckpointPayload,
@@ -45,6 +46,7 @@ from .payloads import (
     BranchFrontierCheckpointPayload,
     CheckpointAtomPayload,
     DecisionOrderingCheckpointPayload,
+    DeltaCheckpointStatePayload,
     ExplorationIndexCheckpointPayload,
     NodeEvaluationCheckpointPayload,
     PrincipalVariationCheckpointPayload,
@@ -58,7 +60,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
     from valanga import BranchKey, Dynamics, RepresentationFactory, StateModifications
-    from valanga.checkpoints import StateCheckpointCodec
     from valanga.evaluator_types import EvaluatorInput
     from valanga.policy import NotifyProgressCallable
 
@@ -118,6 +119,11 @@ class CheckpointRestoreError(ValueError):
         """Return the error for a node reference that cannot be resolved."""
         return cls(f"Checkpoint references unknown node id {node_id}.")
 
+    @classmethod
+    def delta_node_missing_parent(cls, node_id: int) -> CheckpointRestoreError:
+        """Return the error for a delta payload that lacks a parent node id."""
+        return cls(f"Delta checkpoint node {node_id} must reference a parent node id.")
+
 
 @runtime_checkable
 class _DepthCursorSelector(Protocol):
@@ -132,7 +138,7 @@ def load_search_from_checkpoint_payload[
 ](
     payload: SearchRuntimeCheckpointPayload,
     *,
-    state_codec: StateCheckpointCodec[StateT],
+    state_codec: IncrementalStateCheckpointCodec[StateT],
     dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
     args: SearchArgs,
     state_type: type[StateT],
@@ -225,6 +231,14 @@ def _validate_payload(payload: SearchRuntimeCheckpointPayload) -> None:
         raise CheckpointRestoreError.duplicate_node_ids()
     if payload.tree.root_node_id not in set(node_ids):
         raise CheckpointRestoreError.missing_root(payload.tree.root_node_id)
+    for node_payload in payload.tree.nodes:
+        if (
+            isinstance(node_payload.state_payload, DeltaCheckpointStatePayload)
+            and node_payload.parent_node_id is None
+        ):
+            raise CheckpointRestoreError.delta_node_missing_parent(
+                node_payload.node_id
+            )
 
 
 def _create_state_resolver[
@@ -232,13 +246,17 @@ def _create_state_resolver[
 ](
     *,
     payload: SearchRuntimeCheckpointPayload,
-    state_codec: StateCheckpointCodec[StateT],
+    state_codec: IncrementalStateCheckpointCodec[StateT],
 ) -> CheckpointStateResolver[StateT]:
     """Create the shared lazy resolver for all checkpoint-backed state handles."""
     return CheckpointStateResolver(
         state_codec=state_codec,
-        state_refs_by_node_id={
-            node_payload.node_id: node_payload.state_ref
+        state_payloads_by_node_id={
+            node_payload.node_id: node_payload.state_payload
+            for node_payload in payload.tree.nodes
+        },
+        parent_ids_by_node_id={
+            node_payload.node_id: node_payload.parent_node_id
             for node_payload in payload.tree.nodes
         },
     )

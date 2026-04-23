@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, TypedDict
 
-CHECKPOINT_FORMAT_VERSION = 1
+from ._protocols import CheckpointStateSummary
+
+CHECKPOINT_FORMAT_VERSION = 2
 
 
 class EnumAtomPayload(TypedDict):
@@ -130,6 +132,27 @@ class ExplorationIndexCheckpointPayload:
 
 
 @dataclass(frozen=True, slots=True)
+class AnchorCheckpointStatePayload:
+    """Checkpoint state payload holding one full anchor snapshot reference."""
+
+    anchor_ref: object
+    state_summary: CheckpointStateSummary | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DeltaCheckpointStatePayload:
+    """Checkpoint state payload holding one child delta from its parent."""
+
+    delta_ref: object
+    state_summary: CheckpointStateSummary | None = None
+
+
+type CheckpointNodeStatePayload = (
+    AnchorCheckpointStatePayload | DeltaCheckpointStatePayload
+)
+
+
+@dataclass(frozen=True, slots=True)
 class LinkedChildCheckpointPayload:
     """Serialized parent-child edge keyed by one checkpoint atom payload."""
 
@@ -146,15 +169,17 @@ def _empty_linked_children() -> list[LinkedChildCheckpointPayload]:
 class AlgorithmNodeCheckpointPayload:
     """Serialized runtime/search payload for one algorithm node.
 
-    ``state_ref`` is opaque checkpoint data supplied by the domain-side state
-    checkpoint codec. Anemone stores it but does not interpret it.
+    ``state_payload`` is opaque checkpoint data supplied by the domain-side
+    incremental checkpoint codec. Anemone records whether the node is an
+    anchor snapshot or a delta from its representative parent edge, but the
+    actual anchor/delta payload contents remain domain-defined.
     """
 
     node_id: int
     parent_node_id: int | None
     branch_from_parent: CheckpointAtomPayload | None
     depth: int
-    state_ref: object
+    state_payload: CheckpointNodeStatePayload
     generated_all_branches: bool
     unopened_branches: list[CheckpointAtomPayload] = field(
         default_factory=_empty_checkpoint_atoms
@@ -220,13 +245,17 @@ class SearchRuntimeCheckpointPayload:
 
 
 __all__ = [
+    "AnchorCheckpointStatePayload",
     "CHECKPOINT_FORMAT_VERSION",
     "AlgorithmNodeCheckpointPayload",
     "BackupRuntimeCheckpointPayload",
     "BranchFrontierCheckpointPayload",
     "BranchOrderingCheckpointPayload",
     "CheckpointAtomPayload",
+    "CheckpointNodeStatePayload",
+    "CheckpointStateSummary",
     "DecisionOrderingCheckpointPayload",
+    "DeltaCheckpointStatePayload",
     "EnumAtomPayload",
     "ExplorationIndexCheckpointPayload",
     "LinkedChildCheckpointPayload",

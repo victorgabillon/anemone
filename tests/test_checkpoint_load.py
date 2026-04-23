@@ -12,6 +12,8 @@ from valanga import BranchKey, Color, State, StateModifications, StateTag
 
 from anemone import SearchArgs, create_search
 from anemone.checkpoints import (
+    AnchorCheckpointStatePayload,
+    DeltaCheckpointStatePayload,
     build_search_checkpoint_payload,
     load_search_from_checkpoint_payload,
 )
@@ -49,32 +51,78 @@ class _ConcreteFakeYamlState(FakeYamlState):
         return str(self.node_id)
 
 
-class _FakeStateCheckpointCodec:
-    """Tiny external state-ref codec used by restore tests."""
+class _FakeIncrementalStateCheckpointCodec:
+    """Tiny incremental checkpoint codec used by restore tests."""
 
     def __init__(self, children_by_id: dict[int, list[int]]) -> None:
         """Store the domain graph needed to rebuild fake states."""
         self._children_by_id = children_by_id
-        self.loaded_node_ids: list[int] = []
+        self.dumped_anchor_node_ids: list[int] = []
+        self.dumped_delta_pairs: list[tuple[int, int]] = []
+        self.dumped_summary_node_ids: list[int] = []
+        self.loaded_anchor_node_ids: list[int] = []
+        self.applied_delta_pairs: list[tuple[int, int]] = []
 
-    def dump_state_ref(self, state: FakeYamlState) -> object:
-        """Return an opaque state reference produced outside Anemone."""
+    def dump_anchor_ref(self, state: FakeYamlState) -> object:
+        """Return an opaque anchor snapshot produced outside Anemone."""
+        self.dumped_anchor_node_ids.append(state.node_id)
         return {
-            "codec": "fake-yaml",
+            "kind": "anchor",
             "node_id": state.node_id,
             "turn": state.turn.name,
         }
 
-    def load_state_ref(self, state_ref: object) -> _ConcreteFakeYamlState:
-        """Rebuild a fake domain state from one external state reference."""
-        data = cast("dict[str, object]", state_ref)
+    def dump_delta_from_parent(
+        self,
+        *,
+        parent_state: FakeYamlState,
+        child_state: FakeYamlState,
+    ) -> object:
+        """Return an opaque delta from one parent state to its child."""
+        self.dumped_delta_pairs.append((parent_state.node_id, child_state.node_id))
+        return {
+            "kind": "delta",
+            "parent_node_id": parent_state.node_id,
+            "child_node_id": child_state.node_id,
+            "turn": child_state.turn.name,
+        }
+
+    def load_anchor_ref(self, anchor_ref: object) -> _ConcreteFakeYamlState:
+        """Rebuild a fake domain state from one external anchor reference."""
+        data = cast("dict[str, object]", anchor_ref)
         node_id = cast("int", data["node_id"])
-        self.loaded_node_ids.append(node_id)
+        self.loaded_anchor_node_ids.append(node_id)
         return _ConcreteFakeYamlState(
             node_id=node_id,
             children_by_id=self._children_by_id,
             turn=Color[cast("str", data["turn"])],
         )
+
+    def load_delta_from_parent(
+        self,
+        *,
+        parent_state: FakeYamlState,
+        delta_ref: object,
+    ) -> _ConcreteFakeYamlState:
+        """Rebuild one child state by applying a delta to its parent state."""
+        data = cast("dict[str, object]", delta_ref)
+        parent_node_id = cast("int", data["parent_node_id"])
+        child_node_id = cast("int", data["child_node_id"])
+        assert parent_state.node_id == parent_node_id
+        self.applied_delta_pairs.append((parent_node_id, child_node_id))
+        return _ConcreteFakeYamlState(
+            node_id=child_node_id,
+            children_by_id=self._children_by_id,
+            turn=Color[cast("str", data["turn"])],
+        )
+
+    def dump_state_summary(self, state: FakeYamlState) -> object:
+        """Return lightweight checkpoint metadata for one fake state."""
+        self.dumped_summary_node_ids.append(state.node_id)
+        return {
+            "tag": state.tag,
+            "node_id": state.node_id,
+        }
 
 
 class _CountingStateValueEvaluator(MasterStateValueEvaluatorFromYaml):
@@ -288,21 +336,50 @@ class _TupleBranchDynamics:
 
 
 class _TupleBranchStateCheckpointCodec:
-    """External state-ref codec for the tuple-branch fake domain."""
+    """Incremental checkpoint codec for the tuple-branch fake domain."""
 
-    def dump_state_ref(self, state: _TupleBranchState) -> object:
-        """Return an opaque state reference produced outside Anemone."""
+    def dump_anchor_ref(self, state: _TupleBranchState) -> object:
+        """Return an opaque anchor snapshot produced outside Anemone."""
         return {
-            "codec": "tuple-branch",
+            "kind": "anchor",
             "node_id": state.node_id,
             "turn": state.turn.name,
         }
 
-    def load_state_ref(self, state_ref: object) -> _TupleBranchState:
-        """Rebuild a tuple-branch state from one external state reference."""
-        data = cast("dict[str, object]", state_ref)
+    def dump_delta_from_parent(
+        self,
+        *,
+        parent_state: _TupleBranchState,
+        child_state: _TupleBranchState,
+    ) -> object:
+        """Return an opaque delta from a tuple-branch parent to its child."""
+        return {
+            "kind": "delta",
+            "parent_node_id": parent_state.node_id,
+            "child_node_id": child_state.node_id,
+            "turn": child_state.turn.name,
+        }
+
+    def load_anchor_ref(self, anchor_ref: object) -> _TupleBranchState:
+        """Rebuild a tuple-branch state from one external anchor reference."""
+        data = cast("dict[str, object]", anchor_ref)
         return _TupleBranchState(
             node_id=cast("int", data["node_id"]),
+            children_by_id=_TUPLE_BRANCH_CHILDREN_BY_ID,
+            turn=Color[cast("str", data["turn"])],
+        )
+
+    def load_delta_from_parent(
+        self,
+        *,
+        parent_state: _TupleBranchState,
+        delta_ref: object,
+    ) -> _TupleBranchState:
+        """Rebuild a tuple-branch child state from a parent state plus delta."""
+        del parent_state
+        data = cast("dict[str, object]", delta_ref)
+        return _TupleBranchState(
+            node_id=cast("int", data["child_node_id"]),
             children_by_id=_TUPLE_BRANCH_CHILDREN_BY_ID,
             turn=Color[cast("str", data["turn"])],
         )
@@ -364,8 +441,8 @@ def _roundtrip_runtime(
     children_by_id: dict[int, list[int]] = _CHILDREN_BY_ID,
     index_computation: IndexComputationType | None = None,
 ) -> Any:
-    """Export and restore one runtime using the fake external state codec."""
-    codec = _FakeStateCheckpointCodec(children_by_id)
+    """Export and restore one runtime using the fake incremental codec."""
+    codec = _FakeIncrementalStateCheckpointCodec(children_by_id)
     payload = build_search_checkpoint_payload(runtime, state_codec=codec)
     return load_search_from_checkpoint_payload(
         payload,
@@ -476,46 +553,78 @@ def _serialized_value(value: Any) -> object:
 
 
 def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> None:
-    """Checkpoint-backed handles should decode on first access and then cache."""
-    codec = _FakeStateCheckpointCodec(_CHILDREN_BY_ID)
-    state_ref_by_node_id = {
-        1: codec.dump_state_ref(
-            _ConcreteFakeYamlState(
-                node_id=1,
-                children_by_id=_CHILDREN_BY_ID,
-                turn=Color.BLACK,
-            )
+    """Checkpoint-backed handles should resolve parent chains lazily and cache."""
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    state_payload_by_node_id = {
+        0: AnchorCheckpointStatePayload(
+            anchor_ref=codec.dump_anchor_ref(
+                _ConcreteFakeYamlState(
+                    node_id=0,
+                    children_by_id=_CHILDREN_BY_ID,
+                    turn=Color.WHITE,
+                )
+            ),
+            state_summary={"tag": 0},
         ),
-        2: codec.dump_state_ref(
-            _ConcreteFakeYamlState(
-                node_id=2,
-                children_by_id=_CHILDREN_BY_ID,
-                turn=Color.BLACK,
-            )
+        1: DeltaCheckpointStatePayload(
+            delta_ref=codec.dump_delta_from_parent(
+                parent_state=_ConcreteFakeYamlState(
+                    node_id=0,
+                    children_by_id=_CHILDREN_BY_ID,
+                    turn=Color.WHITE,
+                ),
+                child_state=_ConcreteFakeYamlState(
+                    node_id=1,
+                    children_by_id=_CHILDREN_BY_ID,
+                    turn=Color.BLACK,
+                ),
+            ),
+            state_summary={"tag": 1},
+        ),
+        2: DeltaCheckpointStatePayload(
+            delta_ref=codec.dump_delta_from_parent(
+                parent_state=_ConcreteFakeYamlState(
+                    node_id=0,
+                    children_by_id=_CHILDREN_BY_ID,
+                    turn=Color.WHITE,
+                ),
+                child_state=_ConcreteFakeYamlState(
+                    node_id=2,
+                    children_by_id=_CHILDREN_BY_ID,
+                    turn=Color.BLACK,
+                ),
+            ),
+            state_summary={"tag": 2},
         ),
     }
     resolver = CheckpointStateResolver(
         state_codec=codec,
-        state_refs_by_node_id=state_ref_by_node_id,
+        state_payloads_by_node_id=state_payload_by_node_id,
+        parent_ids_by_node_id={0: None, 1: 0, 2: 0},
     )
     first_handle = CheckpointBackedStateHandle(resolver=resolver, node_id=1)
     same_node_handle = CheckpointBackedStateHandle(resolver=resolver, node_id=1)
     second_handle = CheckpointBackedStateHandle(resolver=resolver, node_id=2)
 
-    assert codec.loaded_node_ids == []
+    assert codec.loaded_anchor_node_ids == []
+    assert codec.applied_delta_pairs == []
+    assert resolver.summary(1) == {"tag": 1}
 
     first_state = first_handle.get()
 
     assert first_state.node_id == 1
-    assert codec.loaded_node_ids == [1]
+    assert codec.loaded_anchor_node_ids == [0]
+    assert codec.applied_delta_pairs == [(0, 1)]
     assert first_handle.get() is first_state
     assert same_node_handle.get() is first_state
-    assert codec.loaded_node_ids == [1]
+    assert codec.loaded_anchor_node_ids == [0]
+    assert codec.applied_delta_pairs == [(0, 1)]
 
     second_state = second_handle.get()
 
     assert second_state.node_id == 2
-    assert codec.loaded_node_ids == [1, 2]
+    assert codec.loaded_anchor_node_ids == [0]
+    assert codec.applied_delta_pairs == [(0, 1), (0, 2)]
 
 
 def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
@@ -547,9 +656,9 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
     runtime.step()
     payload = build_search_checkpoint_payload(
         runtime,
-        state_codec=_FakeStateCheckpointCodec(_CHILDREN_BY_ID),
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
     )
-    restore_codec = _FakeStateCheckpointCodec(_CHILDREN_BY_ID)
+    restore_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
 
     restored = load_search_from_checkpoint_payload(
         payload,
@@ -569,19 +678,54 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
         isinstance(node.tree_node.state_handle, CheckpointBackedStateHandle)
         for node in restored_nodes.values()
     )
-    assert restore_codec.loaded_node_ids == []
+    assert restore_codec.loaded_anchor_node_ids == []
+    assert restore_codec.applied_delta_pairs == []
 
     child_state = restored_nodes[1].state
 
     assert child_state.node_id == 1
-    assert restore_codec.loaded_node_ids == [1]
+    assert restore_codec.loaded_anchor_node_ids == [0]
+    assert restore_codec.applied_delta_pairs == [(0, 1)]
     assert restored_nodes[1].state is child_state
-    assert restore_codec.loaded_node_ids == [1]
+    assert restore_codec.loaded_anchor_node_ids == [0]
+    assert restore_codec.applied_delta_pairs == [(0, 1)]
 
     sibling_state = restored_nodes[2].state
 
     assert sibling_state.node_id == 2
-    assert restore_codec.loaded_node_ids == [1, 2]
+    assert restore_codec.loaded_anchor_node_ids == [0]
+    assert restore_codec.applied_delta_pairs == [(0, 1), (0, 2)]
+
+
+def test_checkpoint_restore_reconstructs_grandchild_from_parent_delta_chain() -> None:
+    """Restoring one deep node should resolve only its anchor and parent deltas."""
+    runtime = _build_runtime()
+    runtime.step()
+    runtime.step()
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    restore_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=restore_codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+
+    grandchild_state = _runtime_nodes_by_id(restored)[3].state
+
+    assert grandchild_state.node_id == 3
+    assert restore_codec.loaded_anchor_node_ids == [0]
+    assert restore_codec.applied_delta_pairs == [(0, 1), (1, 3)]
 
 
 def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> None:
@@ -590,9 +734,9 @@ def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> N
     runtime.step()
     payload = build_search_checkpoint_payload(
         runtime,
-        state_codec=_FakeStateCheckpointCodec(_CHILDREN_BY_ID),
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
     )
-    restore_codec = _FakeStateCheckpointCodec(_CHILDREN_BY_ID)
+    restore_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
     representation_factory = _TrackingRepresentationFactory()
 
     restored = load_search_from_checkpoint_payload(
@@ -612,11 +756,39 @@ def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> N
 
     assert all(node.state_representation is None for node in restored_nodes.values())
     assert representation_factory.created_for_node_ids == []
-    assert restore_codec.loaded_node_ids == []
+    assert restore_codec.loaded_anchor_node_ids == []
+    assert restore_codec.applied_delta_pairs == []
 
     restored.step()
 
     assert representation_factory.created_for_node_ids
+
+
+def test_checkpoint_restore_preserves_state_summaries_on_payloads_and_resolver() -> None:
+    """Restore should preserve summary metadata for future checkpoint consumers."""
+    runtime = _build_runtime()
+    runtime.step()
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec)
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+
+    payload_nodes = {node.node_id: node for node in payload.tree.nodes}
+    child_handle = _runtime_nodes_by_id(restored)[1].state_handle
+
+    assert payload_nodes[0].state_payload.state_summary == {"tag": 0, "node_id": 0}
+    assert payload_nodes[1].state_payload.state_summary == {"tag": 1, "node_id": 1}
+    assert child_handle.resolver.summary(1) == {"tag": 1, "node_id": 1}
 
 
 def test_checkpoint_restore_preserves_node_values() -> None:
@@ -678,7 +850,7 @@ def test_checkpoint_restore_does_not_evaluate_checkpointed_nodes() -> None:
     """Loading should restore checkpointed values instead of recomputing them."""
     runtime = _build_runtime()
     runtime.step()
-    codec = _FakeStateCheckpointCodec(_CHILDREN_BY_ID)
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
     payload = build_search_checkpoint_payload(runtime, state_codec=codec)
     evaluator = _CountingStateValueEvaluator(_values_for(_CHILDREN_BY_ID))
 
@@ -694,7 +866,8 @@ def test_checkpoint_restore_does_not_evaluate_checkpointed_nodes() -> None:
     )
 
     assert evaluator.evaluated_items_count == 0
-    assert codec.loaded_node_ids == []
+    assert codec.loaded_anchor_node_ids == []
+    assert codec.applied_delta_pairs == []
     restored.step()
     assert evaluator.evaluated_items_count > 0
 

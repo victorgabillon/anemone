@@ -6,11 +6,14 @@ from .load import CheckpointRestoreError, load_search_from_checkpoint_payload
 from .payloads import (
     CHECKPOINT_FORMAT_VERSION,
     AlgorithmNodeCheckpointPayload,
+    AnchorCheckpointStatePayload,
     BackupRuntimeCheckpointPayload,
     BranchFrontierCheckpointPayload,
     BranchOrderingCheckpointPayload,
     CheckpointAtomPayload,
+    CheckpointNodeStatePayload,
     DecisionOrderingCheckpointPayload,
+    DeltaCheckpointStatePayload,
     EnumAtomPayload,
     ExplorationIndexCheckpointPayload,
     LinkedChildCheckpointPayload,
@@ -36,6 +39,7 @@ from .value_serialization import (
 )
 
 __all__ = [
+    "AnchorCheckpointStatePayload",
     "CHECKPOINT_FORMAT_VERSION",
     "AlgorithmNodeCheckpointPayload",
     "BackupRuntimeCheckpointPayload",
@@ -43,9 +47,11 @@ __all__ = [
     "BranchOrderingCheckpointPayload",
     "CheckpointAtom",
     "CheckpointAtomPayload",
+    "CheckpointNodeStatePayload",
     "CheckpointRestoreError",
     "CheckpointSerializationError",
     "DecisionOrderingCheckpointPayload",
+    "DeltaCheckpointStatePayload",
     "EnumAtomPayload",
     "ExplorationIndexCheckpointPayload",
     "LinkedChildCheckpointPayload",
