@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from random import Random
 from typing import Any
 
@@ -45,13 +46,21 @@ class _ConcreteFakeYamlState(FakeYamlState):
         return str(self.node_id)
 
 
+@dataclass(frozen=True, slots=True)
+class _FakeCheckpointStateSummary:
+    """Small typed summary object used by fake incremental codecs."""
+
+    tag: int
+    node_id: int
+
+
 class _FakeIncrementalStateCheckpointCodec:
     """Tiny incremental checkpoint codec for exporter tests."""
 
     def __init__(self) -> None:
         """Initialize the codec call logs."""
         self.dumped_anchor_node_ids: list[int] = []
-        self.dumped_delta_pairs: list[tuple[int, int]] = []
+        self.dumped_delta_items: list[tuple[int, int, object | None]] = []
         self.dumped_summary_node_ids: list[int] = []
 
     def dump_anchor_ref(self, state: _ConcreteFakeYamlState) -> object:
@@ -68,13 +77,17 @@ class _FakeIncrementalStateCheckpointCodec:
         *,
         parent_state: _ConcreteFakeYamlState,
         child_state: _ConcreteFakeYamlState,
+        branch_from_parent: object | None = None,
     ) -> object:
         """Return an opaque delta from one concrete parent state."""
-        self.dumped_delta_pairs.append((parent_state.node_id, child_state.node_id))
+        self.dumped_delta_items.append(
+            (parent_state.node_id, child_state.node_id, branch_from_parent)
+        )
         return {
             "kind": "delta",
             "parent_node_id": parent_state.node_id,
             "child_node_id": child_state.node_id,
+            "branch_from_parent": branch_from_parent,
             "turn": child_state.turn.name,
         }
 
@@ -82,25 +95,23 @@ class _FakeIncrementalStateCheckpointCodec:
         """Exporter tests do not restore anchors."""
         raise AssertionError(f"Exporter tests should not load anchors: {anchor_ref!r}")
 
-    def load_delta_from_parent(
+    def load_child_from_delta(
         self,
         *,
         parent_state: _ConcreteFakeYamlState,
         delta_ref: object,
+        branch_from_parent: object | None = None,
     ) -> _ConcreteFakeYamlState:
         """Exporter tests do not restore deltas."""
         raise AssertionError(
             "Exporter tests should not load deltas: "
-            f"{parent_state.node_id=} {delta_ref!r}"
+            f"{parent_state.node_id=} {branch_from_parent=!r} {delta_ref!r}"
         )
 
-    def dump_state_summary(self, state: _ConcreteFakeYamlState) -> object:
+    def dump_state_summary(self, state: _ConcreteFakeYamlState) -> _FakeCheckpointStateSummary:
         """Return lightweight state metadata for the payload."""
         self.dumped_summary_node_ids.append(state.node_id)
-        return {
-            "tag": state.tag,
-            "node_id": state.node_id,
-        }
+        return _FakeCheckpointStateSummary(tag=state.tag, node_id=state.node_id)
 
 
 _CHILDREN_BY_ID = {
@@ -211,10 +222,10 @@ def test_node_state_payloads_use_anchor_and_delta_codec_outputs() -> None:
         "node_id": root_payload.node_id,
         "turn": runtime.tree.root_node.state.turn.name,
     }
-    assert root_payload.state_payload.state_summary == {
-        "tag": runtime.tree.root_node.state.tag,
-        "node_id": runtime.tree.root_node.state.node_id,
-    }
+    assert root_payload.state_payload.state_summary == _FakeCheckpointStateSummary(
+        tag=runtime.tree.root_node.state.tag,
+        node_id=runtime.tree.root_node.state.node_id,
+    )
 
     non_root_payloads = [
         payload_nodes[node.id]
@@ -228,8 +239,13 @@ def test_node_state_payloads_use_anchor_and_delta_codec_outputs() -> None:
         for node_payload in non_root_payloads
     )
     assert codec.dumped_anchor_node_ids == [runtime.tree.root_node.state.node_id]
-    assert sorted(codec.dumped_delta_pairs) == sorted(
-        (root_payload.node_id, node_payload.node_id) for node_payload in non_root_payloads
+    assert sorted(codec.dumped_delta_items) == sorted(
+        (
+            root_payload.node_id,
+            node_payload.node_id,
+            node_payload.branch_from_parent,
+        )
+        for node_payload in non_root_payloads
     )
     assert sorted(codec.dumped_summary_node_ids) == sorted(payload_nodes)
 

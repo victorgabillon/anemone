@@ -1,10 +1,15 @@
-"""Internal protocol adapters around Valanga checkpoint codecs."""
+"""Thin runtime-checkable mirrors of the Valanga checkpoint protocols.
+
+This module exists so Anemone can use ``isinstance(..., Protocol)`` checks even
+when the local runtime does not yet expose the new Valanga checkpoint module.
+The method names and semantics must therefore mirror Valanga exactly.
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from valanga import State
+from valanga import BranchKey, State
 
 if TYPE_CHECKING:
     from valanga.checkpoints import CheckpointStateSummary
@@ -25,6 +30,7 @@ class IncrementalStateCheckpointCodec[StateT: State = State](Protocol):
         *,
         parent_state: StateT,
         child_state: StateT,
+        branch_from_parent: BranchKey | None = None,
     ) -> object:
         """Serialize one child delta relative to a concrete parent state."""
         ...
@@ -33,11 +39,12 @@ class IncrementalStateCheckpointCodec[StateT: State = State](Protocol):
         """Restore one concrete state from an anchor snapshot reference."""
         ...
 
-    def load_delta_from_parent(
+    def load_child_from_delta(
         self,
         *,
         parent_state: StateT,
         delta_ref: object,
+        branch_from_parent: BranchKey | None = None,
     ) -> StateT:
         """Restore one child state by applying ``delta_ref`` to ``parent_state``."""
         ...

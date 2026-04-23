@@ -3,6 +3,7 @@
 
 from .build import build_search_checkpoint_payload
 from .load import CheckpointRestoreError, load_search_from_checkpoint_payload
+from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
 from .payloads import (
     CHECKPOINT_FORMAT_VERSION,
     AlgorithmNodeCheckpointPayload,
@@ -47,9 +48,11 @@ __all__ = [
     "BranchOrderingCheckpointPayload",
     "CheckpointAtom",
     "CheckpointAtomPayload",
+    "CheckpointBackedStateHandle",
     "CheckpointNodeStatePayload",
     "CheckpointRestoreError",
     "CheckpointSerializationError",
+    "CheckpointStateResolver",
     "DecisionOrderingCheckpointPayload",
     "DeltaCheckpointStatePayload",
     "EnumAtomPayload",

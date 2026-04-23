@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 import pytest
 from valanga import Color, Outcome, OverEvent
@@ -29,15 +29,23 @@ from anemone.checkpoints import (
 from anemone.node_evaluation.common import canonical_value
 
 
+@dataclass(frozen=True, slots=True)
+class _FakeCheckpointStateSummary:
+    """Small typed summary object used by checkpoint payload tests."""
+
+    tag: int
+    node_id: int
+
+
 def test_node_checkpoint_can_store_explicit_anchor_and_delta_payloads() -> None:
     """Node checkpoint payloads should treat anchor and delta refs as opaque."""
     anchor_payload = AnchorCheckpointStatePayload(
         anchor_ref={"domain": "morpion", "snapshot": [0, 1]},
-        state_summary={"tag": 17},
+        state_summary=_FakeCheckpointStateSummary(tag=17, node_id=17),
     )
     delta_payload = DeltaCheckpointStatePayload(
         delta_ref={"move": 12},
-        state_summary={"tag": 18},
+        state_summary=_FakeCheckpointStateSummary(tag=18, node_id=18),
     )
     root_node = AlgorithmNodeCheckpointPayload(
         node_id=1,
@@ -130,7 +138,7 @@ def test_checkpoint_payload_dataclasses_support_nested_runtime_state() -> None:
                     depth=0,
                     state_payload=AnchorCheckpointStatePayload(
                         anchor_ref={"tag": "root"},
-                        state_summary={"tag": 1},
+                        state_summary=_FakeCheckpointStateSummary(tag=1, node_id=1),
                     ),
                     generated_all_branches=True,
                     unopened_branches=[2, 3],

@@ -23,11 +23,7 @@ from anemone.indices.node_indices.index_data import (
 from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-from anemone.nodes.state_handles import (
-    CheckpointBackedStateHandle,
-    CheckpointStateResolver,
-    StateHandle,
-)
+from anemone.nodes.state_handles import StateHandle
 from anemone.progress_monitor.progress_monitor import create_stopping_criterion
 from anemone.tree_exploration import TreeExploration
 from anemone.tree_exploration_debug import (
@@ -55,6 +51,7 @@ from .payloads import (
     TreeExpansionsCheckpointPayload,
 )
 from .value_serialization import deserialize_checkpoint_atom, deserialize_value
+from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -257,6 +254,14 @@ def _create_state_resolver[
         },
         parent_ids_by_node_id={
             node_payload.node_id: node_payload.parent_node_id
+            for node_payload in payload.tree.nodes
+        },
+        branches_from_parent_by_node_id={
+            node_payload.node_id: (
+                _deserialize_branch(node_payload.branch_from_parent)
+                if node_payload.branch_from_parent is not None
+                else None
+            )
             for node_payload in payload.tree.nodes
         },
     )

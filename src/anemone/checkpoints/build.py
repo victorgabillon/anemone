@@ -37,6 +37,7 @@ from .value_serialization import serialize_checkpoint_atom, serialize_value
 if TYPE_CHECKING:
     from collections.abc import Iterable, MutableMapping
 
+    from valanga import BranchKey
     from valanga.evaluations import Value
 
     from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
@@ -52,7 +53,11 @@ def build_search_checkpoint_payload(
     *,
     state_codec: IncrementalStateCheckpointCodec[Any],
 ) -> SearchRuntimeCheckpointPayload:
-    """Build a read-only checkpoint payload from one live search runtime."""
+    """Build a read-only checkpoint payload from one live search runtime.
+
+    The new checkpoint format requires an incremental codec that can emit
+    anchor snapshots plus parent-to-child deltas.
+    """
     return SearchRuntimeCheckpointPayload(
         evaluator_version=search.evaluator_version,
         tree=_build_tree_payload(search=search, state_codec=state_codec),
@@ -97,15 +102,21 @@ def _build_node_payload(
     state_codec: IncrementalStateCheckpointCodec[Any],
 ) -> AlgorithmNodeCheckpointPayload:
     """Build one node checkpoint payload without mutating runtime state."""
-    parent_node, parent_node_id, branch_from_parent = _representative_parent_link(node)
+    (
+        parent_node,
+        parent_node_id,
+        branch_from_parent,
+        branch_from_parent_payload,
+    ) = _representative_parent_link(node)
     return AlgorithmNodeCheckpointPayload(
         node_id=node.id,
         parent_node_id=parent_node_id,
-        branch_from_parent=branch_from_parent,
+        branch_from_parent=branch_from_parent_payload,
         depth=node.tree_depth,
         state_payload=_build_checkpoint_state_payload(
             node=node,
             parent_node=parent_node,
+            branch_from_parent=branch_from_parent,
             state_codec=state_codec,
         ),
         generated_all_branches=node.all_branches_generated,
@@ -121,6 +132,7 @@ def _representative_parent_link(
 ) -> tuple[
     AlgorithmNode[Any] | None,
     int | None,
+    BranchKey | None,
     CheckpointAtomPayload | None,
 ]:
     """Return a deterministic representative incoming edge for this node.
@@ -131,14 +143,20 @@ def _representative_parent_link(
     """
     for parent_node, branch_keys in node.parent_nodes.items():
         branch = _first_branch_in_stable_order(branch_keys)
-        return parent_node, parent_node.id, serialize_checkpoint_atom(branch)
-    return None, None, None
+        return (
+            parent_node,
+            parent_node.id,
+            branch,
+            serialize_checkpoint_atom(branch),
+        )
+    return None, None, None, None
 
 
 def _build_checkpoint_state_payload(
     *,
     node: AlgorithmNode[Any],
     parent_node: AlgorithmNode[Any] | None,
+    branch_from_parent: BranchKey | None,
     state_codec: IncrementalStateCheckpointCodec[Any],
 ) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload:
     """Build one explicit anchor-or-delta checkpoint payload for ``node``."""
@@ -154,6 +172,7 @@ def _build_checkpoint_state_payload(
         delta_ref=state_codec.dump_delta_from_parent(
             parent_state=parent_node.state,
             child_state=node.state,
+            branch_from_parent=branch_from_parent,
         ),
         state_summary=state_summary,
     )
