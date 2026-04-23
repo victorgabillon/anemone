@@ -21,7 +21,7 @@ from anemone.node_factory.base import TreeNodeFactory
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-from anemone.nodes.state_handles import MaterializedStateHandle, StateHandle
+from anemone.nodes.state_handles import StateHandle
 from anemone.nodes.tree_node import TreeNode
 
 if TYPE_CHECKING:
@@ -139,12 +139,17 @@ class AlgorithmNodeFactory[StateT: State = State]:
         build_state_representation: bool = True,
     ) -> AlgorithmNode[StateT]:
         """Create an algorithm node from a concrete state."""
-        return self.create(
-            state_handle=MaterializedStateHandle(state_=state),
-            tree_depth=tree_depth,
-            count=count,
+        tree_node = self.tree_node_factory.create_from_state(
+            state,
+            tree_depth,
+            count,
+            parent_node,
+            branch_from_parent,
+            modifications,
+        )
+        return self.create_from_tree_node(
+            tree_node=tree_node,
             parent_node=parent_node,
-            branch_from_parent=branch_from_parent,
-            modifications=modifications,
             build_state_representation=build_state_representation,
+            modifications=modifications,
         )

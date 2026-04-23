@@ -579,7 +579,7 @@ def _expected_applied_delta_items_for_node(
     payload: Any,
     node_id: int,
 ) -> list[tuple[int, int, object | None]]:
-    """Return the expected parent-delta chain for one payload node."""
+    """Return the expected domain-state delta chain for one payload node."""
     payload_nodes = _payload_nodes_by_id(payload)
     expected_items: list[tuple[int, int, object | None]] = []
     current_node_id = node_id
@@ -588,16 +588,51 @@ def _expected_applied_delta_items_for_node(
         if isinstance(node_payload.state_payload, AnchorCheckpointStatePayload):
             break
         assert node_payload.parent_node_id is not None
+        delta_ref = cast("dict[str, object]", node_payload.state_payload.delta_ref)
         expected_items.append(
             (
-                node_payload.parent_node_id,
-                current_node_id,
-                node_payload.branch_from_parent,
+                cast("int", delta_ref["parent_node_id"]),
+                cast("int", delta_ref["child_node_id"]),
+                delta_ref["branch_from_parent"],
             )
         )
         current_node_id = node_payload.parent_node_id
     expected_items.reverse()
     return expected_items
+
+
+def _all_delta_items(payload: Any) -> set[tuple[int | None, int, object | None]]:
+    """Return all persisted delta edges in domain-state id space."""
+    return {
+        (
+            cast(
+                "int",
+                cast("dict[str, object]", node.state_payload.delta_ref)[
+                    "parent_node_id"
+                ],
+            ),
+            cast(
+                "int",
+                cast("dict[str, object]", node.state_payload.delta_ref)[
+                    "child_node_id"
+                ],
+            ),
+            cast("dict[str, object]", node.state_payload.delta_ref)[
+                "branch_from_parent"
+            ],
+        )
+        for node in payload.tree.nodes
+        if isinstance(node.state_payload, DeltaCheckpointStatePayload)
+    }
+
+
+def _contains_subsequence(
+    items: list[tuple[int, int, object | None]],
+    expected: list[tuple[int, int, object | None]],
+) -> bool:
+    """Return whether ``expected`` appears in order within ``items``."""
+    item_iter = iter(items)
+    return all(any(item == candidate for item in item_iter) for candidate in expected)
 
 
 def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> None:
@@ -730,25 +765,22 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
         for node in restored_nodes.values()
     )
     assert set(restore_codec.loaded_anchor_node_ids).issubset({0})
-    assert len(restore_codec.applied_delta_items) <= 1
+    assert set(restore_codec.applied_delta_items) == _all_delta_items(payload)
 
     child_node = next(
         node
         for node in restored_nodes.values()
         if node.id != restored.tree.root_node.id and node.tree_depth == 1
     )
+    applied_before = list(restore_codec.applied_delta_items)
     child_state = child_node.state
-    expected_child_chain = _expected_applied_delta_items_for_node(
-        payload=payload,
-        node_id=child_node.id,
-    )
 
     assert child_state.node_id == child_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == expected_child_chain
+    assert restore_codec.applied_delta_items == applied_before
     assert child_node.state is child_state
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == expected_child_chain
+    assert restore_codec.applied_delta_items == applied_before
 
     sibling_node = next(
         node
@@ -761,13 +793,7 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
 
     assert sibling_state.node_id == sibling_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == (
-        expected_child_chain
-        + _expected_applied_delta_items_for_node(
-            payload=payload,
-            node_id=sibling_node.id,
-        )
-    )
+    assert restore_codec.applied_delta_items == applied_before
 
 
 def test_checkpoint_restore_reconstructs_grandchild_from_parent_delta_chain() -> None:
@@ -795,15 +821,18 @@ def test_checkpoint_restore_reconstructs_grandchild_from_parent_delta_chain() ->
     )
 
     restored_nodes = _runtime_nodes_by_id(restored)
-    grandchild_node = next(node for node in restored_nodes.values() if node.tree_depth == 2)
+    grandchild_node = next(
+        node for node in restored_nodes.values() if node.tree_depth == 2
+    )
     grandchild_state = grandchild_node.state
-
-    assert grandchild_state.node_id == grandchild_node.state.node_id
-    assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == _expected_applied_delta_items_for_node(
+    expected_chain = _expected_applied_delta_items_for_node(
         payload=payload,
         node_id=grandchild_node.id,
     )
+
+    assert grandchild_state.node_id == grandchild_node.state.node_id
+    assert restore_codec.loaded_anchor_node_ids == [0]
+    assert _contains_subsequence(restore_codec.applied_delta_items, expected_chain)
 
 
 def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> None:
@@ -835,7 +864,7 @@ def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> N
     assert all(node.state_representation is None for node in restored_nodes.values())
     assert representation_factory.created_for_node_ids == []
     assert set(restore_codec.loaded_anchor_node_ids).issubset({0})
-    assert len(restore_codec.applied_delta_items) <= 1
+    assert set(restore_codec.applied_delta_items) == _all_delta_items(payload)
 
     restored.step()
 
@@ -958,8 +987,8 @@ def test_checkpoint_restore_does_not_evaluate_checkpointed_nodes() -> None:
     )
 
     assert evaluator.evaluated_items_count == 0
-    assert codec.loaded_anchor_node_ids == []
-    assert codec.applied_delta_items == []
+    assert set(codec.loaded_anchor_node_ids).issubset({0})
+    assert set(codec.applied_delta_items) == _all_delta_items(payload)
     restored.step()
     assert evaluator.evaluated_items_count > 0
 

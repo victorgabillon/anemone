@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import cast
 
 from valanga import BranchKey, State
 
@@ -38,7 +39,10 @@ class CheckpointStateResolver[StateT: State = State]:
     state_payloads_by_node_id: Mapping[int, CheckpointNodeStatePayload]
     parent_ids_by_node_id: Mapping[int, int | None]
     branches_from_parent_by_node_id: Mapping[int, BranchKey | None]
-    _resolved_states: dict[int, StateT] = field(default_factory=dict, init=False)
+    _resolved_states: dict[int, StateT] = field(
+        default_factory=lambda: cast("dict[int, StateT]", {}),
+        init=False,
+    )
 
     def resolve(self, node_id: int) -> StateT:
         """Return one checkpointed state, decoding it only once."""

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import fields, is_dataclass
 from random import Random
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from anemone.utils.small_tools import Interval
 
@@ -187,15 +187,16 @@ def _is_anchor_node(
     return parent_node is None or node.tree_depth % CHECKPOINT_ANCHOR_DEPTH_STRIDE == 0
 
 
-def _dump_optional_state_summary(
-    state: Any,
+def _dump_optional_state_summary[StateT: Any](
+    state: StateT,
     *,
-    state_codec: IncrementalStateCheckpointCodec[Any],
+    state_codec: IncrementalStateCheckpointCodec[StateT],
 ) -> CheckpointStateSummary | None:
     """Dump optional checkpoint summary metadata when the codec supports it."""
     if not isinstance(state_codec, StateCheckpointSummaryCodec):
         return None
-    return state_codec.dump_state_summary(state)
+    summary_codec = cast("StateCheckpointSummaryCodec[StateT]", state_codec)
+    return summary_codec.dump_state_summary(state)
 
 
 def _serialize_linked_children(
