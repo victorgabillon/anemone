@@ -48,6 +48,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
         tree_node: TreeNode[AlgorithmNode[StateT], StateT],
         parent_node: AlgorithmNode[StateT] | None,
         modifications: StateModifications | None,
+        build_state_representation: bool = True,
     ) -> AlgorithmNode[StateT]:
         """Build an AlgorithmNode from an existing TreeNode."""
         tree_evaluation: NodeTreeEvaluation[StateT] = (
@@ -63,7 +64,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
         state_representation: ContentRepresentation[StateT, EvaluatorInput] | None = (
             None
         )
-        if self.state_representation_factory is not None:
+        if self.state_representation_factory is not None and build_state_representation:
             if parent_node is not None:
                 parent_node_representation = parent_node.state_representation
             else:
@@ -92,6 +93,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
         parent_node: AlgorithmNode[StateT] | None,
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None,
+        build_state_representation: bool = True,
     ) -> AlgorithmNode[StateT]:
         """Create an AlgorithmNode object.
 
@@ -102,6 +104,8 @@ class AlgorithmNodeFactory[StateT: State = State]:
             count: The node identifier.
             parent_node: The parent node object.
             modifications: The state modifications object.
+            build_state_representation: Whether to eagerly build the optional
+                evaluator-side state representation.
 
         Returns:
             The created AlgorithmNode.
@@ -121,6 +125,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
             tree_node=tree_node,
             parent_node=parent_node,
             modifications=modifications,
+            build_state_representation=build_state_representation,
         )
 
     def create_from_state(
@@ -131,6 +136,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
         parent_node: AlgorithmNode[StateT] | None,
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None,
+        build_state_representation: bool = True,
     ) -> AlgorithmNode[StateT]:
         """Convenience wrapper that materializes a handle from a concrete state."""
         return self.create(
@@ -140,4 +146,5 @@ class AlgorithmNodeFactory[StateT: State = State]:
             parent_node=parent_node,
             branch_from_parent=branch_from_parent,
             modifications=modifications,
+            build_state_representation=build_state_representation,
         )

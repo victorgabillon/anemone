@@ -23,7 +23,11 @@ from anemone.indices.node_indices.index_data import (
 from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-from anemone.nodes.state_handles import MaterializedStateHandle
+from anemone.nodes.state_handles import (
+    CheckpointBackedStateHandle,
+    CheckpointStateResolver,
+    StateHandle,
+)
 from anemone.progress_monitor.progress_monitor import create_stopping_criterion
 from anemone.tree_exploration import TreeExploration
 from anemone.tree_exploration_debug import (
@@ -145,7 +149,8 @@ def load_search_from_checkpoint_payload[
     """Restore a live search runtime from one in-memory checkpoint payload.
 
     The loader restores exported tree, node, value, and evaluation-cache state
-    directly without evaluating checkpointed nodes. Selector-visible latest
+    directly without evaluating checkpointed nodes, and without eagerly
+    materializing checkpointed domain states. Selector-visible latest
     expansions are restored exactly from the payload. Selector-private state is
     only restored where this module has an explicit, narrow runtime contract;
     currently that means inferring Uniform's depth cursor from the latest
@@ -166,16 +171,20 @@ def load_search_from_checkpoint_payload[
         ),
         hooks=hooks,
     )
-    states_by_id: dict[int, StateT] = _load_states(
+    state_resolver = _create_state_resolver(
         payload=payload,
         state_codec=state_codec,
+    )
+    state_handles_by_id = _create_state_handles(
+        payload=payload,
+        state_resolver=state_resolver,
     )
     _ = state_type
 
     nodes_by_id = _create_nodes(
         node_factory=dependencies.tree_manager.tree_manager.node_factory,
         payload=payload,
-        states_by_id=states_by_id,
+        state_handles_by_id=state_handles_by_id,
     )
     _link_nodes(payload.tree.nodes, nodes_by_id=nodes_by_id)
     _restore_node_runtime_state(payload.tree.nodes, nodes_by_id=nodes_by_id)
@@ -218,16 +227,36 @@ def _validate_payload(payload: SearchRuntimeCheckpointPayload) -> None:
         raise CheckpointRestoreError.missing_root(payload.tree.root_node_id)
 
 
-def _load_states[
+def _create_state_resolver[
     StateT: AnyTurnState,
 ](
     *,
     payload: SearchRuntimeCheckpointPayload,
     state_codec: StateCheckpointCodec[StateT],
-) -> dict[int, StateT]:
-    """Reconstruct every domain state through the external Valanga codec."""
+) -> CheckpointStateResolver[StateT]:
+    """Create the shared lazy resolver for all checkpoint-backed state handles."""
+    return CheckpointStateResolver(
+        state_codec=state_codec,
+        state_refs_by_node_id={
+            node_payload.node_id: node_payload.state_ref
+            for node_payload in payload.tree.nodes
+        },
+    )
+
+
+def _create_state_handles[
+    StateT: AnyTurnState,
+](
+    *,
+    payload: SearchRuntimeCheckpointPayload,
+    state_resolver: CheckpointStateResolver[StateT],
+) -> dict[int, StateHandle[StateT]]:
+    """Create one lazy checkpoint-backed handle for each restored node."""
     return {
-        node_payload.node_id: state_codec.load_state_ref(node_payload.state_ref)
+        node_payload.node_id: CheckpointBackedStateHandle(
+            resolver=state_resolver,
+            node_id=node_payload.node_id,
+        )
         for node_payload in payload.tree.nodes
     }
 
@@ -238,7 +267,7 @@ def _create_nodes[
     *,
     node_factory: Any,
     payload: SearchRuntimeCheckpointPayload,
-    states_by_id: Mapping[int, StateT],
+    state_handles_by_id: Mapping[int, StateHandle[StateT]],
 ) -> dict[int, AlgorithmNode[StateT]]:
     """Create every node without linking parent/child edges yet.
 
@@ -249,14 +278,18 @@ def _create_nodes[
     nodes_by_id: dict[int, AlgorithmNode[StateT]] = {}
     for node_payload in sorted(payload.tree.nodes, key=lambda item: item.depth):
         node = node_factory.create(
-            state_handle=MaterializedStateHandle(
-                state_=states_by_id[node_payload.node_id]
-            ),
+            state_handle=state_handles_by_id[node_payload.node_id],
             tree_depth=node_payload.depth,
             count=node_payload.node_id,
             parent_node=None,
             branch_from_parent=None,
             modifications=None,
+            # Restored checkpoint nodes intentionally keep
+            # ``state_representation`` unset. Restore must not force state
+            # materialization just to rebuild evaluator-side representations.
+            # New nodes created after resume may still build representations
+            # through the normal factory path.
+            build_state_representation=False,
         )
         nodes_by_id[node_payload.node_id] = node
     return nodes_by_id

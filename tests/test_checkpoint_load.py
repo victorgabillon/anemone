@@ -25,7 +25,10 @@ from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import OpeningType
 from anemone.node_selector.priority_check.noop_args import NoPriorityCheckArgs
 from anemone.node_selector.uniform.uniform import UniformArgs
-from anemone.nodes.state_handles import MaterializedStateHandle
+from anemone.nodes.state_handles import (
+    CheckpointBackedStateHandle,
+    CheckpointStateResolver,
+)
 from anemone.progress_monitor.progress_monitor import (
     StoppingCriterionTypes,
     TreeBranchLimitArgs,
@@ -52,6 +55,7 @@ class _FakeStateCheckpointCodec:
     def __init__(self, children_by_id: dict[int, list[int]]) -> None:
         """Store the domain graph needed to rebuild fake states."""
         self._children_by_id = children_by_id
+        self.loaded_node_ids: list[int] = []
 
     def dump_state_ref(self, state: FakeYamlState) -> object:
         """Return an opaque state reference produced outside Anemone."""
@@ -64,8 +68,10 @@ class _FakeStateCheckpointCodec:
     def load_state_ref(self, state_ref: object) -> _ConcreteFakeYamlState:
         """Rebuild a fake domain state from one external state reference."""
         data = cast("dict[str, object]", state_ref)
+        node_id = cast("int", data["node_id"])
+        self.loaded_node_ids.append(node_id)
         return _ConcreteFakeYamlState(
-            node_id=cast("int", data["node_id"]),
+            node_id=node_id,
             children_by_id=self._children_by_id,
             turn=Color[cast("str", data["turn"])],
         )
@@ -83,6 +89,36 @@ class _CountingStateValueEvaluator(MasterStateValueEvaluatorFromYaml):
         """Count evaluated batch items before delegating to the fake evaluator."""
         self.evaluated_items_count += len(items)
         return super().evaluate_batch_items(items)
+
+
+@dataclass(slots=True)
+class _FakeStateRepresentation:
+    """Minimal evaluator-side representation used for restore-contract tests."""
+
+    node_id: int
+
+    def get_evaluator_input(self, state: FakeYamlState) -> tuple[int, int]:
+        """Return a tiny deterministic payload for optional evaluator callers."""
+        return (self.node_id, state.node_id)
+
+
+class _TrackingRepresentationFactory:
+    """Record which nodes build evaluator-side representations."""
+
+    def __init__(self) -> None:
+        """Initialize the representation creation log."""
+        self.created_for_node_ids: list[int] = []
+
+    def create_from_transition(
+        self,
+        state: FakeYamlState,
+        previous_state_representation: _FakeStateRepresentation | None,
+        modifications: StateModifications | None,
+    ) -> _FakeStateRepresentation:
+        """Record one representation creation and return a tiny test object."""
+        del previous_state_representation, modifications
+        self.created_for_node_ids.append(state.node_id)
+        return _FakeStateRepresentation(node_id=state.node_id)
 
 
 _CHILDREN_BY_ID = {
@@ -439,6 +475,49 @@ def _serialized_value(value: Any) -> object:
     return serialize_value(value) if value is not None else None
 
 
+def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> None:
+    """Checkpoint-backed handles should decode on first access and then cache."""
+    codec = _FakeStateCheckpointCodec(_CHILDREN_BY_ID)
+    state_ref_by_node_id = {
+        1: codec.dump_state_ref(
+            _ConcreteFakeYamlState(
+                node_id=1,
+                children_by_id=_CHILDREN_BY_ID,
+                turn=Color.BLACK,
+            )
+        ),
+        2: codec.dump_state_ref(
+            _ConcreteFakeYamlState(
+                node_id=2,
+                children_by_id=_CHILDREN_BY_ID,
+                turn=Color.BLACK,
+            )
+        ),
+    }
+    resolver = CheckpointStateResolver(
+        state_codec=codec,
+        state_refs_by_node_id=state_ref_by_node_id,
+    )
+    first_handle = CheckpointBackedStateHandle(resolver=resolver, node_id=1)
+    same_node_handle = CheckpointBackedStateHandle(resolver=resolver, node_id=1)
+    second_handle = CheckpointBackedStateHandle(resolver=resolver, node_id=2)
+
+    assert codec.loaded_node_ids == []
+
+    first_state = first_handle.get()
+
+    assert first_state.node_id == 1
+    assert codec.loaded_node_ids == [1]
+    assert first_handle.get() is first_state
+    assert same_node_handle.get() is first_state
+    assert codec.loaded_node_ids == [1]
+
+    second_state = second_handle.get()
+
+    assert second_state.node_id == 2
+    assert codec.loaded_node_ids == [1, 2]
+
+
 def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
     """Restored runtimes should keep root id, node count, and edge structure."""
     runtime = _build_runtime()
@@ -455,11 +534,89 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
     for node_id, original_node in original_nodes.items():
         restored_node = restored_nodes[node_id]
         assert isinstance(
-            restored_node.tree_node.state_handle, MaterializedStateHandle
+            restored_node.tree_node.state_handle, CheckpointBackedStateHandle
         )
         assert restored_node.tree_depth == original_node.tree_depth
         assert _child_signature(restored_node) == _child_signature(original_node)
         assert _parent_signature(restored_node) == _parent_signature(original_node)
+
+
+def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
+    """Restore should not decode states until one restored node is accessed."""
+    runtime = _build_runtime()
+    runtime.step()
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    restore_codec = _FakeStateCheckpointCodec(_CHILDREN_BY_ID)
+
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=restore_codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+
+    restored_nodes = _runtime_nodes_by_id(restored)
+    assert all(
+        isinstance(node.tree_node.state_handle, CheckpointBackedStateHandle)
+        for node in restored_nodes.values()
+    )
+    assert restore_codec.loaded_node_ids == []
+
+    child_state = restored_nodes[1].state
+
+    assert child_state.node_id == 1
+    assert restore_codec.loaded_node_ids == [1]
+    assert restored_nodes[1].state is child_state
+    assert restore_codec.loaded_node_ids == [1]
+
+    sibling_state = restored_nodes[2].state
+
+    assert sibling_state.node_id == 2
+    assert restore_codec.loaded_node_ids == [1, 2]
+
+
+def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> None:
+    """Restore should leave checkpoint-backed nodes without eager representations."""
+    runtime = _build_runtime()
+    runtime.step()
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    restore_codec = _FakeStateCheckpointCodec(_CHILDREN_BY_ID)
+    representation_factory = _TrackingRepresentationFactory()
+
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=restore_codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=representation_factory,
+    )
+
+    restored_nodes = _runtime_nodes_by_id(restored)
+
+    assert all(node.state_representation is None for node in restored_nodes.values())
+    assert representation_factory.created_for_node_ids == []
+    assert restore_codec.loaded_node_ids == []
+
+    restored.step()
+
+    assert representation_factory.created_for_node_ids
 
 
 def test_checkpoint_restore_preserves_node_values() -> None:
@@ -537,6 +694,7 @@ def test_checkpoint_restore_does_not_evaluate_checkpointed_nodes() -> None:
     )
 
     assert evaluator.evaluated_items_count == 0
+    assert codec.loaded_node_ids == []
     restored.step()
     assert evaluator.evaluated_items_count > 0
 

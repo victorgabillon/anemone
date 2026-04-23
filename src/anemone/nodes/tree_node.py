@@ -26,7 +26,8 @@ class TreeNode[
     Attributes:
         id\_ (int): The number to identify this node for easier debugging.
         tree_depth\_ (int): The depth of the node in the tree.
-        state\_handle\_ (StateHandle[StateT]): The handle for the node state.
+        state\_handle\_ (StateHandle[StateT]): The explicit handle owned by the
+            node.
         parent_nodes\_ (dict[ITreeNode, set[BranchKey]]): Parent nodes and the
             distinct branch keys linking them to this node.
         all_branches_generated (bool): Whether all branches have been generated.
@@ -36,7 +37,7 @@ class TreeNode[
 
     Methods:
         id(): Returns the id of the node.
-        state(): Returns the state representation.
+        state(): Resolves the concrete state through the handle.
         tree_depth(): Returns the depth of the node.
         branches_children(): Returns the dictionary mapping branches to child nodes.
         parent_nodes(): Returns the parent node mapping.
@@ -85,10 +86,10 @@ class TreeNode[
 
     @property
     def tag(self) -> StateTag:
-        """Returns the fast tag representation of the state.
+        """Return the fast tag representation of the resolved state.
 
         Returns:
-            StateTag: The fast tag representation of the state.
+            StateTag: The fast tag representation of the resolved state.
 
         """
         return self.state.tag
@@ -105,10 +106,10 @@ class TreeNode[
 
     @property
     def state(self) -> StateT:
-        """Returns the state associated with this tree node.
+        """Resolve and return the concrete state through this node's handle.
 
         Returns:
-            State: The state associated with this tree node.
+            State: The concrete state resolved through the handle.
 
         """
         return self.state_handle_.get()
@@ -182,10 +183,10 @@ class TreeNode[
         branch_keys.add(branch_key)
 
     def is_over(self) -> bool:
-        """Check if the state is terminal.
+        """Check if the resolved state is terminal.
 
         Returns:
-            bool: True if the state is terminal, False otherwise.
+            bool: True if the resolved state is terminal, False otherwise.
 
         """
         return self.state.is_game_over()

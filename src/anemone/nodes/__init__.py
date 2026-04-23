@@ -14,7 +14,19 @@ runtime wrapper explicitly.
 """
 
 from .itree_node import ITreeNode
-from .state_handles import MaterializedStateHandle, StateHandle
+from .state_handles import (
+    CheckpointBackedStateHandle,
+    CheckpointStateResolver,
+    MaterializedStateHandle,
+    StateHandle,
+)
 from .tree_node import TreeNode
 
-__all__ = ["ITreeNode", "MaterializedStateHandle", "StateHandle", "TreeNode"]
+__all__ = [
+    "CheckpointBackedStateHandle",
+    "CheckpointStateResolver",
+    "ITreeNode",
+    "MaterializedStateHandle",
+    "StateHandle",
+    "TreeNode",
+]
