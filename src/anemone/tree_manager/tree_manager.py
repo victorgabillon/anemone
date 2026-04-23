@@ -14,6 +14,7 @@ from anemone.node_selector.opening_instructions import (
     OpeningInstruction,
     OpeningInstructions,
 )
+from anemone.nodes.state_handles import MaterializedStateHandle
 from anemone.tree_manager.tree_expander import (
     TreeExpansion,
     TreeExpansions,
@@ -35,12 +36,12 @@ class TreeManager[
     semantics down into this class.
     """
 
-    node_factory: NodeFactory[FamilyT]
+    node_factory: NodeFactory[FamilyT, Any]
     dynamics: SearchDynamics[Any, Any]
 
     def __init__(
         self,
-        node_factory: NodeFactory[FamilyT],
+        node_factory: NodeFactory[FamilyT, Any],
         dynamics: SearchDynamics[Any, Any],
     ) -> None:
         """Initialize the tree manager with a node factory and search dynamics."""
@@ -117,7 +118,7 @@ class TreeManager[
         if need_creation_child_node:
             child_node: FamilyT
             child_node = self.node_factory.create(
-                state=state,
+                state_handle=MaterializedStateHandle(state_=state),
                 tree_depth=tree_depth,
                 count=tree.nodes_count,
                 branch_from_parent=branch,

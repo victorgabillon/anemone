@@ -25,6 +25,7 @@ from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import OpeningType
 from anemone.node_selector.priority_check.noop_args import NoPriorityCheckArgs
 from anemone.node_selector.uniform.uniform import UniformArgs
+from anemone.nodes.state_handles import MaterializedStateHandle
 from anemone.progress_monitor.progress_monitor import (
     StoppingCriterionTypes,
     TreeBranchLimitArgs,
@@ -453,6 +454,9 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
     assert set(restored_nodes) == set(original_nodes)
     for node_id, original_node in original_nodes.items():
         restored_node = restored_nodes[node_id]
+        assert isinstance(
+            restored_node.tree_node.state_handle, MaterializedStateHandle
+        )
         assert restored_node.tree_depth == original_node.tree_depth
         assert _child_signature(restored_node) == _child_signature(original_node)
         assert _parent_signature(restored_node) == _parent_signature(original_node)

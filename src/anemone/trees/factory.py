@@ -7,6 +7,7 @@ from anemone.node_evaluation.direct.node_direct_evaluator import (
     NodeDirectEvaluator,
 )
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.nodes.state_handles import MaterializedStateHandle
 from anemone.trees.tree import Tree
 
 from .descendants import RangedDescendants
@@ -44,7 +45,7 @@ class ValueTreeFactory[StateT: AnyTurnState = AnyTurnState]:
 
         """
         root_node: AlgorithmNode[StateT] = self.node_factory.create(
-            state=starting_state,
+            state_handle=MaterializedStateHandle(state_=starting_state),
             tree_depth=0,  # by default
             count=0,
             parent_node=None,

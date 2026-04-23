@@ -30,6 +30,7 @@ from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import OpeningType
 from anemone.node_selector.priority_check.noop_args import NoPriorityCheckArgs
 from anemone.node_selector.uniform.uniform import UniformArgs
+from anemone.nodes.state_handles import MaterializedStateHandle
 from anemone.progress_monitor.progress_monitor import (
     StoppingCriterionTypes,
     TreeBranchLimitArgs,
@@ -98,12 +99,21 @@ def test_create_tree_and_value_exploration_returns_runnable_runtime() -> None:
     )
 
     assert isinstance(exploration, TreeExploration)
+    assert isinstance(
+        exploration.tree.root_node.tree_node.state_handle, MaterializedStateHandle
+    )
+    assert exploration.tree.root_node.state is starting_state
     assert exploration.tree.root_node.state.tag == starting_state.tag
 
     result = exploration.explore(random_generator=Random(0))
 
     assert result.tree is exploration.tree
     assert exploration.tree.nodes_count == 3
+    assert all(
+        isinstance(node.tree_node.state_handle, MaterializedStateHandle)
+        for depth in exploration.tree.descendants
+        for node in exploration.tree.descendants[depth].values()
+    )
     assert result.branch_recommendation.branch_evals is not None
     assert (
         result.branch_recommendation.recommended_name

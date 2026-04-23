@@ -15,6 +15,7 @@ from anemone.indices.node_indices import NodeExplorationData
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     NodeTreeEvaluation,
 )
+from anemone.nodes.state_handles import StateHandle
 from anemone.nodes.tree_node import TreeNode
 
 
@@ -118,6 +119,11 @@ class AlgorithmNode[StateT: State = State]:
 
         """
         return self.tree_node.state
+
+    @property
+    def state_handle(self) -> StateHandle[StateT]:
+        """Return the explicit state handle owned by the wrapped tree node."""
+        return self.tree_node.state_handle
 
     def is_over(self) -> bool:
         """Return whether this node's own state is terminal.

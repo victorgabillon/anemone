@@ -6,22 +6,26 @@ from valanga import BranchKey, State, StateModifications
 
 from anemone.basics import TreeDepth
 from anemone.nodes.itree_node import ITreeNode
+from anemone.nodes.state_handles import MaterializedStateHandle, StateHandle
 from anemone.nodes.tree_node import TreeNode
 
 
-class NodeFactory[NodeT: ITreeNode[Any] = ITreeNode[Any]](Protocol):
+class NodeFactory[
+    NodeT: ITreeNode[Any] = ITreeNode[Any],
+    StateT: State = State,
+](Protocol):
     """Node Factory."""
 
     def create(
         self,
-        state: State,
+        state_handle: StateHandle[StateT],
         tree_depth: TreeDepth,
         count: int,
         parent_node: NodeT | None,
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None,
     ) -> NodeT:
-        """Create a node from state and tree metadata."""
+        """Create a node from a state handle and tree metadata."""
         ...
 
 
@@ -30,7 +34,7 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
 
     def create(
         self,
-        state: StateT,
+        state_handle: StateHandle[StateT],
         tree_depth: TreeDepth,
         count: int,
         parent_node: T | None,
@@ -40,7 +44,7 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
         """Create a new TreeNode object.
 
         Args:
-            state: The current state for the node.
+            state_handle: The explicit state handle for the node.
             tree_depth: The tree depth for the new node.
             count: The ID of the new node.
             parent_node: The parent node of the new node.
@@ -62,9 +66,28 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
             parent_nodes = {parent_node: {branch_from_parent}}
 
         tree_node: TreeNode[T, StateT] = TreeNode[T, StateT](
-            state_=state,
+            state_handle_=state_handle,
             tree_depth_=tree_depth,
             id_=count,
             parent_nodes_=parent_nodes,
         )
         return tree_node
+
+    def create_from_state(
+        self,
+        state: StateT,
+        tree_depth: TreeDepth,
+        count: int,
+        parent_node: T | None,
+        branch_from_parent: BranchKey | None,
+        modifications: StateModifications | None = None,
+    ) -> TreeNode[T, StateT]:
+        """Convenience wrapper that materializes the default state handle."""
+        return self.create(
+            state_handle=MaterializedStateHandle(state_=state),
+            tree_depth=tree_depth,
+            count=count,
+            parent_node=parent_node,
+            branch_from_parent=branch_from_parent,
+            modifications=modifications,
+        )

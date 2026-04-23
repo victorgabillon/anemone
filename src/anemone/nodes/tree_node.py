@@ -6,6 +6,7 @@ from typing import Any
 from valanga import BranchKey, State, StateTag
 
 from .itree_node import ITreeNode
+from .state_handles import StateHandle
 
 # TODO: replace the any with a defaut value in ITReenode when availble in python; 3.13?
 
@@ -17,14 +18,15 @@ class TreeNode[
 ]:
     r"""Concrete structural implementation of ``ITreeNode``.
 
-    ``TreeNode`` stores navigation and branch-opening bookkeeping only: state,
-    tree depth, parent/child links, and unopened-branch tracking. Search/runtime
-    layers should wrap it rather than grow more algorithm semantics here.
+    ``TreeNode`` stores navigation and branch-opening bookkeeping only:
+    state-handle ownership, tree depth, parent/child links, and unopened-branch
+    tracking. Search/runtime layers should wrap it rather than grow more
+    algorithm semantics here.
 
     Attributes:
         id\_ (int): The number to identify this node for easier debugging.
         tree_depth\_ (int): The depth of the node in the tree.
-        state\_ (State): The state associated with the node.
+        state\_handle\_ (StateHandle[StateT]): The handle for the node state.
         parent_nodes\_ (dict[ITreeNode, set[BranchKey]]): Parent nodes and the
             distinct branch keys linking them to this node.
         all_branches_generated (bool): Whether all branches have been generated.
@@ -51,8 +53,8 @@ class TreeNode[
     # the tree depth of this node
     tree_depth_: int
 
-    # the node holds a state.
-    state_: StateT
+    # the node holds a state handle.
+    state_handle_: StateHandle[StateT]
 
     # Each parent can reach this node through multiple distinct branch keys.
     parent_nodes_: dict[FamilyT, set[BranchKey]]
@@ -89,7 +91,7 @@ class TreeNode[
             StateTag: The fast tag representation of the state.
 
         """
-        return self.state_.tag
+        return self.state.tag
 
     @property
     def id(self) -> int:
@@ -109,7 +111,12 @@ class TreeNode[
             State: The state associated with this tree node.
 
         """
-        return self.state_
+        return self.state_handle_.get()
+
+    @property
+    def state_handle(self) -> StateHandle[StateT]:
+        """Return the explicit state handle owned by this node."""
+        return self.state_handle_
 
     @property
     def tree_depth(self) -> int:

@@ -23,6 +23,7 @@ from anemone.indices.node_indices.index_data import (
 from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.nodes.state_handles import MaterializedStateHandle
 from anemone.progress_monitor.progress_monitor import create_stopping_criterion
 from anemone.tree_exploration import TreeExploration
 from anemone.tree_exploration_debug import (
@@ -248,7 +249,9 @@ def _create_nodes[
     nodes_by_id: dict[int, AlgorithmNode[StateT]] = {}
     for node_payload in sorted(payload.tree.nodes, key=lambda item: item.depth):
         node = node_factory.create(
-            state=states_by_id[node_payload.node_id],
+            state_handle=MaterializedStateHandle(
+                state_=states_by_id[node_payload.node_id]
+            ),
             tree_depth=node_payload.depth,
             count=node_payload.node_id,
             parent_node=None,
