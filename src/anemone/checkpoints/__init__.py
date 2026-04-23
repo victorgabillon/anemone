@@ -3,7 +3,6 @@
 
 from .build import build_search_checkpoint_payload
 from .load import CheckpointRestoreError, load_search_from_checkpoint_payload
-from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
 from .payloads import (
     CHECKPOINT_FORMAT_VERSION,
     AlgorithmNodeCheckpointPayload,
@@ -28,6 +27,7 @@ from .payloads import (
     TreeExpansionsCheckpointPayload,
     TupleAtomPayload,
 )
+from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
 from .value_serialization import (
     CheckpointAtom,
     CheckpointSerializationError,
@@ -40,9 +40,9 @@ from .value_serialization import (
 )
 
 __all__ = [
-    "AnchorCheckpointStatePayload",
     "CHECKPOINT_FORMAT_VERSION",
     "AlgorithmNodeCheckpointPayload",
+    "AnchorCheckpointStatePayload",
     "BackupRuntimeCheckpointPayload",
     "BranchFrontierCheckpointPayload",
     "BranchOrderingCheckpointPayload",

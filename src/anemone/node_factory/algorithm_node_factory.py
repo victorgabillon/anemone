@@ -138,7 +138,7 @@ class AlgorithmNodeFactory[StateT: State = State]:
         modifications: StateModifications | None,
         build_state_representation: bool = True,
     ) -> AlgorithmNode[StateT]:
-        """Convenience wrapper that materializes a handle from a concrete state."""
+        """Create an algorithm node from a concrete state."""
         return self.create(
             state_handle=MaterializedStateHandle(state_=state),
             tree_depth=tree_depth,

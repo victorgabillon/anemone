@@ -38,7 +38,7 @@ test = [
   "pytest>=9.0.2",
   "coverage",
   "pytest-cov>=6.0.0",
-  "atomheart==0.2.7",
+  "atomheart==0.2.8",
 ]
 
 lint = [
@@ -48,7 +48,7 @@ lint = [
 
 typecheck = [
   "mypy>=1.19.1",
-  "pyright[nodejs]>=1.1.408",
+  "pyright[nodejs]>=1.1.409",
   "types-PyYAML>=6.0.12.12",
 ]
 
@@ -326,7 +326,7 @@ deps = [
 
   # tools
   "mypy>=1.19.1",
-  "pyright[nodejs]>=1.1.408",
+  "pyright[nodejs]>=1.1.409",
   "types-PyYAML>=6.0.12.12",
 ]
 set_env = { MYPYPATH = "{toxinidir}/src" }

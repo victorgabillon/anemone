@@ -23,7 +23,6 @@ from anemone.indices.node_indices.index_data import (
 from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-from anemone.nodes.state_handles import StateHandle
 from anemone.progress_monitor.progress_monitor import create_stopping_criterion
 from anemone.tree_exploration import TreeExploration
 from anemone.tree_exploration_debug import (
@@ -34,7 +33,6 @@ from anemone.tree_manager import TreeExpansion, TreeExpansions
 from anemone.trees.descendants import RangedDescendants
 from anemone.utils.small_tools import Interval
 
-from ._protocols import IncrementalStateCheckpointCodec
 from .payloads import (
     CHECKPOINT_FORMAT_VERSION,
     AlgorithmNodeCheckpointPayload,
@@ -50,8 +48,8 @@ from .payloads import (
     TreeExpansionCheckpointPayload,
     TreeExpansionsCheckpointPayload,
 )
-from .value_serialization import deserialize_checkpoint_atom, deserialize_value
 from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
+from .value_serialization import deserialize_checkpoint_atom, deserialize_value
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -65,6 +63,9 @@ if TYPE_CHECKING:
     from anemone.hooks.search_hooks import SearchHooks
     from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
     from anemone.node_evaluation.tree.factory import NodeTreeEvaluationFactory
+    from anemone.nodes.state_handles import StateHandle
+
+    from ._protocols import IncrementalStateCheckpointCodec
 
 
 class CheckpointRestoreError(ValueError):
@@ -233,9 +234,7 @@ def _validate_payload(payload: SearchRuntimeCheckpointPayload) -> None:
             isinstance(node_payload.state_payload, DeltaCheckpointStatePayload)
             and node_payload.parent_node_id is None
         ):
-            raise CheckpointRestoreError.delta_node_missing_parent(
-                node_payload.node_id
-            )
+            raise CheckpointRestoreError.delta_node_missing_parent(node_payload.node_id)
 
 
 def _create_state_resolver[

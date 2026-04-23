@@ -82,7 +82,7 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
         branch_from_parent: BranchKey | None,
         modifications: StateModifications | None = None,
     ) -> TreeNode[T, StateT]:
-        """Convenience wrapper that materializes the default state handle."""
+        """Create a tree node from a concrete state."""
         return self.create(
             state_handle=MaterializedStateHandle(state_=state),
             tree_depth=tree_depth,

@@ -5,14 +5,23 @@ from dataclasses import dataclass, field
 
 from valanga import BranchKey, State
 
-from anemone.nodes.state_handles import StateHandle
-
 from ._protocols import CheckpointStateSummary, IncrementalStateCheckpointCodec
 from .payloads import (
     AnchorCheckpointStatePayload,
     CheckpointNodeStatePayload,
     DeltaCheckpointStatePayload,
 )
+
+
+class CheckpointStateResolutionError(KeyError):
+    """Raised when one checkpoint-backed state cannot be resolved safely."""
+
+    @classmethod
+    def delta_node_missing_parent(
+        cls, node_id: int
+    ) -> "CheckpointStateResolutionError":
+        """Return the error for a delta node that lacks a parent node id."""
+        return cls(f"Delta checkpoint node {node_id} has no parent node id.")
 
 
 @dataclass(slots=True)
@@ -66,7 +75,7 @@ class CheckpointStateResolver[StateT: State = State]:
         """Resolve one delta payload by first resolving its representative parent."""
         parent_node_id = self.parent_ids_by_node_id[node_id]
         if parent_node_id is None:
-            raise KeyError(f"Delta checkpoint node {node_id} has no parent node id.")
+            raise CheckpointStateResolutionError.delta_node_missing_parent(node_id)
 
         parent_state = self.resolve(parent_node_id)
         return self.state_codec.load_child_from_delta(
@@ -90,5 +99,6 @@ class CheckpointBackedStateHandle[StateT: State = State]:
 
 __all__ = [
     "CheckpointBackedStateHandle",
+    "CheckpointStateResolutionError",
     "CheckpointStateResolver",
 ]

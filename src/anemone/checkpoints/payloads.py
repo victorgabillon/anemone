@@ -245,9 +245,9 @@ class SearchRuntimeCheckpointPayload:
 
 
 __all__ = [
-    "AnchorCheckpointStatePayload",
     "CHECKPOINT_FORMAT_VERSION",
     "AlgorithmNodeCheckpointPayload",
+    "AnchorCheckpointStatePayload",
     "BackupRuntimeCheckpointPayload",
     "BranchFrontierCheckpointPayload",
     "BranchOrderingCheckpointPayload",
