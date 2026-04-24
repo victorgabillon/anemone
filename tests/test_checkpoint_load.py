@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from random import Random
 from typing import Any, Self, cast
 
@@ -36,6 +37,7 @@ from anemone.progress_monitor.progress_monitor import (
     TreeBranchLimitArgs,
 )
 from anemone.recommender_rule.recommender_rule import SoftmaxRule
+from anemone.utils.logger import anemone_logger
 from tests.fake_yaml_game import (
     FakeYamlDynamics,
     FakeYamlState,
@@ -824,6 +826,69 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
     assert sibling_state.node_id == sibling_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
     assert restore_codec.applied_delta_items == applied_before
+
+
+def test_checkpoint_restore_logs_structured_phase_timings(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Restore should emit timed logs for the major restore phases."""
+    runtime = _build_runtime()
+    runtime.step()
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    restore_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+
+    with caplog.at_level(logging.INFO, logger=anemone_logger.name):
+        restored = load_search_from_checkpoint_payload(
+            payload,
+            state_codec=restore_codec,
+            dynamics=FakeYamlDynamics(),
+            args=_build_args(),
+            state_type=_ConcreteFakeYamlState,
+            master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+                _values_for(_CHILDREN_BY_ID)
+            ),
+            random_generator=Random(0),
+            state_representation_factory=None,
+        )
+
+    checkpoint_restore_messages = [
+        record.getMessage()
+        for record in caplog.records
+        if "[checkpoint-restore]" in record.getMessage()
+    ]
+    expected_phases = {
+        "assemble_runtime_dependencies",
+        "validate_payload",
+        "create_state_resolver",
+        "create_state_handles",
+        "create_nodes",
+        "link_nodes",
+        "restore_node_runtime_state",
+        "build_tree",
+        "create_runtime",
+        "restore_runtime_state",
+        "restore_tree_expansions",
+        "restore_selector_state",
+    }
+
+    for phase_name in expected_phases:
+        assert any(
+            f"phase={phase_name} status=start" in message
+            for message in checkpoint_restore_messages
+        )
+        done_messages = [
+            message
+            for message in checkpoint_restore_messages
+            if f"phase={phase_name} status=done" in message
+        ]
+        assert done_messages
+        assert all("elapsed_s=" in message for message in done_messages)
+
+    assert restored.tree.root_node.id == runtime.tree.root_node.id
+    assert restored.tree.nodes_count == runtime.tree.nodes_count
 
 
 def test_checkpoint_restore_reconstructs_grandchild_from_parent_delta_chain() -> None:

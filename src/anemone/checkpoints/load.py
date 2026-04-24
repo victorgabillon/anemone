@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from random import Random
+from time import perf_counter
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
 from anemone import trees
@@ -31,6 +33,7 @@ from anemone.tree_exploration_debug import (
 )
 from anemone.tree_manager import TreeExpansion, TreeExpansions
 from anemone.trees.descendants import RangedDescendants
+from anemone.utils.logger import anemone_logger
 from anemone.utils.small_tools import Interval
 
 from .payloads import (
@@ -130,6 +133,37 @@ class _DepthCursorSelector(Protocol):
     current_depth_to_expand: int
 
 
+@contextmanager
+def _log_restore_phase(phase_name: str, **metadata: object) -> Any:
+    """Log one checkpoint-restore phase start and completion timing."""
+    _log_checkpoint_restore_event(phase_name, "start", **metadata)
+    started_at = perf_counter()
+    try:
+        yield
+    finally:
+        _log_checkpoint_restore_event(
+            phase_name,
+            "done",
+            elapsed_s=round(perf_counter() - started_at, 6),
+            **metadata,
+        )
+
+
+def _log_checkpoint_restore_event(
+    phase_name: str,
+    status: str,
+    **metadata: object,
+) -> None:
+    """Emit one structured checkpoint-restore log line."""
+    metadata_suffix = " ".join(
+        f"{key}={value}" for key, value in metadata.items() if value is not None
+    )
+    message = f"[checkpoint-restore] phase={phase_name} status={status}"
+    if metadata_suffix:
+        message = f"{message} {metadata_suffix}"
+    anemone_logger.info(message)
+
+
 def load_search_from_checkpoint_payload[
     StateT: AnyTurnState,
     ActionT,
@@ -161,60 +195,114 @@ def load_search_from_checkpoint_payload[
     expansion depth. The supplied evaluator is kept for future expansions and
     explicit reevaluations after the runtime resumes.
     """
-    _validate_payload(payload)
+    anchor_count, delta_count = _checkpoint_state_payload_counts(payload)
+    common_metadata = {
+        "node_count": len(payload.tree.nodes),
+        "root_node_id": payload.tree.root_node_id,
+        "format_version": payload.format_version,
+        "anchor_count": anchor_count,
+        "delta_count": delta_count,
+        "latest_expansion_count": _latest_expansion_count(payload),
+    }
+    with _log_restore_phase("validate_payload", **common_metadata):
+        _validate_payload(payload)
 
     checkpoint_random_generator = random_generator if random_generator else Random()
-    dependencies = assemble_search_runtime_dependencies(
-        dynamics=dynamics,
-        args=args,
-        random_generator=checkpoint_random_generator,
-        master_state_evaluator=master_state_value_evaluator,
-        state_representation_factory=state_representation_factory,
-        node_tree_evaluation_factory=(
-            node_tree_evaluation_factory or NodeTreeMinmaxEvaluationFactory()
-        ),
-        hooks=hooks,
-    )
-    state_resolver = _create_state_resolver(
-        payload=payload,
-        state_codec=state_codec,
-    )
-    state_handles_by_id = _create_state_handles(
-        payload=payload,
-        state_resolver=state_resolver,
-    )
+    with _log_restore_phase("assemble_runtime_dependencies", **common_metadata):
+        dependencies = assemble_search_runtime_dependencies(
+            dynamics=dynamics,
+            args=args,
+            random_generator=checkpoint_random_generator,
+            master_state_evaluator=master_state_value_evaluator,
+            state_representation_factory=state_representation_factory,
+            node_tree_evaluation_factory=(
+                node_tree_evaluation_factory or NodeTreeMinmaxEvaluationFactory()
+            ),
+            hooks=hooks,
+        )
+    with _log_restore_phase("create_state_resolver", **common_metadata):
+        state_resolver = _create_state_resolver(
+            payload=payload,
+            state_codec=state_codec,
+        )
+    with _log_restore_phase("create_state_handles", **common_metadata):
+        state_handles_by_id = _create_state_handles(
+            payload=payload,
+            state_resolver=state_resolver,
+        )
     _ = state_type
 
-    nodes_by_id = _create_nodes(
-        node_factory=dependencies.tree_manager.tree_manager.node_factory,
-        payload=payload,
-        state_handles_by_id=state_handles_by_id,
-    )
-    _link_nodes(payload.tree.nodes, nodes_by_id=nodes_by_id)
-    _restore_node_runtime_state(payload.tree.nodes, nodes_by_id=nodes_by_id)
+    with _log_restore_phase("create_nodes", **common_metadata):
+        nodes_by_id = _create_nodes(
+            node_factory=dependencies.tree_manager.tree_manager.node_factory,
+            payload=payload,
+            state_handles_by_id=state_handles_by_id,
+        )
+    with _log_restore_phase("link_nodes", **common_metadata):
+        _link_nodes(payload.tree.nodes, nodes_by_id=nodes_by_id)
+    with _log_restore_phase("restore_node_runtime_state", **common_metadata):
+        _restore_node_runtime_state(payload.tree.nodes, nodes_by_id=nodes_by_id)
 
-    restored_tree = _build_tree(payload=payload, nodes_by_id=nodes_by_id)
+    with _log_restore_phase("build_tree", **common_metadata):
+        restored_tree = _build_tree(payload=payload, nodes_by_id=nodes_by_id)
     node_selector = dependencies.node_selector_create()
-    runtime = TreeExploration(
-        tree=restored_tree,
-        tree_manager=dependencies.tree_manager,
-        stopping_criterion=create_stopping_criterion(
-            args=args.stopping_criterion,
+    with _log_restore_phase("create_runtime", **common_metadata):
+        runtime = TreeExploration(
+            tree=restored_tree,
+            tree_manager=dependencies.tree_manager,
+            stopping_criterion=create_stopping_criterion(
+                args=args.stopping_criterion,
+                node_selector=node_selector,
+            ),
             node_selector=node_selector,
-        ),
-        node_selector=node_selector,
-        recommend_branch_after_exploration=args.recommender_rule,
-        notify_percent_function=notify_progress,
-        iteration_progress_reporter=maybe_log_iteration_progress,
-        search_result_reporter=log_final_best_line,
-    )
-    _restore_runtime_state(
-        runtime=runtime,
-        payload=payload,
-        random_generator=checkpoint_random_generator,
-        nodes_by_id=nodes_by_id,
-    )
+            recommend_branch_after_exploration=args.recommender_rule,
+            notify_percent_function=notify_progress,
+            iteration_progress_reporter=maybe_log_iteration_progress,
+            search_result_reporter=log_final_best_line,
+        )
+    with _log_restore_phase("restore_runtime_state", **common_metadata):
+        _restore_runtime_state(
+            runtime=runtime,
+            payload=payload,
+            random_generator=checkpoint_random_generator,
+        )
+    with _log_restore_phase("restore_tree_expansions", **common_metadata):
+        _restore_tree_expansions_runtime_state(
+            runtime=runtime,
+            payload=payload.latest_tree_expansions,
+            nodes_by_id=nodes_by_id,
+        )
+    with _log_restore_phase("restore_selector_state", **common_metadata):
+        _restore_inferred_depth_selector_state(
+            runtime=runtime,
+            payload=payload.latest_tree_expansions,
+            nodes_by_id=nodes_by_id,
+        )
     return runtime
+
+
+def _checkpoint_state_payload_counts(
+    payload: SearchRuntimeCheckpointPayload,
+) -> tuple[int, int]:
+    """Return the anchor and delta payload counts for one checkpoint."""
+    anchor_count = 0
+    delta_count = 0
+    for node_payload in payload.tree.nodes:
+        if isinstance(node_payload.state_payload, DeltaCheckpointStatePayload):
+            delta_count += 1
+        else:
+            anchor_count += 1
+    return anchor_count, delta_count
+
+
+def _latest_expansion_count(payload: SearchRuntimeCheckpointPayload) -> int:
+    """Return the number of latest expansion records stored in the payload."""
+    latest_tree_expansions = payload.latest_tree_expansions
+    if latest_tree_expansions is None:
+        return 0
+    return len(latest_tree_expansions.expansions_with_node_creation) + len(
+        latest_tree_expansions.expansions_without_node_creation
+    )
 
 
 def _validate_payload(payload: SearchRuntimeCheckpointPayload) -> None:
@@ -536,9 +624,8 @@ def _restore_runtime_state(
     runtime: TreeExploration[AlgorithmNode[Any]],
     payload: SearchRuntimeCheckpointPayload,
     random_generator: Random,
-    nodes_by_id: Mapping[int, AlgorithmNode[Any]],
 ) -> None:
-    """Restore runtime-level counters, evaluator version, RNG, and expansion log."""
+    """Restore runtime-level counters, evaluator version, and RNG state."""
     runtime.evaluator_version = payload.evaluator_version
     node_evaluator = runtime.tree_manager.node_evaluator
     if node_evaluator is not None:
@@ -547,17 +634,18 @@ def _restore_runtime_state(
     if payload.rng_state is not None:
         random_generator.setstate(cast("tuple[Any, ...]", payload.rng_state))
 
-    if payload.latest_tree_expansions is not None:
+def _restore_tree_expansions_runtime_state(
+    *,
+    runtime: TreeExploration[AlgorithmNode[Any]],
+    payload: TreeExpansionsCheckpointPayload | None,
+    nodes_by_id: Mapping[int, AlgorithmNode[Any]],
+) -> None:
+    """Restore selector-visible latest expansion records when present."""
+    if payload is not None:
         runtime.latest_tree_expansions = _restore_tree_expansions(
-            payload.latest_tree_expansions,
+            payload,
             nodes_by_id=nodes_by_id,
         )
-
-    _restore_inferred_depth_selector_state(
-        runtime=runtime,
-        payload=payload.latest_tree_expansions,
-        nodes_by_id=nodes_by_id,
-    )
 
 
 def _restore_tree_expansions(
