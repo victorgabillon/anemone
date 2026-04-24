@@ -11,8 +11,8 @@ from valanga import Color
 
 from anemone import SearchArgs, create_search
 from anemone.checkpoints import (
-    AnchorCheckpointStatePayload,
     CHECKPOINT_FORMAT_VERSION,
+    AnchorCheckpointStatePayload,
     DeltaCheckpointStatePayload,
     LinkedChildCheckpointPayload,
     SearchRuntimeCheckpointPayload,
@@ -301,18 +301,39 @@ def test_build_uses_codec_valid_state_parent_instead_of_graph_parent() -> None:
     runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
     runtime.step()
     runtime.step()
-    shared_node = next(
-        node
-        for node in runtime.tree.descendants[2].values()
-        if node.state.node_id == 3
+    base_payload = _build_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(),
     )
-    representative_parent_id = next(iter(shared_node.parent_nodes)).id
+    base_shared_payload = next(
+        node
+        for node in base_payload.tree.nodes
+        if node.depth == 2
+        and isinstance(node.state_payload, DeltaCheckpointStatePayload)
+        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"]
+        == 3
+    )
+    shared_node = next(
+        node for node in runtime.tree.descendants[2].values() if node.state.node_id == 3
+    )
+    representative_parent_id = base_shared_payload.parent_node_id
+    assert representative_parent_id is not None
+    representative_parent_node = next(
+        parent
+        for parent in shared_node.parent_nodes
+        if parent.id == representative_parent_id
+    )
+    representative_parent_state_id = representative_parent_node.state.node_id
     valid_parent_id = next(
         parent.id
         for parent in shared_node.parent_nodes
         if parent.id != representative_parent_id
     )
-    codec = _SelectiveDeltaCheckpointCodec({(representative_parent_id, 3)})
+    valid_parent_node = next(
+        parent for parent in shared_node.parent_nodes if parent.id == valid_parent_id
+    )
+    valid_parent_state_id = valid_parent_node.state.node_id
+    codec = _SelectiveDeltaCheckpointCodec({(representative_parent_state_id, 3)})
 
     payload = _build_payload(runtime, state_codec=codec)
     shared_payload = next(
@@ -320,14 +341,18 @@ def test_build_uses_codec_valid_state_parent_instead_of_graph_parent() -> None:
         for node in payload.tree.nodes
         if node.depth == 2
         and isinstance(node.state_payload, DeltaCheckpointStatePayload)
-        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"] == 3
+        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"]
+        == 3
     )
 
     assert shared_payload.parent_node_id == representative_parent_id
     assert shared_payload.state_payload.state_parent_node_id == valid_parent_id
-    assert cast("dict[str, object]", shared_payload.state_payload.delta_ref)[
-        "parent_node_id"
-    ] == valid_parent_id
+    assert (
+        cast("dict[str, object]", shared_payload.state_payload.delta_ref)[
+            "parent_node_id"
+        ]
+        == valid_parent_state_id
+    )
 
 
 def test_build_falls_back_to_anchor_when_no_state_parent_can_emit_delta() -> None:

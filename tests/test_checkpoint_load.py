@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import valanga
 from dataclasses import dataclass
 from random import Random
 from typing import Any, Self, cast
 
 import pytest
+import valanga
 from valanga import BranchKey, Color, State, StateModifications, StateTag
 
 from anemone import SearchArgs, create_search
@@ -1066,19 +1066,40 @@ def test_checkpoint_restore_uses_stored_state_parent_for_dag_deltas() -> None:
     runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
     runtime.step()
     runtime.step()
-    shared_node = next(
-        node
-        for node in runtime.tree.descendants[2].values()
-        if node.state.node_id == 3
+    base_payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID),
     )
-    representative_parent_id = next(iter(shared_node.parent_nodes)).id
+    base_shared_payload = next(
+        node
+        for node in base_payload.tree.nodes
+        if node.depth == 2
+        and isinstance(node.state_payload, DeltaCheckpointStatePayload)
+        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"]
+        == 3
+    )
+    shared_node = next(
+        node for node in runtime.tree.descendants[2].values() if node.state.node_id == 3
+    )
+    representative_parent_id = base_shared_payload.parent_node_id
+    assert representative_parent_id is not None
+    representative_parent_node = next(
+        parent
+        for parent in shared_node.parent_nodes
+        if parent.id == representative_parent_id
+    )
+    representative_parent_state_id = representative_parent_node.state.node_id
     valid_parent_id = next(
         parent.id
         for parent in shared_node.parent_nodes
         if parent.id != representative_parent_id
     )
+    valid_parent_node = next(
+        parent for parent in shared_node.parent_nodes if parent.id == valid_parent_id
+    )
+    valid_parent_state_id = valid_parent_node.state.node_id
     build_codec = _SelectiveDeltaCheckpointCodec(
-        _DAG_CHILDREN_BY_ID, {(representative_parent_id, 3)}
+        _DAG_CHILDREN_BY_ID, {(representative_parent_state_id, 3)}
     )
     payload = build_search_checkpoint_payload(runtime, state_codec=build_codec)
     shared_payload = next(
@@ -1086,7 +1107,8 @@ def test_checkpoint_restore_uses_stored_state_parent_for_dag_deltas() -> None:
         for node in payload.tree.nodes
         if node.depth == 2
         and isinstance(node.state_payload, DeltaCheckpointStatePayload)
-        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"] == 3
+        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"]
+        == 3
     )
     restore_codec = _FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID)
 
@@ -1111,7 +1133,7 @@ def test_checkpoint_restore_uses_stored_state_parent_for_dag_deltas() -> None:
     assert shared_payload.parent_node_id == representative_parent_id
     assert shared_payload.state_payload.state_parent_node_id == valid_parent_id
     assert restored_shared_node.state.node_id == 3
-    assert (valid_parent_id, 3, 0) in restore_codec.applied_delta_items
+    assert (valid_parent_state_id, 3, 0) in restore_codec.applied_delta_items
 
 
 def test_checkpoint_restore_preserves_tuple_branch_labels() -> None:

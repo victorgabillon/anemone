@@ -193,7 +193,7 @@ def _try_build_delta_state_payload(
                 child_state=node.state,
                 branch_from_parent=branch,
             )
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             anemone_logger.debug(
                 "Checkpoint delta export failed; trying next state parent. "
                 "child_node_id=%s candidate_parent_node_id=%s branch=%r",

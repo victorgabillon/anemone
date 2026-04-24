@@ -330,8 +330,7 @@ def test_indices() -> None:
 def test_interval_index_tracks_top_two_transitions_without_unrelated_non_top_two_noise(
     tmp_path,
 ) -> None:
-    """
-    Characterize the interval/local-min-change index under the exact top-2
+    """Characterize the interval/local-min-change index under the exact top-2
     transitions that a future cached-best/cached-second-best refactor could break.
 
     The tree is a root with three leaf children. For the interval strategy on a

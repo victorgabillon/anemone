@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import cast
 
-from valanga import BranchKey, State
+from valanga import State
 
 from ._protocols import CheckpointStateSummary, IncrementalStateCheckpointCodec
 from .payloads import (
@@ -85,7 +85,7 @@ class CheckpointStateResolver[StateT: State = State]:
             parent_state=parent_state,
             delta_ref=state_payload.delta_ref,
             branch_from_parent=cast(
-                "BranchKey | None",
+                "object | None",
                 deserialize_checkpoint_atom(state_payload.state_parent_branch),
             ),
         )
