@@ -6,6 +6,7 @@ from dataclasses import fields, is_dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
+from anemone.utils.logger import anemone_logger
 from anemone.utils.small_tools import Interval
 
 from ._protocols import (
@@ -193,6 +194,14 @@ def _try_build_delta_state_payload(
                 branch_from_parent=branch,
             )
         except Exception:
+            anemone_logger.debug(
+                "Checkpoint delta export failed; trying next state parent. "
+                "child_node_id=%s candidate_parent_node_id=%s branch=%r",
+                node.id,
+                candidate_parent.id,
+                serialize_checkpoint_atom(branch),
+                exc_info=True,
+            )
             continue
         return DeltaCheckpointStatePayload(
             state_parent_node_id=candidate_parent.id,
