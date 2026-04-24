@@ -31,6 +31,7 @@ from anemone.progress_monitor.progress_monitor import (
     TreeBranchLimitArgs,
 )
 from anemone.recommender_rule.recommender_rule import SoftmaxRule
+from anemone.utils.logger import anemone_logger
 from tests.fake_yaml_game import (
     FakeYamlDynamics,
     FakeYamlState,
@@ -372,6 +373,88 @@ def test_build_falls_back_to_anchor_when_no_state_parent_can_emit_delta() -> Non
     )
 
     assert isinstance(shared_payload.state_payload, AnchorCheckpointStatePayload)
+
+
+def test_checkpoint_build_logs_aggregate_metrics_without_traceback_spam(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Checkpoint build should emit compact rejection logs plus one summary line."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    base_payload = _build_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(),
+    )
+    base_shared_payload = next(
+        node
+        for node in base_payload.tree.nodes
+        if node.depth == 2
+        and isinstance(node.state_payload, DeltaCheckpointStatePayload)
+        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"]
+        == 3
+    )
+    shared_node = next(
+        node for node in runtime.tree.descendants[2].values() if node.state.node_id == 3
+    )
+    representative_parent_id = base_shared_payload.parent_node_id
+    assert representative_parent_id is not None
+    representative_parent_node = next(
+        parent
+        for parent in shared_node.parent_nodes
+        if parent.id == representative_parent_id
+    )
+    representative_parent_state_id = representative_parent_node.state.node_id
+    debug_messages: list[str] = []
+    info_messages: list[str] = []
+
+    def _record_debug(msg: object, *args: object) -> None:
+        rendered = str(msg) % args if args else str(msg)
+        debug_messages.append(rendered)
+
+    def _record_info(msg: object, *args: object) -> None:
+        rendered = str(msg) % args if args else str(msg)
+        info_messages.append(rendered)
+
+    monkeypatch.setattr(anemone_logger, "debug", _record_debug)
+    monkeypatch.setattr(anemone_logger, "info", _record_info)
+    codec = _SelectiveDeltaCheckpointCodec({(representative_parent_state_id, 3)})
+
+    _build_payload(runtime, state_codec=codec)
+
+    assert debug_messages == [
+        "delta candidate rejected child=3 "
+        f"parent={representative_parent_id} branch=0 err=ValueError"
+    ]
+    assert info_messages == [
+        "[checkpoint-metrics] delta_attempts=4 delta_rejected=1 "
+        "delta_emitted=3 anchor_fallbacks=0"
+    ]
+    assert all("Traceback" not in message for message in debug_messages)
+
+
+def test_checkpoint_build_warns_once_when_anchor_fallback_rate_is_high(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Checkpoint build should warn once when many delta builds fall back to anchors."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    warning_messages: list[str] = []
+
+    def _record_warning(msg: object, *args: object) -> None:
+        rendered = str(msg) % args if args else str(msg)
+        warning_messages.append(rendered)
+
+    monkeypatch.setattr(anemone_logger, "warning", _record_warning)
+    codec = _SelectiveDeltaCheckpointCodec({(1, 3), (2, 3)})
+
+    _build_payload(runtime, state_codec=codec)
+
+    assert warning_messages == [
+        "Checkpoint anchor fallback rate is high: anchor_fallbacks=1 "
+        "delta_nodes=3. This may indicate representative-parent/state-parent mismatch inefficiency."
+    ]
 
 
 def test_direct_and_backed_up_values_are_serialized_from_live_nodes() -> None:

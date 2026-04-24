@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
@@ -47,6 +47,17 @@ if TYPE_CHECKING:
 
 
 CHECKPOINT_ANCHOR_DEPTH_STRIDE = 4
+CHECKPOINT_ANCHOR_FALLBACK_WARNING_FRACTION = 0.10
+
+
+@dataclass(slots=True)
+class _CheckpointBuildMetrics:
+    """Aggregate metrics for one checkpoint build."""
+
+    delta_candidates_attempted: int = 0
+    delta_candidates_rejected: int = 0
+    delta_payloads_emitted: int = 0
+    anchor_fallbacks: int = 0
 
 
 def build_search_checkpoint_payload(
@@ -59,9 +70,16 @@ def build_search_checkpoint_payload(
     The new checkpoint format requires an incremental codec that can emit
     anchor snapshots plus parent-to-child deltas.
     """
+    metrics = _CheckpointBuildMetrics()
+    tree_payload = _build_tree_payload(
+        search=search,
+        state_codec=state_codec,
+        metrics=metrics,
+    )
+    _log_checkpoint_build_metrics(metrics)
     return SearchRuntimeCheckpointPayload(
         evaluator_version=search.evaluator_version,
-        tree=_build_tree_payload(search=search, state_codec=state_codec),
+        tree=tree_payload,
         rng_state=_maybe_dump_rng_state(search),
         latest_tree_expansions=_build_latest_tree_expansions_payload(search),
     )
@@ -71,6 +89,7 @@ def _build_tree_payload(
     *,
     search: TreeExploration[Any],
     state_codec: IncrementalStateCheckpointCodec[Any],
+    metrics: _CheckpointBuildMetrics,
 ) -> TreeCheckpointPayload:
     """Build the tree payload in stable depth/insertion descendant order."""
     return TreeCheckpointPayload(
@@ -79,6 +98,7 @@ def _build_tree_payload(
             _build_node_payload(
                 node=node,
                 state_codec=state_codec,
+                metrics=metrics,
             )
             for node in _iter_nodes_in_checkpoint_order(search)
         ],
@@ -101,6 +121,7 @@ def _build_node_payload(
     *,
     node: AlgorithmNode[Any],
     state_codec: IncrementalStateCheckpointCodec[Any],
+    metrics: _CheckpointBuildMetrics,
 ) -> AlgorithmNodeCheckpointPayload:
     """Build one node checkpoint payload without mutating runtime state."""
     (
@@ -117,6 +138,7 @@ def _build_node_payload(
         state_payload=_build_checkpoint_state_payload(
             node=node,
             state_codec=state_codec,
+            metrics=metrics,
         ),
         generated_all_branches=node.all_branches_generated,
         unopened_branches=_serialize_branch_collection(node.non_opened_branches),
@@ -155,6 +177,7 @@ def _build_checkpoint_state_payload(
     *,
     node: AlgorithmNode[Any],
     state_codec: IncrementalStateCheckpointCodec[Any],
+    metrics: _CheckpointBuildMetrics,
 ) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload:
     """Build one explicit anchor-or-delta checkpoint payload for ``node``."""
     state_summary = _dump_optional_state_summary(node.state, state_codec=state_codec)
@@ -170,9 +193,11 @@ def _build_checkpoint_state_payload(
         node=node,
         state_codec=state_codec,
         state_summary=state_summary,
+        metrics=metrics,
     )
     if delta_payload is not None:
         return delta_payload
+    metrics.anchor_fallbacks += 1
     return AnchorCheckpointStatePayload(
         anchor_ref=state_codec.dump_anchor_ref(node.state),
         state_summary=state_summary,
@@ -184,25 +209,28 @@ def _try_build_delta_state_payload(
     node: AlgorithmNode[Any],
     state_codec: IncrementalStateCheckpointCodec[Any],
     state_summary: CheckpointStateSummary | None,
+    metrics: _CheckpointBuildMetrics,
 ) -> DeltaCheckpointStatePayload | None:
     """Return one codec-valid delta payload or ``None`` when anchoring is safer."""
     for candidate_parent, branch in _iter_candidate_state_parent_links(node):
+        metrics.delta_candidates_attempted += 1
         try:
             delta_ref = state_codec.dump_delta_from_parent(
                 parent_state=candidate_parent.state,
                 child_state=node.state,
                 branch_from_parent=branch,
             )
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            metrics.delta_candidates_rejected += 1
             anemone_logger.debug(
-                "Checkpoint delta export failed; trying next state parent. "
-                "child_node_id=%s candidate_parent_node_id=%s branch=%r",
+                "delta candidate rejected child=%s parent=%s branch=%r err=%s",
                 node.id,
                 candidate_parent.id,
                 serialize_checkpoint_atom(branch),
-                exc_info=True,
+                type(exc).__name__,
             )
             continue
+        metrics.delta_payloads_emitted += 1
         return DeltaCheckpointStatePayload(
             state_parent_node_id=candidate_parent.id,
             state_parent_branch=serialize_checkpoint_atom(branch),
@@ -210,6 +238,31 @@ def _try_build_delta_state_payload(
             state_summary=state_summary,
         )
     return None
+
+
+def _log_checkpoint_build_metrics(metrics: _CheckpointBuildMetrics) -> None:
+    """Emit aggregate checkpoint-build metrics once per build."""
+    anemone_logger.info(
+        "[checkpoint-metrics] delta_attempts=%s delta_rejected=%s "
+        "delta_emitted=%s anchor_fallbacks=%s",
+        metrics.delta_candidates_attempted,
+        metrics.delta_candidates_rejected,
+        metrics.delta_payloads_emitted,
+        metrics.anchor_fallbacks,
+    )
+    attempted_delta_nodes = metrics.delta_payloads_emitted + metrics.anchor_fallbacks
+    if attempted_delta_nodes == 0:
+        return
+    if (
+        metrics.anchor_fallbacks / attempted_delta_nodes
+        > CHECKPOINT_ANCHOR_FALLBACK_WARNING_FRACTION
+    ):
+        anemone_logger.warning(
+            "Checkpoint anchor fallback rate is high: anchor_fallbacks=%s "
+            "delta_nodes=%s. This may indicate representative-parent/state-parent mismatch inefficiency.",
+            metrics.anchor_fallbacks,
+            attempted_delta_nodes,
+        )
 
 
 def _iter_candidate_state_parent_links(
