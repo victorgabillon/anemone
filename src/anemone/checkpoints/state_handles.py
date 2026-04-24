@@ -12,6 +12,7 @@ from .payloads import (
     CheckpointNodeStatePayload,
     DeltaCheckpointStatePayload,
 )
+from .value_serialization import deserialize_checkpoint_atom
 
 
 class CheckpointStateResolutionError(KeyError):
@@ -37,8 +38,6 @@ class CheckpointStateResolver[StateT: State = State]:
 
     state_codec: IncrementalStateCheckpointCodec[StateT]
     state_payloads_by_node_id: Mapping[int, CheckpointNodeStatePayload]
-    parent_ids_by_node_id: Mapping[int, int | None]
-    branches_from_parent_by_node_id: Mapping[int, BranchKey | None]
     _resolved_states: dict[int, StateT] = field(
         default_factory=lambda: cast("dict[int, StateT]", {}),
         init=False,
@@ -76,16 +75,19 @@ class CheckpointStateResolver[StateT: State = State]:
         node_id: int,
         state_payload: DeltaCheckpointStatePayload,
     ) -> StateT:
-        """Resolve one delta payload by first resolving its representative parent."""
-        parent_node_id = self.parent_ids_by_node_id[node_id]
-        if parent_node_id is None:
+        """Resolve one delta payload by first resolving its stored state parent."""
+        parent_node_id = state_payload.state_parent_node_id
+        if parent_node_id == node_id:
             raise CheckpointStateResolutionError.delta_node_missing_parent(node_id)
 
         parent_state = self.resolve(parent_node_id)
         return self.state_codec.load_child_from_delta(
             parent_state=parent_state,
             delta_ref=state_payload.delta_ref,
-            branch_from_parent=self.branches_from_parent_by_node_id[node_id],
+            branch_from_parent=cast(
+                "BranchKey | None",
+                deserialize_checkpoint_atom(state_payload.state_parent_branch),
+            ),
         )
 
 

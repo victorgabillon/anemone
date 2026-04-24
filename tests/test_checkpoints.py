@@ -44,6 +44,8 @@ def test_node_checkpoint_can_store_explicit_anchor_and_delta_payloads() -> None:
         state_summary=_FakeCheckpointStateSummary(tag=17, node_id=17),
     )
     delta_payload = DeltaCheckpointStatePayload(
+        state_parent_node_id=1,
+        state_parent_branch=0,
         delta_ref={"move": 12},
         state_summary=_FakeCheckpointStateSummary(tag=18, node_id=18),
     )

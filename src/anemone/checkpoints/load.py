@@ -225,16 +225,25 @@ def _validate_payload(payload: SearchRuntimeCheckpointPayload) -> None:
         raise CheckpointRestoreError.empty_tree()
 
     node_ids = [node_payload.node_id for node_payload in payload.tree.nodes]
-    if len(node_ids) != len(set(node_ids)):
+    node_id_set = set(node_ids)
+    if len(node_ids) != len(node_id_set):
         raise CheckpointRestoreError.duplicate_node_ids()
-    if payload.tree.root_node_id not in set(node_ids):
+    if payload.tree.root_node_id not in node_id_set:
         raise CheckpointRestoreError.missing_root(payload.tree.root_node_id)
     for node_payload in payload.tree.nodes:
         if (
-            isinstance(node_payload.state_payload, DeltaCheckpointStatePayload)
-            and node_payload.parent_node_id is None
+            node_payload.parent_node_id is not None
+            and node_payload.parent_node_id not in node_id_set
         ):
-            raise CheckpointRestoreError.delta_node_missing_parent(node_payload.node_id)
+            raise CheckpointRestoreError.unknown_node_id(node_payload.parent_node_id)
+        if isinstance(node_payload.state_payload, DeltaCheckpointStatePayload):
+            state_parent_node_id = node_payload.state_payload.state_parent_node_id
+            if state_parent_node_id == node_payload.node_id:
+                raise CheckpointRestoreError.delta_node_missing_parent(
+                    node_payload.node_id
+                )
+            if state_parent_node_id not in node_id_set:
+                raise CheckpointRestoreError.unknown_node_id(state_parent_node_id)
 
 
 def _create_state_resolver[
@@ -249,18 +258,6 @@ def _create_state_resolver[
         state_codec=state_codec,
         state_payloads_by_node_id={
             node_payload.node_id: node_payload.state_payload
-            for node_payload in payload.tree.nodes
-        },
-        parent_ids_by_node_id={
-            node_payload.node_id: node_payload.parent_node_id
-            for node_payload in payload.tree.nodes
-        },
-        branches_from_parent_by_node_id={
-            node_payload.node_id: (
-                _deserialize_branch(node_payload.branch_from_parent)
-                if node_payload.branch_from_parent is not None
-                else None
-            )
             for node_payload in payload.tree.nodes
         },
     )

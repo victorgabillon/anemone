@@ -138,6 +138,35 @@ class _FakeIncrementalStateCheckpointCodec:
         return _FakeCheckpointStateSummary(tag=state.tag, node_id=state.node_id)
 
 
+class _SelectiveDeltaCheckpointCodec(_FakeIncrementalStateCheckpointCodec):
+    """Fake codec that can reject delta export for selected parent-child pairs."""
+
+    def __init__(
+        self,
+        children_by_id: dict[int, list[int]],
+        invalid_pairs: set[tuple[int, int]],
+    ) -> None:
+        """Initialize the codec with its domain graph and rejected pairs."""
+        super().__init__(children_by_id)
+        self.invalid_pairs = invalid_pairs
+
+    def dump_delta_from_parent(
+        self,
+        *,
+        parent_state: FakeYamlState,
+        child_state: FakeYamlState,
+        branch_from_parent: object | None = None,
+    ) -> object:
+        """Reject configured parent-child pairs and delegate all others."""
+        if (parent_state.node_id, child_state.node_id) in self.invalid_pairs:
+            raise ValueError("delta rejected for this state parent")
+        return super().dump_delta_from_parent(
+            parent_state=parent_state,
+            child_state=child_state,
+            branch_from_parent=branch_from_parent,
+        )
+
+
 class _CountingStateValueEvaluator(MasterStateValueEvaluatorFromYaml):
     """Fake evaluator that records whether restore triggered evaluation."""
 
@@ -587,7 +616,6 @@ def _expected_applied_delta_items_for_node(
         node_payload = payload_nodes[current_node_id]
         if isinstance(node_payload.state_payload, AnchorCheckpointStatePayload):
             break
-        assert node_payload.parent_node_id is not None
         delta_ref = cast("dict[str, object]", node_payload.state_payload.delta_ref)
         expected_items.append(
             (
@@ -596,7 +624,7 @@ def _expected_applied_delta_items_for_node(
                 delta_ref["branch_from_parent"],
             )
         )
-        current_node_id = node_payload.parent_node_id
+        current_node_id = node_payload.state_payload.state_parent_node_id
     expected_items.reverse()
     return expected_items
 
@@ -650,6 +678,8 @@ def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> No
             state_summary=_FakeCheckpointStateSummary(tag=0, node_id=0),
         ),
         1: DeltaCheckpointStatePayload(
+            state_parent_node_id=0,
+            state_parent_branch=0,
             delta_ref=codec.dump_delta_from_parent(
                 parent_state=_ConcreteFakeYamlState(
                     node_id=0,
@@ -666,6 +696,8 @@ def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> No
             state_summary=_FakeCheckpointStateSummary(tag=1, node_id=1),
         ),
         2: DeltaCheckpointStatePayload(
+            state_parent_node_id=0,
+            state_parent_branch=1,
             delta_ref=codec.dump_delta_from_parent(
                 parent_state=_ConcreteFakeYamlState(
                     node_id=0,
@@ -685,8 +717,6 @@ def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> No
     resolver = CheckpointStateResolver(
         state_codec=codec,
         state_payloads_by_node_id=state_payload_by_node_id,
-        parent_ids_by_node_id={0: None, 1: 0, 2: 0},
-        branches_from_parent_by_node_id={0: None, 1: 0, 2: 1},
     )
     first_handle = CheckpointBackedStateHandle(resolver=resolver, node_id=1)
     same_node_handle = CheckpointBackedStateHandle(resolver=resolver, node_id=1)
@@ -1029,6 +1059,59 @@ def test_checkpoint_restore_preserves_dag_parent_edges() -> None:
         parent.state.node_id: {serialize_checkpoint_atom(branch) for branch in branches}
         for parent, branches in shared_node.parent_nodes.items()
     } == {1: {0}, 2: {0}}
+
+
+def test_checkpoint_restore_uses_stored_state_parent_for_dag_deltas() -> None:
+    """Restore should resolve deltas through the stored state parent, not the graph one."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    shared_node = next(
+        node
+        for node in runtime.tree.descendants[2].values()
+        if node.state.node_id == 3
+    )
+    representative_parent_id = next(iter(shared_node.parent_nodes)).id
+    valid_parent_id = next(
+        parent.id
+        for parent in shared_node.parent_nodes
+        if parent.id != representative_parent_id
+    )
+    build_codec = _SelectiveDeltaCheckpointCodec(
+        _DAG_CHILDREN_BY_ID, {(representative_parent_id, 3)}
+    )
+    payload = build_search_checkpoint_payload(runtime, state_codec=build_codec)
+    shared_payload = next(
+        node
+        for node in payload.tree.nodes
+        if node.depth == 2
+        and isinstance(node.state_payload, DeltaCheckpointStatePayload)
+        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"] == 3
+    )
+    restore_codec = _FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID)
+
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=restore_codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_DAG_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+    restored_shared_node = next(
+        node
+        for node in _runtime_nodes_by_id(restored).values()
+        if node.state.node_id == 3 and node.tree_depth == 2
+    )
+
+    assert shared_payload.parent_node_id == representative_parent_id
+    assert shared_payload.state_payload.state_parent_node_id == valid_parent_id
+    assert restored_shared_node.state.node_id == 3
+    assert (valid_parent_id, 3, 0) in restore_codec.applied_delta_items
 
 
 def test_checkpoint_restore_preserves_tuple_branch_labels() -> None:

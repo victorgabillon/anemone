@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from random import Random
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from valanga import Color
@@ -124,13 +124,37 @@ _CHILDREN_BY_ID = {
     4: [],
 }
 
-_VALUE_BY_ID = {
-    0: 0.0,
-    1: 1.0,
-    2: 2.0,
-    3: 3.0,
-    4: 4.0,
+_DAG_CHILDREN_BY_ID = {
+    0: [1, 2],
+    1: [3],
+    2: [3],
+    3: [],
 }
+
+
+class _SelectiveDeltaCheckpointCodec(_FakeIncrementalStateCheckpointCodec):
+    """Fake codec that can reject deltas for selected parent-child pairs."""
+
+    def __init__(self, invalid_pairs: set[tuple[int, int]]) -> None:
+        """Store the parent-child pairs that should fail delta export."""
+        super().__init__()
+        self.invalid_pairs = invalid_pairs
+
+    def dump_delta_from_parent(
+        self,
+        *,
+        parent_state: _ConcreteFakeYamlState,
+        child_state: _ConcreteFakeYamlState,
+        branch_from_parent: object | None = None,
+    ) -> object:
+        """Reject configured parent-child pairs and delegate all others."""
+        if (parent_state.node_id, child_state.node_id) in self.invalid_pairs:
+            raise ValueError("delta rejected for this state parent")
+        return super().dump_delta_from_parent(
+            parent_state=parent_state,
+            child_state=child_state,
+            branch_from_parent=branch_from_parent,
+        )
 
 
 def _build_args(
@@ -156,12 +180,13 @@ def _build_args(
 
 def _build_runtime(
     *,
+    children_by_id: dict[int, list[int]] = _CHILDREN_BY_ID,
     index_computation: IndexComputationType | None = None,
 ) -> Any:
     """Build one small real search runtime over the fake YAML domain."""
     starting_state = _ConcreteFakeYamlState(
         node_id=0,
-        children_by_id=_CHILDREN_BY_ID,
+        children_by_id=children_by_id,
         turn=Color.WHITE,
     )
     return create_search(
@@ -170,7 +195,9 @@ def _build_runtime(
         starting_state=starting_state,
         args=_build_args(index_computation=index_computation),
         random_generator=Random(0),
-        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(_VALUE_BY_ID),
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            {node_id: float(node_id) for node_id in children_by_id}
+        ),
         state_representation_factory=None,
     )
 
@@ -243,7 +270,11 @@ def test_node_state_payloads_use_anchor_and_delta_codec_outputs() -> None:
     assert codec.dumped_anchor_node_ids == [runtime.tree.root_node.state.node_id]
     assert all(
         node_payload.state_payload.delta_ref["branch_from_parent"]
-        == node_payload.branch_from_parent
+        == node_payload.state_payload.state_parent_branch
+        for node_payload in non_root_payloads
+    )
+    assert all(
+        node_payload.state_payload.state_parent_node_id == node_payload.parent_node_id
         for node_payload in non_root_payloads
     )
     assert len(codec.dumped_delta_items) == len(non_root_payloads)
@@ -263,6 +294,59 @@ def test_root_is_anchor_and_non_root_nodes_use_deltas_under_default_policy() -> 
         assert branch_child is not None
         child_payload = payload_nodes[branch_child.id]
         assert isinstance(child_payload.state_payload, DeltaCheckpointStatePayload)
+
+
+def test_build_uses_codec_valid_state_parent_instead_of_graph_parent() -> None:
+    """Delta export should try other DAG parents when the graph parent is invalid."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    shared_node = next(
+        node
+        for node in runtime.tree.descendants[2].values()
+        if node.state.node_id == 3
+    )
+    representative_parent_id = next(iter(shared_node.parent_nodes)).id
+    valid_parent_id = next(
+        parent.id
+        for parent in shared_node.parent_nodes
+        if parent.id != representative_parent_id
+    )
+    codec = _SelectiveDeltaCheckpointCodec({(representative_parent_id, 3)})
+
+    payload = _build_payload(runtime, state_codec=codec)
+    shared_payload = next(
+        node
+        for node in payload.tree.nodes
+        if node.depth == 2
+        and isinstance(node.state_payload, DeltaCheckpointStatePayload)
+        and cast("dict[str, object]", node.state_payload.delta_ref)["child_node_id"] == 3
+    )
+
+    assert shared_payload.parent_node_id == representative_parent_id
+    assert shared_payload.state_payload.state_parent_node_id == valid_parent_id
+    assert cast("dict[str, object]", shared_payload.state_payload.delta_ref)[
+        "parent_node_id"
+    ] == valid_parent_id
+
+
+def test_build_falls_back_to_anchor_when_no_state_parent_can_emit_delta() -> None:
+    """Delta export should anchor a DAG node when every candidate parent fails."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    codec = _SelectiveDeltaCheckpointCodec({(1, 3), (2, 3)})
+
+    payload = _build_payload(runtime, state_codec=codec)
+    shared_payload = next(
+        node
+        for node in payload.tree.nodes
+        if node.depth == 2
+        and node.state_payload.state_summary
+        == _FakeCheckpointStateSummary(tag=3, node_id=3)
+    )
+
+    assert isinstance(shared_payload.state_payload, AnchorCheckpointStatePayload)
 
 
 def test_direct_and_backed_up_values_are_serialized_from_live_nodes() -> None:

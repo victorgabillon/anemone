@@ -143,6 +143,8 @@ class AnchorCheckpointStatePayload:
 class DeltaCheckpointStatePayload:
     """Checkpoint state payload holding one child delta from its parent."""
 
+    state_parent_node_id: int
+    state_parent_branch: CheckpointAtomPayload | None
     delta_ref: object
     state_summary: CheckpointStateSummary | None = None
 
@@ -171,7 +173,8 @@ class AlgorithmNodeCheckpointPayload:
 
     ``state_payload`` is opaque checkpoint data supplied by the domain-side
     incremental checkpoint codec. Anemone records whether the node is an
-    anchor snapshot or a delta from its representative parent edge, but the
+    anchor snapshot or a delta from a codec-valid state parent edge, while the
+    representative graph parent fields remain topology/debug metadata. The
     actual anchor/delta payload contents remain domain-defined.
     """
 

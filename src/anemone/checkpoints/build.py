@@ -103,9 +103,9 @@ def _build_node_payload(
 ) -> AlgorithmNodeCheckpointPayload:
     """Build one node checkpoint payload without mutating runtime state."""
     (
-        parent_node,
+        _parent_node,
         parent_node_id,
-        branch_from_parent,
+        _branch_from_parent,
         branch_from_parent_payload,
     ) = _representative_parent_link(node)
     return AlgorithmNodeCheckpointPayload(
@@ -115,8 +115,6 @@ def _build_node_payload(
         depth=node.tree_depth,
         state_payload=_build_checkpoint_state_payload(
             node=node,
-            parent_node=parent_node,
-            branch_from_parent=branch_from_parent,
             state_codec=state_codec,
         ),
         generated_all_branches=node.all_branches_generated,
@@ -155,27 +153,66 @@ def _representative_parent_link(
 def _build_checkpoint_state_payload(
     *,
     node: AlgorithmNode[Any],
-    parent_node: AlgorithmNode[Any] | None,
-    branch_from_parent: BranchKey | None,
     state_codec: IncrementalStateCheckpointCodec[Any],
 ) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload:
     """Build one explicit anchor-or-delta checkpoint payload for ``node``."""
     state_summary = _dump_optional_state_summary(node.state, state_codec=state_codec)
-    if _is_anchor_node(node=node, parent_node=parent_node):
+    representative_parent, _parent_id, _branch, _branch_payload = (
+        _representative_parent_link(node)
+    )
+    if _is_anchor_node(node=node, parent_node=representative_parent):
         return AnchorCheckpointStatePayload(
             anchor_ref=state_codec.dump_anchor_ref(node.state),
             state_summary=state_summary,
         )
-
-    assert parent_node is not None
-    return DeltaCheckpointStatePayload(
-        delta_ref=state_codec.dump_delta_from_parent(
-            parent_state=parent_node.state,
-            child_state=node.state,
-            branch_from_parent=branch_from_parent,
-        ),
+    delta_payload = _try_build_delta_state_payload(
+        node=node,
+        state_codec=state_codec,
         state_summary=state_summary,
     )
+    if delta_payload is not None:
+        return delta_payload
+    return AnchorCheckpointStatePayload(
+        anchor_ref=state_codec.dump_anchor_ref(node.state),
+        state_summary=state_summary,
+    )
+
+
+def _try_build_delta_state_payload(
+    *,
+    node: AlgorithmNode[Any],
+    state_codec: IncrementalStateCheckpointCodec[Any],
+    state_summary: CheckpointStateSummary | None,
+) -> DeltaCheckpointStatePayload | None:
+    """Return one codec-valid delta payload or ``None`` when anchoring is safer."""
+    for candidate_parent, branch in _iter_candidate_state_parent_links(node):
+        try:
+            delta_ref = state_codec.dump_delta_from_parent(
+                parent_state=candidate_parent.state,
+                child_state=node.state,
+                branch_from_parent=branch,
+            )
+        except Exception:
+            continue
+        return DeltaCheckpointStatePayload(
+            state_parent_node_id=candidate_parent.id,
+            state_parent_branch=serialize_checkpoint_atom(branch),
+            delta_ref=delta_ref,
+            state_summary=state_summary,
+        )
+    return None
+
+
+def _iter_candidate_state_parent_links(
+    node: AlgorithmNode[Any],
+) -> Iterable[tuple[AlgorithmNode[Any], BranchKey]]:
+    """Yield candidate state-parent edges in deterministic order."""
+    for candidate_parent, branch_keys in node.parent_nodes.items():
+        for branch in sorted(
+            branch_keys,
+            key=lambda item: repr(serialize_checkpoint_atom(item)),
+        ):
+            yield candidate_parent, branch
 
 
 def _is_anchor_node(
