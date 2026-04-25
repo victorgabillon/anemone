@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +23,7 @@ from anemone.training_export import (
     build_training_node_snapshot,
     build_training_tree_snapshot,
 )
+from anemone.utils.logger import anemone_logger
 
 
 class _DummyOverEvent:
@@ -134,6 +136,60 @@ def test_build_training_tree_snapshot_preserves_explicit_root_node_id() -> None:
     snapshot = build_training_tree_snapshot([root], root_node_id="manual-root")
 
     assert snapshot.root_node_id == "manual-root"
+
+
+def test_build_training_tree_snapshot_logs_structured_phases(
+    caplog: object,
+) -> None:
+    """Builder should emit structured training-export phase logs."""
+    root = _RichDummyNode(
+        node_id="root",
+        parent_ids=(),
+        child_ids=("child",),
+        depth=0,
+        state={"raw_state": [1, 2, 3]},
+        direct_value=1,
+        backed_up_value=2.5,
+        is_terminal=True,
+        is_exact=True,
+        visit_count=7,
+    )
+    child = _RichDummyNode(
+        node_id="child",
+        parent_ids=("root",),
+        child_ids=(),
+        depth=1,
+        state={"raw_state": [4]},
+        direct_value=0.25,
+        backed_up_value=None,
+        is_terminal=False,
+        is_exact=False,
+        visit_count=2,
+    )
+
+    with caplog.at_level(logging.INFO, logger=anemone_logger.name):
+        snapshot = build_training_tree_snapshot(
+            [root, child],
+            state_ref_dumper=lambda state: {"state_key": state},
+        )
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert any(
+        "[training-export] phase=snapshot_build status=start node_count=2" in message
+        for message in messages
+    )
+    assert any(
+        "[training-export] phase=payload_build status=done" in message
+        and "elapsed_s=" in message
+        and "node_count=2" in message
+        for message in messages
+    )
+    assert any(
+        "[training-export] phase=state_ref_serialization status=done" in message
+        and "state_ref_count=2" in message
+        for message in messages
+    )
+    assert snapshot.root_node_id == "root"
 
 
 def test_build_training_node_snapshot_handles_missing_optional_fields() -> None:

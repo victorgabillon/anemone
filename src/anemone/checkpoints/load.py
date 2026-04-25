@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping as MappingABC
 from contextlib import contextmanager
 from random import Random
 from time import perf_counter
@@ -653,6 +654,8 @@ def _populate_descendants_for_restore[
     if not grouped_payloads:
         return
 
+    summary_tag_count = 0
+    fallback_tag_count = 0
     descendants.descendants_at_tree_depth = {}
     descendants.number_of_descendants_at_tree_depth = {}
     descendants.number_of_descendants = 0
@@ -669,7 +672,14 @@ def _populate_descendants_for_restore[
         descendants_at_depth: dict[object, AlgorithmNode[StateT]] = {}
         for node_payload in payloads_at_depth:
             node = nodes_by_id[node_payload.node_id]
-            state_tag = _checkpoint_node_state_tag(node=node, node_payload=node_payload)
+            state_tag, used_summary_tag = _checkpoint_node_state_tag(
+                node=node,
+                node_payload=node_payload,
+            )
+            if used_summary_tag:
+                summary_tag_count += 1
+            else:
+                fallback_tag_count += 1
             assert state_tag not in descendants_at_depth
             descendants_at_depth[state_tag] = node
         descendants.descendants_at_tree_depth[tree_depth] = descendants_at_depth
@@ -677,18 +687,41 @@ def _populate_descendants_for_restore[
             descendants_at_depth
         )
         descendants.number_of_descendants += len(descendants_at_depth)
+    anemone_logger.info(
+        "[checkpoint-restore] phase=build_tree.populate_descendants_tags "
+        "summary_tag_count=%s fallback_tag_count=%s",
+        summary_tag_count,
+        fallback_tag_count,
+    )
 
 
 def _checkpoint_node_state_tag(
     *,
     node: AlgorithmNode[Any],
     node_payload: AlgorithmNodeCheckpointPayload,
-) -> object:
+) -> tuple[object, bool]:
     """Return the checkpoint node tag, preferring summary metadata when available."""
     state_summary = node_payload.state_payload.state_summary
-    if state_summary is not None and hasattr(state_summary, "tag"):
+    summary_tag = _checkpoint_summary_tag(state_summary)
+    if summary_tag is not None:
+        return summary_tag, True
+    return node.tag, False
+
+
+def _checkpoint_summary_tag(state_summary: object | None) -> object | None:
+    """Return a checkpoint summary tag when one is stored explicitly."""
+    if state_summary is None:
+        return None
+    if hasattr(state_summary, "tag"):
         return getattr(state_summary, "tag")
-    return node.tag
+    if hasattr(state_summary, "state_tag"):
+        return getattr(state_summary, "state_tag")
+    if isinstance(state_summary, MappingABC):
+        if "tag" in state_summary:
+            return state_summary["tag"]
+        if "state_tag" in state_summary:
+            return state_summary["state_tag"]
+    return None
 
 
 def _restore_runtime_state(

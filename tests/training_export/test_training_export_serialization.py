@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -24,6 +25,7 @@ from anemone.training_export import (
     training_tree_snapshot_from_dict,
     training_tree_snapshot_to_dict,
 )
+from anemone.utils.logger import anemone_logger
 
 if TYPE_CHECKING:
     from pathlib import Path as PathType
@@ -93,3 +95,37 @@ def test_training_tree_snapshot_round_trip_through_disk(tmp_path: PathType) -> N
     restored = load_training_tree_snapshot(path)
 
     assert restored == snapshot
+
+
+def test_save_training_tree_snapshot_logs_structured_phases(
+    tmp_path: PathType,
+    caplog: object,
+) -> None:
+    """Persistence helper should emit structured training-export save logs."""
+    path = tmp_path / "training_tree_snapshot.json"
+    snapshot = _build_snapshot()
+
+    with caplog.at_level(logging.INFO, logger=anemone_logger.name):
+        save_training_tree_snapshot(snapshot, path)
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert any(
+        "[training-export] phase=total_save status=start" in message
+        and "node_count=2" in message
+        for message in messages
+    )
+    assert any(
+        "[training-export] phase=payload_to_dict status=done" in message
+        and "elapsed_s=" in message
+        for message in messages
+    )
+    assert any(
+        "[training-export] phase=json_dump status=done" in message
+        and "elapsed_s=" in message
+        for message in messages
+    )
+    assert any(
+        "[training-export] phase=json_write status=done" in message
+        and "bytes=" in message
+        for message in messages
+    )

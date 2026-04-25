@@ -13,11 +13,13 @@ from valanga import BranchKey, Color, State, StateModifications, StateTag
 
 from anemone import SearchArgs, create_search
 from anemone.checkpoints import (
+    AlgorithmNodeCheckpointPayload,
     AnchorCheckpointStatePayload,
     DeltaCheckpointStatePayload,
     build_search_checkpoint_payload,
     load_search_from_checkpoint_payload,
 )
+from anemone.checkpoints.load import _checkpoint_summary_tag
 from anemone.checkpoints.state_handles import (
     CheckpointBackedStateHandle,
     CheckpointStateResolver,
@@ -58,6 +60,14 @@ class _FakeCheckpointStateSummary:
     """Small typed summary object used by fake incremental codecs."""
 
     tag: int
+    node_id: int
+
+
+@dataclass(frozen=True, slots=True)
+class _FakeCheckpointStateSummaryWithStateTag:
+    """Summary variant storing the tag under ``state_tag``."""
+
+    state_tag: int
     node_id: int
 
 
@@ -893,8 +903,53 @@ def test_checkpoint_restore_logs_structured_phase_timings(
         assert done_messages
         assert all("elapsed_s=" in message for message in done_messages)
 
+    assert any(
+        "phase=build_tree.populate_descendants_tags "
+        "summary_tag_count=3 fallback_tag_count=0" in message
+        for message in checkpoint_restore_messages
+    )
+
     assert restored.tree.root_node.id == runtime.tree.root_node.id
     assert restored.tree.nodes_count == runtime.tree.nodes_count
+
+
+@pytest.mark.parametrize(
+    ("state_summary", "expected_tag"),
+    [
+        pytest.param(_FakeCheckpointStateSummary(tag=7, node_id=7), 7, id="dataclass-tag"),
+        pytest.param(
+            _FakeCheckpointStateSummaryWithStateTag(state_tag=8, node_id=8),
+            8,
+            id="dataclass-state-tag",
+        ),
+        pytest.param({"tag": 9, "node_id": 9}, 9, id="mapping-tag"),
+        pytest.param({"state_tag": 10, "node_id": 10}, 10, id="mapping-state-tag"),
+    ],
+)
+def test_checkpoint_summary_tag_supports_expected_shapes(
+    state_summary: object,
+    expected_tag: object,
+) -> None:
+    """Checkpoint restore should extract tags from supported summary shapes."""
+    assert _checkpoint_summary_tag(state_summary) == expected_tag
+
+
+def test_checkpoint_summary_tag_returns_none_without_supported_tag_field() -> None:
+    """Checkpoint restore should fall back only when summaries lack an explicit tag."""
+    state_payload = AnchorCheckpointStatePayload(
+        anchor_ref={"kind": "anchor", "node_id": 0},
+        state_summary={"node_id": 0},
+    )
+    node_payload = AlgorithmNodeCheckpointPayload(
+        node_id=0,
+        parent_node_id=None,
+        branch_from_parent=None,
+        depth=0,
+        state_payload=state_payload,
+        generated_all_branches=False,
+    )
+
+    assert _checkpoint_summary_tag(node_payload.state_payload.state_summary) is None
 
 
 def test_checkpoint_restore_reconstructs_grandchild_from_parent_delta_chain() -> None:

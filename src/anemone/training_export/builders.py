@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
+from time import perf_counter
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from anemone._best_effort import coerce_int as _coerce_int
 from anemone._best_effort import format_over_event as _format_over_event
 from anemone._best_effort import safe_getattr as _safe_getattr
+from anemone.training_export._logging import (
+    _log_training_export_event,
+    _log_training_export_phase,
+)
 from anemone.training_export.model import (
     TRAINING_TREE_SNAPSHOT_FORMAT_KIND,
     TRAINING_TREE_SNAPSHOT_FORMAT_VERSION,
@@ -46,12 +52,21 @@ class ValueScalarExtractor(Protocol):
         ...
 
 
+@dataclass(slots=True)
+class _TrainingExportBuildStats:
+    """Aggregate metrics for one training-tree snapshot build."""
+
+    state_ref_serialization_count: int = 0
+    state_ref_serialization_elapsed_s: float = 0.0
+
+
 def build_training_node_snapshot(
     node: object,
     *,
     state_ref_dumper: StateRefDumper | None = None,
     direct_value_extractor: ValueScalarExtractor | None = None,
     backed_up_value_extractor: ValueScalarExtractor | None = None,
+    _build_stats: _TrainingExportBuildStats | None = None,
 ) -> TrainingNodeSnapshot:
     """Build one training-grade node snapshot from a live or dummy node."""
     direct_value = _get_direct_value(node)
@@ -61,7 +76,11 @@ def build_training_node_snapshot(
         parent_ids=_get_parent_ids(node),
         child_ids=_get_child_ids(node),
         depth=_get_depth(node),
-        state_ref_payload=_dump_state_ref(node, state_ref_dumper=state_ref_dumper),
+        state_ref_payload=_dump_state_ref(
+            node,
+            state_ref_dumper=state_ref_dumper,
+            build_stats=_build_stats,
+        ),
         direct_value_scalar=_extract_value_scalar(
             direct_value,
             extractor=direct_value_extractor,
@@ -89,21 +108,40 @@ def build_training_tree_snapshot(
     metadata: dict[str, object] | None = None,
 ) -> TrainingTreeSnapshot:
     """Build one training-grade tree snapshot in the caller-provided node order."""
-    node_snapshots = tuple(
-        build_training_node_snapshot(
-            node,
-            state_ref_dumper=state_ref_dumper,
-            direct_value_extractor=direct_value_extractor,
-            backed_up_value_extractor=backed_up_value_extractor,
+    node_count = len(nodes)
+    build_stats = _TrainingExportBuildStats()
+    with _log_training_export_phase("snapshot_build", node_count=node_count):
+        _log_training_export_event(
+            "state_ref_serialization",
+            "start",
+            node_count=node_count,
         )
-        for node in nodes
-    )
-    return TrainingTreeSnapshot(
-        root_node_id=_resolve_root_node_id(root_node_id, node_snapshots),
-        nodes=node_snapshots,
-        created_at_unix_s=created_at_unix_s,
-        metadata=_build_tree_metadata(metadata),
-    )
+        with _log_training_export_phase(
+            "node_traversal", node_count=node_count
+        ), _log_training_export_phase("payload_build", node_count=node_count):
+            node_snapshots = tuple(
+                build_training_node_snapshot(
+                    node,
+                    state_ref_dumper=state_ref_dumper,
+                    direct_value_extractor=direct_value_extractor,
+                    backed_up_value_extractor=backed_up_value_extractor,
+                    _build_stats=build_stats,
+                )
+                for node in nodes
+            )
+        _log_training_export_event(
+            "state_ref_serialization",
+            "done",
+            elapsed_s=round(build_stats.state_ref_serialization_elapsed_s, 6),
+            node_count=node_count,
+            state_ref_count=build_stats.state_ref_serialization_count,
+        )
+        return TrainingTreeSnapshot(
+            root_node_id=_resolve_root_node_id(root_node_id, node_snapshots),
+            nodes=node_snapshots,
+            created_at_unix_s=created_at_unix_s,
+            metadata=_build_tree_metadata(metadata),
+        )
 
 
 def _call_optional_no_arg(callable_candidate: object | None) -> object | None:
@@ -207,6 +245,7 @@ def _dump_state_ref(
     node: object,
     *,
     state_ref_dumper: StateRefDumper | None,
+    build_stats: _TrainingExportBuildStats | None,
 ) -> Any | None:
     """Return a caller-dumped reversible state payload when possible."""
     if state_ref_dumper is None:
@@ -215,7 +254,12 @@ def _dump_state_ref(
     state = _get_state(node)
     if state is None:
         return None
-    return state_ref_dumper(state)
+    started_at = perf_counter()
+    dumped_state_ref = state_ref_dumper(state)
+    if build_stats is not None:
+        build_stats.state_ref_serialization_count += 1
+        build_stats.state_ref_serialization_elapsed_s += perf_counter() - started_at
+    return dumped_state_ref
 
 
 def _get_tree_evaluation(node: object) -> object | None:
