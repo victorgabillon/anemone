@@ -21,6 +21,10 @@ if TYPE_CHECKING:
 
 DESCENDANTS_INVARIANT_LOG_PREFIX = "[descendants-invariant]"
 DESCENDANTS_INVARIANT_ENV_VAR = "ANEMONE_DEBUG_DESCENDANTS_INVARIANTS"
+DESCENDANTS_INVARIANT_STEP_INTERVAL_ENV_VAR = (
+    "ANEMONE_DEBUG_DESCENDANTS_INVARIANTS_STEP_INTERVAL"
+)
+DEFAULT_DESCENDANTS_INVARIANT_STEP_INTERVAL = 50
 DESCENDANTS_INVARIANT_FAILURE = "descendants invariant failed"
 EXPORTED_STATE_TAG_INVARIANT_FAILURE = "exported node state-tag invariant failed"
 
@@ -43,12 +47,25 @@ class _Failure:
     node_tag: StateTag | None
     state_tag: StateTag | None
     node_depth: int
+    first_seen_mismatch: str | None = None
+    registered_tag: StateTag | None = None
+    registered_state_tag: StateTag | None = None
+    registered_depth: TreeDepth | None = None
+    registered_node_id: int | None = None
+    registered_parent_node_id: int | None = None
     duplicate_peer_node_ids: list[int] = field(default_factory=list)
 
 
 def descendants_invariant_debug_enabled() -> bool:
     """Return whether descendants invariant diagnostics should run."""
     return os.environ.get(DESCENDANTS_INVARIANT_ENV_VAR) == "1"
+
+
+def descendants_invariant_runtime_step_should_validate(step_index: int) -> bool:
+    """Return whether one runtime step should perform a full descendants scan."""
+    if not descendants_invariant_debug_enabled():
+        return False
+    return step_index % _descendants_invariant_runtime_step_interval() == 0
 
 
 def validate_descendants_tags(
@@ -81,11 +98,14 @@ def validate_descendants_tags(
             node_tag = _node_tag(node)
             state_tag = _state_tag(node)
             state_tag_groups_by_depth[tree_depth][state_tag].append(node)
-            if (
-                stored_tag != node_tag
-                or node_tag != state_tag
-                or node.tree_depth != tree_depth
-            ):
+            first_seen_mismatch = _first_seen_mismatch(
+                stored_tag=stored_tag,
+                node_tag=node_tag,
+                state_tag=state_tag,
+                node_depth=node.tree_depth,
+                tree_depth=tree_depth,
+            )
+            if first_seen_mismatch is not None:
                 failures.append(
                     _Failure(
                         depth=tree_depth,
@@ -94,6 +114,14 @@ def validate_descendants_tags(
                         node_tag=node_tag,
                         state_tag=state_tag,
                         node_depth=node.tree_depth,
+                        first_seen_mismatch=first_seen_mismatch,
+                        registered_tag=_debug_registered_tag(node),
+                        registered_state_tag=_debug_registered_state_tag(node),
+                        registered_depth=_debug_registered_depth(node),
+                        registered_node_id=_debug_registered_node_id(node),
+                        registered_parent_node_id=_debug_registered_parent_node_id(
+                            node
+                        ),
                     )
                 )
 
@@ -109,6 +137,18 @@ def validate_descendants_tags(
     )
     if failures:
         raise AssertionError(DESCENDANTS_INVARIANT_FAILURE)
+
+
+def _descendants_invariant_runtime_step_interval() -> int:
+    """Return the configured runtime-step full-scan interval."""
+    raw_interval = os.environ.get(DESCENDANTS_INVARIANT_STEP_INTERVAL_ENV_VAR)
+    if raw_interval is None:
+        return DEFAULT_DESCENDANTS_INVARIANT_STEP_INTERVAL
+    try:
+        interval = int(raw_interval)
+    except ValueError:
+        return DEFAULT_DESCENDANTS_INVARIANT_STEP_INTERVAL
+    return max(interval, 1)
 
 
 def summarize_duplicate_state_tags(
@@ -186,6 +226,49 @@ def _state_tag(node: _NodeWithStateTag) -> StateTag | None:
     return getattr(state, "tag", None)
 
 
+def _debug_registered_tag(node: _NodeWithStateTag) -> StateTag | None:
+    """Return the insertion-time node tag captured by tree expansion."""
+    return getattr(node, "_debug_registered_tag", None)
+
+
+def _debug_registered_state_tag(node: _NodeWithStateTag) -> StateTag | None:
+    """Return the insertion-time state tag captured by tree expansion."""
+    return getattr(node, "_debug_registered_state_tag", None)
+
+
+def _debug_registered_depth(node: _NodeWithStateTag) -> TreeDepth | None:
+    """Return the insertion-time depth captured by tree expansion."""
+    return getattr(node, "_debug_registered_depth", None)
+
+
+def _debug_registered_node_id(node: _NodeWithStateTag) -> int | None:
+    """Return the insertion-time node id captured by tree expansion."""
+    return getattr(node, "_debug_registered_node_id", None)
+
+
+def _debug_registered_parent_node_id(node: _NodeWithStateTag) -> int | None:
+    """Return the insertion-time parent node id captured by tree expansion."""
+    return getattr(node, "_debug_registered_parent_node_id", None)
+
+
+def _first_seen_mismatch(
+    *,
+    stored_tag: StateTag | None,
+    node_tag: StateTag | None,
+    state_tag: StateTag | None,
+    node_depth: int,
+    tree_depth: TreeDepth,
+) -> str | None:
+    """Return the first mismatch category for one descendants entry."""
+    if stored_tag != node_tag:
+        return "stored_tag!=node.tag"
+    if node_tag != state_tag:
+        return "node.tag!=node.state.tag"
+    if node_depth != tree_depth:
+        return "node.tree_depth!=tree_depth"
+    return None
+
+
 def _duplicate_state_tag_failures(
     groups_by_depth: Mapping[
         TreeDepth, Mapping[StateTag | None, list[_NodeWithStateTag]]
@@ -206,6 +289,14 @@ def _duplicate_state_tag_failures(
                     node_tag=_node_tag(first_node),
                     state_tag=state_tag,
                     node_depth=first_node.tree_depth,
+                    first_seen_mismatch="duplicate_state_tag",
+                    registered_tag=_debug_registered_tag(first_node),
+                    registered_state_tag=_debug_registered_state_tag(first_node),
+                    registered_depth=_debug_registered_depth(first_node),
+                    registered_node_id=_debug_registered_node_id(first_node),
+                    registered_parent_node_id=_debug_registered_parent_node_id(
+                        first_node
+                    ),
                     duplicate_peer_node_ids=[node.id for node in nodes[1:]],
                 )
             )
@@ -224,9 +315,10 @@ def _log_result(
 ) -> None:
     """Emit structured diagnostics for one invariant pass."""
     status = "failed" if failures else "done"
+    first_seen_mismatch = failures[0].first_seen_mismatch if failures else None
     anemone_logger.info(
         "%s phase=%s status=%s node_count=%s depth_count=%s "
-        "mismatch_count=%s duplicate_state_tag_groups=%s",
+        "mismatch_count=%s duplicate_state_tag_groups=%s first_seen_mismatch=%s",
         DESCENDANTS_INVARIANT_LOG_PREFIX,
         phase,
         status,
@@ -234,18 +326,28 @@ def _log_result(
         depth_count,
         mismatch_count,
         duplicate_state_tag_groups,
+        first_seen_mismatch,
     )
     for failure in failures[:limit]:
         anemone_logger.error(
             "%s phase=%s status=failed depth=%s stored_tag=%r node_id=%s "
-            "node_tag=%r state_tag=%r node_depth=%s duplicate_peer_node_ids=%s",
+            "registered_tag=%r registered_state_tag=%r current_node_tag=%r "
+            "current_state_tag=%r node_depth=%s registered_depth=%r "
+            "registered_node_id=%r registered_parent_node_id=%r "
+            "first_seen_mismatch=%s duplicate_peer_node_ids=%s",
             DESCENDANTS_INVARIANT_LOG_PREFIX,
             phase,
             failure.depth,
             failure.stored_tag,
             failure.node_id,
+            failure.registered_tag,
+            failure.registered_state_tag,
             failure.node_tag,
             failure.state_tag,
             failure.node_depth,
+            failure.registered_depth,
+            failure.registered_node_id,
+            failure.registered_parent_node_id,
+            failure.first_seen_mismatch,
             failure.duplicate_peer_node_ids,
         )

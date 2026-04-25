@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -11,6 +12,7 @@ from anemone.trees.debug_invariants import (
     DESCENDANTS_INVARIANT_LOG_PREFIX,
     validate_descendants_tags,
 )
+from anemone.utils.logger import anemone_logger
 
 
 @dataclass(slots=True)
@@ -18,7 +20,7 @@ class _FakeState:
     tag: str
 
 
-@dataclass(slots=True)
+@dataclass
 class _FakeNode:
     id: int
     tag: str
@@ -93,3 +95,30 @@ def test_validate_descendants_tags_is_noop_without_env_flag(
     validate_descendants_tags(_tree({0: {"stale": node}}), phase="test")  # type: ignore[arg-type]
 
     assert DESCENDANTS_INVARIANT_LOG_PREFIX not in caplog.text
+
+
+def test_validate_descendants_tags_logs_registered_snapshot_for_mutated_tag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A mutated node tag should log the insertion-time debug snapshot."""
+    monkeypatch.setenv(DESCENDANTS_INVARIANT_ENV_VAR, "1")
+    node = _FakeNode(id=1, tag="current", state=_FakeState(tag="current"), tree_depth=0)
+    node._debug_registered_tag = "registered"
+    node._debug_registered_state_tag = "registered_state"
+    node._debug_registered_depth = 0
+    node._debug_registered_node_id = 1
+    node._debug_registered_parent_node_id = 99
+    error_messages: list[str] = []
+
+    def capture_error(message: str, *args: Any) -> None:
+        error_messages.append(message % args)
+
+    monkeypatch.setattr(anemone_logger, "error", capture_error)
+
+    with pytest.raises(AssertionError, match="descendants invariant failed"):
+        validate_descendants_tags(_tree({0: {"registered": node}}), phase="test")  # type: ignore[arg-type]
+
+    assert any(
+        "first_seen_mismatch=stored_tag!=node.tag" in msg for msg in error_messages
+    )
+    assert any("registered_parent_node_id=99" in msg for msg in error_messages)
