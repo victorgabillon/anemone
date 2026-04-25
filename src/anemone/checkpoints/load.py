@@ -606,17 +606,89 @@ def _build_tree[
     nodes_by_id: Mapping[int, AlgorithmNode[StateT]],
 ) -> trees.Tree[AlgorithmNode[StateT]]:
     """Build the restored Tree and descendant registry from restored nodes."""
-    root_node = nodes_by_id[payload.tree.root_node_id]
-    descendants = RangedDescendants[AlgorithmNode[StateT]]()
-    for node_payload in sorted(payload.tree.nodes, key=lambda item: item.depth):
-        descendants.register_descendant(nodes_by_id[node_payload.node_id])
-
-    restored_tree = trees.Tree(root_node=root_node, descendants=descendants)
+    with _log_restore_phase("build_tree.root_lookup", root_node_id=payload.tree.root_node_id):
+        root_node = nodes_by_id[payload.tree.root_node_id]
+    with _log_restore_phase("build_tree.descendants_init"):
+        descendants = RangedDescendants[AlgorithmNode[StateT]]()
+    with _log_restore_phase("build_tree.group_nodes_by_depth", node_count=len(payload.tree.nodes)):
+        grouped_payloads = _group_node_payloads_by_depth(payload.tree.nodes)
+    with _log_restore_phase(
+        "build_tree.populate_descendants",
+        depth_count=len(grouped_payloads),
+        node_count=len(payload.tree.nodes),
+    ):
+        _populate_descendants_for_restore(
+            descendants=descendants,
+            grouped_payloads=grouped_payloads,
+            nodes_by_id=nodes_by_id,
+        )
+    with _log_restore_phase("build_tree.tree_construct", node_count=len(nodes_by_id)):
+        restored_tree = trees.Tree(root_node=root_node, descendants=descendants)
     restored_tree.nodes_count = len(nodes_by_id)
     restored_tree.branch_count = sum(
         len(node_payload.linked_children) for node_payload in payload.tree.nodes
     )
     return restored_tree
+
+
+def _group_node_payloads_by_depth(
+    node_payloads: list[AlgorithmNodeCheckpointPayload],
+) -> dict[int, list[AlgorithmNodeCheckpointPayload]]:
+    """Group checkpoint node payloads by depth in stable payload order."""
+    grouped_payloads: dict[int, list[AlgorithmNodeCheckpointPayload]] = {}
+    for node_payload in sorted(node_payloads, key=lambda item: item.depth):
+        grouped_payloads.setdefault(node_payload.depth, []).append(node_payload)
+    return grouped_payloads
+
+
+def _populate_descendants_for_restore[
+    StateT: AnyTurnState,
+](
+    *,
+    descendants: RangedDescendants[AlgorithmNode[StateT]],
+    grouped_payloads: Mapping[int, list[AlgorithmNodeCheckpointPayload]],
+    nodes_by_id: Mapping[int, AlgorithmNode[StateT]],
+) -> None:
+    """Populate descendants bookkeeping in bulk without incremental updates."""
+    if not grouped_payloads:
+        return
+
+    descendants.descendants_at_tree_depth = {}
+    descendants.number_of_descendants_at_tree_depth = {}
+    descendants.number_of_descendants = 0
+    descendants.min_tree_depth = min(grouped_payloads)
+    descendants.max_tree_depth = max(grouped_payloads)
+
+    for tree_depth in range(descendants.min_tree_depth, descendants.max_tree_depth + 1):
+        payloads_at_depth = grouped_payloads.get(tree_depth)
+        if payloads_at_depth is None:
+            descendants.descendants_at_tree_depth[tree_depth] = {}
+            descendants.number_of_descendants_at_tree_depth[tree_depth] = 0
+            continue
+
+        descendants_at_depth: dict[object, AlgorithmNode[StateT]] = {}
+        for node_payload in payloads_at_depth:
+            node = nodes_by_id[node_payload.node_id]
+            state_tag = _checkpoint_node_state_tag(node=node, node_payload=node_payload)
+            assert state_tag not in descendants_at_depth
+            descendants_at_depth[state_tag] = node
+        descendants.descendants_at_tree_depth[tree_depth] = descendants_at_depth
+        descendants.number_of_descendants_at_tree_depth[tree_depth] = len(
+            descendants_at_depth
+        )
+        descendants.number_of_descendants += len(descendants_at_depth)
+
+
+def _checkpoint_node_state_tag(
+    *,
+    node: AlgorithmNode[Any],
+    node_payload: AlgorithmNodeCheckpointPayload,
+) -> object:
+    """Return the checkpoint node tag, preferring summary metadata when available."""
+    state_summary = node_payload.state_payload.state_summary
+    if state_summary is not None and hasattr(state_summary, "tag"):
+        return getattr(state_summary, "tag")
+    return node.tag
 
 
 def _restore_runtime_state(

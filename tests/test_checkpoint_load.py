@@ -796,8 +796,8 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
         isinstance(node.tree_node.state_handle, CheckpointBackedStateHandle)
         for node in restored_nodes.values()
     )
-    assert set(restore_codec.loaded_anchor_node_ids).issubset({0})
-    assert set(restore_codec.applied_delta_items) == _all_delta_items(payload)
+    assert restore_codec.loaded_anchor_node_ids == []
+    assert restore_codec.applied_delta_items == []
 
     child_node = next(
         node
@@ -825,7 +825,8 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
 
     assert sibling_state.node_id == sibling_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == applied_before
+    assert restore_codec.applied_delta_items != applied_before
+    assert set(restore_codec.applied_delta_items).issubset(_all_delta_items(payload))
 
 
 def test_checkpoint_restore_logs_structured_phase_timings(
@@ -868,6 +869,11 @@ def test_checkpoint_restore_logs_structured_phase_timings(
         "link_nodes",
         "restore_node_runtime_state",
         "build_tree",
+        "build_tree.root_lookup",
+        "build_tree.descendants_init",
+        "build_tree.group_nodes_by_depth",
+        "build_tree.populate_descendants",
+        "build_tree.tree_construct",
         "create_runtime",
         "restore_runtime_state",
         "restore_tree_expansions",
