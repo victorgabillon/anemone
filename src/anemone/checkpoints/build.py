@@ -6,6 +6,11 @@ from dataclasses import dataclass, fields, is_dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
+from anemone.trees.debug_invariants import (
+    descendants_invariant_debug_enabled,
+    validate_descendants_tags,
+    validate_exported_node_state_tags,
+)
 from anemone.utils.logger import anemone_logger
 from anemone.utils.small_tools import Interval
 
@@ -70,6 +75,8 @@ def build_search_checkpoint_payload(
     The new checkpoint format requires an incremental codec that can emit
     anchor snapshots plus parent-to-child deltas.
     """
+    if descendants_invariant_debug_enabled():
+        validate_descendants_tags(search.tree, phase="build_search_checkpoint_payload")
     metrics = _CheckpointBuildMetrics()
     tree_payload = _build_tree_payload(
         search=search,
@@ -92,6 +99,12 @@ def _build_tree_payload(
     metrics: _CheckpointBuildMetrics,
 ) -> TreeCheckpointPayload:
     """Build the tree payload in stable depth/insertion descendant order."""
+    nodes = _iter_nodes_in_checkpoint_order(search)
+    if descendants_invariant_debug_enabled():
+        validate_exported_node_state_tags(
+            nodes,
+            phase="build_tree_payload_exported_nodes",
+        )
     return TreeCheckpointPayload(
         root_node_id=search.tree.root_node.id,
         nodes=[
@@ -100,7 +113,7 @@ def _build_tree_payload(
                 state_codec=state_codec,
                 metrics=metrics,
             )
-            for node in _iter_nodes_in_checkpoint_order(search)
+            for node in nodes
         ],
     )
 
@@ -110,11 +123,14 @@ def _iter_nodes_in_checkpoint_order(
 ) -> list[AlgorithmNode[Any]]:
     """Return live nodes in stable depth order, then descendant insertion order."""
     descendants = search.tree.descendants
-    return [
+    nodes = [
         node
         for tree_depth in descendants.range()
         for node in descendants[tree_depth].values()
     ]
+    if descendants_invariant_debug_enabled():
+        validate_descendants_tags(search.tree, phase="iter_nodes_in_checkpoint_order")
+    return nodes
 
 
 def _build_node_payload(
