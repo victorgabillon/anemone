@@ -1,17 +1,18 @@
 """Runnable tree-search runtime centered on ``TreeExploration``."""
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey, State
-from valanga.evaluations import Value
+from valanga.evaluations import Certainty, Value
 from valanga.game import BranchName
 from valanga.policy import NotifyProgressCallable, Recommendation
 
 from anemone._valanga_types import AnyTurnState
 from anemone.dynamics import SearchDynamics
+from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import (
     require_branch_frontier_aware,
 )
@@ -24,6 +25,7 @@ from anemone.progress_monitor.progress_monitor import (
     create_stopping_criterion,
 )
 from anemone.search_factory import NodeSelectorFactory
+from anemone.value_updates import NodeValueUpdate, NodeValueUpdateResult
 
 from . import node_selector as node_sel
 from . import recommender_rule, trees
@@ -60,6 +62,19 @@ def _unsupported_refresh_scope_error(scope: str) -> ValueError:
         f"Unsupported refresh scope {scope!r}. Supported scopes are: "
         f"{supported_scopes}."
     )
+
+
+def _missing_node_value_update_error(node_ids: tuple[str, ...]) -> ValueError:
+    """Return the public error for disallowed missing node ids."""
+    formatted_node_ids = ", ".join(repr(node_id) for node_id in node_ids)
+    return ValueError(
+        f"Node value updates reference missing node ids: {formatted_node_ids}."
+    )
+
+
+def _duplicate_public_node_id_error(node_id: str) -> RuntimeError:
+    """Return the internal error for impossible duplicate public ids."""
+    return RuntimeError(f"Live tree contains duplicate public node id {node_id!r}.")
 
 
 @dataclass
@@ -199,6 +214,138 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             changed_count=outcome.changed_count,
             skipped_terminal_count=outcome.skipped_terminal_count,
         )
+
+    def apply_node_value_updates(
+        self,
+        updates: Iterable[NodeValueUpdate],
+        *,
+        recompute_backups: bool = True,
+        allow_missing: bool = True,
+    ) -> NodeValueUpdateResult:
+        """Apply direct-value updates to live tree nodes addressed by public node id.
+
+        Missing node ids are reported by default so external callers can apply
+        bounded patch artifacts against a tree that may have moved on. When
+        requested, existing value-propagation logic recomputes affected
+        ancestors and refreshes derived exploration indices.
+        """
+        materialized_updates = list(updates)
+        nodes_by_id = self._nodes_by_public_id()
+        missing_node_ids = tuple(
+            update.node_id
+            for update in materialized_updates
+            if update.node_id not in nodes_by_id
+        )
+        if missing_node_ids and not allow_missing:
+            raise _missing_node_value_update_error(missing_node_ids)
+
+        applied_nodes: list[NodeT] = []
+        changed_nodes: list[NodeT] = []
+        for update in materialized_updates:
+            node = nodes_by_id.get(update.node_id)
+            if node is None:
+                continue
+
+            changed = self._apply_node_value_update(node=node, update=update)
+            applied_nodes.append(node)
+            if changed:
+                changed_nodes.append(node)
+
+        recomputed_count: int | None = None
+        if recompute_backups:
+            if changed_nodes:
+                recomputed_nodes = self.tree_manager.value_propagator.propagate_after_local_value_changes(
+                    changed_nodes
+                )
+                recomputed_count = len(recomputed_nodes)
+                self.tree_manager.refresh_exploration_indices(tree=self.tree)
+            else:
+                recomputed_count = 0
+
+        return NodeValueUpdateResult(
+            requested_count=len(materialized_updates),
+            applied_count=len(applied_nodes),
+            missing_node_ids=missing_node_ids,
+            recomputed_count=recomputed_count,
+        )
+
+    def _nodes_by_public_id(self) -> dict[str, NodeT]:
+        """Return live nodes keyed by Anemone's public string node id."""
+        nodes_by_id: dict[str, NodeT] = {}
+        for node in self._all_nodes_in_tree_order():
+            public_node_id = str(node.id)
+            if public_node_id in nodes_by_id:
+                raise _duplicate_public_node_id_error(public_node_id)
+            nodes_by_id[public_node_id] = node
+        return nodes_by_id
+
+    def _apply_node_value_update(
+        self,
+        *,
+        node: NodeT,
+        update: NodeValueUpdate,
+    ) -> bool:
+        """Apply one already-validated update and report whether value state changed."""
+        node_eval = node.tree_evaluation
+        direct_value_before = node_eval.direct_value
+        backed_up_value_before = node_eval.backed_up_value
+
+        node_eval.direct_value = self._value_from_update_score(
+            score=update.direct_value,
+            update=update,
+            existing_value=direct_value_before,
+        )
+        if update.backed_up_value is not None:
+            node_eval.backed_up_value = self._value_from_update_score(
+                score=update.backed_up_value,
+                update=update,
+                existing_value=backed_up_value_before,
+            )
+
+        return (
+            direct_value_before != node_eval.direct_value
+            or backed_up_value_before != node_eval.backed_up_value
+        )
+
+    def _value_from_update_score(
+        self,
+        *,
+        score: float,
+        update: NodeValueUpdate,
+        existing_value: Value | None,
+    ) -> Value:
+        """Create a safe ``Value`` for a scalar update and optional exactness hints."""
+        existing_over_event = (
+            existing_value.over_event if existing_value is not None else None
+        )
+        if update.is_terminal is True and existing_over_event is not None:
+            return canonical_value.make_terminal_value(
+                score=score,
+                over_event=existing_over_event,
+            )
+        if update.is_exact is True:
+            return canonical_value.make_forced_value(
+                score=score,
+                over_event=existing_over_event,
+            )
+        if update.is_exact is False:
+            return canonical_value.make_estimate_value(score=score)
+        if existing_value is not None and existing_value.certainty == Certainty.FORCED:
+            return canonical_value.make_forced_value(
+                score=score,
+                over_event=existing_over_event,
+            )
+        if (
+            update.is_terminal is not False
+            and existing_value is not None
+            and existing_value.certainty == Certainty.TERMINAL
+            and existing_over_event is not None
+        ):
+            return canonical_value.make_terminal_value(
+                score=score,
+                over_event=existing_over_event,
+            )
+        return canonical_value.make_estimate_value(score=score)
 
     def _deduplicate_nodes_in_order(self, nodes: Sequence[NodeT]) -> list[NodeT]:
         """Return one stable deduplicated node list keyed by object identity."""
