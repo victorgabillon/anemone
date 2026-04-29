@@ -105,8 +105,13 @@ def test_save_training_tree_snapshot_logs_structured_phases(
     path = tmp_path / "training_tree_snapshot.json"
     snapshot = _build_snapshot()
 
-    with caplog.at_level(logging.INFO, logger=anemone_logger.name):
-        save_training_tree_snapshot(snapshot, path)
+    old_propagate = anemone_logger.propagate
+    anemone_logger.propagate = True
+    try:
+        with caplog.at_level(logging.INFO, logger=anemone_logger.name):
+            save_training_tree_snapshot(snapshot, path)
+    finally:
+        anemone_logger.propagate = old_propagate
 
     messages = [record.getMessage() for record in caplog.records]
     assert any(

@@ -11,8 +11,8 @@ from anemone._best_effort import coerce_int as _coerce_int
 from anemone._best_effort import format_over_event as _format_over_event
 from anemone._best_effort import safe_getattr as _safe_getattr
 from anemone.training_export._logging import (
-    _log_training_export_event,
-    _log_training_export_phase,
+    log_training_export_event,
+    log_training_export_phase,
 )
 from anemone.training_export.model import (
     TRAINING_TREE_SNAPSHOT_FORMAT_KIND,
@@ -110,15 +110,16 @@ def build_training_tree_snapshot(
     """Build one training-grade tree snapshot in the caller-provided node order."""
     node_count = len(nodes)
     build_stats = _TrainingExportBuildStats()
-    with _log_training_export_phase("snapshot_build", node_count=node_count):
-        _log_training_export_event(
+    with log_training_export_phase("snapshot_build", node_count=node_count):
+        log_training_export_event(
             "state_ref_serialization",
             "start",
             node_count=node_count,
         )
-        with _log_training_export_phase(
-            "node_traversal", node_count=node_count
-        ), _log_training_export_phase("payload_build", node_count=node_count):
+        with (
+            log_training_export_phase("node_traversal", node_count=node_count),
+            log_training_export_phase("payload_build", node_count=node_count),
+        ):
             node_snapshots = tuple(
                 build_training_node_snapshot(
                     node,
@@ -129,7 +130,7 @@ def build_training_tree_snapshot(
                 )
                 for node in nodes
             )
-        _log_training_export_event(
+        log_training_export_event(
             "state_ref_serialization",
             "done",
             elapsed_s=round(build_stats.state_ref_serialization_elapsed_s, 6),

@@ -9,7 +9,7 @@ from typing import Any
 from anemone.utils.logger import anemone_logger
 
 
-def _log_training_export_event(
+def log_training_export_event(
     phase_name: str,
     status: str,
     **metadata: object,
@@ -25,14 +25,14 @@ def _log_training_export_event(
 
 
 @contextmanager
-def _log_training_export_phase(phase_name: str, **metadata: object) -> Any:
+def log_training_export_phase(phase_name: str, **metadata: object) -> Any:
     """Log one training-export phase start and completion timing."""
-    _log_training_export_event(phase_name, "start", **metadata)
+    log_training_export_event(phase_name, "start", **metadata)
     started_at = perf_counter()
     try:
         yield
     finally:
-        _log_training_export_event(
+        log_training_export_event(
             phase_name,
             "done",
             elapsed_s=round(perf_counter() - started_at, 6),
@@ -40,4 +40,4 @@ def _log_training_export_phase(phase_name: str, **metadata: object) -> Any:
         )
 
 
-__all__ = ["_log_training_export_event", "_log_training_export_phase"]
+__all__ = ["log_training_export_event", "log_training_export_phase"]

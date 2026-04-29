@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping as MappingABC
+from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from random import Random
 from time import perf_counter
@@ -56,9 +56,13 @@ from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
 from .value_serialization import deserialize_checkpoint_atom, deserialize_value
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
-
-    from valanga import BranchKey, Dynamics, RepresentationFactory, StateModifications
+    from valanga import (
+        BranchKey,
+        Dynamics,
+        RepresentationFactory,
+        StateModifications,
+        StateTag,
+    )
     from valanga.evaluator_types import EvaluatorInput
     from valanga.policy import NotifyProgressCallable
 
@@ -607,11 +611,15 @@ def _build_tree[
     nodes_by_id: Mapping[int, AlgorithmNode[StateT]],
 ) -> trees.Tree[AlgorithmNode[StateT]]:
     """Build the restored Tree and descendant registry from restored nodes."""
-    with _log_restore_phase("build_tree.root_lookup", root_node_id=payload.tree.root_node_id):
+    with _log_restore_phase(
+        "build_tree.root_lookup", root_node_id=payload.tree.root_node_id
+    ):
         root_node = nodes_by_id[payload.tree.root_node_id]
     with _log_restore_phase("build_tree.descendants_init"):
         descendants = RangedDescendants[AlgorithmNode[StateT]]()
-    with _log_restore_phase("build_tree.group_nodes_by_depth", node_count=len(payload.tree.nodes)):
+    with _log_restore_phase(
+        "build_tree.group_nodes_by_depth", node_count=len(payload.tree.nodes)
+    ):
         grouped_payloads = _group_node_payloads_by_depth(payload.tree.nodes)
     with _log_restore_phase(
         "build_tree.populate_descendants",
@@ -669,7 +677,7 @@ def _populate_descendants_for_restore[
             descendants.number_of_descendants_at_tree_depth[tree_depth] = 0
             continue
 
-        descendants_at_depth: dict[object, AlgorithmNode[StateT]] = {}
+        descendants_at_depth: dict[StateTag, AlgorithmNode[StateT]] = {}
         for node_payload in payloads_at_depth:
             node = nodes_by_id[node_payload.node_id]
             state_tag, used_summary_tag = _checkpoint_node_state_tag(
@@ -699,7 +707,7 @@ def _checkpoint_node_state_tag(
     *,
     node: AlgorithmNode[Any],
     node_payload: AlgorithmNodeCheckpointPayload,
-) -> tuple[object, bool]:
+) -> tuple[StateTag, bool]:
     """Return the checkpoint node tag, preferring summary metadata when available."""
     state_summary = node_payload.state_payload.state_summary
     summary_tag = _checkpoint_summary_tag(state_summary)
@@ -708,20 +716,20 @@ def _checkpoint_node_state_tag(
     return node.tag, False
 
 
-def _checkpoint_summary_tag(state_summary: object | None) -> object | None:
+def _checkpoint_summary_tag(state_summary: object | None) -> StateTag | None:
     """Return a checkpoint summary tag when one is stored explicitly."""
     if state_summary is None:
         return None
     state_summary_with_attrs: Any = state_summary
     if hasattr(state_summary, "tag"):
-        return state_summary_with_attrs.tag
+        return cast("StateTag", state_summary_with_attrs.tag)
     if hasattr(state_summary, "state_tag"):
-        return state_summary_with_attrs.state_tag
-    if isinstance(state_summary, MappingABC):
+        return cast("StateTag", state_summary_with_attrs.state_tag)
+    if isinstance(state_summary, Mapping):
         if "tag" in state_summary:
-            return state_summary["tag"]
+            return cast("StateTag", state_summary["tag"])
         if "state_tag" in state_summary:
-            return state_summary["state_tag"]
+            return cast("StateTag", state_summary["state_tag"])
     return None
 
 
@@ -739,6 +747,7 @@ def _restore_runtime_state(
 
     if payload.rng_state is not None:
         random_generator.setstate(cast("tuple[Any, ...]", payload.rng_state))
+
 
 def _restore_tree_expansions_runtime_state(
     *,

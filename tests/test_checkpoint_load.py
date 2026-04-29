@@ -831,13 +831,14 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
     )
     applied_before = list(restore_codec.applied_delta_items)
     child_state = child_node.state
+    applied_after_first_access = list(restore_codec.applied_delta_items)
 
     assert child_state.node_id == child_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == applied_before
+    assert len(applied_after_first_access) == len(applied_before) + 1
     assert child_node.state is child_state
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items == applied_before
+    assert restore_codec.applied_delta_items == applied_after_first_access
 
     sibling_node = next(
         node
@@ -850,7 +851,7 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
 
     assert sibling_state.node_id == sibling_node.state.node_id
     assert restore_codec.loaded_anchor_node_ids == [0]
-    assert restore_codec.applied_delta_items != applied_before
+    assert len(restore_codec.applied_delta_items) == len(applied_after_first_access) + 1
     assert set(restore_codec.applied_delta_items).issubset(_all_delta_items(payload))
 
 
@@ -866,19 +867,24 @@ def test_checkpoint_restore_logs_structured_phase_timings(
     )
     restore_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
 
-    with caplog.at_level(logging.INFO, logger=anemone_logger.name):
-        restored = load_search_from_checkpoint_payload(
-            payload,
-            state_codec=restore_codec,
-            dynamics=FakeYamlDynamics(),
-            args=_build_args(),
-            state_type=_ConcreteFakeYamlState,
-            master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
-                _values_for(_CHILDREN_BY_ID)
-            ),
-            random_generator=Random(0),
-            state_representation_factory=None,
-        )
+    old_propagate = anemone_logger.propagate
+    anemone_logger.propagate = True
+    try:
+        with caplog.at_level(logging.INFO, logger=anemone_logger.name):
+            restored = load_search_from_checkpoint_payload(
+                payload,
+                state_codec=restore_codec,
+                dynamics=FakeYamlDynamics(),
+                args=_build_args(),
+                state_type=_ConcreteFakeYamlState,
+                master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+                    _values_for(_CHILDREN_BY_ID)
+                ),
+                random_generator=Random(0),
+                state_representation_factory=None,
+            )
+    finally:
+        anemone_logger.propagate = old_propagate
 
     checkpoint_restore_messages = [
         record.getMessage()
@@ -931,7 +937,9 @@ def test_checkpoint_restore_logs_structured_phase_timings(
 @pytest.mark.parametrize(
     ("state_summary", "expected_tag"),
     [
-        pytest.param(_FakeCheckpointStateSummary(tag=7, node_id=7), 7, id="dataclass-tag"),
+        pytest.param(
+            _FakeCheckpointStateSummary(tag=7, node_id=7), 7, id="dataclass-tag"
+        ),
         pytest.param(
             _FakeCheckpointStateSummaryWithStateTag(state_tag=8, node_id=8),
             8,
@@ -1035,7 +1043,7 @@ def test_checkpoint_restore_leaves_restored_state_representations_unbuilt() -> N
     assert all(node.state_representation is None for node in restored_nodes.values())
     assert representation_factory.created_for_node_ids == []
     assert set(restore_codec.loaded_anchor_node_ids).issubset({0})
-    assert set(restore_codec.applied_delta_items) == _all_delta_items(payload)
+    assert restore_codec.applied_delta_items == []
 
     restored.step()
 
@@ -1159,7 +1167,7 @@ def test_checkpoint_restore_does_not_evaluate_checkpointed_nodes() -> None:
 
     assert evaluator.evaluated_items_count == 0
     assert set(codec.loaded_anchor_node_ids).issubset({0})
-    assert set(codec.applied_delta_items) == _all_delta_items(payload)
+    assert codec.applied_delta_items == []
     restored.step()
     assert evaluator.evaluated_items_count > 0
 

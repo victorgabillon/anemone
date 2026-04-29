@@ -22,8 +22,11 @@ from .factory import (
 )
 from .tree_and_value_branch_selector import SearchRecommender
 from .tree_exploration import SearchRuntime
+from .value_updates import NodeValueUpdate, NodeValueUpdateResult
 
 __all__ = [
+    "NodeValueUpdate",
+    "NodeValueUpdateResult",
     "SearchArgs",
     "SearchRecommender",
     "SearchRuntime",

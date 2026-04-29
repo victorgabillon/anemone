@@ -167,11 +167,16 @@ def test_build_training_tree_snapshot_logs_structured_phases(
         visit_count=2,
     )
 
-    with caplog.at_level(logging.INFO, logger=anemone_logger.name):
-        snapshot = build_training_tree_snapshot(
-            [root, child],
-            state_ref_dumper=lambda state: {"state_key": state},
-        )
+    old_propagate = anemone_logger.propagate
+    anemone_logger.propagate = True
+    try:
+        with caplog.at_level(logging.INFO, logger=anemone_logger.name):
+            snapshot = build_training_tree_snapshot(
+                [root, child],
+                state_ref_dumper=lambda state: {"state_key": state},
+            )
+    finally:
+        anemone_logger.propagate = old_propagate
 
     messages = [record.getMessage() for record in caplog.records]
     assert any(

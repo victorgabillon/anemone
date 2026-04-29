@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-from ._logging import _log_training_export_phase
+from ._logging import log_training_export_phase
 from .serialization import (
     training_tree_snapshot_from_dict,
     training_tree_snapshot_to_dict,
@@ -31,26 +31,26 @@ def save_training_tree_snapshot(
     """
     target = Path(path)
     node_count = len(snapshot.nodes)
-    with _log_training_export_phase(
+    with log_training_export_phase(
         "total_save",
         node_count=node_count,
         output=target,
     ):
         target.parent.mkdir(parents=True, exist_ok=True)
-        with _log_training_export_phase(
+        with log_training_export_phase(
             "payload_to_dict",
             node_count=node_count,
             output=target,
         ):
             payload = training_tree_snapshot_to_dict(snapshot)
-        with _log_training_export_phase(
+        with log_training_export_phase(
             "json_dump",
             node_count=node_count,
             output=target,
         ):
             dumped_json = json.dumps(payload, indent=2) + "\n"
         encoded_json = dumped_json.encode("utf-8")
-        with _log_training_export_phase(
+        with log_training_export_phase(
             "json_write",
             node_count=node_count,
             output=target,
