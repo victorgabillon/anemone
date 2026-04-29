@@ -24,10 +24,6 @@ from anemone.progress_monitor.progress_monitor import (
     create_stopping_criterion,
 )
 from anemone.search_factory import NodeSelectorFactory
-from anemone.trees.debug_invariants import (
-    descendants_invariant_runtime_step_should_validate,
-    validate_descendants_tags,
-)
 
 from . import node_selector as node_sel
 from . import recommender_rule, trees
@@ -126,11 +122,6 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     search_result_reporter: SearchResultReporter | None = None
     evaluator_version: int = 0
     _latest_tree_expansions: tree_man.TreeExpansions[NodeT] = field(
-        init=False,
-        repr=False,
-    )
-    _debug_descendants_invariant_step_index: int = field(
-        default=0,
         init=False,
         repr=False,
     )
@@ -422,15 +413,6 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         # Search stops once the root value is exact, even if the root state is
         # still non-terminal and some siblings remain unopened.
         assert not self.tree.root_node.tree_evaluation.has_exact_value()
-        step_index = self._debug_descendants_invariant_step_index
-        should_validate_descendants = descendants_invariant_runtime_step_should_validate(
-            step_index
-        )
-        if should_validate_descendants:
-            validate_descendants_tags(
-                self.tree,
-                phase=f"before_runtime_step_{step_index}",
-            )
 
         opening_instructions = self._select_node_for_expansion()
         opening_instructions_subset = self._limit_opening_instructions(
@@ -440,12 +422,6 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._evaluate_expansions(tree_expansions)
         self._propagate_iteration_updates(tree_expansions)
         self._latest_tree_expansions = tree_expansions
-        if should_validate_descendants:
-            validate_descendants_tags(
-                self.tree,
-                phase=f"after_runtime_step_{step_index}",
-            )
-        self._debug_descendants_invariant_step_index += 1
 
     def explore(self, random_generator: Random) -> TreeExplorationResult[NodeT]:
         """Explore the tree to find the best branch.

@@ -712,10 +712,11 @@ def _checkpoint_summary_tag(state_summary: object | None) -> object | None:
     """Return a checkpoint summary tag when one is stored explicitly."""
     if state_summary is None:
         return None
+    state_summary_with_attrs: Any = state_summary
     if hasattr(state_summary, "tag"):
-        return getattr(state_summary, "tag")
+        return state_summary_with_attrs.tag
     if hasattr(state_summary, "state_tag"):
-        return getattr(state_summary, "state_tag")
+        return state_summary_with_attrs.state_tag
     if isinstance(state_summary, MappingABC):
         if "tag" in state_summary:
             return state_summary["tag"]

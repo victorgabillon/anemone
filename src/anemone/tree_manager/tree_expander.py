@@ -8,11 +8,6 @@ from valanga import BranchKey, StateModifications
 
 from anemone import nodes as node
 from anemone import trees
-from anemone.trees.debug_invariants import (
-    DESCENDANTS_INVARIANT_LOG_PREFIX,
-    descendants_invariant_debug_enabled,
-)
-from anemone.utils.logger import anemone_logger
 
 
 @dataclass(slots=True)
@@ -51,123 +46,10 @@ def record_tree_expansion[NodeT: node.ITreeNode[Any]](
 ) -> None:
     """Apply one TreeExpansion's bookkeeping to a tree + its log."""
     if tree_expansion.creation_child_node:
-        if descendants_invariant_debug_enabled():
-            _record_registered_debug_snapshot(tree_expansion)
-            _log_expansion_node(
-                tree=tree,
-                tree_expansion=tree_expansion,
-                phase="before_register_child",
-            )
         tree.nodes_count += 1
         tree.descendants.register_descendant(tree_expansion.child_node)
-        if descendants_invariant_debug_enabled():
-            _log_expansion_node(
-                tree=tree,
-                tree_expansion=tree_expansion,
-                phase="after_register_child",
-            )
-            _validate_registered_child_locally(tree=tree, tree_expansion=tree_expansion)
-    elif descendants_invariant_debug_enabled():
-        _log_expansion_node(
-            tree=tree,
-            tree_expansion=tree_expansion,
-            phase="reused_child",
-        )
 
     tree_expansions.record(tree_expansion=tree_expansion)
-
-
-def _record_registered_debug_snapshot[NodeT: node.ITreeNode[Any]](
-    tree_expansion: TreeExpansion[NodeT],
-) -> None:
-    """Capture insertion-time node identity for descendants mutation diagnostics."""
-    child_node = tree_expansion.child_node
-    child_node_for_debug: Any = child_node
-    parent_node = tree_expansion.parent_node
-    child_node_for_debug._debug_registered_tag = child_node.tag
-    child_node_for_debug._debug_registered_state_tag = child_node.state.tag
-    child_node_for_debug._debug_registered_depth = child_node.tree_depth
-    child_node_for_debug._debug_registered_node_id = child_node.id
-    child_node_for_debug._debug_registered_parent_node_id = (
-        parent_node.id if parent_node is not None else None
-    )
-
-
-def _validate_registered_child_locally[NodeT: node.ITreeNode[Any]](
-    *,
-    tree: trees.Tree[NodeT],
-    tree_expansion: TreeExpansion[NodeT],
-) -> None:
-    """Validate just-created child bookkeeping without scanning descendants."""
-    child_node = tree_expansion.child_node
-    stored_node = tree.descendants[child_node.tree_depth].get(child_node.tag)
-    if stored_node is not child_node or child_node.tag != child_node.state.tag:
-        anemone_logger.error(
-            "%s phase=after_register_child status=failed node_count=%s "
-            "depth_count=%s mismatch_count=1 duplicate_state_tag_groups=0 "
-            "node_id=%s node_tag=%r state_tag=%r node_depth=%s "
-            "stored_is_child=%s registered_tag=%r registered_state_tag=%r "
-            "registered_depth=%r registered_node_id=%r "
-            "registered_parent_node_id=%r",
-            DESCENDANTS_INVARIANT_LOG_PREFIX,
-            tree.descendants.get_count(),
-            _descendants_depth_count(tree),
-            child_node.id,
-            child_node.tag,
-            child_node.state.tag,
-            child_node.tree_depth,
-            stored_node is child_node,
-            getattr(child_node, "_debug_registered_tag", None),
-            getattr(child_node, "_debug_registered_state_tag", None),
-            getattr(child_node, "_debug_registered_depth", None),
-            getattr(child_node, "_debug_registered_node_id", None),
-            getattr(child_node, "_debug_registered_parent_node_id", None),
-        )
-    assert stored_node is child_node
-    assert child_node.tag == child_node.state.tag
-
-
-def _log_expansion_node[NodeT: node.ITreeNode[Any]](
-    *,
-    tree: trees.Tree[NodeT],
-    tree_expansion: TreeExpansion[NodeT],
-    phase: str,
-) -> None:
-    """Log the child node touched by structural expansion diagnostics."""
-    child_node = tree_expansion.child_node
-    anemone_logger.info(
-        "%s phase=%s status=event node_count=%s depth_count=%s "
-        "mismatch_count=0 duplicate_state_tag_groups=0 node_id=%s "
-        "node_tag=%r state_tag=%r node_depth=%s parent_node_id=%s "
-        "creation_child_node=%s registered_tag=%r registered_state_tag=%r "
-        "registered_depth=%r registered_node_id=%r registered_parent_node_id=%r",
-        DESCENDANTS_INVARIANT_LOG_PREFIX,
-        phase,
-        tree.descendants.get_count(),
-        _descendants_depth_count(tree),
-        child_node.id,
-        child_node.tag,
-        child_node.state.tag,
-        child_node.tree_depth,
-        tree_expansion.parent_node.id
-        if tree_expansion.parent_node is not None
-        else None,
-        tree_expansion.creation_child_node,
-        getattr(child_node, "_debug_registered_tag", None),
-        getattr(child_node, "_debug_registered_state_tag", None),
-        getattr(child_node, "_debug_registered_depth", None),
-        getattr(child_node, "_debug_registered_node_id", None),
-        getattr(child_node, "_debug_registered_parent_node_id", None),
-    )
-
-
-def _descendants_depth_count[NodeT: node.ITreeNode[Any]](
-    tree: trees.Tree[NodeT],
-) -> int:
-    """Return the number of depth buckets currently held by descendants."""
-    if tree.descendants.empty():
-        return 0
-    return len(tree.descendants.range())
 
 
 def _new_expansions_list() -> list[TreeExpansion[Any]]:

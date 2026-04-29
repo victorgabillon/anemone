@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from random import Random
 from typing import Any, Self, cast
 
@@ -776,6 +776,21 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
         assert restored_node.tree_depth == original_node.tree_depth
         assert _child_signature(restored_node) == _child_signature(original_node)
         assert _parent_signature(restored_node) == _parent_signature(original_node)
+
+
+def test_checkpoint_restore_descendants_tags_match_restored_nodes() -> None:
+    """Restored descendants keys should match each node's live tag and state tag."""
+    runtime = _build_runtime()
+    runtime.step()
+    runtime.step()
+
+    restored = _roundtrip_runtime(runtime)
+
+    for tree_depth in restored.tree.descendants.range():
+        for stored_tag, node in restored.tree.descendants[tree_depth].items():
+            assert stored_tag == node.tag
+            assert node.tag == node.state.tag
+            assert node.tree_depth == tree_depth
 
 
 def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
