@@ -6,7 +6,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
-from anemone.utils.logger import anemone_logger
+from anemone.utils.logger import anemone_logger, checkpoint_logger
 from anemone.utils.small_tools import Interval
 
 from ._protocols import (
@@ -223,7 +223,7 @@ def _try_build_delta_state_payload(
             )
         except Exception as exc:  # pylint: disable=broad-exception-caught
             metrics.delta_candidates_rejected += 1
-            anemone_logger.debug(
+            checkpoint_logger.debug(
                 "delta candidate rejected child=%s parent=%s branch=%r err=%s",
                 node.id,
                 candidate_parent.id,

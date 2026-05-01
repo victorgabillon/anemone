@@ -34,7 +34,7 @@ from anemone.tree_exploration_debug import (
 )
 from anemone.tree_manager import TreeExpansion, TreeExpansions
 from anemone.trees.descendants import RangedDescendants
-from anemone.utils.logger import anemone_logger
+from anemone.utils.logger import checkpoint_logger
 from anemone.utils.small_tools import Interval
 
 from .payloads import (
@@ -166,7 +166,7 @@ def _log_checkpoint_restore_event(
     message = f"[checkpoint-restore] phase={phase_name} status={status}"
     if metadata_suffix:
         message = f"{message} {metadata_suffix}"
-    anemone_logger.info(message)
+    checkpoint_logger.debug(message)
 
 
 def load_search_from_checkpoint_payload[
@@ -695,7 +695,7 @@ def _populate_descendants_for_restore[
             descendants_at_depth
         )
         descendants.number_of_descendants += len(descendants_at_depth)
-    anemone_logger.info(
+    checkpoint_logger.debug(
         "[checkpoint-restore] phase=build_tree.populate_descendants_tags "
         "summary_tag_count=%s fallback_tag_count=%s",
         summary_tag_count,

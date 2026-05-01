@@ -96,6 +96,38 @@ class ReevaluationReport:
     skipped_terminal_count: int = 0
 
 
+@dataclass(slots=True)
+class TreeGrowthStepReport:
+    """Summary of one structural growth iteration."""
+
+    selected_node_id: int | None
+    selected_depth: int | None
+    nodes_before: int
+    nodes_after: int
+    nodes_added: int
+    branch_count: int | None = None
+
+
+def _selected_node_summary[NodeT: AlgorithmNode[Any]](
+    opening_instructions: node_sel.OpeningInstructions[NodeT],
+) -> tuple[int | None, int | None]:
+    """Return the selected node id/depth when the batch targets one node."""
+    selected_node_id: int | None = None
+    selected_depth: int | None = None
+    for instruction in opening_instructions.values():
+        node_id = getattr(instruction.node_to_open, "id", None)
+        node_depth = getattr(instruction.node_to_open, "tree_depth", None)
+        if not isinstance(node_id, int) or not isinstance(node_depth, int):
+            return None, None
+        if selected_node_id is None:
+            selected_node_id = node_id
+            selected_depth = node_depth
+            continue
+        if node_id != selected_node_id or node_depth != selected_depth:
+            return None, None
+    return selected_node_id, selected_depth
+
+
 def compute_child_evals[StateT: State](
     root: AlgorithmNode[StateT],
     dynamics: SearchDynamics[StateT, Any],
@@ -140,6 +172,11 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         init=False,
         repr=False,
     )
+    _latest_step_report: TreeGrowthStepReport | None = field(
+        init=False,
+        repr=False,
+        default=None,
+    )
 
     def __post_init__(self) -> None:
         """Seed selector-visible iteration state for the first step."""
@@ -174,6 +211,11 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     ) -> None:
         """Restore selector-visible expansion records from a checkpoint payload."""
         self._latest_tree_expansions = value
+
+    @property
+    def latest_step_report(self) -> TreeGrowthStepReport | None:
+        """Return the latest structural-step summary when available."""
+        return self._latest_step_report
 
     def _report_iteration_progress(self, random_generator: Random) -> None:
         """Invoke the optional iteration-progress reporter for this runtime."""
@@ -555,20 +597,36 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self.tree_manager.propagate_depth_index(tree_expansions=tree_expansions)
         self.tree_manager.refresh_exploration_indices(tree=self.tree)
 
-    def step(self) -> None:
+    def step(self) -> TreeGrowthStepReport:
         """Run one search iteration in the canonical runtime order."""
         # Search stops once the root value is exact, even if the root state is
         # still non-terminal and some siblings remain unopened.
         assert not self.tree.root_node.tree_evaluation.has_exact_value()
 
+        nodes_before = self.tree.nodes_count
         opening_instructions = self._select_node_for_expansion()
         opening_instructions_subset = self._limit_opening_instructions(
             opening_instructions
+        )
+        selected_node_id, selected_depth = _selected_node_summary(
+            opening_instructions_subset
         )
         tree_expansions = self._expand_opening_instructions(opening_instructions_subset)
         self._evaluate_expansions(tree_expansions)
         self._propagate_iteration_updates(tree_expansions)
         self._latest_tree_expansions = tree_expansions
+        nodes_after = self.tree.nodes_count
+        branch_count = getattr(self.tree, "branch_count", None)
+        report = TreeGrowthStepReport(
+            selected_node_id=selected_node_id,
+            selected_depth=selected_depth,
+            nodes_before=nodes_before,
+            nodes_after=nodes_after,
+            nodes_added=nodes_after - nodes_before,
+            branch_count=branch_count if isinstance(branch_count, int) else None,
+        )
+        self._latest_step_report = report
+        return report
 
     def explore(self, random_generator: Random) -> TreeExplorationResult[NodeT]:
         """Explore the tree to find the best branch.

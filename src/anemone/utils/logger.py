@@ -2,12 +2,15 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from logging import DEBUG, ERROR, WARNING, Logger, getLogger
+from logging import DEBUG, ERROR, INFO, WARNING, Logger, getLogger
 
 from rich.logging import RichHandler
 
 anemone_logger = getLogger("anemone_app")
 anemone_logger.setLevel(DEBUG)
+
+checkpoint_logger = getLogger("anemone_app.checkpoints")
+checkpoint_logger.setLevel(INFO)
 
 if not anemone_logger.handlers:
     console_handler = RichHandler()
@@ -30,6 +33,11 @@ def set_chipiron_logger_level(level: int) -> None:
     anemone_logger.setLevel(level)
     for handler in anemone_logger.handlers:
         handler.setLevel(level)
+
+
+def set_checkpoint_logger_level(level: int) -> None:
+    """Set the checkpoint-internals logger level without widening global logs."""
+    checkpoint_logger.setLevel(level)
 
 
 @contextmanager
