@@ -39,7 +39,7 @@ from anemone.progress_monitor.progress_monitor import (
     TreeBranchLimitArgs,
 )
 from anemone.recommender_rule.recommender_rule import SoftmaxRule
-from anemone.utils.logger import anemone_logger
+from anemone.utils.logger import anemone_logger, checkpoint_logger
 from tests.fake_yaml_game import (
     FakeYamlDynamics,
     FakeYamlState,
@@ -867,10 +867,12 @@ def test_checkpoint_restore_logs_structured_phase_timings(
     )
     restore_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
 
-    old_propagate = anemone_logger.propagate
+    old_anemone_propagate = anemone_logger.propagate
+    old_checkpoint_propagate = checkpoint_logger.propagate
     anemone_logger.propagate = True
+    checkpoint_logger.propagate = True
     try:
-        with caplog.at_level(logging.INFO, logger=anemone_logger.name):
+        with caplog.at_level(logging.DEBUG, logger=checkpoint_logger.name):
             restored = load_search_from_checkpoint_payload(
                 payload,
                 state_codec=restore_codec,
@@ -884,12 +886,14 @@ def test_checkpoint_restore_logs_structured_phase_timings(
                 state_representation_factory=None,
             )
     finally:
-        anemone_logger.propagate = old_propagate
+        anemone_logger.propagate = old_anemone_propagate
+        checkpoint_logger.propagate = old_checkpoint_propagate
 
     checkpoint_restore_messages = [
         record.getMessage()
         for record in caplog.records
-        if "[checkpoint-restore]" in record.getMessage()
+        if record.levelno == logging.DEBUG
+        and "[checkpoint-restore]" in record.getMessage()
     ]
     expected_phases = {
         "assemble_runtime_dependencies",
@@ -932,6 +936,42 @@ def test_checkpoint_restore_logs_structured_phase_timings(
 
     assert restored.tree.root_node.id == runtime.tree.root_node.id
     assert restored.tree.nodes_count == runtime.tree.nodes_count
+
+
+def test_checkpoint_restore_logs_are_suppressed_from_normal_info_capture(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Normal app-level INFO capture should not include checkpoint restore internals."""
+    runtime = _build_runtime()
+    runtime.step()
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    restore_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+
+    old_anemone_propagate = anemone_logger.propagate
+    anemone_logger.propagate = True
+    try:
+        with caplog.at_level(logging.INFO, logger=anemone_logger.name):
+            load_search_from_checkpoint_payload(
+                payload,
+                state_codec=restore_codec,
+                dynamics=FakeYamlDynamics(),
+                args=_build_args(),
+                state_type=_ConcreteFakeYamlState,
+                master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+                    _values_for(_CHILDREN_BY_ID)
+                ),
+                random_generator=Random(0),
+                state_representation_factory=None,
+            )
+    finally:
+        anemone_logger.propagate = old_anemone_propagate
+
+    assert all(
+        "[checkpoint-restore]" not in record.getMessage() for record in caplog.records
+    )
 
 
 @pytest.mark.parametrize(

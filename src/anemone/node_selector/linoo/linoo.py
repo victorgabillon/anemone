@@ -26,6 +26,29 @@ class LinooArgs:
     type: Literal[NodeSelectorType.LINOO]
 
 
+@dataclass(frozen=True, slots=True)
+class LinooDepthSelectionRow:
+    """Selector-observable summary for one candidate frontier depth."""
+
+    depth: int
+    opened_count: int
+    frontier_count: int
+    selection_index: int
+    best_node_id: int | None
+    best_direct_value: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class LinooSelectionReport:
+    """Structured observability payload for the latest Linoo selection."""
+
+    selected_depth: int
+    selected_node_id: int
+    selected_node_direct_value: float | None
+    selected_depth_selection_index: int
+    depth_rows: tuple[LinooDepthSelectionRow, ...]
+
+
 class LinooSelectionError(ValueError):
     """Base error for invalid Linoo selection contexts."""
 
@@ -81,10 +104,12 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """
 
     opening_instructor: OpeningInstructor
+    latest_selection_report: LinooSelectionReport | None
 
     def __init__(self, opening_instructor: OpeningInstructor) -> None:
         """Store the opening instructor used to materialize branch openings."""
         self.opening_instructor = opening_instructor
+        self.latest_selection_report = None
 
     def choose_node_and_branch_to_open(
         self,
@@ -93,6 +118,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     ) -> OpeningInstructions[NodeT]:
         """Choose one unopened node according to the Linoo policy."""
         _ = latest_tree_expansions  # Linoo recomputes its view from the current tree.
+        self.latest_selection_report = None
 
         objective = self._require_single_agent_objective(tree)
         frontier_by_depth, opened_count_by_depth = self._collect_frontier_state(tree)
@@ -116,6 +142,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 ),
                 -node.id,
             ),
+        )
+        self.latest_selection_report = self._make_selection_report(
+            objective=objective,
+            frontier_by_depth=frontier_by_depth,
+            opened_count_by_depth=opened_count_by_depth,
+            selected_depth=selected_depth,
+            selected_node=selected_node,
         )
 
         all_branches_to_open = self.opening_instructor.all_branches_to_open(
@@ -166,6 +199,61 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 frontier_by_depth.setdefault(depth, []).append(node)
 
         return frontier_by_depth, opened_count_by_depth
+
+    def _make_selection_report(
+        self,
+        *,
+        objective: SingleAgentMaxObjective[Any],
+        frontier_by_depth: dict[int, list[NodeT]],
+        opened_count_by_depth: dict[int, int],
+        selected_depth: int,
+        selected_node: NodeT,
+    ) -> LinooSelectionReport:
+        """Build the structured latest-selection table without affecting policy."""
+        rows: list[LinooDepthSelectionRow] = []
+        selected_depth_selection_index: int | None = None
+
+        for depth, frontier_nodes in frontier_by_depth.items():
+            opened_count = opened_count_by_depth.get(depth, 0)
+            selection_index = opened_count * (depth + 1)
+            best_node = max(
+                frontier_nodes,
+                key=lambda node: (
+                    objective.evaluate_value(
+                        self._require_direct_value(node),
+                        node.state,
+                    ),
+                    -node.id,
+                ),
+            )
+            best_direct_value = self._require_direct_value(best_node).score
+            row = LinooDepthSelectionRow(
+                depth=depth,
+                opened_count=opened_count,
+                frontier_count=len(frontier_nodes),
+                selection_index=selection_index,
+                best_node_id=best_node.id,
+                best_direct_value=best_direct_value,
+            )
+            rows.append(row)
+            if depth == selected_depth:
+                selected_depth_selection_index = selection_index
+
+        sorted_rows = tuple(
+            sorted(rows, key=lambda row: (row.selection_index, row.depth))
+        )
+        if selected_depth_selection_index is None:
+            selected_depth_selection_index = opened_count_by_depth.get(
+                selected_depth, 0
+            ) * (selected_depth + 1)
+
+        return LinooSelectionReport(
+            selected_depth=selected_depth,
+            selected_node_id=selected_node.id,
+            selected_node_direct_value=self._require_direct_value(selected_node).score,
+            selected_depth_selection_index=selected_depth_selection_index,
+            depth_rows=sorted_rows,
+        )
 
     def _require_direct_value(self, node: NodeT) -> Value:
         """Return one node's direct value or raise a clear Linoo error."""

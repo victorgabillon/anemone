@@ -106,6 +106,7 @@ class TreeGrowthStepReport:
     nodes_after: int
     nodes_added: int
     branch_count: int | None = None
+    selector_report: object | None = None
 
 
 def _selected_node_summary[NodeT: AlgorithmNode[Any]](
@@ -605,6 +606,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         nodes_before = self.tree.nodes_count
         opening_instructions = self._select_node_for_expansion()
+        selector_report = getattr(self.node_selector, "latest_selection_report", None)
         opening_instructions_subset = self._limit_opening_instructions(
             opening_instructions
         )
@@ -624,6 +626,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             nodes_after=nodes_after,
             nodes_added=nodes_after - nodes_before,
             branch_count=branch_count if isinstance(branch_count, int) else None,
+            selector_report=selector_report,
         )
         self._latest_step_report = report
         return report

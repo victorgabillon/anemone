@@ -31,7 +31,7 @@ from anemone.progress_monitor.progress_monitor import (
     TreeBranchLimitArgs,
 )
 from anemone.recommender_rule.recommender_rule import SoftmaxRule
-from anemone.utils.logger import anemone_logger
+from anemone.utils.logger import anemone_logger, checkpoint_logger
 from tests.fake_yaml_game import (
     FakeYamlDynamics,
     FakeYamlState,
@@ -416,7 +416,7 @@ def test_checkpoint_build_logs_aggregate_metrics_without_traceback_spam(
         rendered = str(msg) % args if args else str(msg)
         info_messages.append(rendered)
 
-    monkeypatch.setattr(anemone_logger, "debug", _record_debug)
+    monkeypatch.setattr(checkpoint_logger, "debug", _record_debug)
     monkeypatch.setattr(anemone_logger, "info", _record_info)
     codec = _SelectiveDeltaCheckpointCodec({(representative_parent_state_id, 3)})
 

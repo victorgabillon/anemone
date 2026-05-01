@@ -1,6 +1,6 @@
 """Composed node selector with optional priority override and base fallback."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from anemone import trees
@@ -21,6 +21,12 @@ class ComposedNodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
 
     priority_check: PriorityCheck[NodeT]
     base: NodeSelector[NodeT]
+    latest_selection_report: object | None = field(
+        init=False,
+        default=None,
+        repr=False,
+        compare=False,
+    )
 
     def choose_node_and_branch_to_open(
         self,
@@ -32,8 +38,17 @@ class ComposedNodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
             tree, latest_tree_expansions
         )
         if opening_instructions is not None:
+            object.__setattr__(self, "latest_selection_report", None)
             return opening_instructions
-        return self.base.choose_node_and_branch_to_open(tree, latest_tree_expansions)
+        opening_instructions = self.base.choose_node_and_branch_to_open(
+            tree, latest_tree_expansions
+        )
+        object.__setattr__(
+            self,
+            "latest_selection_report",
+            getattr(self.base, "latest_selection_report", None),
+        )
+        return opening_instructions
 
     def __str__(self) -> str:
         """Return selector composition description."""

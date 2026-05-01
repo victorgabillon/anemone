@@ -36,8 +36,10 @@ def _fake_root() -> Any:
 
 
 class _SelectorSpy:
-    def __init__(self) -> None:
+    def __init__(self, selection_report: object | None = None) -> None:
         self.calls: list[Any] = []
+        self._selection_report = selection_report
+        self.latest_selection_report: object | None = None
         self.instructions = OpeningInstructions(
             {
                 (0, 1): OpeningInstruction(
@@ -58,6 +60,7 @@ class _SelectorSpy:
         latest_tree_expansions: TreeExpansions[Any],
     ) -> OpeningInstructions[Any]:
         self.calls.append((tree, list(latest_tree_expansions)))
+        self.latest_selection_report = self._selection_report
         return self.instructions
 
 
@@ -167,7 +170,7 @@ class _RecommendSpy:
 
 def test_tree_exploration_step_owns_iteration_sequence() -> None:
     root = _fake_root()
-    tree = SimpleNamespace(root_node=root)
+    tree = SimpleNamespace(root_node=root, nodes_count=1, branch_count=0)
     manager = _ManagerSpy()
     selector = _SelectorSpy()
     stopping = _StoppingCriterionSpy()
@@ -195,7 +198,7 @@ def test_tree_exploration_step_owns_iteration_sequence() -> None:
 
 def test_tree_exploration_explore_routes_iterations_through_step() -> None:
     root = _fake_root()
-    tree = SimpleNamespace(root_node=root)
+    tree = SimpleNamespace(root_node=root, nodes_count=1, branch_count=0)
     manager = _ManagerSpy()
     selector = _SelectorSpy()
     stopping = _StoppingCriterionSpy()
@@ -218,3 +221,24 @@ def test_tree_exploration_explore_routes_iterations_through_step() -> None:
         "propagate_depth",
         "refresh_indices",
     ]
+
+
+def test_tree_exploration_step_attaches_selector_report_when_available() -> None:
+    root = _fake_root()
+    tree = SimpleNamespace(root_node=root, nodes_count=1, branch_count=0)
+    manager = _ManagerSpy()
+    selection_report = object()
+    selector = _SelectorSpy(selection_report=selection_report)
+    stopping = _StoppingCriterionSpy()
+    exploration = TreeExploration(
+        tree=tree,
+        tree_manager=manager,
+        node_selector=selector,
+        recommend_branch_after_exploration=_RecommendSpy(),
+        stopping_criterion=stopping,
+        notify_percent_function=lambda progress: None,
+    )
+
+    report = exploration.step()
+
+    assert report.selector_report is selection_report

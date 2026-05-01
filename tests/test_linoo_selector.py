@@ -132,6 +132,51 @@ def test_linoo_chooses_depth_with_minimum_opened_count_index() -> None:
     assert _selected_node_id(instructions) == 21
 
 
+def test_linoo_selection_report_describes_candidate_depth_table() -> None:
+    """The latest report should expose the full sorted depth selection table."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, opened=True),
+        _node(11, 1, opened=True),
+        _node(12, 1, score=100.0),
+        _node(20, 2, opened=True),
+        _node(21, 2, score=1.0),
+        _node(22, 2, score=3.0),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    report = selector.latest_selection_report
+    assert report is not None
+    assert _selected_node_id(instructions) == 22
+    assert report.selected_depth == 2
+    assert report.selected_node_id == 22
+    assert report.selected_node_direct_value == 3.0
+    assert report.selected_depth_selection_index == 3
+    assert tuple(row.depth for row in report.depth_rows) == (2, 1)
+    assert tuple(
+        (row.selection_index, row.depth) for row in report.depth_rows
+    ) == tuple(sorted((row.selection_index, row.depth) for row in report.depth_rows))
+
+    rows_by_depth = {row.depth: row for row in report.depth_rows}
+    assert set(rows_by_depth) == {1, 2}
+    assert rows_by_depth[1].opened_count == 2
+    assert rows_by_depth[1].frontier_count == 1
+    assert rows_by_depth[1].selection_index == 4
+    assert rows_by_depth[1].best_node_id == 12
+    assert rows_by_depth[1].best_direct_value == 100.0
+    assert rows_by_depth[2].opened_count == 1
+    assert rows_by_depth[2].frontier_count == 2
+    assert rows_by_depth[2].selection_index == 3
+    assert rows_by_depth[2].best_node_id == 22
+    assert rows_by_depth[2].best_direct_value == 3.0
+    assert report.depth_rows[0].depth == report.selected_depth
+
+
 def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:
     """Linoo should maximize direct value inside the selected depth."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())
