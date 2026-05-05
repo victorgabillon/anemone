@@ -226,10 +226,13 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.uncached_terminal_candidates == 0
     assert report.selected_depth_frontier_count == 2
     assert report.stale_candidates_skipped == 0
+    assert report.heap_candidates_registered == 2
     assert report.collect_frontier_state_s is not None
     assert report.collect_frontier_state_s >= 0.0
     assert report.choose_depth_s is not None
     assert report.choose_depth_s >= 0.0
+    assert report.heap_update_s is not None
+    assert report.heap_update_s >= 0.0
     assert report.choose_node_s is not None
     assert report.choose_node_s >= 0.0
     assert report.make_report_s is not None
@@ -426,22 +429,17 @@ def test_linoo_reports_uncached_terminal_candidates() -> None:
     assert rows_by_depth[1].non_openable_count == 0
 
 
-def test_linoo_report_does_not_evaluate_non_selected_depths() -> None:
-    """Report creation should not rescan frontier nodes to find debug bests."""
+def test_linoo_does_not_evaluate_non_selected_depths() -> None:
+    """Only selected-depth frontier candidates should enter the objective heap."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())
     non_selected_node = _node(20, 2, score=100.0)
+    non_selected_node.state = SimpleNamespace(turn="solo", raise_on_eval=True)
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, score=1.0),
         non_selected_node,
         objective=_MarkedStateObjective(),
     )
-
-    selector.choose_node_and_branch_to_open(
-        tree=tree,
-        latest_tree_expansions=SimpleNamespace(),
-    )
-    non_selected_node.state = SimpleNamespace(turn="solo", raise_on_eval=True)
 
     instructions = selector.choose_node_and_branch_to_open(
         tree=tree,
@@ -452,6 +450,7 @@ def test_linoo_report_does_not_evaluate_non_selected_depths() -> None:
     assert report is not None
     assert _selected_node_id(instructions) == 10
     assert report.selected_node_id == 10
+    assert report.heap_candidates_registered == 1
     rows_by_depth = {row.depth: row for row in report.depth_rows}
     assert rows_by_depth[2].active is True
     assert rows_by_depth[2].selected is False
@@ -504,6 +503,7 @@ def test_linoo_heap_updates_when_direct_value_changes() -> None:
     report = selector.latest_selection_report
     assert report is not None
     assert report.stale_candidates_skipped == 1
+    assert report.heap_candidates_registered == 1
 
 
 def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:

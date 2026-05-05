@@ -67,6 +67,7 @@ class LinooSelectionReport:
     depth_rows: tuple[LinooDepthSelectionRow, ...]
     collect_frontier_state_s: float | None = None
     choose_depth_s: float | None = None
+    heap_update_s: float | None = None
     choose_node_s: float | None = None
     make_report_s: float | None = None
     total_s: float | None = None
@@ -76,6 +77,7 @@ class LinooSelectionReport:
     uncached_terminal_candidates: int | None = None
     selected_depth_frontier_count: int | None = None
     stale_candidates_skipped: int | None = None
+    heap_candidates_registered: int | None = None
 
     def format_depth_table(self) -> str:
         """Return an aligned text table for Linoo depth diagnostics."""
@@ -259,10 +261,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         objective = self._require_single_agent_objective(tree)
         self._reset_cache_if_needed(tree=tree, objective=objective)
         collect_started_at = perf_counter()
-        depth_state_by_depth = self._collect_frontier_state(
-            tree=tree,
-            objective=objective,
-        )
+        depth_state_by_depth = self._collect_frontier_state(tree=tree)
         collect_frontier_state_s = perf_counter() - collect_started_at
         frontier_by_depth = {
             depth: depth_state.frontier_nodes
@@ -292,6 +291,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             ),
         )
         choose_depth_s = perf_counter() - choose_depth_started_at
+        heap_update_started_at = perf_counter()
+        heap_candidates_registered = self._register_frontier_candidates(
+            depth=selected_depth,
+            nodes=frontier_by_depth[selected_depth],
+            objective=objective,
+        )
+        heap_update_s = perf_counter() - heap_update_started_at
         choose_node_started_at = perf_counter()
         selected_node, stale_candidates_skipped = self._choose_best_node_at_depth(
             tree=tree,
@@ -308,6 +314,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             selected_node=selected_node,
             collect_frontier_state_s=collect_frontier_state_s,
             choose_depth_s=choose_depth_s,
+            heap_update_s=heap_update_s,
             choose_node_s=choose_node_s,
             total_s=perf_counter() - total_started_at,
             total_nodes_scanned=total_nodes_scanned,
@@ -315,6 +322,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             uncached_terminal_candidates=uncached_terminal_candidates,
             selected_depth_frontier_count=selected_depth_frontier_count,
             stale_candidates_skipped=stale_candidates_skipped,
+            heap_candidates_registered=heap_candidates_registered,
         )
         if self.latest_selection_report is not None:
             self.latest_selection_report = replace(
@@ -349,7 +357,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         *,
         tree: trees.Tree[NodeT],
-        objective: SingleAgentMaxObjective[Any],
     ) -> dict[int, _LinooDepthAggregation[NodeT]]:
         """Group node-state diagnostics by relative depth."""
         depth_state_by_depth: dict[int, _LinooDepthAggregation[NodeT]] = {}
@@ -381,11 +388,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                     depth_state.uncached_terminal_candidates += 1
                     continue
 
-                self._register_frontier_candidate(
-                    depth=depth,
-                    node=node,
-                    objective=objective,
-                )
                 depth_state.frontier_nodes.append(node)
 
         for depth_state in depth_state_by_depth.values():
@@ -421,13 +423,31 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._cache_tree_identity = tree_identity
         self._cache_objective_identity = objective_identity
 
+    def _register_frontier_candidates(
+        self,
+        *,
+        depth: int,
+        nodes: list[NodeT],
+        objective: SingleAgentMaxObjective[Any],
+    ) -> int:
+        """Update cached heap entries for the selected depth only."""
+        registered_count = 0
+        for node in nodes:
+            if self._register_frontier_candidate(
+                depth=depth,
+                node=node,
+                objective=objective,
+            ):
+                registered_count += 1
+        return registered_count
+
     def _register_frontier_candidate(
         self,
         *,
         depth: int,
         node: NodeT,
         objective: SingleAgentMaxObjective[Any],
-    ) -> None:
+    ) -> bool:
         """Push a heap entry when one node is new, changed, or reactivated."""
         direct_value = self._require_direct_value(node)
         node_id = node.id
@@ -438,7 +458,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             False,
         )
         if previous_signature == signature and heap_entry_present:
-            return
+            return False
 
         version = self._candidate_versions_by_node_id.get(node_id, 0) + 1
         self._candidate_versions_by_node_id[node_id] = version
@@ -449,6 +469,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self._frontier_heaps_by_depth.setdefault(depth, []),
             (-priority, node_id, version, node),
         )
+        return True
 
     def _choose_best_node_at_depth(
         self,
@@ -505,6 +526,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         selected_node: NodeT,
         collect_frontier_state_s: float,
         choose_depth_s: float,
+        heap_update_s: float,
         choose_node_s: float,
         total_s: float,
         total_nodes_scanned: int,
@@ -512,6 +534,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         uncached_terminal_candidates: int,
         selected_depth_frontier_count: int,
         stale_candidates_skipped: int,
+        heap_candidates_registered: int,
     ) -> LinooSelectionReport:
         """Build the structured latest-selection table without affecting policy."""
         rows: list[LinooDepthSelectionRow] = []
@@ -566,6 +589,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             depth_rows=sorted_rows,
             collect_frontier_state_s=collect_frontier_state_s,
             choose_depth_s=choose_depth_s,
+            heap_update_s=heap_update_s,
             choose_node_s=choose_node_s,
             make_report_s=None,
             total_s=total_s,
@@ -575,6 +599,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             uncached_terminal_candidates=uncached_terminal_candidates,
             selected_depth_frontier_count=selected_depth_frontier_count,
             stale_candidates_skipped=stale_candidates_skipped,
+            heap_candidates_registered=heap_candidates_registered,
         )
 
     def _is_terminal_node(self, node: NodeT) -> bool:
