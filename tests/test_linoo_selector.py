@@ -67,6 +67,15 @@ class _FakeOpeningInstructor:
         return [0]
 
 
+class _MarkedStateObjective(SingleAgentMaxObjective[object]):
+    """Objective that fails when non-selected marker states are evaluated."""
+
+    def evaluate_value(self, value: Value, state: object) -> float:
+        if getattr(state, "raise_on_eval", False):
+            raise AssertionError
+        return super().evaluate_value(value, state)
+
+
 def _value(score: float) -> Value:
     return Value(score=score, certainty=Certainty.ESTIMATE, over_event=None)
 
@@ -201,8 +210,6 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert rows_by_depth[0].uncached_terminal_candidates == 0
     assert rows_by_depth[0].non_openable_count == 0
     assert rows_by_depth[0].selection_index is None
-    assert rows_by_depth[0].best_node_id is None
-    assert rows_by_depth[0].best_direct_value is None
     assert rows_by_depth[0].active is False
     assert rows_by_depth[0].selected is False
     assert rows_by_depth[1].total_nodes == 3
@@ -213,8 +220,6 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert rows_by_depth[1].uncached_terminal_candidates == 0
     assert rows_by_depth[1].non_openable_count == 0
     assert rows_by_depth[1].selection_index == 4
-    assert rows_by_depth[1].best_node_id == 12
-    assert rows_by_depth[1].best_direct_value == 100.0
     assert rows_by_depth[1].active is True
     assert rows_by_depth[1].selected is False
     assert rows_by_depth[2].total_nodes == 3
@@ -225,8 +230,6 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert rows_by_depth[2].uncached_terminal_candidates == 0
     assert rows_by_depth[2].non_openable_count == 0
     assert rows_by_depth[2].selection_index == 3
-    assert rows_by_depth[2].best_node_id == 22
-    assert rows_by_depth[2].best_direct_value == 3.0
     assert rows_by_depth[2].active is True
     assert rows_by_depth[2].selected is True
     assert report.depth_rows[0].depth == report.selected_depth
@@ -240,8 +243,6 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
         "uncached_terminal",
         "non_openable",
         "index",
-        "best_node",
-        "best_value",
         "selected",
     ]
 
@@ -286,8 +287,6 @@ def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
     assert rows_by_depth[3].uncached_terminal_candidates == 0
     assert rows_by_depth[3].non_openable_count == 0
     assert rows_by_depth[3].selection_index is None
-    assert rows_by_depth[3].best_node_id is None
-    assert rows_by_depth[3].best_direct_value is None
     assert rows_by_depth[3].active is False
     assert rows_by_depth[3].selected is False
     assert rows_by_depth[4].total_nodes == 1
@@ -298,8 +297,6 @@ def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
     assert rows_by_depth[4].uncached_terminal_candidates == 0
     assert rows_by_depth[4].non_openable_count == 0
     assert rows_by_depth[4].selection_index is None
-    assert rows_by_depth[4].best_node_id is None
-    assert rows_by_depth[4].best_direct_value is None
     assert rows_by_depth[4].active is False
     assert rows_by_depth[4].selected is False
     assert rows_by_depth[2].active is True
@@ -334,8 +331,6 @@ def test_linoo_selection_report_classifies_terminal_nodes_before_opened_or_exact
     assert rows_by_depth[2].uncached_terminal_candidates == 0
     assert rows_by_depth[2].non_openable_count == 0
     assert rows_by_depth[2].selection_index is None
-    assert rows_by_depth[2].best_node_id is None
-    assert rows_by_depth[2].best_direct_value is None
     assert rows_by_depth[2].selected is False
 
 
@@ -387,6 +382,32 @@ def test_linoo_reports_uncached_terminal_candidates() -> None:
     assert rows_by_depth[1].frontier_count == 1
     assert rows_by_depth[1].uncached_terminal_candidates == 1
     assert rows_by_depth[1].non_openable_count == 0
+
+
+def test_linoo_report_does_not_evaluate_non_selected_depths() -> None:
+    """Report creation should not rescan frontier nodes to find debug bests."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    non_selected_node = _node(20, 2, score=100.0)
+    non_selected_node.state = SimpleNamespace(turn="solo", raise_on_eval=True)
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=1.0),
+        non_selected_node,
+        objective=_MarkedStateObjective(),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    report = selector.latest_selection_report
+    assert report is not None
+    assert _selected_node_id(instructions) == 10
+    assert report.selected_node_id == 10
+    rows_by_depth = {row.depth: row for row in report.depth_rows}
+    assert rows_by_depth[2].active is True
+    assert rows_by_depth[2].selected is False
 
 
 def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:

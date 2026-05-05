@@ -40,8 +40,6 @@ class LinooDepthSelectionRow:
     uncached_terminal_candidates: int
     non_openable_count: int
     selection_index: int | None
-    best_node_id: int | None
-    best_direct_value: float | None
     active: bool
     selected: bool
 
@@ -88,8 +86,6 @@ class LinooSelectionReport:
             "uncached_terminal",
             "non_openable",
             "index",
-            "best_node",
-            "best_value",
             "selected",
         )
         rows = [
@@ -103,8 +99,6 @@ class LinooSelectionReport:
                 str(row.uncached_terminal_candidates),
                 str(row.non_openable_count),
                 _format_optional_int(row.selection_index),
-                _format_optional_int(row.best_node_id),
-                _format_optional_float(row.best_direct_value),
                 "yes" if row.selected else "no",
             )
             for row in self.depth_rows
@@ -189,11 +183,6 @@ def _missing_direct_value_error(node_id: int) -> LinooDirectValueUnavailableErro
 def _format_optional_int(value: int | None) -> str:
     """Format an optional integer for compact table display."""
     return "-" if value is None else str(value)
-
-
-def _format_optional_float(value: float | None) -> str:
-    """Format an optional float for compact table display."""
-    return "none" if value is None else f"{value:g}"
 
 
 def _format_table(
@@ -295,7 +284,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         choose_node_s = perf_counter() - choose_node_started_at
         make_report_started_at = perf_counter()
         self.latest_selection_report = self._make_selection_report(
-            objective=objective,
             depth_state_by_depth=depth_state_by_depth,
             selected_depth=selected_depth,
             selected_node=selected_node,
@@ -386,7 +374,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def _make_selection_report(
         self,
         *,
-        objective: SingleAgentMaxObjective[Any],
         depth_state_by_depth: dict[int, _LinooDepthAggregation[NodeT]],
         selected_depth: int,
         selected_node: NodeT,
@@ -408,22 +395,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             active = bool(frontier_nodes)
             selected = depth == selected_depth
             selection_index = opened_count * (depth + 1) if active else None
-            if active:
-                best_node = max(
-                    frontier_nodes,
-                    key=lambda node: (
-                        objective.evaluate_value(
-                            self._require_direct_value(node),
-                            node.state,
-                        ),
-                        -node.id,
-                    ),
-                )
-                best_node_id = best_node.id
-                best_direct_value = self._require_direct_value(best_node).score
-            else:
-                best_node_id = None
-                best_direct_value = None
             row = LinooDepthSelectionRow(
                 depth=depth,
                 total_nodes=depth_state.total_nodes,
@@ -436,8 +407,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 ),
                 non_openable_count=depth_state.non_openable_count,
                 selection_index=selection_index,
-                best_node_id=best_node_id,
-                best_direct_value=best_direct_value,
                 active=active,
                 selected=selected,
             )
