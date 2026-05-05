@@ -183,7 +183,7 @@ def test_tree_exploration_step_owns_iteration_sequence() -> None:
         notify_percent_function=lambda progress: None,
     )
 
-    exploration.step()
+    report = exploration.step()
 
     assert [expansion.child_node for expansion in selector.calls[0][1]] == [root]
     assert stopping.respect_calls == [(selector.instructions, tree)]
@@ -194,6 +194,12 @@ def test_tree_exploration_step_owns_iteration_sequence() -> None:
         "propagate_depth",
         "refresh_indices",
     ]
+    assert report.select_s is not None and report.select_s >= 0.0
+    assert report.limit_s is not None and report.limit_s >= 0.0
+    assert report.expand_s is not None and report.expand_s >= 0.0
+    assert report.evaluate_s is not None and report.evaluate_s >= 0.0
+    assert report.propagate_s is not None and report.propagate_s >= 0.0
+    assert report.total_s is not None and report.total_s >= 0.0
 
 
 def test_tree_exploration_explore_routes_iterations_through_step() -> None:
@@ -227,7 +233,7 @@ def test_tree_exploration_step_attaches_selector_report_when_available() -> None
     root = _fake_root()
     tree = SimpleNamespace(root_node=root, nodes_count=1, branch_count=0)
     manager = _ManagerSpy()
-    selection_report = object()
+    selection_report = SimpleNamespace(depth_rows=(object(), object()))
     selector = _SelectorSpy(selection_report=selection_report)
     stopping = _StoppingCriterionSpy()
     exploration = TreeExploration(
@@ -242,3 +248,4 @@ def test_tree_exploration_step_attaches_selector_report_when_available() -> None
     report = exploration.step()
 
     assert report.selector_report is selection_report
+    assert report.selector_report_rows == 2

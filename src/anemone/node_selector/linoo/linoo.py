@@ -1,6 +1,7 @@
 """Single-player depth-aware selector based on direct node values."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
 from valanga.evaluations import Value
@@ -28,14 +29,30 @@ class LinooArgs:
 
 @dataclass(frozen=True, slots=True)
 class LinooDepthSelectionRow:
-    """Selector-observable summary for one candidate frontier depth."""
+    """Selector-observable summary for one depth in the live tree."""
 
     depth: int
+    total_nodes: int
     opened_count: int
     frontier_count: int
-    selection_index: int
+    terminal_count: int
+    exact_count: int
+    non_openable_count: int
+    selection_index: int | None
     best_node_id: int | None
     best_direct_value: float | None
+    active: bool
+    selected: bool
+
+    def __post_init__(self) -> None:
+        """Keep the diagnostic accounting honest in debug runs."""
+        assert self.total_nodes == (
+            self.opened_count
+            + self.frontier_count
+            + self.terminal_count
+            + self.exact_count
+            + self.non_openable_count
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +64,73 @@ class LinooSelectionReport:
     selected_node_direct_value: float | None
     selected_depth_selection_index: int
     depth_rows: tuple[LinooDepthSelectionRow, ...]
+    collect_frontier_state_s: float | None = None
+    choose_depth_s: float | None = None
+    choose_node_s: float | None = None
+    make_report_s: float | None = None
+    total_s: float | None = None
+    depth_row_count: int | None = None
+    total_nodes_scanned: int | None = None
+    frontier_nodes_scanned: int | None = None
+
+    def format_depth_table(self) -> str:
+        """Return an aligned text table for Linoo depth diagnostics."""
+        headers = (
+            "depth",
+            "total",
+            "opened",
+            "frontier",
+            "terminal",
+            "exact",
+            "non_openable",
+            "index",
+            "best_node",
+            "best_value",
+            "selected",
+        )
+        rows = [
+            (
+                str(row.depth),
+                str(row.total_nodes),
+                str(row.opened_count),
+                str(row.frontier_count),
+                str(row.terminal_count),
+                str(row.exact_count),
+                str(row.non_openable_count),
+                _format_optional_int(row.selection_index),
+                _format_optional_int(row.best_node_id),
+                _format_optional_float(row.best_direct_value),
+                "yes" if row.selected else "no",
+            )
+            for row in self.depth_rows
+        ]
+        return _format_table(headers, rows)
+
+
+@dataclass(init=False, slots=True)
+class _LinooDepthAggregation[NodeT]:
+    """Mutable accounting bucket for one depth during report construction."""
+
+    total_nodes: int
+    opened_count: int
+    terminal_count: int
+    exact_count: int
+    non_openable_count: int
+    frontier_nodes: list[NodeT]
+
+    def __init__(self) -> None:
+        """Initialize empty accounting for one depth."""
+        self.total_nodes = 0
+        self.opened_count = 0
+        self.terminal_count = 0
+        self.exact_count = 0
+        self.non_openable_count = 0
+        self.frontier_nodes = []
+
+    @property
+    def frontier_count(self) -> int:
+        """Return how many nodes at this depth can currently be opened."""
+        return len(self.frontier_nodes)
 
 
 class LinooSelectionError(ValueError):
@@ -95,6 +179,43 @@ def _missing_direct_value_error(node_id: int) -> LinooDirectValueUnavailableErro
     )
 
 
+def _format_optional_int(value: int | None) -> str:
+    """Format an optional integer for compact table display."""
+    return "-" if value is None else str(value)
+
+
+def _format_optional_float(value: float | None) -> str:
+    """Format an optional float for compact table display."""
+    return "none" if value is None else f"{value:g}"
+
+
+def _format_table(
+    headers: tuple[str, ...],
+    rows: list[tuple[str, ...]],
+) -> str:
+    """Format string rows as a simple aligned whitespace table."""
+    widths = [
+        max([len(headers[column]), *(len(row[column]) for row in rows)])
+        for column in range(len(headers))
+    ]
+    formatted_rows = [
+        " ".join(
+            value.rjust(widths[column])
+            for column, value in enumerate(row)
+        )
+        for row in rows
+    ]
+    return "\n".join(
+        [
+            " ".join(
+                header.rjust(widths[column])
+                for column, header in enumerate(headers)
+            ),
+            *formatted_rows,
+        ]
+    )
+
+
 class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """Depth-aware single-player selector using frontier direct values.
 
@@ -119,20 +240,37 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Choose one unopened node according to the Linoo policy."""
         _ = latest_tree_expansions  # Linoo recomputes its view from the current tree.
         self.latest_selection_report = None
+        total_started_at = perf_counter()
 
         objective = self._require_single_agent_objective(tree)
-        frontier_by_depth, opened_count_by_depth = self._collect_frontier_state(tree)
+        collect_started_at = perf_counter()
+        depth_state_by_depth = self._collect_frontier_state(tree)
+        collect_frontier_state_s = perf_counter() - collect_started_at
+        frontier_by_depth = {
+            depth: depth_state.frontier_nodes
+            for depth, depth_state in depth_state_by_depth.items()
+            if depth_state.frontier_nodes
+        }
+        total_nodes_scanned = sum(
+            depth_state.total_nodes for depth_state in depth_state_by_depth.values()
+        )
+        frontier_nodes_scanned = sum(
+            depth_state.frontier_count for depth_state in depth_state_by_depth.values()
+        )
 
         if not frontier_by_depth:
             raise _no_frontier_nodes_error()
 
+        choose_depth_started_at = perf_counter()
         selected_depth = min(
             frontier_by_depth,
             key=lambda depth: (
-                opened_count_by_depth.get(depth, 0) * (depth + 1),
+                depth_state_by_depth[depth].opened_count * (depth + 1),
                 depth,
             ),
         )
+        choose_depth_s = perf_counter() - choose_depth_started_at
+        choose_node_started_at = perf_counter()
         selected_node = max(
             frontier_by_depth[selected_depth],
             key=lambda node: (
@@ -143,13 +281,26 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 -node.id,
             ),
         )
+        choose_node_s = perf_counter() - choose_node_started_at
+        make_report_started_at = perf_counter()
         self.latest_selection_report = self._make_selection_report(
             objective=objective,
-            frontier_by_depth=frontier_by_depth,
-            opened_count_by_depth=opened_count_by_depth,
+            depth_state_by_depth=depth_state_by_depth,
             selected_depth=selected_depth,
             selected_node=selected_node,
+            collect_frontier_state_s=collect_frontier_state_s,
+            choose_depth_s=choose_depth_s,
+            choose_node_s=choose_node_s,
+            total_s=perf_counter() - total_started_at,
+            total_nodes_scanned=total_nodes_scanned,
+            frontier_nodes_scanned=frontier_nodes_scanned,
         )
+        if self.latest_selection_report is not None:
+            self.latest_selection_report = replace(
+                self.latest_selection_report,
+                make_report_s=perf_counter() - make_report_started_at,
+                total_s=perf_counter() - total_started_at,
+            )
 
         all_branches_to_open = self.opening_instructor.all_branches_to_open(
             node_to_open=selected_node
@@ -176,76 +327,119 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def _collect_frontier_state(
         self,
         tree: trees.Tree[NodeT],
-    ) -> tuple[dict[int, list[NodeT]], dict[int, int]]:
-        """Group unopened frontier nodes and opened counts by relative depth."""
-        frontier_by_depth: dict[int, list[NodeT]] = {}
-        opened_count_by_depth: dict[int, int] = {}
+    ) -> dict[int, _LinooDepthAggregation[NodeT]]:
+        """Group node-state diagnostics by relative depth."""
+        depth_state_by_depth: dict[int, _LinooDepthAggregation[NodeT]] = {}
 
         absolute_tree_depth: int
         for absolute_tree_depth in tree.descendants:
             node: NodeT
             for node in tree.descendants[absolute_tree_depth].values():
                 depth = tree.node_depth(node)
+                depth_state = depth_state_by_depth.setdefault(
+                    depth,
+                    _LinooDepthAggregation[NodeT](),
+                )
+                depth_state.total_nodes += 1
+
+                if self._is_terminal_node(node):
+                    depth_state.terminal_count += 1
+                    continue
+
                 if node.all_branches_generated:
-                    opened_count_by_depth[depth] = (
-                        opened_count_by_depth.get(depth, 0) + 1
-                    )
+                    depth_state.opened_count += 1
                     continue
 
                 if node.tree_evaluation.has_exact_value():
+                    depth_state.exact_count += 1
                     continue
 
                 self._require_direct_value(node)
-                frontier_by_depth.setdefault(depth, []).append(node)
+                depth_state.frontier_nodes.append(node)
 
-        return frontier_by_depth, opened_count_by_depth
+        for depth_state in depth_state_by_depth.values():
+            depth_state.non_openable_count = depth_state.total_nodes - (
+                depth_state.opened_count
+                + depth_state.frontier_count
+                + depth_state.terminal_count
+                + depth_state.exact_count
+            )
+
+        return depth_state_by_depth
 
     def _make_selection_report(
         self,
         *,
         objective: SingleAgentMaxObjective[Any],
-        frontier_by_depth: dict[int, list[NodeT]],
-        opened_count_by_depth: dict[int, int],
+        depth_state_by_depth: dict[int, _LinooDepthAggregation[NodeT]],
         selected_depth: int,
         selected_node: NodeT,
+        collect_frontier_state_s: float,
+        choose_depth_s: float,
+        choose_node_s: float,
+        total_s: float,
+        total_nodes_scanned: int,
+        frontier_nodes_scanned: int,
     ) -> LinooSelectionReport:
         """Build the structured latest-selection table without affecting policy."""
         rows: list[LinooDepthSelectionRow] = []
         selected_depth_selection_index: int | None = None
 
-        for depth, frontier_nodes in frontier_by_depth.items():
-            opened_count = opened_count_by_depth.get(depth, 0)
-            selection_index = opened_count * (depth + 1)
-            best_node = max(
-                frontier_nodes,
-                key=lambda node: (
-                    objective.evaluate_value(
-                        self._require_direct_value(node),
-                        node.state,
+        for depth, depth_state in depth_state_by_depth.items():
+            frontier_nodes = depth_state.frontier_nodes
+            opened_count = depth_state.opened_count
+            active = bool(frontier_nodes)
+            selected = depth == selected_depth
+            selection_index = opened_count * (depth + 1) if active else None
+            if active:
+                best_node = max(
+                    frontier_nodes,
+                    key=lambda node: (
+                        objective.evaluate_value(
+                            self._require_direct_value(node),
+                            node.state,
+                        ),
+                        -node.id,
                     ),
-                    -node.id,
-                ),
-            )
-            best_direct_value = self._require_direct_value(best_node).score
+                )
+                best_node_id = best_node.id
+                best_direct_value = self._require_direct_value(best_node).score
+            else:
+                best_node_id = None
+                best_direct_value = None
             row = LinooDepthSelectionRow(
                 depth=depth,
+                total_nodes=depth_state.total_nodes,
                 opened_count=opened_count,
-                frontier_count=len(frontier_nodes),
+                frontier_count=depth_state.frontier_count,
+                terminal_count=depth_state.terminal_count,
+                exact_count=depth_state.exact_count,
+                non_openable_count=depth_state.non_openable_count,
                 selection_index=selection_index,
-                best_node_id=best_node.id,
+                best_node_id=best_node_id,
                 best_direct_value=best_direct_value,
+                active=active,
+                selected=selected,
             )
             rows.append(row)
-            if depth == selected_depth:
+            if selected:
                 selected_depth_selection_index = selection_index
 
         sorted_rows = tuple(
-            sorted(rows, key=lambda row: (row.selection_index, row.depth))
+            sorted(
+                rows,
+                key=lambda row: (
+                    row.selection_index is None,
+                    row.selection_index if row.selection_index is not None else 0,
+                    row.depth,
+                ),
+            )
         )
         if selected_depth_selection_index is None:
-            selected_depth_selection_index = opened_count_by_depth.get(
-                selected_depth, 0
-            ) * (selected_depth + 1)
+            selected_depth_selection_index = (
+                depth_state_by_depth[selected_depth].opened_count
+                * (selected_depth + 1)
+            )
 
         return LinooSelectionReport(
             selected_depth=selected_depth,
@@ -253,7 +447,24 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             selected_node_direct_value=self._require_direct_value(selected_node).score,
             selected_depth_selection_index=selected_depth_selection_index,
             depth_rows=sorted_rows,
+            collect_frontier_state_s=collect_frontier_state_s,
+            choose_depth_s=choose_depth_s,
+            choose_node_s=choose_node_s,
+            make_report_s=None,
+            total_s=total_s,
+            depth_row_count=len(sorted_rows),
+            total_nodes_scanned=total_nodes_scanned,
+            frontier_nodes_scanned=frontier_nodes_scanned,
         )
+
+    def _is_terminal_node(self, node: NodeT) -> bool:
+        """Return whether the node's own state is terminal when observable."""
+        state_is_game_over = getattr(node.state, "is_game_over", None)
+        if callable(state_is_game_over):
+            return bool(state_is_game_over())
+
+        is_terminal = getattr(node.tree_evaluation, "is_terminal", None)
+        return bool(is_terminal()) if callable(is_terminal) else False
 
     def _require_direct_value(self, node: NodeT) -> Value:
         """Return one node's direct value or raise a clear Linoo error."""

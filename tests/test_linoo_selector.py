@@ -29,19 +29,27 @@ from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObject
 class _FakeEval:
     direct_value: Value | None
     exact: bool = False
+    terminal: bool = False
     required_objective: object | None = None
 
     def has_exact_value(self) -> bool:
         return self.exact
+
+    def is_terminal(self) -> bool:
+        return self.terminal
 
 
 @dataclass
 class _MissingDirectValueEval:
     exact: bool = False
+    terminal: bool = False
     required_objective: object | None = None
 
     def has_exact_value(self) -> bool:
         return self.exact
+
+    def is_terminal(self) -> bool:
+        return self.terminal
 
 
 @dataclass
@@ -70,20 +78,26 @@ def _node(
     score: float | None = 0.0,
     opened: bool = False,
     exact: bool = False,
+    terminal: bool = False,
     eval_type: type[_FakeEval | _MissingDirectValueEval] = _FakeEval,
 ) -> _FakeNode:
     if eval_type is _FakeEval:
         evaluation: object = _FakeEval(
             direct_value=None if score is None else _value(score),
             exact=exact,
+            terminal=terminal,
         )
     else:
-        evaluation = _MissingDirectValueEval(exact=exact)
+        evaluation = _MissingDirectValueEval(exact=exact, terminal=terminal)
     return _FakeNode(
         id=node_id,
         tree_depth=depth,
         tree_evaluation=evaluation,
         all_branches_generated=opened,
+        state=SimpleNamespace(
+            turn="solo",
+            is_game_over=lambda: terminal,
+        ),
     )
 
 
@@ -133,7 +147,7 @@ def test_linoo_chooses_depth_with_minimum_opened_count_index() -> None:
 
 
 def test_linoo_selection_report_describes_candidate_depth_table() -> None:
-    """The latest report should expose the full sorted depth selection table."""
+    """The latest report should expose the full diagnostic depth table."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())
     tree = _tree(
         _node(0, 0, opened=True),
@@ -157,24 +171,163 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.selected_node_id == 22
     assert report.selected_node_direct_value == 3.0
     assert report.selected_depth_selection_index == 3
-    assert tuple(row.depth for row in report.depth_rows) == (2, 1)
-    assert tuple(
-        (row.selection_index, row.depth) for row in report.depth_rows
-    ) == tuple(sorted((row.selection_index, row.depth) for row in report.depth_rows))
+    assert report.depth_row_count == 3
+    assert report.total_nodes_scanned == 7
+    assert report.frontier_nodes_scanned == 3
+    assert report.collect_frontier_state_s is not None
+    assert report.collect_frontier_state_s >= 0.0
+    assert report.choose_depth_s is not None
+    assert report.choose_depth_s >= 0.0
+    assert report.choose_node_s is not None
+    assert report.choose_node_s >= 0.0
+    assert report.make_report_s is not None
+    assert report.make_report_s >= 0.0
+    assert report.total_s is not None
+    assert report.total_s >= 0.0
+    assert tuple(row.depth for row in report.depth_rows) == (2, 1, 0)
+    active_rows = tuple(row for row in report.depth_rows if row.active)
+    assert tuple((row.selection_index, row.depth) for row in active_rows) == tuple(
+        sorted((row.selection_index, row.depth) for row in active_rows)
+    )
 
     rows_by_depth = {row.depth: row for row in report.depth_rows}
-    assert set(rows_by_depth) == {1, 2}
+    assert set(rows_by_depth) == {0, 1, 2}
+    assert rows_by_depth[0].total_nodes == 1
+    assert rows_by_depth[0].opened_count == 1
+    assert rows_by_depth[0].frontier_count == 0
+    assert rows_by_depth[0].terminal_count == 0
+    assert rows_by_depth[0].exact_count == 0
+    assert rows_by_depth[0].non_openable_count == 0
+    assert rows_by_depth[0].selection_index is None
+    assert rows_by_depth[0].best_node_id is None
+    assert rows_by_depth[0].best_direct_value is None
+    assert rows_by_depth[0].active is False
+    assert rows_by_depth[0].selected is False
+    assert rows_by_depth[1].total_nodes == 3
     assert rows_by_depth[1].opened_count == 2
     assert rows_by_depth[1].frontier_count == 1
+    assert rows_by_depth[1].terminal_count == 0
+    assert rows_by_depth[1].exact_count == 0
+    assert rows_by_depth[1].non_openable_count == 0
     assert rows_by_depth[1].selection_index == 4
     assert rows_by_depth[1].best_node_id == 12
     assert rows_by_depth[1].best_direct_value == 100.0
+    assert rows_by_depth[1].active is True
+    assert rows_by_depth[1].selected is False
+    assert rows_by_depth[2].total_nodes == 3
     assert rows_by_depth[2].opened_count == 1
     assert rows_by_depth[2].frontier_count == 2
+    assert rows_by_depth[2].terminal_count == 0
+    assert rows_by_depth[2].exact_count == 0
+    assert rows_by_depth[2].non_openable_count == 0
     assert rows_by_depth[2].selection_index == 3
     assert rows_by_depth[2].best_node_id == 22
     assert rows_by_depth[2].best_direct_value == 3.0
+    assert rows_by_depth[2].active is True
+    assert rows_by_depth[2].selected is True
     assert report.depth_rows[0].depth == report.selected_depth
+    assert report.format_depth_table().splitlines()[0].split() == [
+        "depth",
+        "total",
+        "opened",
+        "frontier",
+        "terminal",
+        "exact",
+        "non_openable",
+        "index",
+        "best_node",
+        "best_value",
+        "selected",
+    ]
+
+
+def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
+    """Inactive depths should stay visible without influencing selection."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, opened=True),
+        _node(11, 1, opened=True),
+        _node(20, 2, score=3.0),
+        _node(30, 3, score=8.0, exact=True),
+        _node(40, 4, score=1.0, exact=True, terminal=True),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    report = selector.latest_selection_report
+    assert report is not None
+    assert _selected_node_id(instructions) == 20
+    rows_by_depth = {row.depth: row for row in report.depth_rows}
+    assert set(rows_by_depth) == {0, 1, 2, 3, 4}
+    assert rows_by_depth[1].total_nodes == 2
+    assert rows_by_depth[1].opened_count == 2
+    assert rows_by_depth[1].frontier_count == 0
+    assert rows_by_depth[1].terminal_count == 0
+    assert rows_by_depth[1].exact_count == 0
+    assert rows_by_depth[1].non_openable_count == 0
+    assert rows_by_depth[1].selection_index is None
+    assert rows_by_depth[1].active is False
+    assert rows_by_depth[1].selected is False
+    assert rows_by_depth[3].total_nodes == 1
+    assert rows_by_depth[3].opened_count == 0
+    assert rows_by_depth[3].frontier_count == 0
+    assert rows_by_depth[3].terminal_count == 0
+    assert rows_by_depth[3].exact_count == 1
+    assert rows_by_depth[3].non_openable_count == 0
+    assert rows_by_depth[3].selection_index is None
+    assert rows_by_depth[3].best_node_id is None
+    assert rows_by_depth[3].best_direct_value is None
+    assert rows_by_depth[3].active is False
+    assert rows_by_depth[3].selected is False
+    assert rows_by_depth[4].total_nodes == 1
+    assert rows_by_depth[4].opened_count == 0
+    assert rows_by_depth[4].frontier_count == 0
+    assert rows_by_depth[4].terminal_count == 1
+    assert rows_by_depth[4].exact_count == 0
+    assert rows_by_depth[4].non_openable_count == 0
+    assert rows_by_depth[4].selection_index is None
+    assert rows_by_depth[4].best_node_id is None
+    assert rows_by_depth[4].best_direct_value is None
+    assert rows_by_depth[4].active is False
+    assert rows_by_depth[4].selected is False
+    assert rows_by_depth[2].active is True
+    assert rows_by_depth[2].selected is True
+
+
+def test_linoo_selection_report_classifies_terminal_nodes_before_opened_or_exact() -> (
+    None
+):
+    """Terminal leaves should not be hidden as opened/exact/frontier nodes."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=1.0),
+        _node(20, 2, score=2.0, terminal=True),
+        _node(21, 2, score=3.0, terminal=True, opened=True, exact=True),
+    )
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    report = selector.latest_selection_report
+    assert report is not None
+    rows_by_depth = {row.depth: row for row in report.depth_rows}
+    assert rows_by_depth[2].total_nodes == 2
+    assert rows_by_depth[2].opened_count == 0
+    assert rows_by_depth[2].frontier_count == 0
+    assert rows_by_depth[2].terminal_count == 2
+    assert rows_by_depth[2].exact_count == 0
+    assert rows_by_depth[2].non_openable_count == 0
+    assert rows_by_depth[2].selection_index is None
+    assert rows_by_depth[2].best_node_id is None
+    assert rows_by_depth[2].best_direct_value is None
+    assert rows_by_depth[2].selected is False
 
 
 def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:

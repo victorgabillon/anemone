@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
+from time import perf_counter
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
@@ -107,6 +108,13 @@ class TreeGrowthStepReport:
     nodes_added: int
     branch_count: int | None = None
     selector_report: object | None = None
+    select_s: float | None = None
+    limit_s: float | None = None
+    expand_s: float | None = None
+    evaluate_s: float | None = None
+    propagate_s: float | None = None
+    total_s: float | None = None
+    selector_report_rows: int | None = None
 
 
 def _selected_node_summary[NodeT: AlgorithmNode[Any]](
@@ -604,21 +612,39 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         # still non-terminal and some siblings remain unopened.
         assert not self.tree.root_node.tree_evaluation.has_exact_value()
 
+        total_started_at = perf_counter()
         nodes_before = self.tree.nodes_count
+        select_started_at = perf_counter()
         opening_instructions = self._select_node_for_expansion()
         selector_report = getattr(self.node_selector, "latest_selection_report", None)
+        select_elapsed_s = perf_counter() - select_started_at
+        limit_started_at = perf_counter()
         opening_instructions_subset = self._limit_opening_instructions(
             opening_instructions
         )
+        limit_elapsed_s = perf_counter() - limit_started_at
         selected_node_id, selected_depth = _selected_node_summary(
             opening_instructions_subset
         )
+        expand_started_at = perf_counter()
         tree_expansions = self._expand_opening_instructions(opening_instructions_subset)
+        expand_elapsed_s = perf_counter() - expand_started_at
+        evaluate_started_at = perf_counter()
         self._evaluate_expansions(tree_expansions)
+        evaluate_elapsed_s = perf_counter() - evaluate_started_at
+        propagate_started_at = perf_counter()
         self._propagate_iteration_updates(tree_expansions)
+        propagate_elapsed_s = perf_counter() - propagate_started_at
         self._latest_tree_expansions = tree_expansions
         nodes_after = self.tree.nodes_count
         branch_count = getattr(self.tree, "branch_count", None)
+        selector_report_rows = None
+        depth_rows = getattr(selector_report, "depth_rows", None)
+        if depth_rows is not None:
+            try:
+                selector_report_rows = len(depth_rows)
+            except TypeError:
+                selector_report_rows = None
         report = TreeGrowthStepReport(
             selected_node_id=selected_node_id,
             selected_depth=selected_depth,
@@ -627,6 +653,13 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             nodes_added=nodes_after - nodes_before,
             branch_count=branch_count if isinstance(branch_count, int) else None,
             selector_report=selector_report,
+            select_s=select_elapsed_s,
+            limit_s=limit_elapsed_s,
+            expand_s=expand_elapsed_s,
+            evaluate_s=evaluate_elapsed_s,
+            propagate_s=propagate_elapsed_s,
+            total_s=perf_counter() - total_started_at,
+            selector_report_rows=selector_report_rows,
         )
         self._latest_step_report = report
         return report
