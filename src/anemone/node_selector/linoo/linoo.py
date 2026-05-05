@@ -37,6 +37,7 @@ class LinooDepthSelectionRow:
     frontier_count: int
     terminal_count: int
     exact_count: int
+    uncached_terminal_candidates: int
     non_openable_count: int
     selection_index: int | None
     best_node_id: int | None
@@ -51,6 +52,7 @@ class LinooDepthSelectionRow:
             + self.frontier_count
             + self.terminal_count
             + self.exact_count
+            + self.uncached_terminal_candidates
             + self.non_openable_count
         )
 
@@ -72,6 +74,7 @@ class LinooSelectionReport:
     depth_row_count: int | None = None
     total_nodes_scanned: int | None = None
     frontier_nodes_scanned: int | None = None
+    uncached_terminal_candidates: int | None = None
 
     def format_depth_table(self) -> str:
         """Return an aligned text table for Linoo depth diagnostics."""
@@ -82,6 +85,7 @@ class LinooSelectionReport:
             "frontier",
             "terminal",
             "exact",
+            "uncached_terminal",
             "non_openable",
             "index",
             "best_node",
@@ -96,6 +100,7 @@ class LinooSelectionReport:
                 str(row.frontier_count),
                 str(row.terminal_count),
                 str(row.exact_count),
+                str(row.uncached_terminal_candidates),
                 str(row.non_openable_count),
                 _format_optional_int(row.selection_index),
                 _format_optional_int(row.best_node_id),
@@ -115,6 +120,7 @@ class _LinooDepthAggregation[NodeT]:
     opened_count: int
     terminal_count: int
     exact_count: int
+    uncached_terminal_candidates: int
     non_openable_count: int
     frontier_nodes: list[NodeT]
 
@@ -124,6 +130,7 @@ class _LinooDepthAggregation[NodeT]:
         self.opened_count = 0
         self.terminal_count = 0
         self.exact_count = 0
+        self.uncached_terminal_candidates = 0
         self.non_openable_count = 0
         self.frontier_nodes = []
 
@@ -257,6 +264,10 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         frontier_nodes_scanned = sum(
             depth_state.frontier_count for depth_state in depth_state_by_depth.values()
         )
+        uncached_terminal_candidates = sum(
+            depth_state.uncached_terminal_candidates
+            for depth_state in depth_state_by_depth.values()
+        )
 
         if not frontier_by_depth:
             raise _no_frontier_nodes_error()
@@ -294,6 +305,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             total_s=perf_counter() - total_started_at,
             total_nodes_scanned=total_nodes_scanned,
             frontier_nodes_scanned=frontier_nodes_scanned,
+            uncached_terminal_candidates=uncached_terminal_candidates,
         )
         if self.latest_selection_report is not None:
             self.latest_selection_report = replace(
@@ -354,7 +366,10 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                     depth_state.exact_count += 1
                     continue
 
-                self._require_direct_value(node)
+                if self._direct_value_or_none(node) is None:
+                    depth_state.uncached_terminal_candidates += 1
+                    continue
+
                 depth_state.frontier_nodes.append(node)
 
         for depth_state in depth_state_by_depth.values():
@@ -363,6 +378,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 + depth_state.frontier_count
                 + depth_state.terminal_count
                 + depth_state.exact_count
+                + depth_state.uncached_terminal_candidates
             )
 
         return depth_state_by_depth
@@ -380,6 +396,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         total_s: float,
         total_nodes_scanned: int,
         frontier_nodes_scanned: int,
+        uncached_terminal_candidates: int,
     ) -> LinooSelectionReport:
         """Build the structured latest-selection table without affecting policy."""
         rows: list[LinooDepthSelectionRow] = []
@@ -414,6 +431,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 frontier_count=depth_state.frontier_count,
                 terminal_count=depth_state.terminal_count,
                 exact_count=depth_state.exact_count,
+                uncached_terminal_candidates=(
+                    depth_state.uncached_terminal_candidates
+                ),
                 non_openable_count=depth_state.non_openable_count,
                 selection_index=selection_index,
                 best_node_id=best_node_id,
@@ -455,23 +475,24 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             depth_row_count=len(sorted_rows),
             total_nodes_scanned=total_nodes_scanned,
             frontier_nodes_scanned=frontier_nodes_scanned,
+            uncached_terminal_candidates=uncached_terminal_candidates,
         )
 
     def _is_terminal_node(self, node: NodeT) -> bool:
-        """Return whether the node's own state is terminal when observable."""
-        state_is_game_over = getattr(node.state, "is_game_over", None)
-        if callable(state_is_game_over):
-            return bool(state_is_game_over())
-
+        """Return cached terminality only; Linoo must not recompute game-over."""
         is_terminal = getattr(node.tree_evaluation, "is_terminal", None)
         return bool(is_terminal()) if callable(is_terminal) else False
 
-    def _require_direct_value(self, node: NodeT) -> Value:
-        """Return one node's direct value or raise a clear Linoo error."""
+    def _direct_value_or_none(self, node: NodeT) -> Value | None:
+        """Return direct value access for openable-candidate classification."""
         try:
-            direct_value = node.tree_evaluation.direct_value
+            return node.tree_evaluation.direct_value
         except AttributeError as exc:
             raise _missing_direct_value_attribute_error(node.id) from exc
+
+    def _require_direct_value(self, node: NodeT) -> Value:
+        """Return one node's direct value or raise a clear Linoo error."""
+        direct_value = self._direct_value_or_none(node)
 
         if direct_value is None:
             raise _missing_direct_value_error(node.id)

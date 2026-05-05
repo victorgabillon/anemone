@@ -174,6 +174,7 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.depth_row_count == 3
     assert report.total_nodes_scanned == 7
     assert report.frontier_nodes_scanned == 3
+    assert report.uncached_terminal_candidates == 0
     assert report.collect_frontier_state_s is not None
     assert report.collect_frontier_state_s >= 0.0
     assert report.choose_depth_s is not None
@@ -197,6 +198,7 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert rows_by_depth[0].frontier_count == 0
     assert rows_by_depth[0].terminal_count == 0
     assert rows_by_depth[0].exact_count == 0
+    assert rows_by_depth[0].uncached_terminal_candidates == 0
     assert rows_by_depth[0].non_openable_count == 0
     assert rows_by_depth[0].selection_index is None
     assert rows_by_depth[0].best_node_id is None
@@ -208,6 +210,7 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert rows_by_depth[1].frontier_count == 1
     assert rows_by_depth[1].terminal_count == 0
     assert rows_by_depth[1].exact_count == 0
+    assert rows_by_depth[1].uncached_terminal_candidates == 0
     assert rows_by_depth[1].non_openable_count == 0
     assert rows_by_depth[1].selection_index == 4
     assert rows_by_depth[1].best_node_id == 12
@@ -219,6 +222,7 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert rows_by_depth[2].frontier_count == 2
     assert rows_by_depth[2].terminal_count == 0
     assert rows_by_depth[2].exact_count == 0
+    assert rows_by_depth[2].uncached_terminal_candidates == 0
     assert rows_by_depth[2].non_openable_count == 0
     assert rows_by_depth[2].selection_index == 3
     assert rows_by_depth[2].best_node_id == 22
@@ -233,6 +237,7 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
         "frontier",
         "terminal",
         "exact",
+        "uncached_terminal",
         "non_openable",
         "index",
         "best_node",
@@ -268,6 +273,7 @@ def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
     assert rows_by_depth[1].frontier_count == 0
     assert rows_by_depth[1].terminal_count == 0
     assert rows_by_depth[1].exact_count == 0
+    assert rows_by_depth[1].uncached_terminal_candidates == 0
     assert rows_by_depth[1].non_openable_count == 0
     assert rows_by_depth[1].selection_index is None
     assert rows_by_depth[1].active is False
@@ -277,6 +283,7 @@ def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
     assert rows_by_depth[3].frontier_count == 0
     assert rows_by_depth[3].terminal_count == 0
     assert rows_by_depth[3].exact_count == 1
+    assert rows_by_depth[3].uncached_terminal_candidates == 0
     assert rows_by_depth[3].non_openable_count == 0
     assert rows_by_depth[3].selection_index is None
     assert rows_by_depth[3].best_node_id is None
@@ -288,6 +295,7 @@ def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
     assert rows_by_depth[4].frontier_count == 0
     assert rows_by_depth[4].terminal_count == 1
     assert rows_by_depth[4].exact_count == 0
+    assert rows_by_depth[4].uncached_terminal_candidates == 0
     assert rows_by_depth[4].non_openable_count == 0
     assert rows_by_depth[4].selection_index is None
     assert rows_by_depth[4].best_node_id is None
@@ -323,11 +331,62 @@ def test_linoo_selection_report_classifies_terminal_nodes_before_opened_or_exact
     assert rows_by_depth[2].frontier_count == 0
     assert rows_by_depth[2].terminal_count == 2
     assert rows_by_depth[2].exact_count == 0
+    assert rows_by_depth[2].uncached_terminal_candidates == 0
     assert rows_by_depth[2].non_openable_count == 0
     assert rows_by_depth[2].selection_index is None
     assert rows_by_depth[2].best_node_id is None
     assert rows_by_depth[2].best_direct_value is None
     assert rows_by_depth[2].selected is False
+
+
+def test_linoo_does_not_call_state_is_game_over_for_terminality() -> None:
+    """Linoo should use only cached tree-evaluation terminality."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    terminal_node = _node(20, 2, score=2.0, terminal=True)
+
+    def _raise_if_called() -> bool:
+        raise AssertionError
+
+    terminal_node.state = SimpleNamespace(turn="solo", is_game_over=_raise_if_called)
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=1.0),
+        terminal_node,
+    )
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    report = selector.latest_selection_report
+    assert report is not None
+    rows_by_depth = {row.depth: row for row in report.depth_rows}
+    assert rows_by_depth[2].terminal_count == 1
+
+
+def test_linoo_reports_uncached_terminal_candidates() -> None:
+    """Openable-looking nodes without direct values should be counted."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=None),
+        _node(11, 1, score=4.0),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    report = selector.latest_selection_report
+    assert report is not None
+    assert _selected_node_id(instructions) == 11
+    assert report.uncached_terminal_candidates == 1
+    rows_by_depth = {row.depth: row for row in report.depth_rows}
+    assert rows_by_depth[1].frontier_count == 1
+    assert rows_by_depth[1].uncached_terminal_candidates == 1
+    assert rows_by_depth[1].non_openable_count == 0
 
 
 def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:

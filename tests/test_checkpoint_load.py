@@ -9,7 +9,16 @@ from typing import Any, Self, cast
 
 import pytest
 import valanga
-from valanga import BranchKey, Color, State, StateModifications, StateTag
+from valanga import (
+    BranchKey,
+    Color,
+    Outcome,
+    OverEvent,
+    State,
+    StateModifications,
+    StateTag,
+)
+from valanga.evaluations import Certainty
 
 from anemone import SearchArgs, create_search
 from anemone.checkpoints import (
@@ -29,6 +38,7 @@ from anemone.checkpoints.value_serialization import (
     serialize_value,
 )
 from anemone.indices.node_indices.index_types import IndexComputationType
+from anemone.node_evaluation.common import canonical_value
 from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
 from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import OpeningType
@@ -1150,6 +1160,34 @@ def test_checkpoint_restore_preserves_node_values() -> None:
         assert restored_node.tree_evaluation.direct_evaluation_version == (
             original_node.tree_evaluation.direct_evaluation_version
         )
+
+
+def test_checkpoint_restore_preserves_terminal_direct_value() -> None:
+    """Terminal direct values should remain selector-observable after restore."""
+    runtime = _build_runtime()
+    runtime.step()
+    terminal_child = next(
+        child
+        for child in runtime.tree.root_node.branches_children.values()
+        if child is not None
+    )
+    terminal_child.tree_evaluation.direct_value = canonical_value.make_terminal_value(
+        score=1.0,
+        over_event=OverEvent(
+            outcome=Outcome.WIN,
+            winner=terminal_child.state.turn,
+            termination="checkpoint-terminal",
+        ),
+    )
+
+    restored = _roundtrip_runtime(runtime)
+    restored_child = _runtime_nodes_by_id(restored)[terminal_child.id]
+    restored_direct_value = restored_child.tree_evaluation.direct_value
+
+    assert restored_direct_value is not None
+    assert restored_direct_value.certainty == Certainty.TERMINAL
+    assert restored_direct_value.over_event == terminal_child.tree_evaluation.over_event
+    assert restored_child.tree_evaluation.is_terminal() is True
 
 
 def test_checkpoint_restored_runtime_can_continue_search() -> None:
