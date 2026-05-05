@@ -135,6 +135,46 @@ def _selected_node_id(instructions: OpeningInstructions[_FakeNode]) -> int:
     return next(iter(instructions.values())).node_to_open.id
 
 
+def _scan_selected_node_id(tree: SimpleNamespace) -> int:
+    """Return the node id selected by the original scan-based Linoo policy."""
+    depth_state_by_depth: dict[int, tuple[int, list[_FakeNode]]] = {}
+    for absolute_tree_depth in tree.descendants:
+        for node in tree.descendants[absolute_tree_depth].values():
+            depth = tree.node_depth(node)
+            opened_count, frontier_nodes = depth_state_by_depth.setdefault(
+                depth,
+                (0, []),
+            )
+            if node.tree_evaluation.is_terminal():
+                continue
+            if node.all_branches_generated:
+                depth_state_by_depth[depth] = (opened_count + 1, frontier_nodes)
+                continue
+            if node.tree_evaluation.has_exact_value():
+                continue
+            if node.tree_evaluation.direct_value is None:
+                continue
+            frontier_nodes.append(node)
+
+    frontier_by_depth = {
+        depth: frontier_nodes
+        for depth, (_opened_count, frontier_nodes) in depth_state_by_depth.items()
+        if frontier_nodes
+    }
+    selected_depth = min(
+        frontier_by_depth,
+        key=lambda depth: (depth_state_by_depth[depth][0] * (depth + 1), depth),
+    )
+    objective = tree.root_node.tree_evaluation.required_objective
+    return max(
+        frontier_by_depth[selected_depth],
+        key=lambda node: (
+            objective.evaluate_value(node.tree_evaluation.direct_value, node.state),
+            -node.id,
+        ),
+    ).id
+
+
 def test_linoo_chooses_depth_with_minimum_opened_count_index() -> None:
     """Linoo should prefer the depth with the smallest opened-count index."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())
@@ -184,6 +224,8 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.total_nodes_scanned == 7
     assert report.frontier_nodes_scanned == 3
     assert report.uncached_terminal_candidates == 0
+    assert report.selected_depth_frontier_count == 2
+    assert report.stale_candidates_skipped == 0
     assert report.collect_frontier_state_s is not None
     assert report.collect_frontier_state_s >= 0.0
     assert report.choose_depth_s is not None
@@ -388,13 +430,18 @@ def test_linoo_report_does_not_evaluate_non_selected_depths() -> None:
     """Report creation should not rescan frontier nodes to find debug bests."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())
     non_selected_node = _node(20, 2, score=100.0)
-    non_selected_node.state = SimpleNamespace(turn="solo", raise_on_eval=True)
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, score=1.0),
         non_selected_node,
         objective=_MarkedStateObjective(),
     )
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+    non_selected_node.state = SimpleNamespace(turn="solo", raise_on_eval=True)
 
     instructions = selector.choose_node_and_branch_to_open(
         tree=tree,
@@ -408,6 +455,55 @@ def test_linoo_report_does_not_evaluate_non_selected_depths() -> None:
     rows_by_depth = {row.depth: row for row in report.depth_rows}
     assert rows_by_depth[2].active is True
     assert rows_by_depth[2].selected is False
+
+
+def test_linoo_heap_selection_matches_scan_based_policy() -> None:
+    """The cached heap should preserve the original scan policy on small trees."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, opened=True),
+        _node(11, 1, score=5.0),
+        _node(12, 1, score=7.0),
+        _node(20, 2, opened=True),
+        _node(21, 2, score=100.0),
+        _node(22, 2, score=100.0),
+        _node(30, 3, score=200.0, exact=True),
+        _node(40, 4, score=300.0, terminal=True),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    assert _selected_node_id(instructions) == _scan_selected_node_id(tree)
+
+
+def test_linoo_heap_updates_when_direct_value_changes() -> None:
+    """Changed direct values should replace older heap priorities lazily."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    first = _node(10, 1, score=3.0)
+    second = _node(11, 1, score=2.0)
+    tree = _tree(_node(0, 0, opened=True), first, second)
+
+    assert _selected_node_id(
+        selector.choose_node_and_branch_to_open(
+            tree=tree,
+            latest_tree_expansions=SimpleNamespace(),
+        )
+    ) == 10
+
+    first.tree_evaluation.direct_value = _value(1.0)
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    assert _selected_node_id(instructions) == 11
+    report = selector.latest_selection_report
+    assert report is not None
+    assert report.stale_candidates_skipped == 1
 
 
 def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:

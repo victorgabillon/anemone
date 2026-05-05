@@ -1,6 +1,7 @@
 """Single-player depth-aware selector based on direct node values."""
 
 from dataclasses import dataclass, replace
+from heapq import heappop, heappush
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -73,6 +74,8 @@ class LinooSelectionReport:
     total_nodes_scanned: int | None = None
     frontier_nodes_scanned: int | None = None
     uncached_terminal_candidates: int | None = None
+    selected_depth_frontier_count: int | None = None
+    stale_candidates_skipped: int | None = None
 
     def format_depth_table(self) -> str:
         """Return an aligned text table for Linoo depth diagnostics."""
@@ -132,6 +135,9 @@ class _LinooDepthAggregation[NodeT]:
     def frontier_count(self) -> int:
         """Return how many nodes at this depth can currently be opened."""
         return len(self.frontier_nodes)
+
+
+type _LinooHeapEntry[NodeT] = tuple[float, int, int, NodeT]
 
 
 class LinooSelectionError(ValueError):
@@ -222,11 +228,23 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     opening_instructor: OpeningInstructor
     latest_selection_report: LinooSelectionReport | None
+    _frontier_heaps_by_depth: dict[int, list[_LinooHeapEntry[NodeT]]]
+    _candidate_versions_by_node_id: dict[int, int]
+    _candidate_signature_by_node_id: dict[int, object]
+    _candidate_heap_present_by_node_id: dict[int, bool]
+    _cache_tree_identity: int | None
+    _cache_objective_identity: int | None
 
     def __init__(self, opening_instructor: OpeningInstructor) -> None:
         """Store the opening instructor used to materialize branch openings."""
         self.opening_instructor = opening_instructor
         self.latest_selection_report = None
+        self._frontier_heaps_by_depth = {}
+        self._candidate_versions_by_node_id = {}
+        self._candidate_signature_by_node_id = {}
+        self._candidate_heap_present_by_node_id = {}
+        self._cache_tree_identity = None
+        self._cache_objective_identity = None
 
     def choose_node_and_branch_to_open(
         self,
@@ -239,8 +257,12 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         total_started_at = perf_counter()
 
         objective = self._require_single_agent_objective(tree)
+        self._reset_cache_if_needed(tree=tree, objective=objective)
         collect_started_at = perf_counter()
-        depth_state_by_depth = self._collect_frontier_state(tree)
+        depth_state_by_depth = self._collect_frontier_state(
+            tree=tree,
+            objective=objective,
+        )
         collect_frontier_state_s = perf_counter() - collect_started_at
         frontier_by_depth = {
             depth: depth_state.frontier_nodes
@@ -271,17 +293,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
         choose_depth_s = perf_counter() - choose_depth_started_at
         choose_node_started_at = perf_counter()
-        selected_node = max(
-            frontier_by_depth[selected_depth],
-            key=lambda node: (
-                objective.evaluate_value(
-                    self._require_direct_value(node),
-                    node.state,
-                ),
-                -node.id,
-            ),
+        selected_node, stale_candidates_skipped = self._choose_best_node_at_depth(
+            tree=tree,
+            depth=selected_depth,
         )
         choose_node_s = perf_counter() - choose_node_started_at
+        selected_depth_frontier_count = depth_state_by_depth[
+            selected_depth
+        ].frontier_count
         make_report_started_at = perf_counter()
         self.latest_selection_report = self._make_selection_report(
             depth_state_by_depth=depth_state_by_depth,
@@ -294,6 +313,8 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             total_nodes_scanned=total_nodes_scanned,
             frontier_nodes_scanned=frontier_nodes_scanned,
             uncached_terminal_candidates=uncached_terminal_candidates,
+            selected_depth_frontier_count=selected_depth_frontier_count,
+            stale_candidates_skipped=stale_candidates_skipped,
         )
         if self.latest_selection_report is not None:
             self.latest_selection_report = replace(
@@ -326,7 +347,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def _collect_frontier_state(
         self,
+        *,
         tree: trees.Tree[NodeT],
+        objective: SingleAgentMaxObjective[Any],
     ) -> dict[int, _LinooDepthAggregation[NodeT]]:
         """Group node-state diagnostics by relative depth."""
         depth_state_by_depth: dict[int, _LinooDepthAggregation[NodeT]] = {}
@@ -358,6 +381,11 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                     depth_state.uncached_terminal_candidates += 1
                     continue
 
+                self._register_frontier_candidate(
+                    depth=depth,
+                    node=node,
+                    objective=objective,
+                )
                 depth_state.frontier_nodes.append(node)
 
         for depth_state in depth_state_by_depth.values():
@@ -370,6 +398,104 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             )
 
         return depth_state_by_depth
+
+    def _reset_cache_if_needed(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        objective: SingleAgentMaxObjective[Any],
+    ) -> None:
+        """Clear heap state when the selector is reused for a new runtime context."""
+        tree_identity = id(tree.root_node)
+        objective_identity = id(objective)
+        if (
+            self._cache_tree_identity == tree_identity
+            and self._cache_objective_identity == objective_identity
+        ):
+            return
+
+        self._frontier_heaps_by_depth.clear()
+        self._candidate_versions_by_node_id.clear()
+        self._candidate_signature_by_node_id.clear()
+        self._candidate_heap_present_by_node_id.clear()
+        self._cache_tree_identity = tree_identity
+        self._cache_objective_identity = objective_identity
+
+    def _register_frontier_candidate(
+        self,
+        *,
+        depth: int,
+        node: NodeT,
+        objective: SingleAgentMaxObjective[Any],
+    ) -> None:
+        """Push a heap entry when one node is new, changed, or reactivated."""
+        direct_value = self._require_direct_value(node)
+        node_id = node.id
+        signature = self._candidate_signature(node=node, direct_value=direct_value)
+        previous_signature = self._candidate_signature_by_node_id.get(node_id)
+        heap_entry_present = self._candidate_heap_present_by_node_id.get(
+            node_id,
+            False,
+        )
+        if previous_signature == signature and heap_entry_present:
+            return
+
+        version = self._candidate_versions_by_node_id.get(node_id, 0) + 1
+        self._candidate_versions_by_node_id[node_id] = version
+        self._candidate_signature_by_node_id[node_id] = signature
+        self._candidate_heap_present_by_node_id[node_id] = True
+        priority = objective.evaluate_value(direct_value, node.state)
+        heappush(
+            self._frontier_heaps_by_depth.setdefault(depth, []),
+            (-priority, node_id, version, node),
+        )
+
+    def _choose_best_node_at_depth(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        depth: int,
+    ) -> tuple[NodeT, int]:
+        """Return the best cached frontier node, lazily discarding stale entries."""
+        heap = self._frontier_heaps_by_depth.setdefault(depth, [])
+        stale_candidates_skipped = 0
+        while heap:
+            _priority, node_id, version, node = heap[0]
+            current_version = self._candidate_versions_by_node_id.get(node_id)
+            if version != current_version:
+                heappop(heap)
+                stale_candidates_skipped += 1
+                continue
+
+            if not self._is_current_frontier_candidate(
+                tree=tree,
+                node=node,
+                expected_depth=depth,
+            ):
+                heappop(heap)
+                self._candidate_heap_present_by_node_id[node_id] = False
+                stale_candidates_skipped += 1
+                continue
+
+            return node, stale_candidates_skipped
+
+        raise _no_frontier_nodes_error()
+
+    def _is_current_frontier_candidate(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        node: NodeT,
+        expected_depth: int,
+    ) -> bool:
+        """Return whether one cached node is still selectable frontier."""
+        return (
+            tree.node_depth(node) == expected_depth
+            and not self._is_terminal_node(node)
+            and not node.all_branches_generated
+            and not node.tree_evaluation.has_exact_value()
+            and self._direct_value_or_none(node) is not None
+        )
 
     def _make_selection_report(
         self,
@@ -384,6 +510,8 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         total_nodes_scanned: int,
         frontier_nodes_scanned: int,
         uncached_terminal_candidates: int,
+        selected_depth_frontier_count: int,
+        stale_candidates_skipped: int,
     ) -> LinooSelectionReport:
         """Build the structured latest-selection table without affecting policy."""
         rows: list[LinooDepthSelectionRow] = []
@@ -445,6 +573,8 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             total_nodes_scanned=total_nodes_scanned,
             frontier_nodes_scanned=frontier_nodes_scanned,
             uncached_terminal_candidates=uncached_terminal_candidates,
+            selected_depth_frontier_count=selected_depth_frontier_count,
+            stale_candidates_skipped=stale_candidates_skipped,
         )
 
     def _is_terminal_node(self, node: NodeT) -> bool:
@@ -466,3 +596,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         if direct_value is None:
             raise _missing_direct_value_error(node.id)
         return direct_value
+
+    def _candidate_signature(self, *, node: NodeT, direct_value: Value) -> object:
+        """Return the cheap invalidation signature for one heap candidate."""
+        return (
+            id(node),
+            direct_value,
+            node.all_branches_generated,
+            node.tree_evaluation.has_exact_value(),
+            self._is_terminal_node(node),
+        )
