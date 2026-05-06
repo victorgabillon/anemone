@@ -9,7 +9,7 @@ from typing import Any, cast
 import pytest
 from valanga import Color
 
-from anemone import SearchArgs, create_search
+from anemone import SearchArgs, create_search, create_search_with_tree_eval_factory
 from anemone.checkpoints import (
     CHECKPOINT_FORMAT_VERSION,
     AnchorCheckpointStatePayload,
@@ -21,7 +21,9 @@ from anemone.checkpoints import (
 )
 from anemone.checkpoints.value_serialization import serialize_checkpoint_atom
 from anemone.indices.node_indices.index_types import IndexComputationType
+from anemone.node_evaluation.tree.single_agent.factory import NodeMaxEvaluationFactory
 from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
+from anemone.node_selector.linoo import LinooArgs
 from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import OpeningType
 from anemone.node_selector.priority_check.noop_args import NoPriorityCheckArgs
@@ -179,6 +181,23 @@ def _build_args(
     )
 
 
+def _build_linoo_args() -> SearchArgs:
+    """Return a single-agent Linoo configuration for selector checkpoint tests."""
+    return SearchArgs(
+        node_selector=ComposedNodeSelectorArgs(
+            type=NodeSelectorType.COMPOSED,
+            priority=NoPriorityCheckArgs(type=NodeSelectorType.PRIORITY_NOOP),
+            base=LinooArgs(type=NodeSelectorType.LINOO),
+        ),
+        opening_type=OpeningType.ALL_CHILDREN,
+        stopping_criterion=TreeBranchLimitArgs(
+            type=StoppingCriterionTypes.TREE_BRANCH_LIMIT,
+            tree_branch_limit=10,
+        ),
+        recommender_rule=SoftmaxRule(type="softmax", temperature=1.0),
+    )
+
+
 def _build_runtime(
     *,
     children_by_id: dict[int, list[int]] = _CHILDREN_BY_ID,
@@ -200,6 +219,27 @@ def _build_runtime(
             {node_id: float(node_id) for node_id in children_by_id}
         ),
         state_representation_factory=None,
+    )
+
+
+def _build_linoo_runtime() -> Any:
+    """Build one small real single-agent runtime using Linoo."""
+    starting_state = _ConcreteFakeYamlState(
+        node_id=0,
+        children_by_id=_CHILDREN_BY_ID,
+        turn=Color.WHITE,
+    )
+    return create_search_with_tree_eval_factory(
+        state_type=_ConcreteFakeYamlState,
+        dynamics=FakeYamlDynamics(),
+        starting_state=starting_state,
+        args=_build_linoo_args(),
+        random_generator=Random(0),
+        master_state_evaluator=MasterStateValueEvaluatorFromYaml(
+            {node_id: float(node_id) for node_id in _CHILDREN_BY_ID}
+        ),
+        state_representation_factory=None,
+        node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
     )
 
 
@@ -234,6 +274,44 @@ def test_build_search_checkpoint_payload_from_live_search() -> None:
     assert len(payload.tree.nodes) == runtime.tree.nodes_count
     assert len(payload.tree.nodes) == runtime.tree.descendants.get_count()
     assert isinstance(payload.latest_tree_expansions, TreeExpansionsCheckpointPayload)
+    assert payload.selector_state is None
+
+
+def test_build_search_checkpoint_payload_includes_initialized_linoo_state() -> None:
+    """Initialized Linoo runtime state should be checkpointed as optional data."""
+    runtime = _build_linoo_runtime()
+    first_report = runtime.step()
+    assert first_report.selector_report is not None
+    assert first_report.selector_report.state_rebuilt is True
+    second_report = runtime.step()
+    assert second_report.selector_report is not None
+    assert second_report.selector_report.state_rebuilt is False
+
+    payload = _build_payload(runtime)
+
+    assert payload.selector_state is not None
+    assert payload.selector_state.type == "linoo"
+    assert payload.selector_state.version == 1
+    assert payload.selector_state.depth_stats
+    assert payload.selector_state.node_states
+    for candidate_depth in payload.selector_state.candidates_by_depth:
+        for candidate in candidate_depth.candidates:
+            assert isinstance(candidate.node_id, int)
+            assert isinstance(candidate.priority, float)
+    tree_node_ids = {node.node_id for node in payload.tree.nodes}
+    selector_node_ids = {
+        node_state.node_id for node_state in payload.selector_state.node_states
+    }
+    assert selector_node_ids <= tree_node_ids
+
+
+def test_build_search_checkpoint_payload_omits_uninitialized_linoo_state() -> None:
+    """Checkpoint build must not initialize Linoo just to serialize it."""
+    runtime = _build_linoo_runtime()
+
+    payload = _build_payload(runtime)
+
+    assert payload.selector_state is None
 
 
 def test_node_state_payloads_use_anchor_and_delta_codec_outputs() -> None:

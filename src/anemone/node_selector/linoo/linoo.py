@@ -1,14 +1,12 @@
 """Single-player depth-aware selector based on direct node values."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, replace
 from heapq import heappop, heappush
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
-from valanga.evaluations import Value
-
-from anemone import trees
-from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import (
     OpeningInstructions,
     OpeningInstructor,
@@ -18,7 +16,17 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
 
 if TYPE_CHECKING:
+    from valanga.evaluations import Value
+
     from anemone import tree_manager as tree_man
+    from anemone import trees
+    from anemone.checkpoints.payloads import (
+        LinooCandidatesByDepthCheckpointPayload,
+        LinooDepthStatsCheckpointPayload,
+        LinooNodeStateCheckpointPayload,
+        LinooSelectorCheckpointPayload,
+    )
+    from anemone.node_selector.node_selector_types import NodeSelectorType
 
 
 @dataclass
@@ -176,6 +184,7 @@ _LINOO_NODE_STATUS_COUNTERS: dict[_LinooNodeStatus, str] = {
     "uncached_terminal_candidate": "uncached_terminal_candidates",
     "non_openable": "non_openable_count",
 }
+_LINOO_NODE_STATUSES = frozenset(_LINOO_NODE_STATUS_COUNTERS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,6 +243,11 @@ def _missing_direct_value_error(node_id: int) -> LinooDirectValueUnavailableErro
         "Linoo requires a direct single-player value on every frontier node; "
         f"node {node_id} has no direct_value."
     )
+
+
+def _invalid_linoo_checkpoint_payload_error() -> ValueError:
+    """Return the generic error for rejected optional selector state."""
+    return ValueError("Invalid Linoo selector checkpoint payload.")
 
 
 def _format_optional_int(value: int | None) -> str:
@@ -314,10 +328,82 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Discard incremental selector state so the next selection rebuilds."""
         self._clear_runtime_state()
 
+    def build_checkpoint_payload(
+        self,
+        objective: SingleAgentMaxObjective[Any],
+    ) -> LinooSelectorCheckpointPayload | None:
+        """Return checkpoint payload for initialized Linoo runtime state."""
+        from anemone.checkpoints.payloads import (  # pylint: disable=import-outside-toplevel
+            LinooSelectorCheckpointPayload,
+        )
+
+        del objective
+        if not self._cache_initialized:
+            return None
+        return LinooSelectorCheckpointPayload(
+            depth_stats=self._depth_stats_payload_from_cache(),
+            node_states=self._node_states_payload_from_cache(),
+            candidates_by_depth=self._candidate_payloads_from_cache(),
+            last_selected_node_id=(
+                self._last_selected_node.id
+                if self._last_selected_node is not None
+                else None
+            ),
+        )
+
+    def restore_from_checkpoint_payload(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        objective: SingleAgentMaxObjective[Any],
+        payload: LinooSelectorCheckpointPayload,
+    ) -> bool:
+        """Restore Linoo runtime state from checkpoint payload.
+
+        Return ``True`` when restored. Return ``False`` when optional selector
+        state was stale or invalid and the next selection should rebuild.
+        """
+        if payload.type != "linoo" or payload.version != 1:
+            return False
+        nodes_by_id = self._nodes_by_id_from_tree(tree)
+        try:
+            node_states = self._restore_node_states_from_payload(
+                tree=tree,
+                nodes_by_id=nodes_by_id,
+                payload=payload,
+            )
+            depth_stats = self._depth_stats_from_node_states(node_states)
+            if not self._depth_stats_match_payload(depth_stats, payload.depth_stats):
+                raise _invalid_linoo_checkpoint_payload_error()
+            frontier_node_ids = self._frontier_ids_from_node_states(node_states)
+            last_selected_node = (
+                None
+                if payload.last_selected_node_id is None
+                else nodes_by_id[payload.last_selected_node_id]
+            )
+        except (KeyError, ValueError):
+            self.invalidate()
+            return False
+
+        self._clear_runtime_state()
+        self._depth_stats_by_depth = depth_stats
+        self._frontier_node_ids_by_depth = frontier_node_ids
+        self._node_state_by_id = node_states
+        self._cache_tree_identity = id(tree.root_node)
+        self._cache_objective_identity = id(objective)
+        self._cache_initialized = True
+        self._last_selected_node = last_selected_node
+        self._restore_candidate_payloads(
+            tree=tree,
+            payload=payload,
+            nodes_by_id=nodes_by_id,
+        )
+        return True
+
     def choose_node_and_branch_to_open(
         self,
         tree: trees.Tree[NodeT],
-        latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
+        latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> OpeningInstructions[NodeT]:
         """Choose one unopened node according to the Linoo policy."""
         self.latest_selection_report = None
@@ -422,7 +508,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         *,
         tree: trees.Tree[NodeT],
         objective: SingleAgentMaxObjective[Any],
-        latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
+        latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> tuple[bool, int]:
         """Build or incrementally refresh cached Linoo tree state."""
         if not self._cache_matches(tree=tree, objective=objective):
@@ -477,6 +563,237 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._cache_objective_identity = None
         self._last_selected_node = None
 
+    def _nodes_by_id_from_tree(self, tree: trees.Tree[NodeT]) -> dict[int, NodeT]:
+        """Return live tree nodes keyed by public node id."""
+        return {
+            node.id: node
+            for absolute_tree_depth in tree.descendants
+            for node in tree.descendants[absolute_tree_depth].values()
+        }
+
+    def _depth_stats_payload_from_cache(
+        self,
+    ) -> list[LinooDepthStatsCheckpointPayload]:
+        """Serialize cached depth stats in stable depth order."""
+        from anemone.checkpoints.payloads import (  # pylint: disable=import-outside-toplevel
+            LinooDepthStatsCheckpointPayload,
+        )
+
+        return [
+            LinooDepthStatsCheckpointPayload(
+                depth=depth,
+                total_nodes=stats.total_nodes,
+                opened_count=stats.opened_count,
+                frontier_count=stats.frontier_count,
+                terminal_count=stats.terminal_count,
+                exact_count=stats.exact_count,
+                uncached_terminal_candidates=stats.uncached_terminal_candidates,
+                non_openable_count=stats.non_openable_count,
+            )
+            for depth, stats in sorted(self._depth_stats_by_depth.items())
+        ]
+
+    def _node_states_payload_from_cache(
+        self,
+    ) -> list[LinooNodeStateCheckpointPayload]:
+        """Serialize cached node classifications without live node objects."""
+        from anemone.checkpoints.payloads import (  # pylint: disable=import-outside-toplevel
+            LinooNodeStateCheckpointPayload,
+        )
+
+        return [
+            LinooNodeStateCheckpointPayload(
+                node_id=node_id,
+                depth=node_state.depth,
+                status=node_state.status,
+            )
+            for node_id, node_state in sorted(self._node_state_by_id.items())
+        ]
+
+    def _candidate_payloads_from_cache(
+        self,
+    ) -> list[LinooCandidatesByDepthCheckpointPayload]:
+        """Serialize non-stale candidate heap entries without mutating heaps."""
+        from anemone.checkpoints.payloads import (  # pylint: disable=import-outside-toplevel
+            LinooCandidateCheckpointPayload,
+            LinooCandidatesByDepthCheckpointPayload,
+        )
+
+        payloads: list[LinooCandidatesByDepthCheckpointPayload] = []
+        for depth, heap in sorted(self._candidates_by_depth.items()):
+            candidates = [
+                LinooCandidateCheckpointPayload(
+                    node_id=node_id,
+                    depth=depth,
+                    priority=-priority_key,
+                    version=version,
+                )
+                for priority_key, node_id, version, node in heap
+                if self._should_serialize_candidate(
+                    depth=depth,
+                    node_id=node_id,
+                    version=version,
+                    node=node,
+                )
+            ]
+            if candidates:
+                payloads.append(
+                    LinooCandidatesByDepthCheckpointPayload(
+                        depth=depth,
+                        candidates=sorted(
+                            candidates,
+                            key=lambda candidate: (
+                                -candidate.priority,
+                                candidate.node_id,
+                                candidate.version,
+                            ),
+                        ),
+                    )
+                )
+        return payloads
+
+    def _should_serialize_candidate(
+        self,
+        *,
+        depth: int,
+        node_id: int,
+        version: int,
+        node: NodeT,
+    ) -> bool:
+        """Return whether one heap entry is current enough to checkpoint."""
+        node_state = self._node_state_by_id.get(node_id)
+        return (
+            node_state is not None
+            and node_state.status == "frontier"
+            and node_state.depth == depth
+            and node_state.node is node
+            and version == self._candidate_versions_by_node_id.get(node_id, 0)
+        )
+
+    def _restore_node_states_from_payload(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        nodes_by_id: dict[int, NodeT],
+        payload: LinooSelectorCheckpointPayload,
+    ) -> dict[int, _LinooNodeState[NodeT]]:
+        """Restore and validate cached node states from payload."""
+        node_states: dict[int, _LinooNodeState[NodeT]] = {}
+        seen_node_ids: set[int] = set()
+        for node_payload in payload.node_states:
+            if node_payload.node_id in seen_node_ids:
+                raise _invalid_linoo_checkpoint_payload_error()
+            seen_node_ids.add(node_payload.node_id)
+            if node_payload.status not in _LINOO_NODE_STATUSES:
+                raise _invalid_linoo_checkpoint_payload_error()
+            node = nodes_by_id[node_payload.node_id]
+            depth = tree.node_depth(node)
+            if node_payload.depth != depth:
+                raise _invalid_linoo_checkpoint_payload_error()
+            status = self._classify_node(node)
+            if node_payload.status != status:
+                raise _invalid_linoo_checkpoint_payload_error()
+            node_states[node.id] = _LinooNodeState(
+                node=node,
+                depth=depth,
+                status=status,
+            )
+        if set(nodes_by_id) != set(node_states):
+            raise _invalid_linoo_checkpoint_payload_error()
+        return node_states
+
+    def _depth_stats_from_node_states(
+        self,
+        node_states: dict[int, _LinooNodeState[NodeT]],
+    ) -> dict[int, _LinooDepthStats]:
+        """Rebuild depth accounting from restored node states."""
+        depth_stats_by_depth: dict[int, _LinooDepthStats] = {}
+        for node_state in node_states.values():
+            stats = depth_stats_by_depth.setdefault(
+                node_state.depth,
+                _LinooDepthStats(),
+            )
+            stats.total_nodes += 1
+            stats.increment(node_state.status)
+        return depth_stats_by_depth
+
+    def _depth_stats_match_payload(
+        self,
+        depth_stats_by_depth: dict[int, _LinooDepthStats],
+        payloads: list[LinooDepthStatsCheckpointPayload],
+    ) -> bool:
+        """Return whether restored depth stats exactly match payload stats."""
+        payload_by_depth = {payload.depth: payload for payload in payloads}
+        if set(payload_by_depth) != set(depth_stats_by_depth):
+            return False
+        return all(
+            stats.total_nodes == payload_by_depth[depth].total_nodes
+            and stats.opened_count == payload_by_depth[depth].opened_count
+            and stats.frontier_count == payload_by_depth[depth].frontier_count
+            and stats.terminal_count == payload_by_depth[depth].terminal_count
+            and stats.exact_count == payload_by_depth[depth].exact_count
+            and stats.uncached_terminal_candidates
+            == payload_by_depth[depth].uncached_terminal_candidates
+            and stats.non_openable_count
+            == payload_by_depth[depth].non_openable_count
+            for depth, stats in depth_stats_by_depth.items()
+        )
+
+    def _frontier_ids_from_node_states(
+        self,
+        node_states: dict[int, _LinooNodeState[NodeT]],
+    ) -> dict[int, set[int]]:
+        """Rebuild frontier id buckets from restored node states."""
+        frontier_ids_by_depth: dict[int, set[int]] = {}
+        for node_id, node_state in node_states.items():
+            if node_state.status == "frontier":
+                frontier_ids_by_depth.setdefault(node_state.depth, set()).add(node_id)
+        return frontier_ids_by_depth
+
+    def _restore_candidate_payloads(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        payload: LinooSelectorCheckpointPayload,
+        nodes_by_id: dict[int, NodeT],
+    ) -> None:
+        """Restore valid candidate heap entries and discard stale ones."""
+        for depth_payload in payload.candidates_by_depth:
+            for candidate in depth_payload.candidates:
+                if candidate.depth != depth_payload.depth:
+                    continue
+                node = nodes_by_id.get(candidate.node_id)
+                if node is None:
+                    continue
+                node_state = self._node_state_by_id.get(candidate.node_id)
+                if (
+                    node_state is None
+                    or node_state.status != "frontier"
+                    or node_state.depth != candidate.depth
+                    or tree.node_depth(node) != candidate.depth
+                ):
+                    continue
+                current_version = self._candidate_versions_by_node_id.get(
+                    candidate.node_id,
+                    candidate.version,
+                )
+                if candidate.version != current_version:
+                    continue
+                direct_value = self._direct_value_or_none(node)
+                if direct_value is None:
+                    continue
+                self._candidate_versions_by_node_id[candidate.node_id] = (
+                    candidate.version
+                )
+                self._candidate_signature_by_node_id[candidate.node_id] = (
+                    self._candidate_signature(node=node, direct_value=direct_value)
+                )
+                self._candidate_heap_present_by_node_id[candidate.node_id] = True
+                heappush(
+                    self._candidates_by_depth.setdefault(candidate.depth, []),
+                    (-candidate.priority, candidate.node_id, candidate.version, node),
+                )
+
     def _rebuild_runtime_state(
         self,
         *,
@@ -521,7 +838,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def _incremental_nodes_from_expansions(
         self,
-        latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
+        latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> dict[int, NodeT] | None:
         """Collect touched nodes using the explicit ``TreeExpansions`` API."""
         try:

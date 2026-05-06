@@ -6,6 +6,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 
+from anemone.objectives import SingleAgentMaxObjective
 from anemone.utils.logger import anemone_logger, checkpoint_logger
 from anemone.utils.small_tools import Interval
 
@@ -28,6 +29,7 @@ from .payloads import (
     NodeEvaluationCheckpointPayload,
     PrincipalVariationCheckpointPayload,
     SearchRuntimeCheckpointPayload,
+    SelectorCheckpointPayload,
     SerializedValuePayload,
     TreeCheckpointPayload,
     TreeExpansionCheckpointPayload,
@@ -82,6 +84,7 @@ def build_search_checkpoint_payload(
         tree=tree_payload,
         rng_state=_maybe_dump_rng_state(search),
         latest_tree_expansions=_build_latest_tree_expansions_payload(search),
+        selector_state=_build_selector_state_payload(search),
     )
 
 
@@ -489,6 +492,54 @@ def _maybe_dump_rng_state(search: TreeExploration[Any]) -> object | None:
     # TreeExploration does not retain the explore() RNG. Selector-specific RNG
     # restoration can be made more complete with selector checkpoint payloads.
     return None
+
+
+def _build_selector_state_payload(
+    search: TreeExploration[Any],
+) -> SelectorCheckpointPayload | None:
+    """Serialize optional selector-private checkpoint state when supported."""
+    objective = search.tree.root_node.tree_evaluation.required_objective
+    if not isinstance(objective, SingleAgentMaxObjective):
+        return None
+
+    for selector in _iter_selector_components(search.node_selector):
+        build_payload = getattr(selector, "build_checkpoint_payload", None)
+        if callable(build_payload):
+            _refresh_initialized_selector_state_for_checkpoint(
+                selector=selector,
+                search=search,
+                objective=objective,
+            )
+            payload = build_payload(objective)
+            if payload is not None:
+                return payload
+    return None
+
+
+def _refresh_initialized_selector_state_for_checkpoint(
+    *,
+    selector: object,
+    search: TreeExploration[Any],
+    objective: SingleAgentMaxObjective[Any],
+) -> None:
+    """Bring initialized selector caches current before optional serialization."""
+    if getattr(selector, "_cache_initialized", False) is not True:
+        return
+    ensure_runtime_state = getattr(selector, "_ensure_runtime_state", None)
+    if callable(ensure_runtime_state):
+        ensure_runtime_state(
+            tree=search.tree,
+            objective=objective,
+            latest_tree_expansions=search.latest_tree_expansions,
+        )
+
+
+def _iter_selector_components(selector: object) -> Iterable[object]:
+    """Yield a composed selector and nested base selectors."""
+    current: object | None = selector
+    while current is not None:
+        yield current
+        current = getattr(current, "base", None)
 
 
 def _build_latest_tree_expansions_payload(

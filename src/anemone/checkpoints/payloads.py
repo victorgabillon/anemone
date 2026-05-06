@@ -237,6 +237,64 @@ class TreeExpansionsCheckpointPayload:
 
 
 @dataclass(slots=True)
+class LinooDepthStatsCheckpointPayload:
+    """Serialized Linoo depth-accounting bucket."""
+
+    depth: int
+    total_nodes: int
+    opened_count: int
+    frontier_count: int
+    terminal_count: int
+    exact_count: int
+    uncached_terminal_candidates: int
+    non_openable_count: int
+
+
+@dataclass(slots=True)
+class LinooNodeStateCheckpointPayload:
+    """Serialized Linoo classification for one live tree node."""
+
+    node_id: int
+    depth: int
+    status: str
+
+
+@dataclass(slots=True)
+class LinooCandidateCheckpointPayload:
+    """Serialized Linoo candidate heap entry without live node pointers."""
+
+    node_id: int
+    depth: int
+    priority: float
+    version: int
+
+
+@dataclass(slots=True)
+class LinooCandidatesByDepthCheckpointPayload:
+    """Serialized Linoo candidate heap entries for one frontier depth."""
+
+    depth: int
+    candidates: list[LinooCandidateCheckpointPayload] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class LinooSelectorCheckpointPayload:
+    """Serialized optional runtime cache for the Linoo selector."""
+
+    type: Literal["linoo"] = "linoo"
+    version: int = 1
+    depth_stats: list[LinooDepthStatsCheckpointPayload] = field(default_factory=list)
+    node_states: list[LinooNodeStateCheckpointPayload] = field(default_factory=list)
+    candidates_by_depth: list[LinooCandidatesByDepthCheckpointPayload] = field(
+        default_factory=list
+    )
+    last_selected_node_id: int | None = None
+
+
+type SelectorCheckpointPayload = LinooSelectorCheckpointPayload
+
+
+@dataclass(slots=True)
 class SearchRuntimeCheckpointPayload:
     """Top-level runtime checkpoint payload for a search session."""
 
@@ -245,6 +303,7 @@ class SearchRuntimeCheckpointPayload:
     format_version: int = CHECKPOINT_FORMAT_VERSION
     rng_state: object | None = None
     latest_tree_expansions: TreeExpansionsCheckpointPayload | None = None
+    selector_state: SelectorCheckpointPayload | None = None
 
 
 __all__ = [
@@ -262,9 +321,15 @@ __all__ = [
     "EnumAtomPayload",
     "ExplorationIndexCheckpointPayload",
     "LinkedChildCheckpointPayload",
+    "LinooCandidateCheckpointPayload",
+    "LinooCandidatesByDepthCheckpointPayload",
+    "LinooDepthStatsCheckpointPayload",
+    "LinooNodeStateCheckpointPayload",
+    "LinooSelectorCheckpointPayload",
     "NodeEvaluationCheckpointPayload",
     "PrincipalVariationCheckpointPayload",
     "SearchRuntimeCheckpointPayload",
+    "SelectorCheckpointPayload",
     "SerializedOverEventPayload",
     "SerializedValuePayload",
     "TreeCheckpointPayload",

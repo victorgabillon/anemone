@@ -20,7 +20,7 @@ from valanga import (
 )
 from valanga.evaluations import Certainty
 
-from anemone import SearchArgs, create_search
+from anemone import SearchArgs, create_search, create_search_with_tree_eval_factory
 from anemone.checkpoints import (
     AlgorithmNodeCheckpointPayload,
     AnchorCheckpointStatePayload,
@@ -39,7 +39,9 @@ from anemone.checkpoints.value_serialization import (
 )
 from anemone.indices.node_indices.index_types import IndexComputationType
 from anemone.node_evaluation.common import canonical_value
+from anemone.node_evaluation.tree.single_agent.factory import NodeMaxEvaluationFactory
 from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
+from anemone.node_selector.linoo import LinooArgs
 from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import OpeningType
 from anemone.node_selector.priority_check.noop_args import NoPriorityCheckArgs
@@ -479,6 +481,23 @@ def _build_args(
     )
 
 
+def _build_linoo_args() -> SearchArgs:
+    """Return a single-agent Linoo configuration for selector checkpoint tests."""
+    return SearchArgs(
+        node_selector=ComposedNodeSelectorArgs(
+            type=NodeSelectorType.COMPOSED,
+            priority=NoPriorityCheckArgs(type=NodeSelectorType.PRIORITY_NOOP),
+            base=LinooArgs(type=NodeSelectorType.LINOO),
+        ),
+        opening_type=OpeningType.ALL_CHILDREN,
+        stopping_criterion=TreeBranchLimitArgs(
+            type=StoppingCriterionTypes.TREE_BRANCH_LIMIT,
+            tree_branch_limit=10,
+        ),
+        recommender_rule=SoftmaxRule(type="softmax", temperature=1.0),
+    )
+
+
 def _build_runtime(
     *,
     children_by_id: dict[int, list[int]] = _CHILDREN_BY_ID,
@@ -500,6 +519,27 @@ def _build_runtime(
             _values_for(children_by_id)
         ),
         state_representation_factory=None,
+    )
+
+
+def _build_linoo_runtime() -> Any:
+    """Build one small real single-agent runtime using Linoo."""
+    starting_state = _ConcreteFakeYamlState(
+        node_id=0,
+        children_by_id=_CHILDREN_BY_ID,
+        turn=Color.WHITE,
+    )
+    return create_search_with_tree_eval_factory(
+        state_type=_ConcreteFakeYamlState,
+        dynamics=FakeYamlDynamics(),
+        starting_state=starting_state,
+        args=_build_linoo_args(),
+        random_generator=Random(0),
+        master_state_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        state_representation_factory=None,
+        node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
     )
 
 
@@ -788,6 +828,126 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
         assert _parent_signature(restored_node) == _parent_signature(original_node)
 
 
+def test_checkpoint_restore_without_selector_state_keeps_linoo_backward_compatible() -> (
+    None
+):
+    """Old-style payloads without selector state should still resume normally."""
+    runtime = _build_linoo_runtime()
+    runtime.step()
+    runtime.step()
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec)
+    payload.selector_state = None
+
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_linoo_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+        node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
+    )
+    report = restored.step()
+
+    assert report.selector_report is not None
+    assert report.selector_report.state_rebuilt is True
+
+
+def test_checkpoint_restore_linoo_selector_state_avoids_next_full_rebuild() -> None:
+    """Valid Linoo selector state should resume as an incremental cache hit."""
+    runtime = _build_linoo_runtime()
+    first_report = runtime.step()
+    assert first_report.selector_report is not None
+    assert first_report.selector_report.state_rebuilt is True
+    second_report = runtime.step()
+    assert second_report.selector_report is not None
+    assert second_report.selector_report.state_rebuilt is False
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec)
+    assert payload.selector_state is not None
+
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_linoo_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+        node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
+    )
+    report = restored.step()
+
+    assert report.selector_report is not None
+    assert report.selector_report.state_rebuilt is False
+
+
+def test_checkpoint_restore_invalid_linoo_selector_state_falls_back_to_rebuild() -> (
+    None
+):
+    """Invalid optional selector state should be discarded safely."""
+    runtime = _build_linoo_runtime()
+    runtime.step()
+    runtime.step()
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec)
+    assert payload.selector_state is not None
+    payload.selector_state.node_states[0].node_id = 999999
+
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_linoo_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+        node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
+    )
+    report = restored.step()
+
+    assert report.selector_report is not None
+    assert report.selector_report.state_rebuilt is True
+
+
+def test_checkpoint_restore_linoo_selector_state_is_ignored_by_uniform_selector() -> (
+    None
+):
+    """Selector state is optional optimization data for matching selectors only."""
+    runtime = _build_linoo_runtime()
+    runtime.step()
+    runtime.step()
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec)
+    assert payload.selector_state is not None
+
+    restored = load_search_from_checkpoint_payload(
+        payload,
+        state_codec=codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+
+    restored.step()
+
+
 def test_checkpoint_restore_descendants_tags_match_restored_nodes() -> None:
     """Restored descendants keys should match each node's live tag and state tag."""
     runtime = _build_runtime()
@@ -922,6 +1082,7 @@ def test_checkpoint_restore_logs_structured_phase_timings(
         "create_runtime",
         "restore_runtime_state",
         "restore_tree_expansions",
+        "restore_explicit_selector_state",
         "restore_selector_state",
     }
 

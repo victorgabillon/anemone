@@ -26,6 +26,7 @@ from anemone.indices.node_indices.index_data import (
 from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.objectives import SingleAgentMaxObjective
 from anemone.progress_monitor.progress_monitor import create_stopping_criterion
 from anemone.tree_exploration import TreeExploration
 from anemone.tree_exploration_debug import (
@@ -49,6 +50,7 @@ from .payloads import (
     NodeEvaluationCheckpointPayload,
     PrincipalVariationCheckpointPayload,
     SearchRuntimeCheckpointPayload,
+    SelectorCheckpointPayload,
     TreeExpansionCheckpointPayload,
     TreeExpansionsCheckpointPayload,
 )
@@ -276,6 +278,11 @@ def load_search_from_checkpoint_payload[
             runtime=runtime,
             payload=payload.latest_tree_expansions,
             nodes_by_id=nodes_by_id,
+        )
+    with _log_restore_phase("restore_explicit_selector_state", **common_metadata):
+        _restore_explicit_selector_state(
+            runtime=runtime,
+            payload=payload.selector_state,
         )
     with _log_restore_phase("restore_selector_state", **common_metadata):
         _restore_inferred_depth_selector_state(
@@ -779,6 +786,31 @@ def _restore_tree_expansions(
             _restore_tree_expansion(expansion_payload, nodes_by_id=nodes_by_id)
         )
     return tree_expansions
+
+
+def _restore_explicit_selector_state(
+    *,
+    runtime: TreeExploration[AlgorithmNode[Any]],
+    payload: SelectorCheckpointPayload | None,
+) -> None:
+    """Restore optional selector-private checkpoint state when supported."""
+    if payload is None:
+        return
+
+    objective = runtime.tree.root_node.tree_evaluation.required_objective
+    if not isinstance(objective, SingleAgentMaxObjective):
+        return
+
+    for selector in _iter_selector_components(runtime.node_selector):
+        restore_payload = getattr(selector, "restore_from_checkpoint_payload", None)
+        if callable(restore_payload):
+            restored = restore_payload(
+                tree=runtime.tree,
+                objective=objective,
+                payload=payload,
+            )
+            if restored:
+                return
 
 
 def _restore_tree_expansion(

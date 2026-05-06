@@ -573,6 +573,105 @@ def test_linoo_heap_updates_when_touched_frontier_direct_value_changes() -> None
     assert report.heap_candidates_registered == 1
 
 
+def test_linoo_checkpoint_payload_roundtrips_initialized_cache() -> None:
+    """A restored Linoo cache should select without a full rebuild."""
+    objective = SingleAgentMaxObjective()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=5.0),
+        _node(11, 1, score=4.0),
+        objective=objective,
+    )
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+
+    first_instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+    payload = selector.build_checkpoint_payload(objective)
+    assert payload is not None
+
+    restored_selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    restored = restored_selector.restore_from_checkpoint_payload(
+        tree=tree,
+        objective=objective,
+        payload=payload,
+    )
+    restored_instructions = restored_selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert restored is True
+    assert _selected_node_id(restored_instructions) == _selected_node_id(
+        first_instructions
+    )
+    assert restored_selector.latest_selection_report is not None
+    assert restored_selector.latest_selection_report.state_rebuilt is False
+
+
+def test_linoo_checkpoint_restore_rejects_missing_node_state() -> None:
+    """Stale selector payloads should be discarded without breaking selection."""
+    objective = SingleAgentMaxObjective()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=5.0),
+        objective=objective,
+    )
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+    payload = selector.build_checkpoint_payload(objective)
+    assert payload is not None
+    payload.node_states[0].node_id = 999999
+
+    restored_selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    restored = restored_selector.restore_from_checkpoint_payload(
+        tree=tree,
+        objective=objective,
+        payload=payload,
+    )
+    instructions = restored_selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert restored is False
+    assert _selected_node_id(instructions) == 10
+    assert restored_selector.latest_selection_report is not None
+    assert restored_selector.latest_selection_report.state_rebuilt is True
+
+
+def test_linoo_checkpoint_restore_rejects_changed_classification() -> None:
+    """Payload classifications must match the current live tree."""
+    objective = SingleAgentMaxObjective()
+    first = _node(10, 1, score=5.0)
+    tree = _tree(
+        _node(0, 0, opened=True),
+        first,
+        objective=objective,
+    )
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+    payload = selector.build_checkpoint_payload(objective)
+    assert payload is not None
+
+    first.all_branches_generated = True
+    restored_selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    restored = restored_selector.restore_from_checkpoint_payload(
+        tree=tree,
+        objective=objective,
+        payload=payload,
+    )
+
+    assert restored is False
+
+
 def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:
     """Linoo should maximize direct value inside the selected depth."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())
