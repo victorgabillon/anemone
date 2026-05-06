@@ -9,10 +9,12 @@ from typing import Any
 
 from valanga.evaluations import Certainty, Value
 
+from anemone.node_selector.linoo import Linoo
 from anemone.node_selector.opening_instructions import (
     OpeningInstruction,
     OpeningInstructions,
 )
+from anemone.objectives import SingleAgentMaxObjective
 from anemone.tree_exploration import TreeExploration
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
@@ -249,3 +251,235 @@ def test_tree_exploration_step_attaches_selector_report_when_available() -> None
 
     assert report.selector_report is selection_report
     assert report.selector_report_rows == 2
+
+
+@dataclass
+class _LinooIntegrationEval:
+    direct_value: Value | None
+    required_objective: object | None = None
+    exact: bool = False
+    terminal: bool = False
+
+    def has_exact_value(self) -> bool:
+        return self.exact
+
+    def is_terminal(self) -> bool:
+        return self.terminal
+
+    def get_score(self) -> float:
+        assert self.direct_value is not None
+        return self.direct_value.score
+
+    def get_value(self) -> Value:
+        assert self.direct_value is not None
+        return self.direct_value
+
+    def print_branch_ordering(self, dynamics: object) -> None:
+        del dynamics
+
+
+@dataclass
+class _LinooIntegrationNode:
+    id: int
+    tree_depth: int
+    tree_evaluation: _LinooIntegrationEval
+    all_branches_generated: bool = False
+    state: object = field(default_factory=lambda: SimpleNamespace(turn="solo"))
+    branches_children: dict[int, object] = field(default_factory=dict)
+
+
+def _linoo_integration_node(
+    node_id: int,
+    depth: int,
+    score: float,
+    *,
+    opened: bool = False,
+) -> _LinooIntegrationNode:
+    return _LinooIntegrationNode(
+        id=node_id,
+        tree_depth=depth,
+        tree_evaluation=_LinooIntegrationEval(
+            direct_value=Value(score=score, certainty=Certainty.ESTIMATE)
+        ),
+        all_branches_generated=opened,
+    )
+
+
+def _linoo_integration_tree(
+    *nodes: _LinooIntegrationNode,
+) -> SimpleNamespace:
+    root = min(nodes, key=lambda node: (node.tree_depth, node.id))
+    root.tree_evaluation.required_objective = SingleAgentMaxObjective()
+    descendants: dict[int, dict[int, _LinooIntegrationNode]] = {}
+    for node in nodes:
+        descendants.setdefault(node.tree_depth, {})[node.id] = node
+    return SimpleNamespace(
+        root_node=root,
+        descendants=descendants,
+        nodes_count=len(nodes),
+        branch_count=0,
+        node_depth=lambda node: node.tree_depth - root.tree_depth,
+    )
+
+
+def _scan_linoo_integration_selected_node_id(tree: SimpleNamespace) -> int:
+    """Return the selected node id using the old scan-based Linoo policy."""
+    depth_state_by_depth: dict[int, tuple[int, list[_LinooIntegrationNode]]] = {}
+    for absolute_tree_depth in tree.descendants:
+        for node in tree.descendants[absolute_tree_depth].values():
+            depth = tree.node_depth(node)
+            opened_count, frontier_nodes = depth_state_by_depth.setdefault(
+                depth,
+                (0, []),
+            )
+            if node.tree_evaluation.is_terminal():
+                continue
+            if node.all_branches_generated:
+                depth_state_by_depth[depth] = (opened_count + 1, frontier_nodes)
+                continue
+            if node.tree_evaluation.has_exact_value():
+                continue
+            if node.tree_evaluation.direct_value is None:
+                continue
+            frontier_nodes.append(node)
+
+    frontier_by_depth = {
+        depth: frontier_nodes
+        for depth, (_opened_count, frontier_nodes) in depth_state_by_depth.items()
+        if frontier_nodes
+    }
+    selected_depth = min(
+        frontier_by_depth,
+        key=lambda depth: (depth_state_by_depth[depth][0] * (depth + 1), depth),
+    )
+    objective = tree.root_node.tree_evaluation.required_objective
+    return max(
+        frontier_by_depth[selected_depth],
+        key=lambda node: (
+            objective.evaluate_value(node.tree_evaluation.direct_value, node.state),
+            -node.id,
+        ),
+    ).id
+
+
+class _LinooIntegrationOpeningInstructor:
+    def all_branches_to_open(self, node_to_open: object) -> list[int]:
+        del node_to_open
+        return [0]
+
+
+class _LinooIntegrationManager:
+    dynamics: object = SimpleNamespace(action_name=lambda state, branch: str(branch))
+
+    def expand_instructions(
+        self,
+        *,
+        tree: SimpleNamespace,
+        opening_instructions: OpeningInstructions[_LinooIntegrationNode],
+    ) -> TreeExpansions[_LinooIntegrationNode]:
+        instruction = next(iter(opening_instructions.values()))
+        selected_node = instruction.node_to_open
+        selected_node.all_branches_generated = True
+        expansions: TreeExpansions[_LinooIntegrationNode] = TreeExpansions()
+        if selected_node.id == 10:
+            child = _linoo_integration_node(20, 2, 100.0)
+            tree.descendants.setdefault(child.tree_depth, {})[child.id] = child
+            tree.nodes_count += 1
+            tree.branch_count += 1
+            expansions.record_creation(
+                TreeExpansion(
+                    child_node=child,
+                    parent_node=selected_node,
+                    state_modifications=None,
+                    creation_child_node=True,
+                    branch_key=instruction.branch,
+                )
+            )
+        return expansions
+
+    def evaluate_expansions(
+        self,
+        *,
+        tree_expansions: TreeExpansions[_LinooIntegrationNode],
+    ) -> None:
+        del tree_expansions
+
+    def update_backward(
+        self,
+        *,
+        tree_expansions: TreeExpansions[_LinooIntegrationNode],
+    ) -> None:
+        del tree_expansions
+
+    def propagate_depth_index(
+        self,
+        *,
+        tree_expansions: TreeExpansions[_LinooIntegrationNode],
+    ) -> None:
+        del tree_expansions
+
+    def refresh_exploration_indices(self, *, tree: object) -> None:
+        del tree
+
+    def print_best_line(self, *, tree: object) -> None:
+        del tree
+
+
+class _LinooIntegrationStoppingCriterion:
+    def should_we_continue(self, *, tree: object) -> bool:
+        del tree
+        return True
+
+    def respectful_opening_instructions(
+        self,
+        *,
+        opening_instructions: OpeningInstructions[_LinooIntegrationNode],
+        tree: object,
+    ) -> OpeningInstructions[_LinooIntegrationNode]:
+        del tree
+        return opening_instructions
+
+    def notify_percent_progress(
+        self,
+        *,
+        tree: object,
+        notify_percent_function: object,
+    ) -> None:
+        del tree, notify_percent_function
+
+    def get_string_of_progress(self, tree: object) -> str:
+        del tree
+        return "progress"
+
+
+def test_linoo_incremental_cache_updates_through_tree_exploration_step() -> None:
+    """Real ``TreeExploration.step`` should feed Linoo incremental expansions."""
+    root = _linoo_integration_node(0, 0, 0.0, opened=True)
+    first = _linoo_integration_node(10, 1, 5.0)
+    second = _linoo_integration_node(11, 1, 4.0)
+    tree = _linoo_integration_tree(root, first, second)
+    selector = Linoo(opening_instructor=_LinooIntegrationOpeningInstructor())
+    exploration = TreeExploration(
+        tree=tree,
+        tree_manager=_LinooIntegrationManager(),
+        node_selector=selector,
+        recommend_branch_after_exploration=_RecommendSpy(),
+        stopping_criterion=_LinooIntegrationStoppingCriterion(),
+        notify_percent_function=lambda progress: None,
+    )
+
+    assert _scan_linoo_integration_selected_node_id(tree) == 10
+    first_report = exploration.step()
+
+    assert first_report.selected_node_id == 10
+    assert first_report.selector_report is not None
+    assert first_report.selector_report.state_rebuilt is True
+    assert _scan_linoo_integration_selected_node_id(tree) == 20
+
+    second_report = exploration.step()
+
+    assert second_report.selected_node_id == 20
+    assert second_report.selector_report is not None
+    assert second_report.selector_report.state_rebuilt is False
+    assert second_report.selector_report.nodes_incrementally_updated == 2
+    assert second_report.selector_report.total_nodes_scanned < tree.nodes_count

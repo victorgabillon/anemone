@@ -23,6 +23,7 @@ from anemone.node_selector.opening_instructions import (
 )
 from anemone.node_selector.priority_check.noop_args import NoPriorityCheckArgs
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
+from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
 
 @dataclass
@@ -127,6 +128,7 @@ def _tree(
     return SimpleNamespace(
         root_node=root,
         descendants=descendants,
+        nodes_count=len(nodes),
         node_depth=lambda node: node.tree_depth - root.tree_depth,
     )
 
@@ -222,6 +224,8 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.selected_depth_selection_index == 3
     assert report.depth_row_count == 3
     assert report.total_nodes_scanned == 7
+    assert report.state_rebuilt is True
+    assert report.nodes_incrementally_updated == 7
     assert report.frontier_nodes_scanned == 3
     assert report.uncached_terminal_candidates == 0
     assert report.selected_depth_frontier_count == 2
@@ -290,6 +294,57 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
         "index",
         "selected",
     ]
+
+
+def test_linoo_updates_latest_expansion_incrementally() -> None:
+    """After the initial rebuild, Linoo should refresh only touched nodes."""
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    root = _node(0, 0, opened=True)
+    first = _node(10, 1, score=5.0)
+    second = _node(11, 1, score=4.0)
+    tree = _tree(root, first, second)
+
+    first_instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    first_report = selector.latest_selection_report
+    assert first_report is not None
+    assert _selected_node_id(first_instructions) == 10
+    assert first_report.state_rebuilt is True
+    assert first_report.total_nodes_scanned == 3
+
+    first.all_branches_generated = True
+    child = _node(20, 2, score=100.0)
+    tree.descendants.setdefault(child.tree_depth, {})[child.id] = child
+    tree.nodes_count += 1
+    expansions: TreeExpansions[_FakeNode] = TreeExpansions()
+    expansions.record_creation(
+        TreeExpansion(
+            child_node=child,
+            parent_node=first,
+            state_modifications=None,
+            creation_child_node=True,
+            branch_key=0,
+        )
+    )
+
+    second_instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=expansions,
+    )
+
+    second_report = selector.latest_selection_report
+    assert second_report is not None
+    assert _selected_node_id(second_instructions) == 20
+    assert second_report.state_rebuilt is False
+    assert second_report.nodes_incrementally_updated == 2
+    assert second_report.total_nodes_scanned == 2
+    rows_by_depth = {row.depth: row for row in second_report.depth_rows}
+    assert rows_by_depth[1].opened_count == 1
+    assert rows_by_depth[1].frontier_count == 1
+    assert rows_by_depth[2].frontier_count == 1
 
 
 def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
@@ -480,7 +535,7 @@ def test_linoo_heap_selection_matches_scan_based_policy() -> None:
 
 
 def test_linoo_heap_updates_when_direct_value_changes() -> None:
-    """Changed direct values should replace older heap priorities lazily."""
+    """Touched direct-value changes should replace older heap priorities lazily."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())
     first = _node(10, 1, score=3.0)
     second = _node(11, 1, score=2.0)
@@ -494,14 +549,26 @@ def test_linoo_heap_updates_when_direct_value_changes() -> None:
     ) == 10
 
     first.tree_evaluation.direct_value = _value(1.0)
+    expansions: TreeExpansions[_FakeNode] = TreeExpansions()
+    expansions.record_connection(
+        TreeExpansion(
+            child_node=first,
+            parent_node=None,
+            state_modifications=None,
+            creation_child_node=False,
+            branch_key=0,
+        )
+    )
     instructions = selector.choose_node_and_branch_to_open(
         tree=tree,
-        latest_tree_expansions=SimpleNamespace(),
+        latest_tree_expansions=expansions,
     )
 
     assert _selected_node_id(instructions) == 11
     report = selector.latest_selection_report
     assert report is not None
+    assert report.state_rebuilt is False
+    assert report.nodes_incrementally_updated == 1
     assert report.stale_candidates_skipped == 1
     assert report.heap_candidates_registered == 1
 
