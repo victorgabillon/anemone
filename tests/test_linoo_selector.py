@@ -225,7 +225,7 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.depth_row_count == 3
     assert report.total_nodes_scanned == 7
     assert report.state_rebuilt is True
-    assert report.nodes_incrementally_updated == 7
+    assert report.nodes_incrementally_updated == 0
     assert report.frontier_nodes_scanned == 3
     assert report.uncached_terminal_candidates == 0
     assert report.selected_depth_frontier_count == 2
@@ -534,7 +534,7 @@ def test_linoo_heap_selection_matches_scan_based_policy() -> None:
     assert _selected_node_id(instructions) == _scan_selected_node_id(tree)
 
 
-def test_linoo_heap_updates_when_direct_value_changes() -> None:
+def test_linoo_heap_updates_when_touched_frontier_direct_value_changes() -> None:
     """Touched direct-value changes should replace older heap priorities lazily."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())
     first = _node(10, 1, score=3.0)

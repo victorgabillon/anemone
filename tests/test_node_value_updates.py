@@ -6,7 +6,11 @@ from typing import Any, cast
 import pytest
 
 from anemone import NodeValueUpdate, NodeValueUpdateResult
-from tests.test_node_reevaluation import _build_runtime, _node_at
+from tests.test_node_reevaluation import (
+    _InvalidationSpySelector,
+    _build_runtime,
+    _node_at,
+)
 
 
 def _runtime_with_one_expansion() -> Any:
@@ -101,6 +105,58 @@ def test_apply_node_value_updates_can_skip_backup_recompute() -> None:
     assert child.tree_evaluation.direct_value is not None
     assert child.tree_evaluation.direct_value.score == pytest.approx(1.0)
     assert root.tree_evaluation.get_value().score == pytest.approx(root_value_before)
+
+
+def test_apply_node_value_updates_invalidates_selector_when_direct_value_changes() -> (
+    None
+):
+    runtime = _runtime_with_one_expansion()
+    selector = _InvalidationSpySelector()
+    runtime.node_selector = selector
+    child = _node_at(runtime, depth=1, node_id=1)
+
+    result = runtime.apply_node_value_updates(
+        [NodeValueUpdate(node_id=str(child.id), direct_value=1.0)],
+        recompute_backups=False,
+    )
+
+    assert result.applied_count == 1
+    assert selector.invalidations == 1
+
+
+def test_apply_node_value_updates_does_not_invalidate_selector_for_missing_only() -> (
+    None
+):
+    runtime = _runtime_with_one_expansion()
+    selector = _InvalidationSpySelector()
+    runtime.node_selector = selector
+
+    result = runtime.apply_node_value_updates(
+        [NodeValueUpdate(node_id="missing-node", direct_value=1.0)],
+        allow_missing=True,
+    )
+
+    assert result.applied_count == 0
+    assert selector.invalidations == 0
+
+
+def test_apply_node_value_updates_does_not_invalidate_selector_for_noop_update() -> (
+    None
+):
+    runtime = _runtime_with_one_expansion()
+    selector = _InvalidationSpySelector()
+    runtime.node_selector = selector
+    child = _node_at(runtime, depth=1, node_id=1)
+    assert child.tree_evaluation.direct_value is not None
+    existing_score = child.tree_evaluation.direct_value.score
+
+    result = runtime.apply_node_value_updates(
+        [NodeValueUpdate(node_id=str(child.id), direct_value=existing_score)],
+        recompute_backups=False,
+    )
+
+    assert result.applied_count == 1
+    assert selector.invalidations == 0
 
 
 def test_node_value_update_result_is_stable_and_serializable_enough() -> None:

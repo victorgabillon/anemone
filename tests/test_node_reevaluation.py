@@ -1,6 +1,7 @@
 """Focused tests for explicit reevaluation of existing tree nodes."""
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from random import Random
 from typing import Any
 
@@ -50,6 +51,19 @@ class _RecordingYamlEvaluator(MasterStateValueEvaluatorFromYaml):
             [int(getattr(getattr(item, "state", item), "tag")) for item in items]
         )
         return super().evaluate_batch_items(items)
+
+
+@dataclass
+class _InvalidationSpySelector:
+    invalidations: int = 0
+    latest_selection_report: object | None = None
+
+    def choose_node_and_branch_to_open(self, tree, latest_tree_expansions):
+        del tree, latest_tree_expansions
+        raise AssertionError("not needed in this test")
+
+    def invalidate(self) -> None:
+        self.invalidations += 1
 
 
 _CHILDREN_BY_ID = {
@@ -197,6 +211,36 @@ def test_reevaluate_existing_nodes_updates_root_value_and_best_branch() -> None:
     )
 
 
+def test_reevaluate_nodes_invalidates_selector_when_nodes_are_reevaluated() -> None:
+    values_a = {
+        0: 0.0,
+        1: 0.8,
+        2: 0.3,
+        3: 0.0,
+        4: 0.0,
+    }
+    values_b = {
+        0: 0.0,
+        1: 0.1,
+        2: 0.7,
+        3: 0.0,
+        4: 0.0,
+    }
+    runtime = _build_runtime(value_by_id=values_a)
+
+    runtime.step()
+    selector = _InvalidationSpySelector()
+    runtime.node_selector = selector
+    runtime.set_evaluator(MasterStateValueEvaluatorFromYaml(values_b))
+    child_one = _node_at(runtime, depth=1, node_id=1)
+    child_two = _node_at(runtime, depth=1, node_id=2)
+
+    report = runtime.reevaluate_nodes([child_one, child_two])
+
+    assert report.reevaluated_count == 2
+    assert selector.invalidations == 1
+
+
 def test_reevaluate_nodes_refreshes_exploration_indices() -> None:
     values_a = {
         0: 0.0,
@@ -300,6 +344,38 @@ def test_reevaluate_nodes_skips_terminal_states() -> None:
     assert leaf_four.tree_evaluation.direct_evaluation_version == leaf_four_version
 
 
+def test_reevaluate_terminal_skipped_nodes_does_not_invalidate_selector() -> None:
+    values_a = {
+        0: 0.0,
+        1: 0.8,
+        2: 0.3,
+        3: 0.4,
+        4: 0.6,
+    }
+    values_b = {
+        0: 0.0,
+        1: 0.1,
+        2: 0.7,
+        3: 0.9,
+        4: 0.2,
+    }
+    runtime = _build_runtime(value_by_id=values_a)
+
+    runtime.step()
+    runtime.step()
+    leaf_three = _node_at(runtime, depth=2, node_id=3)
+    leaf_four = _node_at(runtime, depth=2, node_id=4)
+    selector = _InvalidationSpySelector()
+    runtime.node_selector = selector
+    runtime.set_evaluator(MasterStateValueEvaluatorFromYaml(values_b))
+
+    report = runtime.reevaluate_nodes([leaf_three, leaf_four])
+
+    assert report.reevaluated_count == 0
+    assert report.skipped_terminal_count == 2
+    assert selector.invalidations == 0
+
+
 def test_reevaluate_nodes_empty_request_is_a_no_op() -> None:
     values_a = {
         0: 0.0,
@@ -312,6 +388,8 @@ def test_reevaluate_nodes_empty_request_is_a_no_op() -> None:
 
     runtime.step()
     root_value_before = runtime.tree.root_node.tree_evaluation.get_value()
+    selector = _InvalidationSpySelector()
+    runtime.node_selector = selector
 
     report = runtime.reevaluate_nodes([])
 
@@ -321,3 +399,4 @@ def test_reevaluate_nodes_empty_request_is_a_no_op() -> None:
     assert report.changed_count == 0
     assert report.skipped_terminal_count == 0
     assert runtime.tree.root_node.tree_evaluation.get_value() == root_value_before
+    assert selector.invalidations == 0

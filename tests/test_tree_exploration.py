@@ -370,6 +370,10 @@ class _LinooIntegrationOpeningInstructor:
 
 class _LinooIntegrationManager:
     dynamics: object = SimpleNamespace(action_name=lambda state, branch: str(branch))
+    node_evaluator: object = SimpleNamespace(
+        master_state_value_evaluator=None,
+        current_evaluator_version=0,
+    )
 
     def expand_instructions(
         self,
@@ -420,6 +424,25 @@ class _LinooIntegrationManager:
 
     def refresh_exploration_indices(self, *, tree: object) -> None:
         del tree
+
+    def reevaluate_nodes(
+        self,
+        *,
+        tree: object,
+        nodes: list[_LinooIntegrationNode],
+    ) -> object:
+        del tree
+        for node in nodes:
+            assert node.tree_evaluation.direct_value is not None
+            node.tree_evaluation.direct_value = Value(
+                score=node.tree_evaluation.direct_value.score + 1.0,
+                certainty=Certainty.ESTIMATE,
+            )
+        return SimpleNamespace(
+            reevaluated_count=len(nodes),
+            changed_count=len(nodes),
+            skipped_terminal_count=0,
+        )
 
     def print_best_line(self, *, tree: object) -> None:
         del tree
@@ -483,3 +506,36 @@ def test_linoo_incremental_cache_updates_through_tree_exploration_step() -> None
     assert second_report.selector_report.state_rebuilt is False
     assert second_report.selector_report.nodes_incrementally_updated == 2
     assert second_report.selector_report.total_nodes_scanned < tree.nodes_count
+
+
+def test_reevaluation_invalidates_linoo_incremental_cache_before_next_step() -> None:
+    """Reevaluation should force Linoo to rebuild before the next selection."""
+    root = _linoo_integration_node(0, 0, 0.0, opened=True)
+    first = _linoo_integration_node(10, 1, 5.0)
+    second = _linoo_integration_node(11, 1, 4.0)
+    tree = _linoo_integration_tree(root, first, second)
+    selector = Linoo(opening_instructor=_LinooIntegrationOpeningInstructor())
+    exploration = TreeExploration(
+        tree=tree,
+        tree_manager=_LinooIntegrationManager(),
+        node_selector=selector,
+        recommend_branch_after_exploration=_RecommendSpy(),
+        stopping_criterion=_LinooIntegrationStoppingCriterion(),
+        notify_percent_function=lambda progress: None,
+    )
+
+    first_report = exploration.step()
+    assert first_report.selector_report is not None
+    assert first_report.selector_report.state_rebuilt is True
+
+    second_report = exploration.step()
+    assert second_report.selector_report is not None
+    assert second_report.selector_report.state_rebuilt is False
+
+    frontier_node = second
+    reevaluation_report = exploration.reevaluate_nodes([frontier_node])
+    assert reevaluation_report.reevaluated_count == 1
+
+    third_report = exploration.step()
+    assert third_report.selector_report is not None
+    assert third_report.selector_report.state_rebuilt is True

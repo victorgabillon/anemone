@@ -2,8 +2,8 @@
 
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from time import perf_counter
 from random import Random
+from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey, State
@@ -258,6 +258,8 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def reevaluate_nodes(self, nodes: Sequence[NodeT]) -> ReevaluationReport:
         """Reevaluate existing nodes without changing the current tree structure."""
         outcome = self.tree_manager.reevaluate_nodes(tree=self.tree, nodes=nodes)
+        if outcome.reevaluated_count > 0:
+            self._invalidate_selector_cache_if_supported()
         return ReevaluationReport(
             evaluator_version=self.evaluator_version,
             requested_count=len(nodes),
@@ -313,12 +315,23 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             else:
                 recomputed_count = 0
 
+        if changed_nodes:
+            self._invalidate_selector_cache_if_supported()
+
         return NodeValueUpdateResult(
             requested_count=len(materialized_updates),
             applied_count=len(applied_nodes),
             missing_node_ids=missing_node_ids,
             recomputed_count=recomputed_count,
         )
+
+    def _invalidate_selector_cache_if_supported(self) -> bool:
+        """Invalidate selector runtime cache when the selector exposes invalidate()."""
+        invalidate = getattr(self.node_selector, "invalidate", None)
+        if not callable(invalidate):
+            return False
+        invalidate()
+        return True
 
     def _nodes_by_public_id(self) -> dict[str, NodeT]:
         """Return live nodes keyed by Anemone's public string node id."""

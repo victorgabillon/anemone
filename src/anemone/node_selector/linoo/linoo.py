@@ -426,13 +426,15 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     ) -> tuple[bool, int]:
         """Build or incrementally refresh cached Linoo tree state."""
         if not self._cache_matches(tree=tree, objective=objective):
-            return True, self._rebuild_runtime_state(tree=tree, objective=objective)
+            self._rebuild_runtime_state(tree=tree, objective=objective)
+            return True, 0
 
         nodes_to_update = self._incremental_nodes_from_expansions(
             latest_tree_expansions
         )
         if nodes_to_update is None:
-            return True, self._rebuild_runtime_state(tree=tree, objective=objective)
+            self._rebuild_runtime_state(tree=tree, objective=objective)
+            return True, 0
 
         nodes_updated = self._update_runtime_state_incrementally(
             tree=tree,
@@ -441,7 +443,8 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
         tree_node_count = self._tree_node_count(tree)
         if tree_node_count is not None and tree_node_count != len(self._node_state_by_id):
-            return True, self._rebuild_runtime_state(tree=tree, objective=objective)
+            self._rebuild_runtime_state(tree=tree, objective=objective)
+            return True, 0
         return False, nodes_updated
 
     def _cache_matches(
@@ -521,28 +524,19 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> dict[int, NodeT] | None:
         """Collect touched nodes using the explicit ``TreeExpansions`` API."""
-        creation_expansions = getattr(
-            latest_tree_expansions,
-            "expansions_with_node_creation",
-            None,
-        )
-        connection_expansions = getattr(
-            latest_tree_expansions,
-            "expansions_without_node_creation",
-            None,
-        )
-        created_nodes = getattr(latest_tree_expansions, "created_nodes", None)
-        affected_child_nodes = getattr(
-            latest_tree_expansions,
-            "affected_child_nodes",
-            None,
-        )
-        if (
-            creation_expansions is None
-            or connection_expansions is None
-            or not callable(created_nodes)
-            or not callable(affected_child_nodes)
-        ):
+        try:
+            creation_expansions = (
+                latest_tree_expansions.expansions_with_node_creation
+            )
+            connection_expansions = (
+                latest_tree_expansions.expansions_without_node_creation
+            )
+            created_nodes = latest_tree_expansions.created_nodes
+            affected_child_nodes = latest_tree_expansions.affected_child_nodes
+        except AttributeError:
+            # Defensive fallback for legacy tests/non-standard selector callers.
+            return None
+        if not callable(created_nodes) or not callable(affected_child_nodes):
             return None
 
         nodes_by_id: dict[int, NodeT] = {}

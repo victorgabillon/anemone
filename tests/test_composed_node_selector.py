@@ -23,11 +23,25 @@ class DummyBaseSelector:
     result: OpeningInstructions
     latest_selection_report: object | None = None
     calls: int = 0
+    invalidations: int = 0
 
     def choose_node_and_branch_to_open(self, tree, latest_tree_expansions):
         _ = tree
         _ = latest_tree_expansions
         self.calls += 1
+        return self.result
+
+    def invalidate(self) -> None:
+        self.invalidations += 1
+
+
+@dataclass
+class DummyBaseSelectorWithoutInvalidate:
+    result: OpeningInstructions
+
+    def choose_node_and_branch_to_open(self, tree, latest_tree_expansions):
+        _ = tree
+        _ = latest_tree_expansions
         return self.result
 
 
@@ -79,3 +93,24 @@ def test_composed_selector_str_mentions_both_parts() -> None:
     assert "ComposedNodeSelector" in text
     assert "base=" in text
     assert "priority=" in text
+
+
+def test_composed_selector_forwards_invalidate_to_base() -> None:
+    base = DummyBaseSelector(result=OpeningInstructions())
+    selector = ComposedNodeSelector(
+        priority_check=DummyPriorityCheck(result=None),
+        base=base,
+    )
+
+    selector.invalidate()
+
+    assert base.invalidations == 1
+
+
+def test_composed_selector_invalidate_is_noop_when_base_has_no_invalidate() -> None:
+    selector = ComposedNodeSelector(
+        priority_check=DummyPriorityCheck(result=None),
+        base=DummyBaseSelectorWithoutInvalidate(result=OpeningInstructions()),
+    )
+
+    selector.invalidate()

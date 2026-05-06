@@ -50,6 +50,12 @@ class ComposedNodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         )
         return opening_instructions
 
+    def invalidate(self) -> None:
+        """Forward selector-cache invalidation to the base selector when supported."""
+        invalidate = getattr(self.base, "invalidate", None)
+        if callable(invalidate):
+            invalidate()
+
     def __str__(self) -> str:
         """Return selector composition description."""
         return f"ComposedNodeSelector(base={self.base}, priority={self.priority_check})"
