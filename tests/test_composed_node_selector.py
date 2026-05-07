@@ -24,6 +24,11 @@ class DummyBaseSelector:
     latest_selection_report: object | None = None
     calls: int = 0
     invalidations: int = 0
+    refresh_calls: int = 0
+    build_calls: int = 0
+    restore_calls: int = 0
+    payload_to_return: object | None = None
+    restore_result: bool = True
 
     def choose_node_and_branch_to_open(self, tree, latest_tree_expansions):
         _ = tree
@@ -33,6 +38,30 @@ class DummyBaseSelector:
 
     def invalidate(self) -> None:
         self.invalidations += 1
+
+    def refresh_state_for_checkpoint(
+        self,
+        *,
+        tree,
+        objective,
+        latest_tree_expansions,
+    ) -> None:
+        _ = tree
+        _ = objective
+        _ = latest_tree_expansions
+        self.refresh_calls += 1
+
+    def build_checkpoint_payload(self, objective):
+        _ = objective
+        self.build_calls += 1
+        return self.payload_to_return
+
+    def restore_from_checkpoint_payload(self, *, tree, objective, payload) -> bool:
+        _ = tree
+        _ = objective
+        _ = payload
+        self.restore_calls += 1
+        return self.restore_result
 
 
 @dataclass
@@ -114,3 +143,74 @@ def test_composed_selector_invalidate_is_noop_when_base_has_no_invalidate() -> N
     )
 
     selector.invalidate()
+
+
+def test_composed_selector_forwards_refresh_state_for_checkpoint_to_base() -> None:
+    base = DummyBaseSelector(result=OpeningInstructions())
+    selector = ComposedNodeSelector(
+        priority_check=DummyPriorityCheck(result=None),
+        base=base,
+    )
+
+    selector.refresh_state_for_checkpoint(
+        tree=object(),
+        objective=object(),
+        latest_tree_expansions=object(),
+    )
+
+    assert base.refresh_calls == 1
+
+
+def test_composed_selector_forwards_build_checkpoint_payload_to_base() -> None:
+    payload = object()
+    base = DummyBaseSelector(
+        result=OpeningInstructions(),
+        payload_to_return=payload,
+    )
+    selector = ComposedNodeSelector(
+        priority_check=DummyPriorityCheck(result=None),
+        base=base,
+    )
+
+    assert selector.build_checkpoint_payload(objective=object()) is payload
+    assert base.build_calls == 1
+
+
+def test_composed_selector_forwards_restore_checkpoint_payload_to_base() -> None:
+    base = DummyBaseSelector(result=OpeningInstructions())
+    selector = ComposedNodeSelector(
+        priority_check=DummyPriorityCheck(result=None),
+        base=base,
+    )
+
+    restored = selector.restore_from_checkpoint_payload(
+        tree=object(),
+        objective=object(),
+        payload=object(),
+    )
+
+    assert restored is True
+    assert base.restore_calls == 1
+
+
+def test_composed_selector_checkpoint_methods_are_noop_without_base_support() -> None:
+    selector = ComposedNodeSelector(
+        priority_check=DummyPriorityCheck(result=None),
+        base=DummyBaseSelectorWithoutInvalidate(result=OpeningInstructions()),
+    )
+
+    selector.refresh_state_for_checkpoint(
+        tree=object(),
+        objective=object(),
+        latest_tree_expansions=object(),
+    )
+
+    assert selector.build_checkpoint_payload(objective=object()) is None
+    assert (
+        selector.restore_from_checkpoint_payload(
+            tree=object(),
+            objective=object(),
+            payload=object(),
+        )
+        is False
+    )

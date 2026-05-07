@@ -25,6 +25,7 @@ from anemone.indices.node_indices.index_data import (
 )
 from anemone.node_evaluation.tree.decision_ordering import BranchOrderingKey
 from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
+from anemone.node_selector import StatefulNodeSelector
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
 from anemone.progress_monitor.progress_monitor import create_stopping_criterion
@@ -800,17 +801,14 @@ def _restore_explicit_selector_state(
     objective = runtime.tree.root_node.tree_evaluation.required_objective
     if not isinstance(objective, SingleAgentMaxObjective):
         return
+    if not isinstance(runtime.node_selector, StatefulNodeSelector):
+        return
 
-    for selector in _iter_selector_components(runtime.node_selector):
-        restore_payload = getattr(selector, "restore_from_checkpoint_payload", None)
-        if callable(restore_payload):
-            restored = restore_payload(
-                tree=runtime.tree,
-                objective=objective,
-                payload=payload,
-            )
-            if restored:
-                return
+    runtime.node_selector.restore_from_checkpoint_payload(
+        tree=runtime.tree,
+        objective=objective,
+        payload=payload,
+    )
 
 
 def _restore_tree_expansion(

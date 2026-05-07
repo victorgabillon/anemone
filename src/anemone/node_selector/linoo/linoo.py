@@ -328,6 +328,22 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Discard incremental selector state so the next selection rebuilds."""
         self._clear_runtime_state()
 
+    def refresh_state_for_checkpoint(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        objective: SingleAgentMaxObjective[Any],
+        latest_tree_expansions: tree_man.TreeExpansions[NodeT],
+    ) -> None:
+        """Refresh initialized runtime cache before checkpoint serialization."""
+        if not self._cache_initialized:
+            return
+        self._ensure_runtime_state(
+            tree=tree,
+            objective=objective,
+            latest_tree_expansions=latest_tree_expansions,
+        )
+
     def build_checkpoint_payload(
         self,
         objective: SingleAgentMaxObjective[Any],

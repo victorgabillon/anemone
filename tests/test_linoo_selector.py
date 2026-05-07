@@ -672,6 +672,61 @@ def test_linoo_checkpoint_restore_rejects_changed_classification() -> None:
     assert restored is False
 
 
+def test_linoo_refresh_state_for_checkpoint_updates_initialized_cache_only() -> None:
+    """Public checkpoint refresh should update only an initialized Linoo cache."""
+    objective = SingleAgentMaxObjective()
+    root = _node(0, 0, opened=True)
+    first = _node(10, 1, score=5.0)
+    second = _node(11, 1, score=4.0)
+    tree = _tree(root, first, second, objective=objective)
+    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+
+    selector.refresh_state_for_checkpoint(
+        tree=tree,
+        objective=objective,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert selector.build_checkpoint_payload(objective) is None
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+    child = _node(20, 2, score=100.0)
+    first.all_branches_generated = True
+    tree.descendants.setdefault(2, {})[child.id] = child
+    tree.nodes_count += 1
+    expansions: TreeExpansions[_FakeNode] = TreeExpansions()
+    expansions.record_creation(
+        TreeExpansion(
+            child_node=child,
+            parent_node=first,
+            state_modifications=None,
+            creation_child_node=True,
+            branch_key=0,
+        )
+    )
+
+    selector.refresh_state_for_checkpoint(
+        tree=tree,
+        objective=objective,
+        latest_tree_expansions=expansions,
+    )
+    payload = selector.build_checkpoint_payload(objective)
+
+    assert payload is not None
+    assert {node_state.node_id for node_state in payload.node_states} == {
+        0,
+        10,
+        11,
+        20,
+    }
+    assert next(
+        node_state for node_state in payload.node_states if node_state.node_id == 10
+    ).status == "opened"
+
+
 def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:
     """Linoo should maximize direct value inside the selected depth."""
     selector = Linoo(opening_instructor=_FakeOpeningInstructor())

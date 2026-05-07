@@ -15,6 +15,7 @@ from anemone.checkpoints import (
     AnchorCheckpointStatePayload,
     DeltaCheckpointStatePayload,
     LinkedChildCheckpointPayload,
+    LinooSelectorCheckpointPayload,
     SearchRuntimeCheckpointPayload,
     TreeExpansionsCheckpointPayload,
     build_search_checkpoint_payload,
@@ -158,6 +159,46 @@ class _SelectiveDeltaCheckpointCodec(_FakeIncrementalStateCheckpointCodec):
             child_state=child_state,
             branch_from_parent=branch_from_parent,
         )
+
+
+@dataclass
+class _CheckpointStateSpySelector:
+    """Selector exposing only the public stateful checkpoint interface."""
+
+    payload: LinooSelectorCheckpointPayload
+    refresh_calls: int = 0
+    build_calls: int = 0
+
+    def choose_node_and_branch_to_open(self, tree, latest_tree_expansions):
+        _ = tree
+        _ = latest_tree_expansions
+        raise AssertionError
+
+    def invalidate(self) -> None:
+        pass
+
+    def refresh_state_for_checkpoint(
+        self,
+        *,
+        tree,
+        objective,
+        latest_tree_expansions,
+    ) -> None:
+        _ = tree
+        _ = objective
+        _ = latest_tree_expansions
+        self.refresh_calls += 1
+
+    def build_checkpoint_payload(self, objective):
+        _ = objective
+        self.build_calls += 1
+        return self.payload
+
+    def restore_from_checkpoint_payload(self, *, tree, objective, payload) -> bool:
+        _ = tree
+        _ = objective
+        _ = payload
+        return False
 
 
 def _build_args(
@@ -312,6 +353,22 @@ def test_build_search_checkpoint_payload_omits_uninitialized_linoo_state() -> No
     payload = _build_payload(runtime)
 
     assert payload.selector_state is None
+
+
+def test_checkpoint_build_uses_selector_public_stateful_interface() -> None:
+    """Checkpoint build should avoid Linoo private cache hooks."""
+    runtime = _build_linoo_runtime()
+    selector_payload = LinooSelectorCheckpointPayload()
+    selector = _CheckpointStateSpySelector(payload=selector_payload)
+    runtime.node_selector = selector
+
+    payload = _build_payload(runtime)
+
+    assert payload.selector_state is selector_payload
+    assert selector.refresh_calls == 1
+    assert selector.build_calls == 1
+    assert not hasattr(selector, "_ensure_runtime_state")
+    assert not hasattr(selector, "_cache_initialized")
 
 
 def test_node_state_payloads_use_anchor_and_delta_codec_outputs() -> None:

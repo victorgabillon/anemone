@@ -8,9 +8,11 @@ from anemone.node_selector.node_selector import NodeSelector
 from anemone.node_selector.opening_instructions import OpeningInstructions
 from anemone.node_selector.priority_check.priority_check import PriorityCheck
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.objectives import SingleAgentMaxObjective
 
 if TYPE_CHECKING:
     from anemone import tree_manager as tree_man
+    from anemone.checkpoints.payloads import SelectorCheckpointPayload
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,45 @@ class ComposedNodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         invalidate = getattr(self.base, "invalidate", None)
         if callable(invalidate):
             invalidate()
+
+    def refresh_state_for_checkpoint(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        objective: SingleAgentMaxObjective[Any],
+        latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
+    ) -> None:
+        """Forward selector checkpoint refresh to the base selector when supported."""
+        refresh = getattr(self.base, "refresh_state_for_checkpoint", None)
+        if callable(refresh):
+            refresh(
+                tree=tree,
+                objective=objective,
+                latest_tree_expansions=latest_tree_expansions,
+            )
+
+    def build_checkpoint_payload(
+        self,
+        objective: SingleAgentMaxObjective[Any],
+    ) -> "SelectorCheckpointPayload | None":
+        """Forward selector checkpoint export to the base selector when supported."""
+        build_payload = getattr(self.base, "build_checkpoint_payload", None)
+        if callable(build_payload):
+            return build_payload(objective)
+        return None
+
+    def restore_from_checkpoint_payload(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        objective: SingleAgentMaxObjective[Any],
+        payload: "SelectorCheckpointPayload",
+    ) -> bool:
+        """Forward selector checkpoint restore to the base selector when supported."""
+        restore = getattr(self.base, "restore_from_checkpoint_payload", None)
+        if callable(restore):
+            return bool(restore(tree=tree, objective=objective, payload=payload))
+        return False
 
     def __str__(self) -> str:
         """Return selector composition description."""

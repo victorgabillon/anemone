@@ -16,7 +16,7 @@ To use this module, import it and use the provided classes and functions as need
 from .all_node_selector_args import AllNodeSelectorArgs
 from .composed import ComposedNodeSelector, ComposedNodeSelectorArgs
 from .factory import create
-from .node_selector import NodeSelector
+from .node_selector import InvalidatableNodeSelector, NodeSelector, StatefulNodeSelector
 from .node_selector_args import NodeSelectorArgs
 from .node_selector_types import NodeSelectorType
 from .opening_instructions import OpeningInstruction, OpeningInstructions, OpeningType
@@ -25,11 +25,13 @@ __all__ = [
     "AllNodeSelectorArgs",
     "ComposedNodeSelector",
     "ComposedNodeSelectorArgs",
+    "InvalidatableNodeSelector",
     "NodeSelector",
     "NodeSelectorArgs",
     "NodeSelectorType",
     "OpeningInstruction",
     "OpeningInstructions",
     "OpeningType",
+    "StatefulNodeSelector",
     "create",
 ]
