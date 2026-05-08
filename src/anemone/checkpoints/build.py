@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, fields, is_dataclass
 from random import Random
+from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
 
 from anemone.node_selector import StatefulNodeSelector
@@ -61,6 +63,22 @@ class _CheckpointBuildMetrics:
     delta_candidates_rejected: int = 0
     delta_payloads_emitted: int = 0
     anchor_fallbacks: int = 0
+    node_count: int = 0
+    anchor_payloads_emitted: int = 0
+    iter_nodes_s: float = 0.0
+    tree_payload_s: float = 0.0
+    node_payload_total_s: float = 0.0
+    state_payload_total_s: float = 0.0
+    anchor_state_total_s: float = 0.0
+    delta_state_total_s: float = 0.0
+    state_summary_total_s: float = 0.0
+    evaluation_payload_total_s: float = 0.0
+    exploration_index_total_s: float = 0.0
+    linked_children_total_s: float = 0.0
+    unopened_branches_total_s: float = 0.0
+    latest_expansions_total_s: float = 0.0
+    selector_state_total_s: float = 0.0
+    rng_state_total_s: float = 0.0
 
 
 def build_search_checkpoint_payload(
@@ -74,18 +92,34 @@ def build_search_checkpoint_payload(
     anchor snapshots plus parent-to-child deltas.
     """
     metrics = _CheckpointBuildMetrics()
+    _maybe_reset_checkpoint_profile(state_codec)
+    tree_payload_started_at = perf_counter()
     tree_payload = _build_tree_payload(
         search=search,
         state_codec=state_codec,
         metrics=metrics,
     )
+    metrics.tree_payload_s += perf_counter() - tree_payload_started_at
+    rng_state_started_at = perf_counter()
+    rng_state = _maybe_dump_rng_state(search)
+    metrics.rng_state_total_s += perf_counter() - rng_state_started_at
+    latest_tree_expansions_started_at = perf_counter()
+    latest_tree_expansions = _build_latest_tree_expansions_payload(search)
+    metrics.latest_expansions_total_s += (
+        perf_counter() - latest_tree_expansions_started_at
+    )
+    selector_state_started_at = perf_counter()
+    selector_state = _build_selector_state_payload(search)
+    metrics.selector_state_total_s += perf_counter() - selector_state_started_at
     _log_checkpoint_build_metrics(metrics)
+    _maybe_log_checkpoint_codec_profile(state_codec)
+    _maybe_reset_checkpoint_profile(state_codec)
     return SearchRuntimeCheckpointPayload(
         evaluator_version=search.evaluator_version,
         tree=tree_payload,
-        rng_state=_maybe_dump_rng_state(search),
-        latest_tree_expansions=_build_latest_tree_expansions_payload(search),
-        selector_state=_build_selector_state_payload(search),
+        rng_state=rng_state,
+        latest_tree_expansions=latest_tree_expansions,
+        selector_state=selector_state,
     )
 
 
@@ -96,17 +130,24 @@ def _build_tree_payload(
     metrics: _CheckpointBuildMetrics,
 ) -> TreeCheckpointPayload:
     """Build the tree payload in stable depth/insertion descendant order."""
+    iter_nodes_started_at = perf_counter()
     nodes = _iter_nodes_in_checkpoint_order(search)
-    return TreeCheckpointPayload(
-        root_node_id=search.tree.root_node.id,
-        nodes=[
+    metrics.iter_nodes_s += perf_counter() - iter_nodes_started_at
+    metrics.node_count = len(nodes)
+    payload_nodes: list[AlgorithmNodeCheckpointPayload] = []
+    for node in nodes:
+        node_payload_started_at = perf_counter()
+        payload_nodes.append(
             _build_node_payload(
                 node=node,
                 state_codec=state_codec,
                 metrics=metrics,
             )
-            for node in nodes
-        ],
+        )
+        metrics.node_payload_total_s += perf_counter() - node_payload_started_at
+    return TreeCheckpointPayload(
+        root_node_id=search.tree.root_node.id,
+        nodes=payload_nodes,
     )
 
 
@@ -135,6 +176,18 @@ def _build_node_payload(
         _branch_from_parent,
         branch_from_parent_payload,
     ) = _representative_parent_link(node)
+    unopened_branches_started_at = perf_counter()
+    unopened_branches = _serialize_branch_collection(node.non_opened_branches)
+    metrics.unopened_branches_total_s += perf_counter() - unopened_branches_started_at
+    linked_children_started_at = perf_counter()
+    linked_children = _serialize_linked_children(node.branches_children)
+    metrics.linked_children_total_s += perf_counter() - linked_children_started_at
+    evaluation_started_at = perf_counter()
+    evaluation = _build_node_evaluation_payload(node)
+    metrics.evaluation_payload_total_s += perf_counter() - evaluation_started_at
+    exploration_index_started_at = perf_counter()
+    exploration_index = _build_exploration_index_payload(node)
+    metrics.exploration_index_total_s += perf_counter() - exploration_index_started_at
     return AlgorithmNodeCheckpointPayload(
         node_id=node.id,
         parent_node_id=parent_node_id,
@@ -146,10 +199,10 @@ def _build_node_payload(
             metrics=metrics,
         ),
         generated_all_branches=node.all_branches_generated,
-        unopened_branches=_serialize_branch_collection(node.non_opened_branches),
-        linked_children=_serialize_linked_children(node.branches_children),
-        evaluation=_build_node_evaluation_payload(node),
-        exploration_index=_build_exploration_index_payload(node),
+        unopened_branches=unopened_branches,
+        linked_children=linked_children,
+        evaluation=evaluation,
+        exploration_index=exploration_index,
     )
 
 
@@ -185,28 +238,42 @@ def _build_checkpoint_state_payload(
     metrics: _CheckpointBuildMetrics,
 ) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload:
     """Build one explicit anchor-or-delta checkpoint payload for ``node``."""
-    state_summary = _dump_optional_state_summary(node.state, state_codec=state_codec)
-    representative_parent, _parent_id, _branch, _branch_payload = (
-        _representative_parent_link(node)
-    )
-    if _is_anchor_node(node=node, parent_node=representative_parent):
+    state_payload_started_at = perf_counter()
+    try:
+        state_summary_started_at = perf_counter()
+        state_summary = _dump_optional_state_summary(node.state, state_codec=state_codec)
+        metrics.state_summary_total_s += perf_counter() - state_summary_started_at
+        representative_parent, _parent_id, _branch, _branch_payload = (
+            _representative_parent_link(node)
+        )
+        if _is_anchor_node(node=node, parent_node=representative_parent):
+            anchor_started_at = perf_counter()
+            anchor_ref = state_codec.dump_anchor_ref(node.state)
+            metrics.anchor_state_total_s += perf_counter() - anchor_started_at
+            metrics.anchor_payloads_emitted += 1
+            return AnchorCheckpointStatePayload(
+                anchor_ref=anchor_ref,
+                state_summary=state_summary,
+            )
+        delta_payload = _try_build_delta_state_payload(
+            node=node,
+            state_codec=state_codec,
+            state_summary=state_summary,
+            metrics=metrics,
+        )
+        if delta_payload is not None:
+            return delta_payload
+        metrics.anchor_fallbacks += 1
+        anchor_started_at = perf_counter()
+        anchor_ref = state_codec.dump_anchor_ref(node.state)
+        metrics.anchor_state_total_s += perf_counter() - anchor_started_at
+        metrics.anchor_payloads_emitted += 1
         return AnchorCheckpointStatePayload(
-            anchor_ref=state_codec.dump_anchor_ref(node.state),
+            anchor_ref=anchor_ref,
             state_summary=state_summary,
         )
-    delta_payload = _try_build_delta_state_payload(
-        node=node,
-        state_codec=state_codec,
-        state_summary=state_summary,
-        metrics=metrics,
-    )
-    if delta_payload is not None:
-        return delta_payload
-    metrics.anchor_fallbacks += 1
-    return AnchorCheckpointStatePayload(
-        anchor_ref=state_codec.dump_anchor_ref(node.state),
-        state_summary=state_summary,
-    )
+    finally:
+        metrics.state_payload_total_s += perf_counter() - state_payload_started_at
 
 
 def _try_build_delta_state_payload(
@@ -220,12 +287,15 @@ def _try_build_delta_state_payload(
     for candidate_parent, branch in _iter_candidate_state_parent_links(node):
         metrics.delta_candidates_attempted += 1
         try:
+            delta_started_at = perf_counter()
             delta_ref = state_codec.dump_delta_from_parent(
                 parent_state=candidate_parent.state,
                 child_state=node.state,
                 branch_from_parent=branch,
             )
+            metrics.delta_state_total_s += perf_counter() - delta_started_at
         except Exception as exc:  # pylint: disable=broad-exception-caught
+            metrics.delta_state_total_s += perf_counter() - delta_started_at
             metrics.delta_candidates_rejected += 1
             checkpoint_logger.debug(
                 "delta candidate rejected child=%s parent=%s branch=%r err=%s",
@@ -268,6 +338,45 @@ def _log_checkpoint_build_metrics(metrics: _CheckpointBuildMetrics) -> None:
             metrics.anchor_fallbacks,
             attempted_delta_nodes,
         )
+    anemone_logger.info(
+        "[checkpoint-profile] node_count=%s anchors=%s deltas=%s "
+        "delta_attempts=%s delta_rejected=%s anchor_fallbacks=%s "
+        "iter_nodes_s=%.6f tree_payload_s=%.6f node_payload_total_s=%.6f "
+        "state_payload_total_s=%.6f anchor_state_total_s=%.6f "
+        "delta_state_total_s=%.6f state_summary_total_s=%.6f "
+        "evaluation_payload_total_s=%.6f exploration_index_total_s=%.6f "
+        "linked_children_total_s=%.6f unopened_branches_total_s=%.6f "
+        "latest_expansions_total_s=%.6f selector_state_total_s=%.6f "
+        "rng_state_total_s=%.6f",
+        metrics.node_count,
+        metrics.anchor_payloads_emitted,
+        metrics.delta_payloads_emitted,
+        metrics.delta_candidates_attempted,
+        metrics.delta_candidates_rejected,
+        metrics.anchor_fallbacks,
+        metrics.iter_nodes_s,
+        metrics.tree_payload_s,
+        metrics.node_payload_total_s,
+        metrics.state_payload_total_s,
+        metrics.anchor_state_total_s,
+        metrics.delta_state_total_s,
+        metrics.state_summary_total_s,
+        metrics.evaluation_payload_total_s,
+        metrics.exploration_index_total_s,
+        metrics.linked_children_total_s,
+        metrics.unopened_branches_total_s,
+        metrics.latest_expansions_total_s,
+        metrics.selector_state_total_s,
+        metrics.rng_state_total_s,
+    )
+    anemone_logger.info(
+        "[checkpoint-profile-rates] node_avg_ms=%.6f anchor_avg_ms=%.6f "
+        "delta_avg_ms=%.6f summary_avg_ms=%.6f",
+        _average_ms(metrics.node_payload_total_s, metrics.node_count),
+        _average_ms(metrics.anchor_state_total_s, metrics.anchor_payloads_emitted),
+        _average_ms(metrics.delta_state_total_s, metrics.delta_payloads_emitted),
+        _average_ms(metrics.state_summary_total_s, metrics.node_count),
+    )
 
 
 def _iter_candidate_state_parent_links(
@@ -549,6 +658,51 @@ def _build_tree_expansion_payload(
         branch_key=_serialize_optional_atom(tree_expansion.branch_key),
         creation_child_node=tree_expansion.creation_child_node,
     )
+
+
+def _average_ms(total_s: float, count: int) -> float:
+    """Return a stable milliseconds average with zero-safe division."""
+    if count <= 0:
+        return 0.0
+    return 1000.0 * total_s / count
+
+
+def _maybe_log_checkpoint_codec_profile(state_codec: object) -> None:
+    """Log optional codec-provided aggregate profiling when available."""
+    profile_snapshot = getattr(state_codec, "checkpoint_profile_snapshot", None)
+    if not callable(profile_snapshot):
+        return
+    snapshot = profile_snapshot()
+    if not isinstance(snapshot, Mapping):
+        return
+    anemone_logger.info(
+        "[checkpoint-codec-profile] %s",
+        _format_profile_mapping(snapshot),
+    )
+
+
+def _maybe_reset_checkpoint_profile(state_codec: object) -> None:
+    """Reset optional codec-provided aggregate profiling when available."""
+    reset_profile = getattr(state_codec, "reset_checkpoint_profile", None)
+    if callable(reset_profile):
+        reset_profile()
+
+
+def _format_profile_mapping(profile: Mapping[object, object]) -> str:
+    """Format a small codec profile mapping as stable key=value pairs."""
+    items: list[str] = []
+    for key in sorted(profile, key=str):
+        items.append(f"{key}={_format_profile_value(profile[key])}")
+    return " ".join(items)
+
+
+def _format_profile_value(value: object) -> str:
+    """Format one codec profile value for structured logs."""
+    if value is None:
+        return "none"
+    if isinstance(value, float):
+        return f"{value:.6f}"
+    return str(value)
 
 
 __all__ = ["build_search_checkpoint_payload"]

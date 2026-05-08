@@ -161,6 +161,30 @@ class _SelectiveDeltaCheckpointCodec(_FakeIncrementalStateCheckpointCodec):
         )
 
 
+class _ProfiledIncrementalStateCheckpointCodec(_FakeIncrementalStateCheckpointCodec):
+    """Fake codec exposing Anemone's optional aggregate profiling hooks."""
+
+    def __init__(self) -> None:
+        """Initialize fake checkpoint profiling state."""
+        super().__init__()
+        self.reset_calls = 0
+
+    def checkpoint_profile_snapshot(self) -> dict[str, object]:
+        """Return stable fake aggregate checkpoint profiling metrics."""
+        return {
+            "morpion_anchor_calls": len(self.dumped_anchor_node_ids),
+            "morpion_anchor_total_s": 0.001,
+            "morpion_delta_calls": len(self.dumped_delta_items),
+            "morpion_delta_total_s": 0.002,
+            "morpion_summary_calls": len(self.dumped_summary_node_ids),
+            "morpion_summary_total_s": 0.003,
+        }
+
+    def reset_checkpoint_profile(self) -> None:
+        """Count reset requests without clearing the fake call history."""
+        self.reset_calls += 1
+
+
 @dataclass
 class _CheckpointStateSpySelector:
     """Selector exposing only the public stateful checkpoint interface."""
@@ -561,10 +585,15 @@ def test_checkpoint_build_logs_aggregate_metrics_without_traceback_spam(
         "delta candidate rejected child=3 "
         f"parent={representative_parent_id} branch=0 err=ValueError"
     ]
-    assert info_messages == [
+    assert info_messages[0] == (
         "[checkpoint-metrics] delta_attempts=4 delta_rejected=1 "
         "delta_emitted=3 anchor_fallbacks=0"
-    ]
+    )
+    assert any(message.startswith("[checkpoint-profile]") for message in info_messages)
+    assert any(
+        message.startswith("[checkpoint-profile-rates]")
+        for message in info_messages
+    )
     assert all("Traceback" not in message for message in debug_messages)
 
 
@@ -590,6 +619,52 @@ def test_checkpoint_build_warns_once_when_anchor_fallback_rate_is_high(
         "Checkpoint anchor fallback rate is high: anchor_fallbacks=1 "
         "delta_nodes=3. This may indicate representative-parent/state-parent mismatch inefficiency."
     ]
+
+
+def test_checkpoint_build_logs_phase_profile_and_codec_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Checkpoint build should emit aggregate phase timings and codec profile data."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    codec = _ProfiledIncrementalStateCheckpointCodec()
+    info_messages: list[str] = []
+
+    def _record_info(msg: object, *args: object) -> None:
+        rendered = str(msg) % args if args else str(msg)
+        info_messages.append(rendered)
+
+    monkeypatch.setattr(anemone_logger, "info", _record_info)
+
+    _build_payload(runtime, state_codec=codec)
+
+    rendered_logs = "\n".join(info_messages)
+
+    assert "[checkpoint-profile]" in rendered_logs
+    assert "node_count=" in rendered_logs
+    assert "anchors=" in rendered_logs
+    assert "deltas=" in rendered_logs
+    assert "iter_nodes_s=" in rendered_logs
+    assert "state_payload_total_s=" in rendered_logs
+    assert "anchor_state_total_s=" in rendered_logs
+    assert "delta_state_total_s=" in rendered_logs
+    assert "state_summary_total_s=" in rendered_logs
+    assert "evaluation_payload_total_s=" in rendered_logs
+    assert "exploration_index_total_s=" in rendered_logs
+    assert "linked_children_total_s=" in rendered_logs
+    assert "unopened_branches_total_s=" in rendered_logs
+    assert "latest_expansions_total_s=" in rendered_logs
+    assert "selector_state_total_s=" in rendered_logs
+    assert "rng_state_total_s=" in rendered_logs
+    assert "[checkpoint-profile-rates]" in rendered_logs
+    assert "node_avg_ms=" in rendered_logs
+    assert "anchor_avg_ms=" in rendered_logs
+    assert "delta_avg_ms=" in rendered_logs
+    assert "summary_avg_ms=" in rendered_logs
+    assert "[checkpoint-codec-profile]" in rendered_logs
+    assert "morpion_anchor_calls=" in rendered_logs
+    assert codec.reset_calls >= 1
 
 
 def test_direct_and_backed_up_values_are_serialized_from_live_nodes() -> None:
