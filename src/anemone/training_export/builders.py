@@ -52,12 +52,50 @@ class ValueScalarExtractor(Protocol):
         ...
 
 
+class TrainingExportProfiler(Protocol):
+    """Protocol for optional aggregate profiling during one export build."""
+
+    def observe_state_handle(self, node: object) -> None:
+        """Record raw-handle classification before resolving ``node.state``."""
+        ...
+
+    def record_state_access(self, elapsed_s: float, *, state_present: bool) -> None:
+        """Record one ``node.state`` access wall time."""
+        ...
+
+    def record_state_ref_conversion(self, elapsed_s: float) -> None:
+        """Record one state-ref dumper call wall time."""
+        ...
+
+    def record_node_children(self, elapsed_s: float) -> None:
+        """Record time spent reading parent/child linkage payload."""
+        ...
+
+    def record_node_value(self, elapsed_s: float) -> None:
+        """Record time spent reading/exporting value payload fields."""
+        ...
+
+    def record_node_metadata(self, elapsed_s: float) -> None:
+        """Record time spent reading/exporting metadata payload fields."""
+        ...
+
+    def record_node_payload(self, elapsed_s: float) -> None:
+        """Record total wall time for one node payload build."""
+        ...
+
+    def record_node_traversal(self, elapsed_s: float) -> None:
+        """Record total wall time for the node traversal loop."""
+        ...
+
+
 @dataclass(slots=True)
 class _TrainingExportBuildStats:
     """Aggregate metrics for one training-tree snapshot build."""
 
     state_ref_serialization_count: int = 0
     state_ref_serialization_elapsed_s: float = 0.0
+    state_access_elapsed_s: float = 0.0
+    state_ref_conversion_elapsed_s: float = 0.0
 
 
 def build_training_node_snapshot(
@@ -67,34 +105,66 @@ def build_training_node_snapshot(
     direct_value_extractor: ValueScalarExtractor | None = None,
     backed_up_value_extractor: ValueScalarExtractor | None = None,
     _build_stats: _TrainingExportBuildStats | None = None,
+    _profile: TrainingExportProfiler | None = None,
 ) -> TrainingNodeSnapshot:
     """Build one training-grade node snapshot from a live or dummy node."""
+    node_started_at = perf_counter()
+    node_id = _get_node_id(node)
+
+    children_started_at = perf_counter()
+    parent_ids = _get_parent_ids(node)
+    child_ids = _get_child_ids(node)
+    if _profile is not None:
+        _profile.record_node_children(perf_counter() - children_started_at)
+
+    state_ref_payload = _dump_state_ref(
+        node,
+        state_ref_dumper=state_ref_dumper,
+        build_stats=_build_stats,
+        profile=_profile,
+    )
+
+    value_started_at = perf_counter()
     direct_value = _get_direct_value(node)
     backed_up_value = _get_backed_up_value(node)
-    return TrainingNodeSnapshot(
-        node_id=_get_node_id(node),
-        parent_ids=_get_parent_ids(node),
-        child_ids=_get_child_ids(node),
-        depth=_get_depth(node),
-        state_ref_payload=_dump_state_ref(
-            node,
-            state_ref_dumper=state_ref_dumper,
-            build_stats=_build_stats,
-        ),
-        direct_value_scalar=_extract_value_scalar(
-            direct_value,
-            extractor=direct_value_extractor,
-        ),
-        backed_up_value_scalar=_extract_value_scalar(
-            backed_up_value,
-            extractor=backed_up_value_extractor,
-        ),
-        is_terminal=_get_is_terminal(node),
-        is_exact=_get_is_exact(node),
-        over_event_label=_get_over_event_label(node),
-        visit_count=_get_visit_count(node),
-        metadata=_get_metadata(node),
+    direct_value_scalar = _extract_value_scalar(
+        direct_value,
+        extractor=direct_value_extractor,
     )
+    backed_up_value_scalar = _extract_value_scalar(
+        backed_up_value,
+        extractor=backed_up_value_extractor,
+    )
+    if _profile is not None:
+        _profile.record_node_value(perf_counter() - value_started_at)
+
+    metadata_started_at = perf_counter()
+    depth = _get_depth(node)
+    is_terminal = _get_is_terminal(node)
+    is_exact = _get_is_exact(node)
+    over_event_label = _get_over_event_label(node)
+    visit_count = _get_visit_count(node)
+    metadata = _get_metadata(node)
+    if _profile is not None:
+        _profile.record_node_metadata(perf_counter() - metadata_started_at)
+
+    snapshot = TrainingNodeSnapshot(
+        node_id=node_id,
+        parent_ids=parent_ids,
+        child_ids=child_ids,
+        depth=depth,
+        state_ref_payload=state_ref_payload,
+        direct_value_scalar=direct_value_scalar,
+        backed_up_value_scalar=backed_up_value_scalar,
+        is_terminal=is_terminal,
+        is_exact=is_exact,
+        over_event_label=over_event_label,
+        visit_count=visit_count,
+        metadata=metadata,
+    )
+    if _profile is not None:
+        _profile.record_node_payload(perf_counter() - node_started_at)
+    return snapshot
 
 
 def build_training_tree_snapshot(
@@ -106,6 +176,7 @@ def build_training_tree_snapshot(
     backed_up_value_extractor: ValueScalarExtractor | None = None,
     created_at_unix_s: float | None = None,
     metadata: dict[str, object] | None = None,
+    profile: TrainingExportProfiler | None = None,
 ) -> TrainingTreeSnapshot:
     """Build one training-grade tree snapshot in the caller-provided node order."""
     node_count = len(nodes)
@@ -120,6 +191,7 @@ def build_training_tree_snapshot(
             log_training_export_phase("node_traversal", node_count=node_count),
             log_training_export_phase("payload_build", node_count=node_count),
         ):
+            traversal_started_at = perf_counter()
             node_snapshots = tuple(
                 build_training_node_snapshot(
                     node,
@@ -127,13 +199,21 @@ def build_training_tree_snapshot(
                     direct_value_extractor=direct_value_extractor,
                     backed_up_value_extractor=backed_up_value_extractor,
                     _build_stats=build_stats,
+                    _profile=profile,
                 )
                 for node in nodes
             )
+            if profile is not None:
+                profile.record_node_traversal(perf_counter() - traversal_started_at)
         log_training_export_event(
             "state_ref_serialization",
             "done",
             elapsed_s=round(build_stats.state_ref_serialization_elapsed_s, 6),
+            state_access_elapsed_s=round(build_stats.state_access_elapsed_s, 6),
+            state_ref_conversion_elapsed_s=round(
+                build_stats.state_ref_conversion_elapsed_s,
+                6,
+            ),
             node_count=node_count,
             state_ref_count=build_stats.state_ref_serialization_count,
         )
@@ -247,19 +327,37 @@ def _dump_state_ref(
     *,
     state_ref_dumper: StateRefDumper | None,
     build_stats: _TrainingExportBuildStats | None,
+    profile: TrainingExportProfiler | None,
 ) -> Any | None:
     """Return a caller-dumped reversible state payload when possible."""
     if state_ref_dumper is None:
         return None
 
+    if profile is not None:
+        profile.observe_state_handle(node)
+    state_started_at = perf_counter()
     state = _get_state(node)
+    state_access_elapsed_s = perf_counter() - state_started_at
+    if build_stats is not None:
+        build_stats.state_access_elapsed_s += state_access_elapsed_s
+        build_stats.state_ref_serialization_elapsed_s += state_access_elapsed_s
+    if profile is not None:
+        profile.record_state_access(
+            state_access_elapsed_s,
+            state_present=state is not None,
+        )
     if state is None:
         return None
+
     started_at = perf_counter()
     dumped_state_ref = state_ref_dumper(state)
+    conversion_elapsed_s = perf_counter() - started_at
     if build_stats is not None:
         build_stats.state_ref_serialization_count += 1
-        build_stats.state_ref_serialization_elapsed_s += perf_counter() - started_at
+        build_stats.state_ref_conversion_elapsed_s += conversion_elapsed_s
+        build_stats.state_ref_serialization_elapsed_s += conversion_elapsed_s
+    if profile is not None:
+        profile.record_state_ref_conversion(conversion_elapsed_s)
     return dumped_state_ref
 
 

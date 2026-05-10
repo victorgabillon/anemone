@@ -18,6 +18,7 @@ dependencies = [
     "rich",
     "sortedcollections>=2.1.0",
     "PyYAML>=6.0",
+  "orjson",
 ]
 
 license = "GPL-3.0-only"

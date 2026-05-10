@@ -102,9 +102,25 @@ class CheckpointBackedStateHandle[StateT: State = State]:
         """Resolve and return the concrete state for this checkpoint node."""
         return self.resolver.resolve(self.node_id)
 
+    def checkpoint_payload_for_reuse_or_none(
+        self,
+    ) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload | None:
+        """Return the original checkpoint payload when this handle still owns one."""
+        return self.resolver.state_payloads_by_node_id.get(self.node_id)
+
+
+def checkpoint_payload_for_reuse_or_none(
+    handle: object,
+) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload | None:
+    """Return one reusable checkpoint payload for a lazy checkpoint handle."""
+    if not isinstance(handle, CheckpointBackedStateHandle):
+        return None
+    return handle.checkpoint_payload_for_reuse_or_none()
+
 
 __all__ = [
     "CheckpointBackedStateHandle",
     "CheckpointStateResolutionError",
     "CheckpointStateResolver",
+    "checkpoint_payload_for_reuse_or_none",
 ]

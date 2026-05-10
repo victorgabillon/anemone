@@ -587,7 +587,7 @@ def test_checkpoint_build_logs_aggregate_metrics_without_traceback_spam(
     ]
     assert info_messages[0] == (
         "[checkpoint-metrics] delta_attempts=4 delta_rejected=1 "
-        "delta_emitted=3 anchor_fallbacks=0"
+        "delta_emitted=3 anchor_fallbacks=0 state_payloads_reused=0"
     )
     assert any(message.startswith("[checkpoint-profile]") for message in info_messages)
     assert any(
@@ -647,6 +647,11 @@ def test_checkpoint_build_logs_phase_profile_and_codec_profile(
     assert "deltas=" in rendered_logs
     assert "iter_nodes_s=" in rendered_logs
     assert "state_payload_total_s=" in rendered_logs
+    assert "state_payloads_reused=" in rendered_logs
+    assert "anchor_payloads_reused=" in rendered_logs
+    assert "delta_payloads_reused=" in rendered_logs
+    assert "state_payload_reuse_rejected=" in rendered_logs
+    assert "state_payload_reuse_s=" in rendered_logs
     assert "anchor_state_total_s=" in rendered_logs
     assert "delta_state_total_s=" in rendered_logs
     assert "state_summary_total_s=" in rendered_logs

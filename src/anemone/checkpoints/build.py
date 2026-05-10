@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from random import Random
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
 
+from valanga import Outcome
+
 from anemone.node_selector import StatefulNodeSelector
+from anemone.node_evaluation.common import canonical_value
 from anemone.objectives import SingleAgentMaxObjective
 from anemone.utils.logger import anemone_logger, checkpoint_logger
 from anemone.utils.small_tools import Interval
@@ -37,8 +40,10 @@ from .payloads import (
     TreeCheckpointPayload,
     TreeExpansionCheckpointPayload,
     TreeExpansionsCheckpointPayload,
+    SerializedOverEventPayload,
 )
-from .value_serialization import serialize_checkpoint_atom, serialize_value
+from .state_handles import checkpoint_payload_for_reuse_or_none
+from .value_serialization import CheckpointSerializationError, serialize_checkpoint_atom
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, MutableMapping
@@ -61,6 +66,10 @@ class _CheckpointBuildMetrics:
 
     delta_candidates_attempted: int = 0
     delta_candidates_rejected: int = 0
+    state_payloads_reused: int = 0
+    anchor_payloads_reused: int = 0
+    delta_payloads_reused: int = 0
+    state_payload_reuse_rejected: int = 0
     delta_payloads_emitted: int = 0
     anchor_fallbacks: int = 0
     node_count: int = 0
@@ -69,6 +78,7 @@ class _CheckpointBuildMetrics:
     tree_payload_s: float = 0.0
     node_payload_total_s: float = 0.0
     state_payload_total_s: float = 0.0
+    state_payload_reuse_s: float = 0.0
     anchor_state_total_s: float = 0.0
     delta_state_total_s: float = 0.0
     state_summary_total_s: float = 0.0
@@ -79,6 +89,86 @@ class _CheckpointBuildMetrics:
     latest_expansions_total_s: float = 0.0
     selector_state_total_s: float = 0.0
     rng_state_total_s: float = 0.0
+    node_evaluation_calls: int = 0
+    node_evaluation_total_s: float = 0.0
+    evaluation_payload_reuse_candidates_missing_version: int = 0
+    evaluation_payload_reuse_blocked_missing_version: int = 0
+    tree_evaluation_access_calls: int = 0
+    tree_evaluation_access_s: float = 0.0
+    direct_value_access_calls: int = 0
+    direct_value_access_s: float = 0.0
+    direct_value_serialize_calls: int = 0
+    direct_value_serialize_s: float = 0.0
+    backed_up_value_access_calls: int = 0
+    backed_up_value_access_s: float = 0.0
+    backed_up_value_serialize_calls: int = 0
+    backed_up_value_serialize_s: float = 0.0
+    serialize_value_calls: int = 0
+    serialize_value_total_s: float = 0.0
+    serialize_value_cache_hits: int = 0
+    serialize_value_cache_misses: int = 0
+    value_semantic_validation_calls: int = 0
+    value_semantic_validation_s: float = 0.0
+    principal_variation_calls: int = 0
+    principal_variation_serialize_s: float = 0.0
+    decision_ordering_calls: int = 0
+    decision_ordering_serialize_s: float = 0.0
+    branch_frontier_calls: int = 0
+    branch_frontier_total_s: float = 0.0
+    backup_runtime_calls: int = 0
+    backup_runtime_total_s: float = 0.0
+    branch_collection_calls: int = 0
+    branch_collection_total_s: float = 0.0
+    branch_collection_sort_calls: int = 0
+    branch_collection_sort_s: float = 0.0
+    representative_parent_calls: int = 0
+    representative_parent_total_s: float = 0.0
+    reusable_parent_scan_calls: int = 0
+    reusable_parent_scan_s: float = 0.0
+    stored_or_first_branch_calls: int = 0
+    stored_or_first_branch_total_s: float = 0.0
+    first_branch_calls: int = 0
+    first_branch_total_s: float = 0.0
+    linked_children_calls: int = 0
+    linked_children_sort_calls: int = 0
+    linked_children_sort_s: float = 0.0
+    atom_serialize_calls: int = 0
+    atom_serialize_cache_hits: int = 0
+    atom_serialize_cache_misses: int = 0
+    atom_serialize_total_s: float = 0.0
+    evaluation_atom_serialize_calls: int = 0
+    evaluation_atom_serialize_total_s: float = 0.0
+    evaluation_atom_serialize_cache_hits: int = 0
+    evaluation_atom_serialize_cache_misses: int = 0
+
+
+@dataclass(slots=True)
+class _CheckpointBuildContext:
+    """Build-local caches used to avoid repeated deterministic work."""
+
+    metrics: _CheckpointBuildMetrics
+    atom_serialization_cache: dict[object, CheckpointAtomPayload] = field(
+        default_factory=dict
+    )
+    value_identity_serialization_cache: dict[int, tuple[object, SerializedValuePayload]] = (
+        field(default_factory=dict)
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _ParentBranchSerialization:
+    """Stable serialized branch ordering for one parent edge set."""
+
+    parent_node: AlgorithmNode[Any]
+    ordered_branches: tuple[BranchKey, ...]
+    serialized_branches: tuple[CheckpointAtomPayload, ...]
+
+
+@dataclass(slots=True)
+class _NodeCheckpointBuildCache:
+    """Per-node cached parent branch ordering reused across helpers."""
+
+    parent_branch_entries: list[_ParentBranchSerialization]
 
 
 def build_search_checkpoint_payload(
@@ -92,12 +182,14 @@ def build_search_checkpoint_payload(
     anchor snapshots plus parent-to-child deltas.
     """
     metrics = _CheckpointBuildMetrics()
+    context = _CheckpointBuildContext(metrics=metrics)
     _maybe_reset_checkpoint_profile(state_codec)
     tree_payload_started_at = perf_counter()
     tree_payload = _build_tree_payload(
         search=search,
         state_codec=state_codec,
         metrics=metrics,
+        context=context,
     )
     metrics.tree_payload_s += perf_counter() - tree_payload_started_at
     rng_state_started_at = perf_counter()
@@ -128,6 +220,7 @@ def _build_tree_payload(
     search: TreeExploration[Any],
     state_codec: IncrementalStateCheckpointCodec[Any],
     metrics: _CheckpointBuildMetrics,
+    context: _CheckpointBuildContext,
 ) -> TreeCheckpointPayload:
     """Build the tree payload in stable depth/insertion descendant order."""
     iter_nodes_started_at = perf_counter()
@@ -142,6 +235,7 @@ def _build_tree_payload(
                 node=node,
                 state_codec=state_codec,
                 metrics=metrics,
+                context=context,
             )
         )
         metrics.node_payload_total_s += perf_counter() - node_payload_started_at
@@ -168,22 +262,48 @@ def _build_node_payload(
     node: AlgorithmNode[Any],
     state_codec: IncrementalStateCheckpointCodec[Any],
     metrics: _CheckpointBuildMetrics,
+    context: _CheckpointBuildContext,
 ) -> AlgorithmNodeCheckpointPayload:
     """Build one node checkpoint payload without mutating runtime state."""
+    # Safe cross-generation evaluation payload reuse needs one explicit runtime
+    # version that changes whenever any serialized evaluation field changes.
+    # Until that exists, restored/checkpoint-backed nodes are only counted as
+    # reuse candidates and are always rebuilt to avoid stale payload reuse after
+    # reevaluation patches, backup propagation, or frontier/order updates.
+    if checkpoint_payload_for_reuse_or_none(node.state_handle) is not None:
+        metrics.evaluation_payload_reuse_candidates_missing_version += 1
+        metrics.evaluation_payload_reuse_blocked_missing_version += 1
+
+    node_cache = _build_node_checkpoint_cache(node, context=context)
+    representative_parent_started_at = perf_counter()
     (
-        _parent_node,
+        representative_parent,
         parent_node_id,
         _branch_from_parent,
         branch_from_parent_payload,
-    ) = _representative_parent_link(node)
+    ) = _representative_parent_link(
+        node,
+        node_cache=node_cache,
+        context=context,
+    )
+    metrics.representative_parent_calls += 1
+    metrics.representative_parent_total_s += (
+        perf_counter() - representative_parent_started_at
+    )
     unopened_branches_started_at = perf_counter()
-    unopened_branches = _serialize_branch_collection(node.non_opened_branches)
+    unopened_branches = _serialize_branch_collection(
+        node.non_opened_branches,
+        context=context,
+    )
     metrics.unopened_branches_total_s += perf_counter() - unopened_branches_started_at
     linked_children_started_at = perf_counter()
-    linked_children = _serialize_linked_children(node.branches_children)
+    linked_children = _serialize_linked_children(
+        node.branches_children,
+        context=context,
+    )
     metrics.linked_children_total_s += perf_counter() - linked_children_started_at
     evaluation_started_at = perf_counter()
-    evaluation = _build_node_evaluation_payload(node)
+    evaluation = _build_node_evaluation_payload(node, context=context)
     metrics.evaluation_payload_total_s += perf_counter() - evaluation_started_at
     exploration_index_started_at = perf_counter()
     exploration_index = _build_exploration_index_payload(node)
@@ -195,8 +315,11 @@ def _build_node_payload(
         depth=node.tree_depth,
         state_payload=_build_checkpoint_state_payload(
             node=node,
+            representative_parent=representative_parent,
             state_codec=state_codec,
             metrics=metrics,
+            context=context,
+            node_cache=node_cache,
         ),
         generated_all_branches=node.all_branches_generated,
         unopened_branches=unopened_branches,
@@ -206,8 +329,29 @@ def _build_node_payload(
     )
 
 
+def _build_node_checkpoint_cache(
+    node: AlgorithmNode[Any],
+    *,
+    context: _CheckpointBuildContext,
+) -> _NodeCheckpointBuildCache:
+    """Precompute parent branch ordering reused across node helper calls."""
+    return _NodeCheckpointBuildCache(
+        parent_branch_entries=[
+            _serialize_parent_branches(
+                parent_node,
+                branch_keys,
+                context=context,
+            )
+            for parent_node, branch_keys in node.parent_nodes.items()
+        ]
+    )
+
+
 def _representative_parent_link(
     node: AlgorithmNode[Any],
+    *,
+    node_cache: _NodeCheckpointBuildCache,
+    context: _CheckpointBuildContext,
 ) -> tuple[
     AlgorithmNode[Any] | None,
     int | None,
@@ -220,32 +364,91 @@ def _representative_parent_link(
     ``linked_children`` edge list. The node-local parent fields keep the
     legacy one-parent shape by storing the first runtime parent edge.
     """
-    for parent_node, branch_keys in node.parent_nodes.items():
-        branch = _first_branch_in_stable_order(branch_keys)
+    preferred_parent_link = _preferred_parent_link_from_reusable_state_payload(
+        node,
+        node_cache=node_cache,
+        context=context,
+    )
+    if preferred_parent_link is not None:
+        return preferred_parent_link
+
+    for parent_branch_entry in node_cache.parent_branch_entries:
+        branch = _first_branch_in_stable_order(
+            parent_branch_entry,
+            context=context,
+        )
         return (
-            parent_node,
-            parent_node.id,
+            parent_branch_entry.parent_node,
+            parent_branch_entry.parent_node.id,
             branch,
-            serialize_checkpoint_atom(branch),
+            _serialize_checkpoint_atom_for_build(branch, context=context),
         )
     return None, None, None, None
+
+
+def _preferred_parent_link_from_reusable_state_payload(
+    node: AlgorithmNode[Any],
+    *,
+    node_cache: _NodeCheckpointBuildCache,
+    context: _CheckpointBuildContext,
+) -> tuple[
+    AlgorithmNode[Any] | None,
+    int | None,
+    BranchKey | None,
+    CheckpointAtomPayload | None,
+] | None:
+    """Return the stored delta parent/link when it is still a live incoming edge."""
+    payload = checkpoint_payload_for_reuse_or_none(node.state_handle)
+    if not isinstance(payload, DeltaCheckpointStatePayload):
+        return None
+
+    scan_started_at = perf_counter()
+    try:
+        for parent_branch_entry in node_cache.parent_branch_entries:
+            if parent_branch_entry.parent_node.id != payload.state_parent_node_id:
+                continue
+            branch = _stored_or_first_branch_in_stable_order(
+                parent_branch_entry,
+                preferred_branch_payload=payload.state_parent_branch,
+                context=context,
+            )
+            return (
+                parent_branch_entry.parent_node,
+                parent_branch_entry.parent_node.id,
+                branch,
+                _serialize_checkpoint_atom_for_build(branch, context=context),
+            )
+        return None
+    finally:
+        context.metrics.reusable_parent_scan_calls += 1
+        context.metrics.reusable_parent_scan_s += perf_counter() - scan_started_at
 
 
 def _build_checkpoint_state_payload(
     *,
     node: AlgorithmNode[Any],
+    representative_parent: AlgorithmNode[Any] | None,
     state_codec: IncrementalStateCheckpointCodec[Any],
     metrics: _CheckpointBuildMetrics,
+    context: _CheckpointBuildContext,
+    node_cache: _NodeCheckpointBuildCache,
 ) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload:
     """Build one explicit anchor-or-delta checkpoint payload for ``node``."""
     state_payload_started_at = perf_counter()
     try:
+        reuse_started_at = perf_counter()
+        reused_payload = _try_reuse_checkpoint_state_payload(
+            node=node,
+            representative_parent=representative_parent,
+            metrics=metrics,
+        )
+        metrics.state_payload_reuse_s += perf_counter() - reuse_started_at
+        if reused_payload is not None:
+            metrics.state_payloads_reused += 1
+            return reused_payload
         state_summary_started_at = perf_counter()
         state_summary = _dump_optional_state_summary(node.state, state_codec=state_codec)
         metrics.state_summary_total_s += perf_counter() - state_summary_started_at
-        representative_parent, _parent_id, _branch, _branch_payload = (
-            _representative_parent_link(node)
-        )
         if _is_anchor_node(node=node, parent_node=representative_parent):
             anchor_started_at = perf_counter()
             anchor_ref = state_codec.dump_anchor_ref(node.state)
@@ -260,6 +463,8 @@ def _build_checkpoint_state_payload(
             state_codec=state_codec,
             state_summary=state_summary,
             metrics=metrics,
+            context=context,
+            node_cache=node_cache,
         )
         if delta_payload is not None:
             return delta_payload
@@ -276,15 +481,64 @@ def _build_checkpoint_state_payload(
         metrics.state_payload_total_s += perf_counter() - state_payload_started_at
 
 
+def _try_reuse_checkpoint_state_payload(
+    *,
+    node: AlgorithmNode[Any],
+    representative_parent: AlgorithmNode[Any] | None,
+    metrics: _CheckpointBuildMetrics,
+) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload | None:
+    """Return a reusable checkpoint state payload without materializing state."""
+    raw_handle = node.state_handle
+    payload = checkpoint_payload_for_reuse_or_none(raw_handle)
+    if payload is None:
+        return None
+
+    if isinstance(payload, AnchorCheckpointStatePayload):
+        metrics.anchor_payloads_reused += 1
+        metrics.anchor_payloads_emitted += 1
+        return payload
+
+    if _delta_reuse_matches_parent(
+        representative_parent=representative_parent,
+        payload=payload,
+    ):
+        metrics.delta_payloads_reused += 1
+        metrics.delta_payloads_emitted += 1
+        return payload
+
+    metrics.state_payload_reuse_rejected += 1
+    return None
+
+
+def _delta_reuse_matches_parent(
+    *,
+    representative_parent: AlgorithmNode[Any] | None,
+    payload: DeltaCheckpointStatePayload,
+) -> bool:
+    """Return whether a stored delta still matches the chosen representative parent."""
+    if representative_parent is None:
+        return False
+    parent_handle_payload = checkpoint_payload_for_reuse_or_none(
+        representative_parent.state_handle
+    )
+    if parent_handle_payload is None:
+        return False
+    return payload.state_parent_node_id == representative_parent.id
+
+
 def _try_build_delta_state_payload(
     *,
     node: AlgorithmNode[Any],
     state_codec: IncrementalStateCheckpointCodec[Any],
     state_summary: CheckpointStateSummary | None,
     metrics: _CheckpointBuildMetrics,
+    context: _CheckpointBuildContext,
+    node_cache: _NodeCheckpointBuildCache,
 ) -> DeltaCheckpointStatePayload | None:
     """Return one codec-valid delta payload or ``None`` when anchoring is safer."""
-    for candidate_parent, branch in _iter_candidate_state_parent_links(node):
+    for candidate_parent, branch in _iter_candidate_state_parent_links(
+        node_cache=node_cache,
+    ):
         metrics.delta_candidates_attempted += 1
         try:
             delta_started_at = perf_counter()
@@ -301,14 +555,17 @@ def _try_build_delta_state_payload(
                 "delta candidate rejected child=%s parent=%s branch=%r err=%s",
                 node.id,
                 candidate_parent.id,
-                serialize_checkpoint_atom(branch),
+                _serialize_checkpoint_atom_for_build(branch, context=context),
                 type(exc).__name__,
             )
             continue
         metrics.delta_payloads_emitted += 1
         return DeltaCheckpointStatePayload(
             state_parent_node_id=candidate_parent.id,
-            state_parent_branch=serialize_checkpoint_atom(branch),
+            state_parent_branch=_serialize_checkpoint_atom_for_build(
+                branch,
+                context=context,
+            ),
             delta_ref=delta_ref,
             state_summary=state_summary,
         )
@@ -319,11 +576,12 @@ def _log_checkpoint_build_metrics(metrics: _CheckpointBuildMetrics) -> None:
     """Emit aggregate checkpoint-build metrics once per build."""
     anemone_logger.info(
         "[checkpoint-metrics] delta_attempts=%s delta_rejected=%s "
-        "delta_emitted=%s anchor_fallbacks=%s",
+        "delta_emitted=%s anchor_fallbacks=%s state_payloads_reused=%s",
         metrics.delta_candidates_attempted,
         metrics.delta_candidates_rejected,
         metrics.delta_payloads_emitted,
         metrics.anchor_fallbacks,
+        metrics.state_payloads_reused,
     )
     attempted_delta_nodes = metrics.delta_payloads_emitted + metrics.anchor_fallbacks
     if attempted_delta_nodes == 0:
@@ -341,8 +599,10 @@ def _log_checkpoint_build_metrics(metrics: _CheckpointBuildMetrics) -> None:
     anemone_logger.info(
         "[checkpoint-profile] node_count=%s anchors=%s deltas=%s "
         "delta_attempts=%s delta_rejected=%s anchor_fallbacks=%s "
+        "state_payloads_reused=%s anchor_payloads_reused=%s "
+        "delta_payloads_reused=%s state_payload_reuse_rejected=%s "
         "iter_nodes_s=%.6f tree_payload_s=%.6f node_payload_total_s=%.6f "
-        "state_payload_total_s=%.6f anchor_state_total_s=%.6f "
+        "state_payload_total_s=%.6f state_payload_reuse_s=%.6f anchor_state_total_s=%.6f "
         "delta_state_total_s=%.6f state_summary_total_s=%.6f "
         "evaluation_payload_total_s=%.6f exploration_index_total_s=%.6f "
         "linked_children_total_s=%.6f unopened_branches_total_s=%.6f "
@@ -354,10 +614,15 @@ def _log_checkpoint_build_metrics(metrics: _CheckpointBuildMetrics) -> None:
         metrics.delta_candidates_attempted,
         metrics.delta_candidates_rejected,
         metrics.anchor_fallbacks,
+        metrics.state_payloads_reused,
+        metrics.anchor_payloads_reused,
+        metrics.delta_payloads_reused,
+        metrics.state_payload_reuse_rejected,
         metrics.iter_nodes_s,
         metrics.tree_payload_s,
         metrics.node_payload_total_s,
         metrics.state_payload_total_s,
+        metrics.state_payload_reuse_s,
         metrics.anchor_state_total_s,
         metrics.delta_state_total_s,
         metrics.state_summary_total_s,
@@ -377,18 +642,97 @@ def _log_checkpoint_build_metrics(metrics: _CheckpointBuildMetrics) -> None:
         _average_ms(metrics.delta_state_total_s, metrics.delta_payloads_emitted),
         _average_ms(metrics.state_summary_total_s, metrics.node_count),
     )
+    anemone_logger.info(
+        "[checkpoint-build-detail] node_evaluation_calls=%s node_evaluation_total_s=%.6f "
+        "evaluation_payload_reuse_candidates_missing_version=%s "
+        "evaluation_payload_reuse_blocked_missing_version=%s "
+        "tree_evaluation_access_calls=%s tree_evaluation_access_s=%.6f "
+        "direct_value_access_calls=%s direct_value_access_s=%.6f "
+        "direct_value_serialize_calls=%s direct_value_serialize_s=%.6f "
+        "backed_up_value_access_calls=%s backed_up_value_access_s=%.6f "
+        "backed_up_value_serialize_calls=%s backed_up_value_serialize_s=%.6f "
+        "serialize_value_calls=%s serialize_value_total_s=%.6f "
+        "serialize_value_cache_hits=%s serialize_value_cache_misses=%s "
+        "value_semantic_validation_calls=%s value_semantic_validation_s=%.6f "
+        "pv_serialize_calls=%s pv_serialize_s=%.6f "
+        "decision_ordering_calls=%s decision_ordering_serialize_s=%.6f "
+        "branch_frontier_calls=%s branch_frontier_total_s=%.6f "
+        "backup_runtime_calls=%s backup_runtime_total_s=%.6f "
+        "branch_collection_calls=%s branch_collection_total_s=%.6f "
+        "branch_collection_sort_calls=%s branch_collection_sort_s=%.6f "
+        "representative_parent_calls=%s representative_parent_total_s=%.6f "
+        "reusable_parent_scan_calls=%s reusable_parent_scan_s=%.6f "
+        "stored_or_first_branch_calls=%s stored_or_first_branch_total_s=%.6f "
+        "first_branch_calls=%s first_branch_total_s=%.6f "
+        "linked_children_calls=%s linked_children_total_s=%.6f "
+        "linked_children_sort_calls=%s linked_children_sort_s=%.6f "
+        "evaluation_atom_serialize_calls=%s evaluation_atom_serialize_total_s=%.6f "
+        "evaluation_atom_serialize_cache_hits=%s evaluation_atom_serialize_cache_misses=%s "
+        "atom_serialize_calls=%s atom_serialize_total_s=%.6f "
+        "atom_serialize_cache_hits=%s atom_serialize_cache_misses=%s",
+        metrics.node_evaluation_calls,
+        metrics.node_evaluation_total_s,
+        metrics.evaluation_payload_reuse_candidates_missing_version,
+        metrics.evaluation_payload_reuse_blocked_missing_version,
+        metrics.tree_evaluation_access_calls,
+        metrics.tree_evaluation_access_s,
+        metrics.direct_value_access_calls,
+        metrics.direct_value_access_s,
+        metrics.direct_value_serialize_calls,
+        metrics.direct_value_serialize_s,
+        metrics.backed_up_value_access_calls,
+        metrics.backed_up_value_access_s,
+        metrics.backed_up_value_serialize_calls,
+        metrics.backed_up_value_serialize_s,
+        metrics.serialize_value_calls,
+        metrics.serialize_value_total_s,
+        metrics.serialize_value_cache_hits,
+        metrics.serialize_value_cache_misses,
+        metrics.value_semantic_validation_calls,
+        metrics.value_semantic_validation_s,
+        metrics.principal_variation_calls,
+        metrics.principal_variation_serialize_s,
+        metrics.decision_ordering_calls,
+        metrics.decision_ordering_serialize_s,
+        metrics.branch_frontier_calls,
+        metrics.branch_frontier_total_s,
+        metrics.backup_runtime_calls,
+        metrics.backup_runtime_total_s,
+        metrics.branch_collection_calls,
+        metrics.branch_collection_total_s,
+        metrics.branch_collection_sort_calls,
+        metrics.branch_collection_sort_s,
+        metrics.representative_parent_calls,
+        metrics.representative_parent_total_s,
+        metrics.reusable_parent_scan_calls,
+        metrics.reusable_parent_scan_s,
+        metrics.stored_or_first_branch_calls,
+        metrics.stored_or_first_branch_total_s,
+        metrics.first_branch_calls,
+        metrics.first_branch_total_s,
+        metrics.linked_children_calls,
+        metrics.linked_children_total_s,
+        metrics.linked_children_sort_calls,
+        metrics.linked_children_sort_s,
+        metrics.evaluation_atom_serialize_calls,
+        metrics.evaluation_atom_serialize_total_s,
+        metrics.evaluation_atom_serialize_cache_hits,
+        metrics.evaluation_atom_serialize_cache_misses,
+        metrics.atom_serialize_calls,
+        metrics.atom_serialize_total_s,
+        metrics.atom_serialize_cache_hits,
+        metrics.atom_serialize_cache_misses,
+    )
 
 
 def _iter_candidate_state_parent_links(
-    node: AlgorithmNode[Any],
+    *,
+    node_cache: _NodeCheckpointBuildCache,
 ) -> Iterable[tuple[AlgorithmNode[Any], BranchKey]]:
     """Yield candidate state-parent edges in deterministic order."""
-    for candidate_parent, branch_keys in node.parent_nodes.items():
-        for branch in sorted(
-            branch_keys,
-            key=lambda item: repr(serialize_checkpoint_atom(item)),
-        ):
-            yield candidate_parent, branch
+    for parent_branch_entry in node_cache.parent_branch_entries:
+        for branch in parent_branch_entry.ordered_branches:
+            yield parent_branch_entry.parent_node, branch
 
 
 def _is_anchor_node(
@@ -414,55 +758,156 @@ def _dump_optional_state_summary[StateT: Any](
 
 def _serialize_linked_children(
     branches_children: MutableMapping[Any, AlgorithmNode[Any] | None],
+    *,
+    context: _CheckpointBuildContext,
 ) -> list[LinkedChildCheckpointPayload]:
     """Serialize linked children in stable checkpoint-atom order."""
-    return sorted(
-        [
-            LinkedChildCheckpointPayload(
-                branch_key=serialize_checkpoint_atom(branch),
-                child_node_id=child.id,
-            )
-            for branch, child in branches_children.items()
-            if child is not None
-        ],
-        key=lambda item: (repr(item.branch_key), item.child_node_id),
-    )
+    metrics = context.metrics
+    metrics.linked_children_calls += 1
+    linked_children = [
+        LinkedChildCheckpointPayload(
+            branch_key=_serialize_checkpoint_atom_for_build(
+                branch,
+                context=context,
+            ),
+            child_node_id=child.id,
+        )
+        for branch, child in branches_children.items()
+        if child is not None
+    ]
+    sort_started_at = perf_counter()
+    linked_children.sort(key=lambda item: (repr(item.branch_key), item.child_node_id))
+    metrics.linked_children_sort_calls += 1
+    metrics.linked_children_sort_s += perf_counter() - sort_started_at
+    return linked_children
 
 
-def _first_branch_in_stable_order(branches: Iterable[Any]) -> Any:
+def _first_branch_in_stable_order(
+    parent_branch_entry: _ParentBranchSerialization,
+    *,
+    context: _CheckpointBuildContext,
+) -> Any:
     """Return the first branch under checkpoint-atom representation order."""
-    ordered_branches = sorted(
-        branches,
-        key=lambda branch: repr(serialize_checkpoint_atom(branch)),
-    )
-    return ordered_branches[0]
+    context.metrics.first_branch_calls += 1
+    started_at = perf_counter()
+    try:
+        return parent_branch_entry.ordered_branches[0]
+    finally:
+        context.metrics.first_branch_total_s += perf_counter() - started_at
+
+
+def _stored_or_first_branch_in_stable_order(
+    parent_branch_entry: _ParentBranchSerialization,
+    *,
+    preferred_branch_payload: CheckpointAtomPayload | None,
+    context: _CheckpointBuildContext,
+) -> Any:
+    """Return the stored branch when present, otherwise the stable first branch."""
+    context.metrics.stored_or_first_branch_calls += 1
+    started_at = perf_counter()
+    try:
+        for branch, serialized_branch in zip(
+            parent_branch_entry.ordered_branches,
+            parent_branch_entry.serialized_branches,
+            strict=False,
+        ):
+            if serialized_branch == preferred_branch_payload:
+                return branch
+        return parent_branch_entry.ordered_branches[0]
+    finally:
+        context.metrics.stored_or_first_branch_total_s += perf_counter() - started_at
 
 
 def _build_node_evaluation_payload(
     node: AlgorithmNode[Any],
+    *,
+    context: _CheckpointBuildContext,
 ) -> NodeEvaluationCheckpointPayload:
     """Serialize the evaluation runtime state already stored on one node."""
-    node_eval = node.tree_evaluation
-    return NodeEvaluationCheckpointPayload(
-        direct_value=_serialize_optional_value(node_eval.direct_value),
-        direct_evaluation_version=node_eval.direct_evaluation_version,
-        backed_up_value=_serialize_optional_value(node_eval.backed_up_value),
-        decision_ordering=_build_decision_ordering_payload(node_eval),
-        principal_variation=_build_principal_variation_payload(node_eval),
-        branch_frontier=_build_branch_frontier_payload(node_eval),
-        backup_runtime=_build_backup_runtime_payload(node_eval),
-    )
+    context.metrics.node_evaluation_calls += 1
+    started_at = perf_counter()
+    try:
+        tree_eval_access_started_at = perf_counter()
+        node_eval = node.tree_evaluation
+        context.metrics.tree_evaluation_access_calls += 1
+        context.metrics.tree_evaluation_access_s += (
+            perf_counter() - tree_eval_access_started_at
+        )
+
+        direct_value_access_started_at = perf_counter()
+        direct_value = node_eval.direct_value
+        context.metrics.direct_value_access_calls += 1
+        context.metrics.direct_value_access_s += (
+            perf_counter() - direct_value_access_started_at
+        )
+
+        backed_up_value_access_started_at = perf_counter()
+        backed_up_value = node_eval.backed_up_value
+        context.metrics.backed_up_value_access_calls += 1
+        context.metrics.backed_up_value_access_s += (
+            perf_counter() - backed_up_value_access_started_at
+        )
+
+        return NodeEvaluationCheckpointPayload(
+            direct_value=_serialize_optional_value(
+                direct_value,
+                context=context,
+                value_kind="direct",
+            ),
+            direct_evaluation_version=node_eval.direct_evaluation_version,
+            backed_up_value=_serialize_optional_value(
+                backed_up_value,
+                context=context,
+                value_kind="backed_up",
+            ),
+            decision_ordering=_build_decision_ordering_payload(
+                node_eval,
+                context=context,
+            ),
+            principal_variation=_build_principal_variation_payload(
+                node_eval,
+                context=context,
+            ),
+            branch_frontier=_build_branch_frontier_payload(
+                node_eval,
+                context=context,
+            ),
+            backup_runtime=_build_backup_runtime_payload(
+                node_eval,
+                context=context,
+            ),
+        )
+    finally:
+        context.metrics.node_evaluation_total_s += perf_counter() - started_at
 
 
-def _serialize_optional_value(value: Value | None) -> SerializedValuePayload | None:
+def _serialize_optional_value(
+    value: Value | None,
+    *,
+    context: _CheckpointBuildContext,
+    value_kind: str,
+) -> SerializedValuePayload | None:
     """Serialize one optional Value payload."""
     if value is None:
         return None
-    return serialize_value(value)
+
+    started_at = perf_counter()
+    try:
+        return _serialize_value_for_build(value, context=context)
+    finally:
+        elapsed_s = perf_counter() - started_at
+        if value_kind == "direct":
+            context.metrics.direct_value_serialize_calls += 1
+            context.metrics.direct_value_serialize_s += elapsed_s
+        else:
+            context.metrics.backed_up_value_serialize_calls += 1
+            context.metrics.backed_up_value_serialize_s += elapsed_s
 
 
 def _build_decision_ordering_payload(
     node_eval: Any,
+    *,
+    context: _CheckpointBuildContext,
 ) -> DecisionOrderingCheckpointPayload | None:
     """Serialize cached decision-ordering keys when the evaluation exposes them."""
     decision_ordering = getattr(node_eval, "decision_ordering", None)
@@ -473,39 +918,56 @@ def _build_decision_ordering_payload(
     if branch_ordering_keys is None:
         return None
 
-    return DecisionOrderingCheckpointPayload(
-        branch_ordering=[
-            BranchOrderingCheckpointPayload(
-                branch_key=serialize_checkpoint_atom(branch),
-                primary_score=ordering_key.primary_score,
-                tactical_tiebreak=ordering_key.tactical_tiebreak,
-                stable_tiebreak_id=ordering_key.stable_tiebreak_id,
-            )
-            for branch, ordering_key in branch_ordering_keys.items()
-        ]
-    )
+    context.metrics.decision_ordering_calls += 1
+    started_at = perf_counter()
+    try:
+        return DecisionOrderingCheckpointPayload(
+            branch_ordering=[
+                BranchOrderingCheckpointPayload(
+                    branch_key=_serialize_evaluation_atom_for_build(
+                        branch,
+                        context=context,
+                    ),
+                    primary_score=ordering_key.primary_score,
+                    tactical_tiebreak=ordering_key.tactical_tiebreak,
+                    stable_tiebreak_id=ordering_key.stable_tiebreak_id,
+                )
+                for branch, ordering_key in branch_ordering_keys.items()
+            ]
+        )
+    finally:
+        context.metrics.decision_ordering_serialize_s += perf_counter() - started_at
 
 
 def _build_principal_variation_payload(
     node_eval: Any,
+    *,
+    context: _CheckpointBuildContext,
 ) -> PrincipalVariationCheckpointPayload | None:
     """Serialize principal-variation state when present."""
     pv_state = getattr(node_eval, "pv_state", None)
     if pv_state is None:
         return None
 
-    return PrincipalVariationCheckpointPayload(
-        best_branch_sequence=[
-            serialize_checkpoint_atom(branch)
-            for branch in pv_state.best_branch_sequence
-        ],
-        pv_version=pv_state.pv_version,
-        cached_best_child_version=pv_state.cached_best_child_version,
-    )
+    context.metrics.principal_variation_calls += 1
+    started_at = perf_counter()
+    try:
+        return PrincipalVariationCheckpointPayload(
+            best_branch_sequence=[
+                _serialize_evaluation_atom_for_build(branch, context=context)
+                for branch in pv_state.best_branch_sequence
+            ],
+            pv_version=pv_state.pv_version,
+            cached_best_child_version=pv_state.cached_best_child_version,
+        )
+    finally:
+        context.metrics.principal_variation_serialize_s += perf_counter() - started_at
 
 
 def _build_branch_frontier_payload(
     node_eval: Any,
+    *,
+    context: _CheckpointBuildContext,
 ) -> BranchFrontierCheckpointPayload | None:
     """Serialize branch-frontier membership when present."""
     branch_frontier = getattr(node_eval, "branch_frontier", None)
@@ -516,43 +978,258 @@ def _build_branch_frontier_payload(
     if frontier_branches is None:
         return None
 
-    return BranchFrontierCheckpointPayload(
-        frontier_branches=_serialize_branch_collection(frontier_branches)
-    )
+    context.metrics.branch_frontier_calls += 1
+    started_at = perf_counter()
+    try:
+        return BranchFrontierCheckpointPayload(
+            frontier_branches=_serialize_branch_collection(
+                frontier_branches,
+                context=context,
+                atom_scope="evaluation",
+            )
+        )
+    finally:
+        context.metrics.branch_frontier_total_s += perf_counter() - started_at
 
 
 def _build_backup_runtime_payload(
     node_eval: Any,
+    *,
+    context: _CheckpointBuildContext,
 ) -> BackupRuntimeCheckpointPayload | None:
     """Serialize conservative backup-runtime cache state when present."""
     backup_runtime = getattr(node_eval, "backup_runtime", None)
     if backup_runtime is None:
         return None
 
-    return BackupRuntimeCheckpointPayload(
-        best_branch=_serialize_optional_atom(backup_runtime.best_branch),
-        second_best_branch=_serialize_optional_atom(backup_runtime.second_best_branch),
-        exact_child_count=backup_runtime.exact_child_count,
-        selected_child_pv_version=backup_runtime.selected_child_pv_version,
-        is_initialized=backup_runtime.is_initialized,
-    )
+    context.metrics.backup_runtime_calls += 1
+    started_at = perf_counter()
+    try:
+        return BackupRuntimeCheckpointPayload(
+            best_branch=_serialize_optional_evaluation_atom(
+                backup_runtime.best_branch,
+                context=context,
+            ),
+            second_best_branch=_serialize_optional_evaluation_atom(
+                backup_runtime.second_best_branch,
+                context=context,
+            ),
+            exact_child_count=backup_runtime.exact_child_count,
+            selected_child_pv_version=backup_runtime.selected_child_pv_version,
+            is_initialized=backup_runtime.is_initialized,
+        )
+    finally:
+        context.metrics.backup_runtime_total_s += perf_counter() - started_at
 
 
 def _serialize_branch_collection(
     branches: Iterable[Any],
+    *,
+    context: _CheckpointBuildContext,
+    atom_scope: str = "default",
 ) -> list[CheckpointAtomPayload]:
     """Serialize a branch collection in deterministic checkpoint-atom order."""
-    return sorted(
-        (serialize_checkpoint_atom(branch) for branch in branches),
-        key=repr,
-    )
+    metrics = context.metrics
+    metrics.branch_collection_calls += 1
+    started_at = perf_counter()
+    try:
+        atom_serializer = _serialize_checkpoint_atom_for_build
+        if atom_scope == "evaluation":
+            atom_serializer = _serialize_evaluation_atom_for_build
+        serialized_branches = [
+            atom_serializer(branch, context=context)
+            for branch in branches
+        ]
+        sort_started_at = perf_counter()
+        serialized_branches.sort(key=repr)
+        metrics.branch_collection_sort_calls += 1
+        metrics.branch_collection_sort_s += perf_counter() - sort_started_at
+        return serialized_branches
+    finally:
+        metrics.branch_collection_total_s += perf_counter() - started_at
 
 
-def _serialize_optional_atom(value: object | None) -> CheckpointAtomPayload | None:
+def _serialize_optional_atom(
+    value: object | None,
+    *,
+    context: _CheckpointBuildContext | None = None,
+) -> CheckpointAtomPayload | None:
     """Serialize a small optional atom payload."""
     if value is None:
         return None
-    return serialize_checkpoint_atom(value)
+    if context is None:
+        return serialize_checkpoint_atom(value)
+    return _serialize_checkpoint_atom_for_build(value, context=context)
+
+
+def _serialize_optional_evaluation_atom(
+    value: object | None,
+    *,
+    context: _CheckpointBuildContext,
+) -> CheckpointAtomPayload | None:
+    """Serialize one optional atom while attributing metrics to evaluation work."""
+    if value is None:
+        return None
+    return _serialize_evaluation_atom_for_build(value, context=context)
+
+
+def _serialize_parent_branches(
+    parent_node: AlgorithmNode[Any],
+    branches: Iterable[BranchKey],
+    *,
+    context: _CheckpointBuildContext,
+) -> _ParentBranchSerialization:
+    """Return stable ordered branch serializations for one parent edge set."""
+    serialized_pairs = [
+        (
+            branch,
+            _serialize_checkpoint_atom_for_build(branch, context=context),
+        )
+        for branch in branches
+    ]
+    sort_started_at = perf_counter()
+    serialized_pairs.sort(key=lambda item: repr(item[1]))
+    context.metrics.branch_collection_sort_calls += 1
+    context.metrics.branch_collection_sort_s += perf_counter() - sort_started_at
+    return _ParentBranchSerialization(
+        parent_node=parent_node,
+        ordered_branches=tuple(branch for branch, _payload in serialized_pairs),
+        serialized_branches=tuple(payload for _branch, payload in serialized_pairs),
+    )
+
+
+def _serialize_checkpoint_atom_for_build(
+    value: object,
+    *,
+    context: _CheckpointBuildContext,
+) -> CheckpointAtomPayload:
+    """Serialize checkpoint atoms with build-local memoization for hashable atoms."""
+    metrics = context.metrics
+    metrics.atom_serialize_calls += 1
+    try:
+        hash(value)
+    except TypeError:
+        started_at = perf_counter()
+        payload = serialize_checkpoint_atom(value)
+        metrics.atom_serialize_total_s += perf_counter() - started_at
+        return payload
+
+    if value in context.atom_serialization_cache:
+        metrics.atom_serialize_cache_hits += 1
+        return context.atom_serialization_cache[value]
+
+    metrics.atom_serialize_cache_misses += 1
+    started_at = perf_counter()
+    payload = serialize_checkpoint_atom(value)
+    metrics.atom_serialize_total_s += perf_counter() - started_at
+    context.atom_serialization_cache[value] = payload
+    return payload
+
+
+def _serialize_evaluation_atom_for_build(
+    value: object,
+    *,
+    context: _CheckpointBuildContext,
+) -> CheckpointAtomPayload:
+    """Serialize one atom while attributing metrics to evaluation payload work."""
+    metrics = context.metrics
+    metrics.evaluation_atom_serialize_calls += 1
+    atom_cache_hits_before = metrics.atom_serialize_cache_hits
+    atom_cache_misses_before = metrics.atom_serialize_cache_misses
+    atom_total_before = metrics.atom_serialize_total_s
+    payload = _serialize_checkpoint_atom_for_build(value, context=context)
+    metrics.evaluation_atom_serialize_total_s += (
+        metrics.atom_serialize_total_s - atom_total_before
+    )
+    metrics.evaluation_atom_serialize_cache_hits += (
+        metrics.atom_serialize_cache_hits - atom_cache_hits_before
+    )
+    metrics.evaluation_atom_serialize_cache_misses += (
+        metrics.atom_serialize_cache_misses - atom_cache_misses_before
+    )
+    return payload
+
+
+def _serialize_value_for_build(
+    value: Value,
+    *,
+    context: _CheckpointBuildContext,
+) -> SerializedValuePayload:
+    """Serialize one Value with build-local caching and detailed timing."""
+    metrics = context.metrics
+    metrics.serialize_value_calls += 1
+
+    identity_key = id(value)
+    cached_identity_entry = context.value_identity_serialization_cache.get(
+        identity_key
+    )
+    if cached_identity_entry is not None and cached_identity_entry[0] is value:
+        metrics.serialize_value_cache_hits += 1
+        return cached_identity_entry[1]
+
+    metrics.serialize_value_cache_misses += 1
+    payload = _serialize_value_uncached_for_build(value, context=context)
+    context.value_identity_serialization_cache[identity_key] = (value, payload)
+    return payload
+
+
+def _serialize_value_uncached_for_build(
+    value: Value,
+    *,
+    context: _CheckpointBuildContext,
+) -> SerializedValuePayload:
+    """Serialize one Value payload while recording validation and atom work."""
+    metrics = context.metrics
+    started_at = perf_counter()
+    try:
+        validation_started_at = perf_counter()
+        validated_value = canonical_value.validate_value_semantics(value)
+        metrics.value_semantic_validation_calls += 1
+        metrics.value_semantic_validation_s += perf_counter() - validation_started_at
+        return SerializedValuePayload(
+            score=validated_value.score,
+            certainty=validated_value.certainty.name,
+            over_event=_serialize_over_event_for_build(
+                validated_value.over_event,
+                context=context,
+            ),
+            line=(
+                [
+                    _serialize_evaluation_atom_for_build(branch, context=context)
+                    for branch in validated_value.line
+                ]
+                if validated_value.line is not None
+                else None
+            ),
+        )
+    finally:
+        metrics.serialize_value_total_s += perf_counter() - started_at
+
+
+def _serialize_over_event_for_build(
+    over_event: object | None,
+    *,
+    context: _CheckpointBuildContext,
+) -> SerializedOverEventPayload | None:
+    """Serialize over-event metadata while attributing atom work to evaluation."""
+    if over_event is None:
+        return None
+
+    outcome = getattr(over_event, "outcome", None)
+    if not isinstance(outcome, Outcome):
+        raise CheckpointSerializationError.invalid_over_event(over_event)
+
+    return SerializedOverEventPayload(
+        outcome=outcome.name,
+        termination=_serialize_optional_evaluation_atom(
+            getattr(over_event, "termination", None),
+            context=context,
+        ),
+        winner=_serialize_optional_evaluation_atom(
+            getattr(over_event, "winner", None),
+            context=context,
+        ),
+    )
 
 
 def _build_exploration_index_payload(

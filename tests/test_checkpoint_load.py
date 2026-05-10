@@ -28,10 +28,15 @@ from anemone.checkpoints import (
     build_search_checkpoint_payload,
     load_search_from_checkpoint_payload,
 )
+from anemone.checkpoints.build import (
+    _delta_reuse_matches_parent,
+    _representative_parent_link,
+)
 from anemone.checkpoints.load import _checkpoint_summary_tag
 from anemone.checkpoints.state_handles import (
     CheckpointBackedStateHandle,
     CheckpointStateResolver,
+    checkpoint_payload_for_reuse_or_none,
 )
 from anemone.checkpoints.value_serialization import (
     serialize_checkpoint_atom,
@@ -160,6 +165,14 @@ class _FakeIncrementalStateCheckpointCodec:
         """Return lightweight checkpoint metadata for one fake state."""
         self.dumped_summary_node_ids.append(state.node_id)
         return _FakeCheckpointStateSummary(tag=state.tag, node_id=state.node_id)
+
+    def reset_counters(self) -> None:
+        """Reset all call counters without changing codec behavior."""
+        self.dumped_anchor_node_ids.clear()
+        self.dumped_delta_items.clear()
+        self.dumped_summary_node_ids.clear()
+        self.loaded_anchor_node_ids.clear()
+        self.applied_delta_items.clear()
 
 
 class _SelectiveDeltaCheckpointCodec(_FakeIncrementalStateCheckpointCodec):
@@ -555,6 +568,28 @@ def _roundtrip_runtime(
     return load_search_from_checkpoint_payload(
         payload,
         state_codec=codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(index_computation=index_computation),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(children_by_id)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+
+
+def _load_runtime_from_payload(
+    payload: SearchRuntimeCheckpointPayload,
+    *,
+    state_codec: _FakeIncrementalStateCheckpointCodec,
+    children_by_id: dict[int, list[int]] = _CHILDREN_BY_ID,
+    index_computation: IndexComputationType | None = None,
+) -> Any:
+    """Restore one fake runtime from an existing checkpoint payload."""
+    return load_search_from_checkpoint_payload(
+        payload,
+        state_codec=state_codec,
         dynamics=FakeYamlDynamics(),
         args=_build_args(index_computation=index_computation),
         state_type=_ConcreteFakeYamlState,
@@ -1023,6 +1058,232 @@ def test_checkpoint_restore_keeps_state_loading_lazy_and_cached() -> None:
     assert restore_codec.loaded_anchor_node_ids == [0]
     assert len(restore_codec.applied_delta_items) == len(applied_after_first_access) + 1
     assert set(restore_codec.applied_delta_items).issubset(_all_delta_items(payload))
+
+
+def test_checkpoint_resave_after_load_reuses_all_state_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Immediate resave after restore should reuse payloads without state decoding."""
+    runtime = _build_runtime()
+    runtime.step()
+    runtime.step()
+    export_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload_a = build_search_checkpoint_payload(runtime, state_codec=export_codec)
+    restore_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    restored = _load_runtime_from_payload(payload_a, state_codec=restore_codec)
+    restore_codec.reset_counters()
+    resave_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    info_messages: list[str] = []
+
+    def _record_info(msg: object, *args: object) -> None:
+        rendered = str(msg) % args if args else str(msg)
+        info_messages.append(rendered)
+
+    monkeypatch.setattr(anemone_logger, "info", _record_info)
+
+    payload_b = build_search_checkpoint_payload(restored, state_codec=resave_codec)
+
+    assert restore_codec.loaded_anchor_node_ids == []
+    assert restore_codec.applied_delta_items == []
+    assert resave_codec.dumped_anchor_node_ids == []
+    assert resave_codec.dumped_delta_items == []
+    assert resave_codec.dumped_summary_node_ids == []
+    assert _payload_nodes_by_id(payload_b).keys() == _payload_nodes_by_id(payload_a).keys()
+    for node_id, node_payload in _payload_nodes_by_id(payload_a).items():
+        assert _payload_nodes_by_id(payload_b)[node_id].state_payload == node_payload.state_payload
+    assert any(
+        f"state_payloads_reused={len(payload_a.tree.nodes)}" in message
+        for message in info_messages
+    )
+
+    _load_runtime_from_payload(
+        payload_b,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+
+
+def test_checkpoint_build_from_fresh_runtime_reports_no_state_payload_reuse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fresh runtimes should still serialize state normally with zero reuse."""
+    runtime = _build_runtime()
+    runtime.step()
+    runtime.step()
+    info_messages: list[str] = []
+
+    def _record_info(msg: object, *args: object) -> None:
+        rendered = str(msg) % args if args else str(msg)
+        info_messages.append(rendered)
+
+    monkeypatch.setattr(anemone_logger, "info", _record_info)
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+
+    assert any("state_payloads_reused=0" in message for message in info_messages)
+    _load_runtime_from_payload(
+        payload,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+
+
+def test_checkpoint_resave_after_growth_reuses_old_nodes_and_serializes_new_ones(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Resave after restore should reuse old payloads and serialize newly grown nodes."""
+    runtime = _build_runtime()
+    runtime.step()
+    payload_a = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    restored = _load_runtime_from_payload(
+        payload_a,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    restored.step()
+    resave_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    info_messages: list[str] = []
+
+    def _record_info(msg: object, *args: object) -> None:
+        rendered = str(msg) % args if args else str(msg)
+        info_messages.append(rendered)
+
+    monkeypatch.setattr(anemone_logger, "info", _record_info)
+
+    payload_b = build_search_checkpoint_payload(restored, state_codec=resave_codec)
+
+    payload_a_nodes = _payload_nodes_by_id(payload_a)
+    payload_b_nodes = _payload_nodes_by_id(payload_b)
+    assert len(payload_b_nodes) > len(payload_a_nodes)
+    for node_id, node_payload in payload_a_nodes.items():
+        assert payload_b_nodes[node_id].state_payload == node_payload.state_payload
+    assert resave_codec.dumped_anchor_node_ids or resave_codec.dumped_delta_items
+    assert any("state_payloads_reused=3" in message for message in info_messages)
+
+    _load_runtime_from_payload(
+        payload_b,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+
+
+def test_checkpoint_resave_after_load_reuses_dag_delta_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Resaving a restored DAG should reuse the shared child's stored delta."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    export_codec = _FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID)
+    payload_a = build_search_checkpoint_payload(runtime, state_codec=export_codec)
+    restore_codec = _FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID)
+    restored = _load_runtime_from_payload(payload_a, state_codec=restore_codec)
+    restore_codec.reset_counters()
+    resave_codec = _FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID)
+    info_messages: list[str] = []
+
+    def _record_info(msg: object, *args: object) -> None:
+        rendered = str(msg) % args if args else str(msg)
+        info_messages.append(rendered)
+
+    monkeypatch.setattr(anemone_logger, "info", _record_info)
+
+    payload_b = build_search_checkpoint_payload(restored, state_codec=resave_codec)
+
+    assert restore_codec.loaded_anchor_node_ids == []
+    assert restore_codec.applied_delta_items == []
+    assert resave_codec.dumped_anchor_node_ids == []
+    assert resave_codec.dumped_delta_items == []
+    assert resave_codec.dumped_summary_node_ids == []
+    for node_id, node_payload in _payload_nodes_by_id(payload_a).items():
+        assert _payload_nodes_by_id(payload_b)[node_id].state_payload == node_payload.state_payload
+    assert any(
+        f"state_payloads_reused={len(payload_a.tree.nodes)}" in message
+        for message in info_messages
+    )
+    assert any("state_payload_reuse_rejected=0" in message for message in info_messages)
+
+    _load_runtime_from_payload(
+        payload_b,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID),
+    )
+
+
+def test_representative_parent_prefers_reusable_delta_parent_after_restore() -> None:
+    """Representative parent selection should prefer the stored reusable delta edge."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID),
+    )
+    restored = _load_runtime_from_payload(
+        payload,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID),
+        children_by_id=_DAG_CHILDREN_BY_ID,
+    )
+    shared_node = next(
+        node
+        for node in _runtime_nodes_by_id(restored).values()
+        if node.state.node_id == 3 and len(node.parent_nodes) == 2
+    )
+    payload_for_reuse = checkpoint_payload_for_reuse_or_none(shared_node.state_handle)
+
+    assert isinstance(payload_for_reuse, DeltaCheckpointStatePayload)
+
+    representative_parent, parent_node_id, _branch, branch_payload = (
+        _representative_parent_link(shared_node)
+    )
+
+    assert representative_parent is not None
+    assert parent_node_id == payload_for_reuse.state_parent_node_id
+    assert branch_payload == payload_for_reuse.state_parent_branch
+
+
+def test_delta_payload_reuse_is_rejected_for_mismatched_representative_parent() -> None:
+    """Delta reuse must reject a representative parent that differs from the stored one."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID),
+    )
+    restored = _load_runtime_from_payload(
+        payload,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_DAG_CHILDREN_BY_ID),
+        children_by_id=_DAG_CHILDREN_BY_ID,
+    )
+    shared_node = next(
+        node
+        for node in _runtime_nodes_by_id(restored).values()
+        if len(node.parent_nodes) == 2
+    )
+    payload_for_reuse = checkpoint_payload_for_reuse_or_none(shared_node.state_handle)
+
+    assert isinstance(payload_for_reuse, DeltaCheckpointStatePayload)
+
+    matching_parent = next(
+        parent
+        for parent in shared_node.parent_nodes
+        if parent.id == payload_for_reuse.state_parent_node_id
+    )
+    mismatched_parent = next(
+        parent
+        for parent in shared_node.parent_nodes
+        if parent.id != payload_for_reuse.state_parent_node_id
+    )
+
+    assert _delta_reuse_matches_parent(
+        representative_parent=matching_parent,
+        payload=payload_for_reuse,
+    )
+    assert not _delta_reuse_matches_parent(
+        representative_parent=mismatched_parent,
+        payload=payload_for_reuse,
+    )
 
 
 def test_checkpoint_restore_logs_structured_phase_timings(
