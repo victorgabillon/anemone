@@ -77,6 +77,20 @@ class _MarkedStateObjective(SingleAgentMaxObjective[object]):
         return super().evaluate_value(value, state)
 
 
+class _StubRandom(Random):
+    """Deterministic RNG stub for Zipf interval tests."""
+
+    def __init__(self, values: list[float] | None = None) -> None:
+        super().__init__(0)
+        self._values = [*([0.0] if values is None else values)]
+        self._index = 0
+
+    def random(self) -> float:
+        value = self._values[min(self._index, len(self._values) - 1)]
+        self._index += 1
+        return value
+
+
 def _value(score: float) -> Value:
     return Value(score=score, certainty=Certainty.ESTIMATE, over_event=None)
 
@@ -137,8 +151,15 @@ def _selected_node_id(instructions: OpeningInstructions[_FakeNode]) -> int:
     return next(iter(instructions.values())).node_to_open.id
 
 
-def _scan_selected_node_id(tree: SimpleNamespace) -> int:
-    """Return the node id selected by the original scan-based Linoo policy."""
+def _selector(*, random_values: list[float] | None = None) -> Linoo[_FakeNode]:
+    return Linoo(
+        opening_instructor=_FakeOpeningInstructor(),
+        random_generator=_StubRandom(random_values),
+    )
+
+
+def _scan_selected_depth(tree: SimpleNamespace) -> int:
+    """Return the depth selected by the original scan-based Linoo policy."""
     depth_state_by_depth: dict[int, tuple[int, list[_FakeNode]]] = {}
     for absolute_tree_depth in tree.descendants:
         for node in tree.descendants[absolute_tree_depth].values():
@@ -167,19 +188,12 @@ def _scan_selected_node_id(tree: SimpleNamespace) -> int:
         frontier_by_depth,
         key=lambda depth: (depth_state_by_depth[depth][0] * (depth + 1), depth),
     )
-    objective = tree.root_node.tree_evaluation.required_objective
-    return max(
-        frontier_by_depth[selected_depth],
-        key=lambda node: (
-            objective.evaluate_value(node.tree_evaluation.direct_value, node.state),
-            -node.id,
-        ),
-    ).id
+    return selected_depth
 
 
 def test_linoo_chooses_depth_with_minimum_opened_count_index() -> None:
     """Linoo should prefer the depth with the smallest opened-count index."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, opened=True),
@@ -199,7 +213,7 @@ def test_linoo_chooses_depth_with_minimum_opened_count_index() -> None:
 
 def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     """The latest report should expose the full diagnostic depth table."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, opened=True),
@@ -221,6 +235,10 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.selected_depth == 2
     assert report.selected_node_id == 22
     assert report.selected_node_direct_value == 3.0
+    assert report.selected_node_priority == 3.0
+    assert report.selected_node_rank == 1
+    assert report.ranked_candidate_count == 2
+    assert report.node_selection_policy == "zipf_rank"
     assert report.selected_depth_selection_index == 3
     assert report.depth_row_count == 3
     assert report.total_nodes_scanned == 7
@@ -298,7 +316,7 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
 
 def test_linoo_updates_latest_expansion_incrementally() -> None:
     """After the initial rebuild, Linoo should refresh only touched nodes."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     root = _node(0, 0, opened=True)
     first = _node(10, 1, score=5.0)
     second = _node(11, 1, score=4.0)
@@ -349,7 +367,7 @@ def test_linoo_updates_latest_expansion_incrementally() -> None:
 
 def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
     """Inactive depths should stay visible without influencing selection."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, opened=True),
@@ -407,7 +425,7 @@ def test_linoo_selection_report_classifies_terminal_nodes_before_opened_or_exact
     None
 ):
     """Terminal leaves should not be hidden as opened/exact/frontier nodes."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, score=1.0),
@@ -436,7 +454,7 @@ def test_linoo_selection_report_classifies_terminal_nodes_before_opened_or_exact
 
 def test_linoo_does_not_call_state_is_game_over_for_terminality() -> None:
     """Linoo should use only cached tree-evaluation terminality."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     terminal_node = _node(20, 2, score=2.0, terminal=True)
 
     def _raise_if_called() -> bool:
@@ -462,7 +480,7 @@ def test_linoo_does_not_call_state_is_game_over_for_terminality() -> None:
 
 def test_linoo_reports_uncached_terminal_candidates() -> None:
     """Openable-looking nodes without direct values should be counted."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, score=None),
@@ -486,7 +504,7 @@ def test_linoo_reports_uncached_terminal_candidates() -> None:
 
 def test_linoo_does_not_evaluate_non_selected_depths() -> None:
     """Only selected-depth frontier candidates should enter the objective heap."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     non_selected_node = _node(20, 2, score=100.0)
     non_selected_node.state = SimpleNamespace(turn="solo", raise_on_eval=True)
     tree = _tree(
@@ -511,9 +529,9 @@ def test_linoo_does_not_evaluate_non_selected_depths() -> None:
     assert rows_by_depth[2].selected is False
 
 
-def test_linoo_heap_selection_matches_scan_based_policy() -> None:
-    """The cached heap should preserve the original scan policy on small trees."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+def test_linoo_depth_selection_matches_scan_based_policy() -> None:
+    """Zipf node choice should not change the selected frontier depth."""
+    selector = _selector(random_values=[0.999999])
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, opened=True),
@@ -531,22 +549,28 @@ def test_linoo_heap_selection_matches_scan_based_policy() -> None:
         latest_tree_expansions=SimpleNamespace(),
     )
 
-    assert _selected_node_id(instructions) == _scan_selected_node_id(tree)
+    report = selector.latest_selection_report
+    assert report is not None
+    assert report.selected_depth == _scan_selected_depth(tree)
+    assert _selected_node_id(instructions) in {11, 12}
 
 
 def test_linoo_heap_updates_when_touched_frontier_direct_value_changes() -> None:
     """Touched direct-value changes should replace older heap priorities lazily."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     first = _node(10, 1, score=3.0)
     second = _node(11, 1, score=2.0)
     tree = _tree(_node(0, 0, opened=True), first, second)
 
-    assert _selected_node_id(
-        selector.choose_node_and_branch_to_open(
-            tree=tree,
-            latest_tree_expansions=SimpleNamespace(),
+    assert (
+        _selected_node_id(
+            selector.choose_node_and_branch_to_open(
+                tree=tree,
+                latest_tree_expansions=SimpleNamespace(),
+            )
         )
-    ) == 10
+        == 10
+    )
 
     first.tree_evaluation.direct_value = _value(1.0)
     expansions: TreeExpansions[_FakeNode] = TreeExpansions()
@@ -582,7 +606,7 @@ def test_linoo_checkpoint_payload_roundtrips_initialized_cache() -> None:
         _node(11, 1, score=4.0),
         objective=objective,
     )
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
 
     first_instructions = selector.choose_node_and_branch_to_open(
         tree=tree,
@@ -591,7 +615,7 @@ def test_linoo_checkpoint_payload_roundtrips_initialized_cache() -> None:
     payload = selector.build_checkpoint_payload(objective)
     assert payload is not None
 
-    restored_selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    restored_selector = _selector()
     restored = restored_selector.restore_from_checkpoint_payload(
         tree=tree,
         objective=objective,
@@ -618,7 +642,7 @@ def test_linoo_checkpoint_restore_rejects_missing_node_state() -> None:
         _node(10, 1, score=5.0),
         objective=objective,
     )
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     selector.choose_node_and_branch_to_open(
         tree=tree,
         latest_tree_expansions=TreeExpansions(),
@@ -627,7 +651,7 @@ def test_linoo_checkpoint_restore_rejects_missing_node_state() -> None:
     assert payload is not None
     payload.node_states[0].node_id = 999999
 
-    restored_selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    restored_selector = _selector()
     restored = restored_selector.restore_from_checkpoint_payload(
         tree=tree,
         objective=objective,
@@ -653,7 +677,7 @@ def test_linoo_checkpoint_restore_rejects_changed_classification() -> None:
         first,
         objective=objective,
     )
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     selector.choose_node_and_branch_to_open(
         tree=tree,
         latest_tree_expansions=TreeExpansions(),
@@ -662,7 +686,7 @@ def test_linoo_checkpoint_restore_rejects_changed_classification() -> None:
     assert payload is not None
 
     first.all_branches_generated = True
-    restored_selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    restored_selector = _selector()
     restored = restored_selector.restore_from_checkpoint_payload(
         tree=tree,
         objective=objective,
@@ -679,7 +703,7 @@ def test_linoo_refresh_state_for_checkpoint_updates_initialized_cache_only() -> 
     first = _node(10, 1, score=5.0)
     second = _node(11, 1, score=4.0)
     tree = _tree(root, first, second, objective=objective)
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
 
     selector.refresh_state_for_checkpoint(
         tree=tree,
@@ -722,14 +746,16 @@ def test_linoo_refresh_state_for_checkpoint_updates_initialized_cache_only() -> 
         11,
         20,
     }
-    assert next(
-        node_state for node_state in payload.node_states if node_state.node_id == 10
-    ).status == "opened"
+    assert (
+        next(
+            node_state for node_state in payload.node_states if node_state.node_id == 10
+        ).status
+        == "opened"
+    )
 
 
-def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:
-    """Linoo should maximize direct value inside the selected depth."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+def test_linoo_zipf_sampling_respects_rank_intervals() -> None:
+    """Zipf sampling should follow rank order over valid selected-depth candidates."""
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, score=1.0),
@@ -737,17 +763,37 @@ def test_linoo_chooses_best_direct_value_within_selected_depth() -> None:
         _node(12, 1, score=3.0),
     )
 
-    instructions = selector.choose_node_and_branch_to_open(
+    first_selector = _selector(random_values=[0.0])
+    second_selector = _selector(random_values=[0.7])
+    third_selector = _selector(random_values=[0.999999])
+
+    first_instructions = first_selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+    second_instructions = second_selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+    third_instructions = third_selector.choose_node_and_branch_to_open(
         tree=tree,
         latest_tree_expansions=SimpleNamespace(),
     )
 
-    assert _selected_node_id(instructions) == 11
+    assert _selected_node_id(first_instructions) == 11
+    assert _selected_node_id(second_instructions) == 12
+    assert _selected_node_id(third_instructions) == 10
+    assert first_selector.latest_selection_report is not None
+    assert first_selector.latest_selection_report.selected_node_rank == 1
+    assert second_selector.latest_selection_report is not None
+    assert second_selector.latest_selection_report.selected_node_rank == 2
+    assert third_selector.latest_selection_report is not None
+    assert third_selector.latest_selection_report.selected_node_rank == 3
 
 
 def test_linoo_breaks_equal_depth_indices_by_smaller_depth() -> None:
     """Equal depth indices should deterministically prefer the shallower depth."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     tree = _tree(
         _node(0, 0, score=2.0),
         _node(10, 1, score=9.0),
@@ -762,8 +808,8 @@ def test_linoo_breaks_equal_depth_indices_by_smaller_depth() -> None:
 
 
 def test_linoo_breaks_equal_direct_values_by_smallest_node_id() -> None:
-    """Equal direct values should deterministically prefer the smallest node id."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    """Equal priorities should rank the smallest node id first."""
+    selector = _selector()
     tree = _tree(
         _node(0, 0, opened=True),
         _node(7, 1, score=4.0),
@@ -776,11 +822,14 @@ def test_linoo_breaks_equal_direct_values_by_smallest_node_id() -> None:
     )
 
     assert _selected_node_id(instructions) == 3
+    report = selector.latest_selection_report
+    assert report is not None
+    assert report.selected_node_rank == 1
 
 
 def test_linoo_raises_when_direct_value_is_unavailable() -> None:
     """Linoo should fail fast when a frontier node lacks direct_value access."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, eval_type=_MissingDirectValueEval),
@@ -798,7 +847,7 @@ def test_linoo_raises_when_direct_value_is_unavailable() -> None:
 
 def test_linoo_raises_in_non_single_player_context() -> None:
     """Linoo should reject objectives outside the single-player max family."""
-    selector = Linoo(opening_instructor=_FakeOpeningInstructor())
+    selector = _selector()
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, score=1.0),

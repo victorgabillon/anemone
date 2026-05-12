@@ -804,7 +804,11 @@ def _restore_explicit_selector_state(
     if not isinstance(runtime.node_selector, StatefulNodeSelector):
         return
 
-    runtime.node_selector.restore_from_checkpoint_payload(
+    stateful_selector = cast(
+        "StatefulNodeSelector[AlgorithmNode[Any]]",
+        runtime.node_selector,
+    )
+    stateful_selector.restore_from_checkpoint_payload(
         tree=runtime.tree,
         objective=objective,
         payload=payload,

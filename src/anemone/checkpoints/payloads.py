@@ -1,5 +1,7 @@
 """Typed payloads for Anemone search-runtime checkpoints."""
 
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -8,6 +10,28 @@ from typing import Literal, TypedDict
 from ._protocols import CheckpointStateSummary
 
 CHECKPOINT_FORMAT_VERSION = 2
+
+
+def _empty_linoo_candidate_payloads() -> list[LinooCandidateCheckpointPayload]:
+    """Return an empty typed list of serialized Linoo candidates."""
+    return []
+
+
+def _empty_linoo_depth_stats_payloads() -> list[LinooDepthStatsCheckpointPayload]:
+    """Return an empty typed list of serialized Linoo depth stats."""
+    return []
+
+
+def _empty_linoo_node_state_payloads() -> list[LinooNodeStateCheckpointPayload]:
+    """Return an empty typed list of serialized Linoo node states."""
+    return []
+
+
+def _empty_linoo_candidates_by_depth_payloads() -> list[
+    LinooCandidatesByDepthCheckpointPayload
+]:
+    """Return an empty typed list of serialized Linoo candidate buckets."""
+    return []
 
 
 class EnumAtomPayload(TypedDict):
@@ -274,7 +298,9 @@ class LinooCandidatesByDepthCheckpointPayload:
     """Serialized Linoo candidate heap entries for one frontier depth."""
 
     depth: int
-    candidates: list[LinooCandidateCheckpointPayload] = field(default_factory=list)
+    candidates: list[LinooCandidateCheckpointPayload] = field(
+        default_factory=_empty_linoo_candidate_payloads
+    )
 
 
 @dataclass(slots=True)
@@ -283,10 +309,14 @@ class LinooSelectorCheckpointPayload:
 
     type: Literal["linoo"] = "linoo"
     version: int = 1
-    depth_stats: list[LinooDepthStatsCheckpointPayload] = field(default_factory=list)
-    node_states: list[LinooNodeStateCheckpointPayload] = field(default_factory=list)
+    depth_stats: list[LinooDepthStatsCheckpointPayload] = field(
+        default_factory=_empty_linoo_depth_stats_payloads
+    )
+    node_states: list[LinooNodeStateCheckpointPayload] = field(
+        default_factory=_empty_linoo_node_state_payloads
+    )
     candidates_by_depth: list[LinooCandidatesByDepthCheckpointPayload] = field(
-        default_factory=list
+        default_factory=_empty_linoo_candidates_by_depth_payloads
     )
     last_selected_node_id: int | None = None
 

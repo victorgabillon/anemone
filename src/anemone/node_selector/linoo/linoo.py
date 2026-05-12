@@ -1,9 +1,11 @@
 """Single-player depth-aware selector based on direct node values."""
 
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from heapq import heappop, heappush
+from heapq import heapify, heappop, heappush
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -16,6 +18,9 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from random import Random
+
     from valanga.evaluations import Value
 
     from anemone import tree_manager as tree_man
@@ -71,6 +76,10 @@ class LinooSelectionReport:
     selected_depth: int
     selected_node_id: int
     selected_node_direct_value: float | None
+    selected_node_priority: float | None
+    selected_node_rank: int
+    ranked_candidate_count: int
+    node_selection_policy: Literal["zipf_rank"]
     selected_depth_selection_index: int
     depth_rows: tuple[LinooDepthSelectionRow, ...]
     collect_frontier_state_s: float | None = None
@@ -103,7 +112,7 @@ class LinooSelectionReport:
             "index",
             "selected",
         )
-        rows = [
+        rows: tuple[tuple[str, ...], ...] = tuple(
             (
                 str(row.depth),
                 str(row.total_nodes),
@@ -117,7 +126,7 @@ class LinooSelectionReport:
                 "yes" if row.selected else "no",
             )
             for row in self.depth_rows
-        ]
+        )
         return _format_table(headers, rows)
 
 
@@ -155,7 +164,9 @@ class _LinooDepthStats:
 
     def count_for(self, status: _LinooNodeStatus) -> int:
         """Return the counter value for one cached node status."""
-        return getattr(self, _LINOO_NODE_STATUS_COUNTERS[status])
+        count = getattr(self, _LINOO_NODE_STATUS_COUNTERS[status])
+        assert isinstance(count, int)
+        return count
 
     def increment(self, status: _LinooNodeStatus) -> None:
         """Add one node with ``status`` to this depth."""
@@ -197,6 +208,7 @@ class _LinooNodeState[NodeT]:
 
 
 type _LinooHeapEntry[NodeT] = tuple[float, int, int, NodeT]
+type _LinooRankedCandidate[NodeT] = tuple[float, int, int, NodeT]
 
 
 class LinooSelectionError(ValueError):
@@ -257,7 +269,7 @@ def _format_optional_int(value: int | None) -> str:
 
 def _format_table(
     headers: tuple[str, ...],
-    rows: list[tuple[str, ...]],
+    rows: Sequence[Sequence[str]],
 ) -> str:
     """Format string rows as a simple aligned whitespace table."""
     widths = [
@@ -265,17 +277,13 @@ def _format_table(
         for column in range(len(headers))
     ]
     formatted_rows = [
-        " ".join(
-            value.rjust(widths[column])
-            for column, value in enumerate(row)
-        )
+        " ".join(value.rjust(widths[column]) for column, value in enumerate(row))
         for row in rows
     ]
     return "\n".join(
         [
             " ".join(
-                header.rjust(widths[column])
-                for column, header in enumerate(headers)
+                header.rjust(widths[column]) for column, header in enumerate(headers)
             ),
             *formatted_rows,
         ]
@@ -295,6 +303,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """
 
     opening_instructor: OpeningInstructor
+    random_generator: Random
     latest_selection_report: LinooSelectionReport | None
     _depth_stats_by_depth: dict[int, _LinooDepthStats]
     _frontier_node_ids_by_depth: dict[int, set[int]]
@@ -308,9 +317,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     _cache_initialized: bool
     _last_selected_node: NodeT | None
 
-    def __init__(self, opening_instructor: OpeningInstructor) -> None:
+    def __init__(
+        self,
+        opening_instructor: OpeningInstructor,
+        random_generator: Random,
+    ) -> None:
         """Store the opening instructor used to materialize branch openings."""
         self.opening_instructor = opening_instructor
+        self.random_generator = random_generator
         self.latest_selection_report = None
         self._depth_stats_by_depth = {}
         self._frontier_node_ids_by_depth = {}
@@ -462,7 +476,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
         heap_update_s = perf_counter() - heap_update_started_at
         choose_node_started_at = perf_counter()
-        selected_node, stale_candidates_skipped = self._choose_best_node_at_depth(
+        (
+            selected_node,
+            stale_candidates_skipped,
+            selected_node_rank,
+            ranked_candidate_count,
+            selected_node_priority,
+        ) = self._choose_zipf_node_at_depth(
             tree=tree,
             depth=selected_depth,
         )
@@ -486,15 +506,17 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             selected_depth_frontier_count=selected_depth_frontier_count,
             stale_candidates_skipped=stale_candidates_skipped,
             heap_candidates_registered=heap_candidates_registered,
+            selected_node_priority=selected_node_priority,
+            selected_node_rank=selected_node_rank,
+            ranked_candidate_count=ranked_candidate_count,
             state_rebuilt=state_rebuilt,
             nodes_incrementally_updated=nodes_incrementally_updated,
         )
-        if self.latest_selection_report is not None:
-            self.latest_selection_report = replace(
-                self.latest_selection_report,
-                make_report_s=perf_counter() - make_report_started_at,
-                total_s=perf_counter() - total_started_at,
-            )
+        self.latest_selection_report = replace(
+            self.latest_selection_report,
+            make_report_s=perf_counter() - make_report_started_at,
+            total_s=perf_counter() - total_started_at,
+        )
 
         all_branches_to_open = self.opening_instructor.all_branches_to_open(
             node_to_open=selected_node
@@ -544,7 +566,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             nodes_to_update=nodes_to_update,
         )
         tree_node_count = self._tree_node_count(tree)
-        if tree_node_count is not None and tree_node_count != len(self._node_state_by_id):
+        if tree_node_count is not None and tree_node_count != len(
+            self._node_state_by_id
+        ):
             self._rebuild_runtime_state(tree=tree, objective=objective)
             return True, 0
         return False, nodes_updated
@@ -750,8 +774,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             and stats.exact_count == payload_by_depth[depth].exact_count
             and stats.uncached_terminal_candidates
             == payload_by_depth[depth].uncached_terminal_candidates
-            and stats.non_openable_count
-            == payload_by_depth[depth].non_openable_count
+            and stats.non_openable_count == payload_by_depth[depth].non_openable_count
             for depth, stats in depth_stats_by_depth.items()
         )
 
@@ -858,9 +881,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     ) -> dict[int, NodeT] | None:
         """Collect touched nodes using the explicit ``TreeExpansions`` API."""
         try:
-            creation_expansions = (
-                latest_tree_expansions.expansions_with_node_creation
-            )
+            creation_expansions = latest_tree_expansions.expansions_with_node_creation
             connection_expansions = (
                 latest_tree_expansions.expansions_without_node_creation
             )
@@ -869,9 +890,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         except AttributeError:
             # Defensive fallback for legacy tests/non-standard selector callers.
             return None
-        if not callable(created_nodes) or not callable(affected_child_nodes):
-            return None
-
         nodes_by_id: dict[int, NodeT] = {}
         if self._last_selected_node is not None:
             nodes_by_id[self._last_selected_node.id] = self._last_selected_node
@@ -1032,20 +1050,20 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         )
         return True
 
-    def _choose_best_node_at_depth(
+    def _rank_valid_candidates_at_depth(
         self,
         *,
         tree: trees.Tree[NodeT],
         depth: int,
-    ) -> tuple[NodeT, int]:
-        """Return the best cached frontier node, lazily discarding stale entries."""
+    ) -> tuple[list[_LinooRankedCandidate[NodeT]], int]:
+        """Return valid candidates sorted by priority, compacting stale heap entries."""
         heap = self._candidates_by_depth.setdefault(depth, [])
         stale_candidates_skipped = 0
+        valid_entries_by_node_id: dict[int, _LinooHeapEntry[NodeT]] = {}
         while heap:
-            _priority, node_id, version, node = heap[0]
+            priority_key, node_id, version, node = heappop(heap)
             current_version = self._candidate_versions_by_node_id.get(node_id)
             if version != current_version:
-                heappop(heap)
                 stale_candidates_skipped += 1
                 continue
 
@@ -1054,12 +1072,61 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 node=node,
                 expected_depth=depth,
             ):
-                heappop(heap)
                 self._candidate_heap_present_by_node_id[node_id] = False
                 stale_candidates_skipped += 1
                 continue
 
-            return node, stale_candidates_skipped
+            valid_entries_by_node_id[node_id] = (
+                priority_key,
+                node_id,
+                version,
+                node,
+            )
+
+        compacted_heap = list(valid_entries_by_node_id.values())
+        for node_id in tuple(self._frontier_node_ids_by_depth.get(depth, set())):
+            self._candidate_heap_present_by_node_id[node_id] = (
+                node_id in valid_entries_by_node_id
+            )
+        self._candidates_by_depth[depth] = compacted_heap
+        heapify(self._candidates_by_depth[depth])
+
+        ranked_candidates = sorted(
+            compacted_heap,
+            key=lambda entry: (entry[0], entry[1]),
+        )
+        return ranked_candidates, stale_candidates_skipped
+
+    def _choose_zipf_node_at_depth(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        depth: int,
+    ) -> tuple[NodeT, int, int, int, float]:
+        """Sample one valid frontier candidate using Zipf rank weights."""
+        ranked_candidates, stale_candidates_skipped = (
+            self._rank_valid_candidates_at_depth(
+                tree=tree,
+                depth=depth,
+            )
+        )
+        if not ranked_candidates:
+            raise _no_frontier_nodes_error()
+
+        total_weight = sum(1.0 / rank for rank in range(1, len(ranked_candidates) + 1))
+        threshold = self.random_generator.random() * total_weight
+        cumulative_weight = 0.0
+        for rank, candidate in enumerate(ranked_candidates, start=1):
+            cumulative_weight += 1.0 / rank
+            if threshold < cumulative_weight or rank == len(ranked_candidates):
+                priority_key, _node_id, _version, node = candidate
+                return (
+                    node,
+                    stale_candidates_skipped,
+                    rank,
+                    len(ranked_candidates),
+                    -priority_key,
+                )
 
         raise _no_frontier_nodes_error()
 
@@ -1097,6 +1164,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         selected_depth_frontier_count: int,
         stale_candidates_skipped: int,
         heap_candidates_registered: int,
+        selected_node_priority: float,
+        selected_node_rank: int,
+        ranked_candidate_count: int,
         state_rebuilt: bool,
         nodes_incrementally_updated: int,
     ) -> LinooSelectionReport:
@@ -1116,9 +1186,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 frontier_count=depth_state.frontier_count,
                 terminal_count=depth_state.terminal_count,
                 exact_count=depth_state.exact_count,
-                uncached_terminal_candidates=(
-                    depth_state.uncached_terminal_candidates
-                ),
+                uncached_terminal_candidates=(depth_state.uncached_terminal_candidates),
                 non_openable_count=depth_state.non_openable_count,
                 selection_index=selection_index,
                 active=active,
@@ -1139,15 +1207,18 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             )
         )
         if selected_depth_selection_index is None:
-            selected_depth_selection_index = (
-                depth_stats_by_depth[selected_depth].opened_count
-                * (selected_depth + 1)
-            )
+            selected_depth_selection_index = depth_stats_by_depth[
+                selected_depth
+            ].opened_count * (selected_depth + 1)
 
         return LinooSelectionReport(
             selected_depth=selected_depth,
             selected_node_id=selected_node.id,
             selected_node_direct_value=self._require_direct_value(selected_node).score,
+            selected_node_priority=selected_node_priority,
+            selected_node_rank=selected_node_rank,
+            ranked_candidate_count=ranked_candidate_count,
+            node_selection_policy="zipf_rank",
             selected_depth_selection_index=selected_depth_selection_index,
             depth_rows=sorted_rows,
             collect_frontier_state_s=collect_frontier_state_s,

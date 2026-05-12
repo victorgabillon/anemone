@@ -7,19 +7,22 @@ import io
 import json
 import re
 from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
-try:
-    import orjson as _orjson
-except ImportError:  # pragma: no cover - exercised in environments without orjson.
-    _orjson = None
 
-try:
-    import zstandard as _zstandard
-except ImportError:  # pragma: no cover - exercised in environments without zstandard.
-    _zstandard = None
+def _load_optional_module(module_name: str) -> Any | None:
+    """Import one optional dependency module when available."""
+    try:
+        return import_module(module_name)
+    except ImportError:  # pragma: no cover - exercised without optional deps.
+        return None
+
+
+_orjson_module = _load_optional_module("orjson")
+_zstandard_module = _load_optional_module("zstandard")
 
 
 type CheckpointFileFormat = Literal["json", "json_gz", "json_zst"]
@@ -35,7 +38,7 @@ _CHECKPOINT_CLI_NAME_BY_FORMAT: dict[CheckpointFileFormat, str] = {
     "json_gz": "json-gz",
     "json_zst": "json-zst",
 }
-_CHECKPOINT_FORMAT_BY_CLI_NAME = {
+_CHECKPOINT_FORMAT_BY_CLI_NAME: dict[str, CheckpointFileFormat] = {
     cli_name: file_format
     for file_format, cli_name in _CHECKPOINT_CLI_NAME_BY_FORMAT.items()
 }
@@ -49,7 +52,7 @@ _GENERATION_FORMAT_PREFERENCE: dict[CheckpointFileFormat, int] = {
 }
 
 DEFAULT_CHECKPOINT_FILE_FORMAT: CheckpointFileFormat = (
-    "json_zst" if _zstandard is not None else "json_gz"
+    "json_zst" if _zstandard_module is not None else "json_gz"
 )
 
 _SCALAR_TYPES = (type(None), bool, int, float, str)
@@ -93,13 +96,16 @@ def checkpoint_payload_to_jsonable(value: object) -> object:
     if isinstance(value, _SCALAR_TYPES):
         return value
     if isinstance(value, list):
-        return [checkpoint_payload_to_jsonable(item) for item in value]
+        list_items = cast("list[object]", value)
+        return [checkpoint_payload_to_jsonable(item) for item in list_items]
     if isinstance(value, tuple):
-        return [checkpoint_payload_to_jsonable(item) for item in value]
+        tuple_items = cast("tuple[object, ...]", value)
+        return [checkpoint_payload_to_jsonable(item) for item in tuple_items]
     if isinstance(value, dict):
+        dict_items = cast("dict[object, object]", value)
         return {
             checkpoint_payload_to_jsonable(key): checkpoint_payload_to_jsonable(item)
-            for key, item in value.items()
+            for key, item in dict_items.items()
         }
     field_names = _dataclass_field_names(type(value))
     if field_names and not isinstance(value, type):
@@ -164,9 +170,7 @@ def checkpoint_output_path(
             return resolved_path.with_name(
                 f"{base_name}{checkpoint_file_suffix(resolved_format)}"
             )
-    return resolved_path.with_name(
-        f"{name}{checkpoint_file_suffix(resolved_format)}"
-    )
+    return resolved_path.with_name(f"{name}{checkpoint_file_suffix(resolved_format)}")
 
 
 def checkpoint_file_format_from_path(path: str | Path) -> CheckpointFileFormat:
@@ -178,7 +182,7 @@ def checkpoint_file_format_from_path(path: str | Path) -> CheckpointFileFormat:
         return "json_gz"
     if name.endswith(".json"):
         return "json"
-    raise ValueError(f"Unsupported checkpoint file suffix: {path!s}")
+    raise _unsupported_checkpoint_file_suffix_error(path)
 
 
 def parse_generation_checkpoint_name(path: str | Path) -> int | None:
@@ -208,9 +212,7 @@ def resolve_latest_generation_checkpoint_path(directory: str | Path) -> Path:
             )
         )
     if not candidates:
-        raise FileNotFoundError(
-            f"No runtime checkpoint found in {resolved_directory!s}."
-        )
+        raise _runtime_checkpoint_not_found_error(resolved_directory)
     _generation, _format_preference, latest_path = max(candidates)
     return latest_path
 
@@ -260,10 +262,12 @@ def load_checkpoint_json_payload(
             payload = json.load(handle)
     else:
         compressor = _require_zstandard()
-        with resolved_input.open("rb") as raw_handle:
-            with compressor.ZstdDecompressor().stream_reader(raw_handle) as reader:
-                with io.TextIOWrapper(reader, encoding="utf-8") as handle:
-                    payload = json.load(handle)
+        with (
+            resolved_input.open("rb") as raw_handle,
+            compressor.ZstdDecompressor().stream_reader(raw_handle) as reader,
+            io.TextIOWrapper(reader, encoding="utf-8") as handle,
+        ):
+            payload = json.load(handle)
     return payload, CheckpointReadStats(
         input_path=resolved_input,
         file_format=resolved_format,
@@ -272,11 +276,26 @@ def load_checkpoint_json_payload(
     )
 
 
+def _unsupported_checkpoint_file_suffix_error(path: str | Path) -> ValueError:
+    """Return the canonical unsupported-suffix error for checkpoint paths."""
+    return ValueError(f"Unsupported checkpoint file suffix: {path!s}")
+
+
+def _runtime_checkpoint_not_found_error(directory: Path) -> FileNotFoundError:
+    """Return the canonical missing-checkpoint error for one directory."""
+    return FileNotFoundError(f"No runtime checkpoint found in {directory!s}.")
+
+
+def _zstandard_required_error() -> RuntimeError:
+    """Return the canonical zstandard dependency error."""
+    return RuntimeError("zstandard is required for .json.zst checkpoint support")
+
+
 def _require_zstandard() -> Any:
     """Return the optional zstandard module or fail with a clear message."""
-    if _zstandard is None:
-        raise RuntimeError("zstandard is required for .json.zst checkpoint support")
-    return _zstandard
+    if _zstandard_module is None:
+        raise _zstandard_required_error()
+    return _zstandard_module
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,7 +323,7 @@ def _dataclass_field_names(dataclass_type: type[object]) -> tuple[str, ...]:
 
 def _encode_checkpoint_payload(payload: object) -> _EncodedCheckpointPayload:
     """Return one whole encoded JSON payload without chunked writes."""
-    if _orjson is not None:
+    if _orjson_module is not None:
         direct_encoded = _try_orjson_encode(payload, serialize_dataclass=True)
         if direct_encoded is not None:
             return _EncodedCheckpointPayload(
@@ -318,7 +337,7 @@ def _encode_checkpoint_payload(payload: object) -> _EncodedCheckpointPayload:
     jsonable_payload = checkpoint_payload_to_jsonable(payload)
     jsonable_s = perf_counter() - jsonable_started_at
 
-    if _orjson is not None:
+    if _orjson_module is not None:
         json_bytes, json_encode_s = _orjson_encode(jsonable_payload)
         return _EncodedCheckpointPayload(
             json_bytes=json_bytes,
@@ -337,6 +356,8 @@ def _encode_checkpoint_payload(payload: object) -> _EncodedCheckpointPayload:
     )
 
 
+# Pylint cannot introspect optional C-extension module attributes reliably.
+# pylint: disable=no-member
 def _orjson_encode(payload: object) -> tuple[bytes, float]:
     """Encode one payload with orjson and stable formatting options."""
     orjson_module = _require_orjson()
@@ -366,6 +387,9 @@ def _try_orjson_encode(
     return json_bytes, perf_counter() - started_at
 
 
+# pylint: enable=no-member
+
+
 def _compress_checkpoint_bytes(
     json_bytes: bytes,
     file_format: CheckpointFileFormat,
@@ -384,9 +408,14 @@ def _compress_checkpoint_bytes(
 
 def _require_orjson() -> Any:
     """Return the optional orjson module or fail with a clear message."""
-    if _orjson is None:
-        raise RuntimeError("orjson is required for the fast checkpoint JSON encoder")
-    return _orjson
+    if _orjson_module is None:
+        raise _orjson_required_error()
+    return _orjson_module
+
+
+def _orjson_required_error() -> RuntimeError:
+    """Return the canonical orjson dependency error."""
+    return RuntimeError("orjson is required for the fast checkpoint JSON encoder")
 
 
 __all__ = [

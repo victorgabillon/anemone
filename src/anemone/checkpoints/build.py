@@ -6,12 +6,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, fields, is_dataclass
 from random import Random
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeGuard, cast
 
-from valanga import Outcome
-
-from anemone.node_selector import StatefulNodeSelector
 from anemone.node_evaluation.common import canonical_value
+from anemone.node_selector import StatefulNodeSelector
 from anemone.objectives import SingleAgentMaxObjective
 from anemone.utils.logger import anemone_logger, checkpoint_logger
 from anemone.utils.small_tools import Interval
@@ -36,14 +34,17 @@ from .payloads import (
     PrincipalVariationCheckpointPayload,
     SearchRuntimeCheckpointPayload,
     SelectorCheckpointPayload,
+    SerializedOverEventPayload,
     SerializedValuePayload,
     TreeCheckpointPayload,
     TreeExpansionCheckpointPayload,
     TreeExpansionsCheckpointPayload,
-    SerializedOverEventPayload,
 )
 from .state_handles import checkpoint_payload_for_reuse_or_none
-from .value_serialization import CheckpointSerializationError, serialize_checkpoint_atom
+from .value_serialization import (
+    serialize_checkpoint_atom,
+    serialize_over_event_with,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, MutableMapping
@@ -58,6 +59,18 @@ if TYPE_CHECKING:
 
 CHECKPOINT_ANCHOR_DEPTH_STRIDE = 4
 CHECKPOINT_ANCHOR_FALLBACK_WARNING_FRACTION = 0.10
+
+
+def _empty_atom_serialization_cache() -> dict[object, CheckpointAtomPayload]:
+    """Return an empty typed atom-serialization cache."""
+    return {}
+
+
+def _empty_value_identity_serialization_cache() -> dict[
+    int, tuple[object, SerializedValuePayload]
+]:
+    """Return an empty typed value-serialization cache."""
+    return {}
 
 
 @dataclass(slots=True)
@@ -148,11 +161,11 @@ class _CheckpointBuildContext:
 
     metrics: _CheckpointBuildMetrics
     atom_serialization_cache: dict[object, CheckpointAtomPayload] = field(
-        default_factory=dict
+        default_factory=_empty_atom_serialization_cache
     )
-    value_identity_serialization_cache: dict[int, tuple[object, SerializedValuePayload]] = (
-        field(default_factory=dict)
-    )
+    value_identity_serialization_cache: dict[
+        int, tuple[object, SerializedValuePayload]
+    ] = field(default_factory=_empty_value_identity_serialization_cache)
 
 
 @dataclass(frozen=True, slots=True)
@@ -391,12 +404,15 @@ def _preferred_parent_link_from_reusable_state_payload(
     *,
     node_cache: _NodeCheckpointBuildCache,
     context: _CheckpointBuildContext,
-) -> tuple[
-    AlgorithmNode[Any] | None,
-    int | None,
-    BranchKey | None,
-    CheckpointAtomPayload | None,
-] | None:
+) -> (
+    tuple[
+        AlgorithmNode[Any] | None,
+        int | None,
+        BranchKey | None,
+        CheckpointAtomPayload | None,
+    ]
+    | None
+):
     """Return the stored delta parent/link when it is still a live incoming edge."""
     payload = checkpoint_payload_for_reuse_or_none(node.state_handle)
     if not isinstance(payload, DeltaCheckpointStatePayload):
@@ -447,7 +463,9 @@ def _build_checkpoint_state_payload(
             metrics.state_payloads_reused += 1
             return reused_payload
         state_summary_started_at = perf_counter()
-        state_summary = _dump_optional_state_summary(node.state, state_codec=state_codec)
+        state_summary = _dump_optional_state_summary(
+            node.state, state_codec=state_codec
+        )
         metrics.state_summary_total_s += perf_counter() - state_summary_started_at
         if _is_anchor_node(node=node, parent_node=representative_parent):
             anchor_started_at = perf_counter()
@@ -540,8 +558,8 @@ def _try_build_delta_state_payload(
         node_cache=node_cache,
     ):
         metrics.delta_candidates_attempted += 1
+        delta_started_at = perf_counter()
         try:
-            delta_started_at = perf_counter()
             delta_ref = state_codec.dump_delta_from_parent(
                 parent_state=candidate_parent.state,
                 child_state=node.state,
@@ -1037,8 +1055,7 @@ def _serialize_branch_collection(
         if atom_scope == "evaluation":
             atom_serializer = _serialize_evaluation_atom_for_build
         serialized_branches = [
-            atom_serializer(branch, context=context)
-            for branch in branches
+            atom_serializer(branch, context=context) for branch in branches
         ]
         sort_started_at = perf_counter()
         serialized_branches.sort(key=repr)
@@ -1160,9 +1177,7 @@ def _serialize_value_for_build(
     metrics.serialize_value_calls += 1
 
     identity_key = id(value)
-    cached_identity_entry = context.value_identity_serialization_cache.get(
-        identity_key
-    )
+    cached_identity_entry = context.value_identity_serialization_cache.get(identity_key)
     if cached_identity_entry is not None and cached_identity_entry[0] is value:
         metrics.serialize_value_cache_hits += 1
         return cached_identity_entry[1]
@@ -1212,21 +1227,10 @@ def _serialize_over_event_for_build(
     context: _CheckpointBuildContext,
 ) -> SerializedOverEventPayload | None:
     """Serialize over-event metadata while attributing atom work to evaluation."""
-    if over_event is None:
-        return None
-
-    outcome = getattr(over_event, "outcome", None)
-    if not isinstance(outcome, Outcome):
-        raise CheckpointSerializationError.invalid_over_event(over_event)
-
-    return SerializedOverEventPayload(
-        outcome=outcome.name,
-        termination=_serialize_optional_evaluation_atom(
-            getattr(over_event, "termination", None),
-            context=context,
-        ),
-        winner=_serialize_optional_evaluation_atom(
-            getattr(over_event, "winner", None),
+    return serialize_over_event_with(
+        over_event,
+        atom_serializer=lambda atom: _serialize_optional_evaluation_atom(
+            atom,
             context=context,
         ),
     )
@@ -1252,11 +1256,11 @@ def _exploration_index_fields(index_data: object) -> dict[str, object]:
         return {"index": getattr(index_data, "index", None)}
 
     payload: dict[str, object] = {}
-    for field in fields(index_data):
-        if field.name == "tree_node":
+    for dataclass_field in fields(index_data):
+        if dataclass_field.name == "tree_node":
             continue
-        value = getattr(index_data, field.name)
-        payload[field.name] = _serialize_index_field_value(value)
+        value = getattr(index_data, dataclass_field.name)
+        payload[dataclass_field.name] = _serialize_index_field_value(value)
     return payload
 
 
@@ -1286,16 +1290,27 @@ def _build_selector_state_payload(
 ) -> SelectorCheckpointPayload | None:
     """Serialize optional selector-private checkpoint state when supported."""
     objective = search.tree.root_node.tree_evaluation.required_objective
-    if not isinstance(objective, SingleAgentMaxObjective):
+    if not _is_single_agent_objective(objective):
         return None
     if not isinstance(search.node_selector, StatefulNodeSelector):
         return None
-    search.node_selector.refresh_state_for_checkpoint(
+    stateful_selector = cast(
+        "StatefulNodeSelector[AlgorithmNode[Any]]",
+        search.node_selector,
+    )
+    stateful_selector.refresh_state_for_checkpoint(
         tree=search.tree,
         objective=objective,
         latest_tree_expansions=search.latest_tree_expansions,
     )
-    return search.node_selector.build_checkpoint_payload(objective)
+    return stateful_selector.build_checkpoint_payload(objective)
+
+
+def _is_single_agent_objective(
+    objective: object,
+) -> TypeGuard[SingleAgentMaxObjective[Any]]:
+    """Return whether one objective is a typed single-agent objective."""
+    return isinstance(objective, SingleAgentMaxObjective)
 
 
 def _build_latest_tree_expansions_payload(
@@ -1352,9 +1367,10 @@ def _maybe_log_checkpoint_codec_profile(state_codec: object) -> None:
     snapshot = profile_snapshot()
     if not isinstance(snapshot, Mapping):
         return
+    profile_mapping = cast("Mapping[object, object]", snapshot)
     anemone_logger.info(
         "[checkpoint-codec-profile] %s",
-        _format_profile_mapping(snapshot),
+        _format_profile_mapping(profile_mapping),
     )
 
 
@@ -1367,9 +1383,10 @@ def _maybe_reset_checkpoint_profile(state_codec: object) -> None:
 
 def _format_profile_mapping(profile: Mapping[object, object]) -> str:
     """Format a small codec profile mapping as stable key=value pairs."""
-    items: list[str] = []
-    for key in sorted(profile, key=str):
-        items.append(f"{key}={_format_profile_value(profile[key])}")
+    items = [
+        f"{key}={_format_profile_value(profile[key])}"
+        for key in sorted(profile, key=str)
+    ]
     return " ".join(items)
 
 

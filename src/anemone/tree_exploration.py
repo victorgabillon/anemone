@@ -329,7 +329,13 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Invalidate selector runtime cache when the selector exposes invalidate()."""
         if not isinstance(self.node_selector, node_sel.InvalidatableNodeSelector):
             return False
-        self.node_selector.invalidate()
+        invalidate = cast(
+            "Callable[[], None] | None",
+            getattr(self.node_selector, "invalidate", None),
+        )
+        if invalidate is None:
+            return False
+        invalidate()  # pylint: disable=not-callable
         return True
 
     def _nodes_by_public_id(self) -> dict[str, NodeT]:

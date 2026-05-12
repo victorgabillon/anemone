@@ -18,7 +18,7 @@ from .payloads import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable
+    from collections.abc import Callable, Hashable
 
     from anemone._valanga_types import AnyOverEvent
 
@@ -184,6 +184,18 @@ def serialize_over_event(
     over_event: object | None,
 ) -> SerializedOverEventPayload | None:
     """Serialize one ``OverEvent``-like object carried by a ``Value``."""
+    return serialize_over_event_with(
+        over_event,
+        atom_serializer=serialize_checkpoint_atom,
+    )
+
+
+def serialize_over_event_with(
+    over_event: object | None,
+    *,
+    atom_serializer: Callable[[object | None], CheckpointAtomPayload | None],
+) -> SerializedOverEventPayload | None:
+    """Serialize one over-event using the provided atom serializer."""
     if over_event is None:
         return None
 
@@ -193,8 +205,8 @@ def serialize_over_event(
 
     return SerializedOverEventPayload(
         outcome=outcome.name,
-        termination=serialize_checkpoint_atom(getattr(over_event, "termination", None)),
-        winner=serialize_checkpoint_atom(getattr(over_event, "winner", None)),
+        termination=atom_serializer(getattr(over_event, "termination", None)),
+        winner=atom_serializer(getattr(over_event, "winner", None)),
     )
 
 

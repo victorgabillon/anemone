@@ -9,6 +9,7 @@ from typing import Any, Self, cast
 
 import pytest
 import valanga
+import anemone.checkpoints.build as checkpoint_build_module
 from valanga import (
     BranchKey,
     Color,
@@ -30,7 +31,6 @@ from anemone.checkpoints import (
 )
 from anemone.checkpoints.build import (
     _delta_reuse_matches_parent,
-    _representative_parent_link,
 )
 from anemone.checkpoints.load import _checkpoint_summary_tag
 from anemone.checkpoints.state_handles import (
@@ -1088,9 +1088,14 @@ def test_checkpoint_resave_after_load_reuses_all_state_payloads(
     assert resave_codec.dumped_anchor_node_ids == []
     assert resave_codec.dumped_delta_items == []
     assert resave_codec.dumped_summary_node_ids == []
-    assert _payload_nodes_by_id(payload_b).keys() == _payload_nodes_by_id(payload_a).keys()
+    assert (
+        _payload_nodes_by_id(payload_b).keys() == _payload_nodes_by_id(payload_a).keys()
+    )
     for node_id, node_payload in _payload_nodes_by_id(payload_a).items():
-        assert _payload_nodes_by_id(payload_b)[node_id].state_payload == node_payload.state_payload
+        assert (
+            _payload_nodes_by_id(payload_b)[node_id].state_payload
+            == node_payload.state_payload
+        )
     assert any(
         f"state_payloads_reused={len(payload_a.tree.nodes)}" in message
         for message in info_messages
@@ -1197,7 +1202,10 @@ def test_checkpoint_resave_after_load_reuses_dag_delta_payloads(
     assert resave_codec.dumped_delta_items == []
     assert resave_codec.dumped_summary_node_ids == []
     for node_id, node_payload in _payload_nodes_by_id(payload_a).items():
-        assert _payload_nodes_by_id(payload_b)[node_id].state_payload == node_payload.state_payload
+        assert (
+            _payload_nodes_by_id(payload_b)[node_id].state_payload
+            == node_payload.state_payload
+        )
     assert any(
         f"state_payloads_reused={len(payload_a.tree.nodes)}" in message
         for message in info_messages
@@ -1233,8 +1241,20 @@ def test_representative_parent_prefers_reusable_delta_parent_after_restore() -> 
 
     assert isinstance(payload_for_reuse, DeltaCheckpointStatePayload)
 
+    context = checkpoint_build_module._CheckpointBuildContext(
+        metrics=checkpoint_build_module._CheckpointBuildMetrics()
+    )
+    node_cache = checkpoint_build_module._build_node_checkpoint_cache(
+        shared_node,
+        context=context,
+    )
+
     representative_parent, parent_node_id, _branch, branch_payload = (
-        _representative_parent_link(shared_node)
+        checkpoint_build_module._representative_parent_link(
+            shared_node,
+            node_cache=node_cache,
+            context=context,
+        )
     )
 
     assert representative_parent is not None

@@ -368,6 +368,14 @@ class _LinooIntegrationOpeningInstructor:
         return [0]
 
 
+class _IntegrationStubRandom(Random):
+    def __init__(self) -> None:
+        super().__init__(0)
+
+    def random(self) -> float:
+        return 0.0
+
+
 class _LinooIntegrationManager:
     dynamics: object = SimpleNamespace(action_name=lambda state, branch: str(branch))
     node_evaluator: object = SimpleNamespace(
@@ -481,7 +489,10 @@ def test_linoo_incremental_cache_updates_through_tree_exploration_step() -> None
     first = _linoo_integration_node(10, 1, 5.0)
     second = _linoo_integration_node(11, 1, 4.0)
     tree = _linoo_integration_tree(root, first, second)
-    selector = Linoo(opening_instructor=_LinooIntegrationOpeningInstructor())
+    selector = Linoo(
+        opening_instructor=_LinooIntegrationOpeningInstructor(),
+        random_generator=_IntegrationStubRandom(),
+    )
     exploration = TreeExploration(
         tree=tree,
         tree_manager=_LinooIntegrationManager(),
@@ -514,7 +525,10 @@ def test_reevaluation_invalidates_linoo_incremental_cache_before_next_step() -> 
     first = _linoo_integration_node(10, 1, 5.0)
     second = _linoo_integration_node(11, 1, 4.0)
     tree = _linoo_integration_tree(root, first, second)
-    selector = Linoo(opening_instructor=_LinooIntegrationOpeningInstructor())
+    selector = Linoo(
+        opening_instructor=_LinooIntegrationOpeningInstructor(),
+        random_generator=_IntegrationStubRandom(),
+    )
     exploration = TreeExploration(
         tree=tree,
         tree_manager=_LinooIntegrationManager(),

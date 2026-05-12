@@ -1,16 +1,21 @@
 """Composed node selector with optional priority override and base fallback."""
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from anemone import trees
-from anemone.node_selector.node_selector import NodeSelector
+from anemone.node_selector.node_selector import (
+    InvalidatableNodeSelector,
+    NodeSelector,
+)
 from anemone.node_selector.opening_instructions import OpeningInstructions
 from anemone.node_selector.priority_check.priority_check import PriorityCheck
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from anemone import tree_manager as tree_man
     from anemone.checkpoints.payloads import SelectorCheckpointPayload
 
@@ -54,9 +59,15 @@ class ComposedNodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
 
     def invalidate(self) -> None:
         """Forward selector-cache invalidation to the base selector when supported."""
-        invalidate = getattr(self.base, "invalidate", None)
-        if callable(invalidate):
-            invalidate()
+        if not isinstance(self.base, InvalidatableNodeSelector):
+            return
+        invalidate = cast(
+            "Callable[[], None] | None",
+            getattr(self.base, "invalidate", None),
+        )
+        if invalidate is None:
+            return
+        invalidate()  # pylint: disable=not-callable
 
     def refresh_state_for_checkpoint(
         self,
@@ -66,23 +77,34 @@ class ComposedNodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
     ) -> None:
         """Forward selector checkpoint refresh to the base selector when supported."""
-        refresh = getattr(self.base, "refresh_state_for_checkpoint", None)
-        if callable(refresh):
-            refresh(
-                tree=tree,
-                objective=objective,
-                latest_tree_expansions=latest_tree_expansions,
-            )
+        if not isinstance(self.base, InvalidatableNodeSelector):
+            return
+        refresh = cast(
+            "Callable[..., None] | None",
+            getattr(self.base, "refresh_state_for_checkpoint", None),
+        )
+        if refresh is None:
+            return
+        refresh(  # pylint: disable=not-callable
+            tree=tree,
+            objective=objective,
+            latest_tree_expansions=latest_tree_expansions,
+        )
 
     def build_checkpoint_payload(
         self,
         objective: SingleAgentMaxObjective[Any],
     ) -> "SelectorCheckpointPayload | None":
         """Forward selector checkpoint export to the base selector when supported."""
-        build_payload = getattr(self.base, "build_checkpoint_payload", None)
-        if callable(build_payload):
-            return build_payload(objective)
-        return None
+        if not isinstance(self.base, InvalidatableNodeSelector):
+            return None
+        build_payload = cast(
+            "Callable[[SingleAgentMaxObjective[Any]], SelectorCheckpointPayload | None] | None",
+            getattr(self.base, "build_checkpoint_payload", None),
+        )
+        if build_payload is None:
+            return None
+        return build_payload(objective)  # pylint: disable=not-callable
 
     def restore_from_checkpoint_payload(
         self,
@@ -92,10 +114,19 @@ class ComposedNodeSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
         payload: "SelectorCheckpointPayload",
     ) -> bool:
         """Forward selector checkpoint restore to the base selector when supported."""
-        restore = getattr(self.base, "restore_from_checkpoint_payload", None)
-        if callable(restore):
-            return bool(restore(tree=tree, objective=objective, payload=payload))
-        return False
+        if not isinstance(self.base, InvalidatableNodeSelector):
+            return False
+        restore = cast(
+            "Callable[..., bool] | None",
+            getattr(self.base, "restore_from_checkpoint_payload", None),
+        )
+        if restore is None:
+            return False
+        return restore(  # pylint: disable=not-callable
+            tree=tree,
+            objective=objective,
+            payload=payload,
+        )
 
     def __str__(self) -> str:
         """Return selector composition description."""

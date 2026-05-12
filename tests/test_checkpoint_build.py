@@ -591,8 +591,7 @@ def test_checkpoint_build_logs_aggregate_metrics_without_traceback_spam(
     )
     assert any(message.startswith("[checkpoint-profile]") for message in info_messages)
     assert any(
-        message.startswith("[checkpoint-profile-rates]")
-        for message in info_messages
+        message.startswith("[checkpoint-profile-rates]") for message in info_messages
     )
     assert all("Traceback" not in message for message in debug_messages)
 

@@ -7,8 +7,8 @@ import pytest
 
 from anemone import NodeValueUpdate, NodeValueUpdateResult
 from tests.test_node_reevaluation import (
-    _InvalidationSpySelector,
     _build_runtime,
+    _InvalidationSpySelector,
     _node_at,
 )
 
