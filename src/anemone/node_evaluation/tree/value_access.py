@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from valanga.evaluations import Value
 
     from anemone._valanga_types import AnyOverEvent
+    from anemone.node_evaluation.common.value_candidate import ValueCandidate
 
 
 class CanonicalNodeValueAccess(Protocol):
@@ -23,7 +24,12 @@ class CanonicalNodeValueAccess(Protocol):
 
     @property
     def backed_up_value(self) -> Value | None:
-        """Return the backed-up value currently attached to the node."""
+        """Return the legacy backed-up value currently attached to the node."""
+        ...
+
+    @property
+    def tree_value(self) -> Value | None:
+        """Return the child/subtree-derived value currently attached to the node."""
         ...
 
 
@@ -47,9 +53,21 @@ class ChildTreeEvaluationLookup(Protocol):
 
 
 def get_value_candidate(node_eval: CanonicalNodeValueAccess) -> Value | None:
-    """Return backed-up value when available, else direct value."""
-    return canonical_value.get_value_candidate(
-        backed_up_value=node_eval.backed_up_value,
+    """Return effective value when present, preserving the legacy rule."""
+    return get_effective_value_candidate(node_eval).value
+
+
+def get_tree_value_candidate(node_eval: CanonicalNodeValueAccess) -> ValueCandidate:
+    """Return the child/subtree-derived value candidate only."""
+    return canonical_value.get_tree_value_candidate(tree_value=node_eval.tree_value)
+
+
+def get_effective_value_candidate(
+    node_eval: CanonicalNodeValueAccess,
+) -> ValueCandidate:
+    """Return effective value and source, preserving the legacy rule."""
+    return canonical_value.get_effective_value_candidate(
+        tree_value=node_eval.tree_value,
         direct_value=node_eval.direct_value,
     )
 

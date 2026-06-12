@@ -5,9 +5,11 @@ This package owns Anemone's value semantics and tree-evaluation state.
 ## Key concepts
 
 - `direct_value`: immediate evaluator output for one node
-- `backed_up_value`: subtree-derived value propagated from children
-- candidate value: best currently available value, preferring backed-up over
-  direct when both exist
+- `tree_value`: child/subtree-derived value propagated from children
+- `backed_up_value`: legacy/internal storage name for `tree_value`
+- effective value: best currently available value, preferring tree/backed-up
+  over direct when both exist
+- candidate value: a maybe-present value, optionally with source provenance
 - canonical value: the required concrete `Value` returned to consumers that
   need one
 

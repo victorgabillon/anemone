@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING
 
 from valanga.evaluations import Certainty, Value
 
+from anemone.node_evaluation.common.value_candidate import ValueCandidate
+
 if TYPE_CHECKING:
     from anemone._valanga_types import AnyOverEvent
 
@@ -82,10 +84,38 @@ def get_value_candidate(
     backed_up_value: Value | None,
     direct_value: Value | None,
 ) -> Value | None:
-    """Return the candidate value, preferring backed-up over direct when present."""
-    if backed_up_value is not None:
-        return validate_value_semantics(backed_up_value)
-    return _validated_optional_value(direct_value)
+    """Return the effective value, preferring tree/backed-up over direct."""
+    return get_effective_value_candidate(
+        tree_value=backed_up_value,
+        direct_value=direct_value,
+    ).value
+
+
+def get_tree_value_candidate(*, tree_value: Value | None) -> ValueCandidate:
+    """Return the child/subtree-derived value candidate only."""
+    if tree_value is None:
+        return ValueCandidate.none()
+    return ValueCandidate.tree(validate_value_semantics(tree_value))
+
+
+def get_effective_value_candidate(
+    *,
+    tree_value: Value | None,
+    direct_value: Value | None,
+) -> ValueCandidate:
+    """Return the behavior-preserving effective value candidate.
+
+    PR1 keeps the legacy rule: effective value is tree/backed-up when present,
+    otherwise direct.
+    """
+    tree_candidate = get_tree_value_candidate(tree_value=tree_value)
+    if tree_candidate.has_value:
+        return tree_candidate
+
+    if direct_value is not None:
+        return ValueCandidate.direct(validate_value_semantics(direct_value))
+
+    return ValueCandidate.none()
 
 
 def get_value(

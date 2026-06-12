@@ -7,6 +7,7 @@ from typing import Any
 from valanga import Color, Outcome, OverEvent
 from valanga.evaluations import Certainty, Value
 
+from anemone.node_evaluation.common import ValueCandidate, ValueCandidateSource
 from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
 from anemone.node_evaluation.direct.node_direct_evaluator import (
     DirectValueInvariantError,
@@ -299,3 +300,69 @@ def test_node_tree_evaluation_protocol_exposes_value_api() -> None:
     assert _protocol_score(node.tree_evaluation) == 0.4
     assert node.tree_evaluation.get_value_candidate() is not None
     assert node.tree_evaluation.get_value().score == 0.4
+
+
+def test_effective_value_candidate_uses_direct_source_without_tree_value() -> None:
+    """Direct-only nodes report their direct value as the effective candidate."""
+    node = _make_node(node_id=100, turn=Color.WHITE, base_score=0.4, is_terminal=False)
+    direct = Value(score=0.4, certainty=Certainty.ESTIMATE, over_event=None)
+    node.tree_evaluation.direct_value = direct
+
+    candidate = node.tree_evaluation.get_effective_value_candidate()
+
+    assert node.tree_evaluation.tree_value is None
+    assert candidate.value == direct
+    assert candidate.source is ValueCandidateSource.DIRECT_SELF
+    assert candidate.has_value
+    assert node.tree_evaluation.effective_value == direct
+    assert node.tree_evaluation.effective_value_source is ValueCandidateSource.DIRECT_SELF
+    assert node.tree_evaluation.get_value_candidate() == direct
+
+
+def test_effective_value_candidate_prefers_tree_value_with_source() -> None:
+    """Tree/backed-up values remain preferred and expose tree-child provenance."""
+    node = _make_node(node_id=101, turn=Color.WHITE, base_score=0.2, is_terminal=False)
+    direct = Value(score=0.2, certainty=Certainty.ESTIMATE, over_event=None)
+    tree = Value(score=0.7, certainty=Certainty.FORCED, over_event=None)
+    node.tree_evaluation.direct_value = direct
+    node.tree_evaluation.backed_up_value = tree
+
+    candidate = node.tree_evaluation.get_effective_value_candidate()
+    tree_candidate = node.tree_evaluation.get_tree_value_candidate()
+
+    assert node.tree_evaluation.tree_value == node.tree_evaluation.backed_up_value
+    assert candidate.value == tree
+    assert candidate.source is ValueCandidateSource.TREE_CHILD
+    assert tree_candidate.value == tree
+    assert tree_candidate.source is ValueCandidateSource.TREE_CHILD
+    assert node.tree_evaluation.effective_value == tree
+    assert node.tree_evaluation.effective_value_source is ValueCandidateSource.TREE_CHILD
+    assert node.tree_evaluation.get_value_candidate() == tree
+
+
+def test_effective_value_candidate_reports_none_when_no_value_exists() -> None:
+    """Nodes without direct or tree values report an empty effective candidate."""
+    node = _make_node(node_id=102, turn=Color.WHITE, base_score=0.0, is_terminal=False)
+
+    candidate = node.tree_evaluation.get_effective_value_candidate()
+    tree_candidate = node.tree_evaluation.get_tree_value_candidate()
+
+    assert node.tree_evaluation.tree_value is None
+    assert candidate.value is None
+    assert candidate.source is ValueCandidateSource.NONE
+    assert not candidate.has_value
+    assert tree_candidate.value is None
+    assert tree_candidate.source is ValueCandidateSource.NONE
+    assert not tree_candidate.has_value
+    assert node.tree_evaluation.get_value_candidate() is None
+
+
+def test_value_candidate_convenience_constructors_report_presence() -> None:
+    """ValueCandidate constructors keep presence and source aligned."""
+    value = Value(score=0.1, certainty=Certainty.ESTIMATE, over_event=None)
+
+    assert not ValueCandidate.none().has_value
+    assert ValueCandidate.direct(value).has_value
+    assert ValueCandidate.direct(value).source is ValueCandidateSource.DIRECT_SELF
+    assert ValueCandidate.tree(value).has_value
+    assert ValueCandidate.tree(value).source is ValueCandidateSource.TREE_CHILD

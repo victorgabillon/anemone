@@ -4,6 +4,7 @@ from .branch_frontier import BranchFrontierAware, BranchFrontierState
 from .branch_ordering import DecisionOrderedEvaluation
 from .node_delta import FieldChange, NodeDelta
 from .principal_variation import PrincipalVariationState
+from .value_candidate import ValueCandidate, ValueCandidateSource
 
 __all__ = [
     "BranchFrontierAware",
@@ -12,4 +13,6 @@ __all__ = [
     "FieldChange",
     "NodeDelta",
     "PrincipalVariationState",
+    "ValueCandidate",
+    "ValueCandidateSource",
 ]

@@ -51,6 +51,10 @@ if TYPE_CHECKING:
 
     from anemone.backup_policies.types import BackupResult
     from anemone.dynamics import SearchDynamics
+    from anemone.node_evaluation.common.value_candidate import (
+        ValueCandidate,
+        ValueCandidateSource,
+    )
     from anemone.node_evaluation.tree.backup_runtime_protocol import BackupRuntime
     from anemone.nodes.tree_node import TreeNode
     from anemone.objectives.objective import Objective
@@ -258,13 +262,28 @@ class NodeTreeEvaluationState[
 
     @property
     def backed_up_value(self) -> Value | None:
-        """Return the canonical backed-up value for this node."""
+        """Return the legacy/internal name for the child/subtree-derived value."""
         return self._backed_up_value
 
     @backed_up_value.setter
     def backed_up_value(self, value: Value | None) -> None:
-        """Set the canonical backed-up value for this node."""
+        """Set the legacy/internal name for the child/subtree-derived value."""
         self._backed_up_value = value
+
+    @property
+    def tree_value(self) -> Value | None:
+        """Return the child/subtree-derived value for this node.
+
+        ``backed_up_value`` remains the legacy/internal storage name for PR1.
+        New runtime API should prefer ``tree_value`` when it means a value
+        derived only from opened children or subtree information.
+        """
+        return self.backed_up_value
+
+    @tree_value.setter
+    def tree_value(self, value: Value | None) -> None:
+        """Set the child/subtree-derived value for this node."""
+        self.backed_up_value = value
 
     @property
     def best_branch_sequence(self) -> list[BranchKey]:
@@ -299,8 +318,26 @@ class NodeTreeEvaluationState[
         )
 
     def get_value_candidate(self) -> Value | None:
-        """Return backed-up value when available, else direct value."""
+        """Return effective value when present, preserving the legacy rule."""
         return value_access.get_value_candidate(self)
+
+    def get_tree_value_candidate(self) -> ValueCandidate:
+        """Return the child/subtree-derived value candidate only."""
+        return value_access.get_tree_value_candidate(self)
+
+    def get_effective_value_candidate(self) -> ValueCandidate:
+        """Return effective value and source, preserving the legacy rule."""
+        return value_access.get_effective_value_candidate(self)
+
+    @property
+    def effective_value(self) -> Value | None:
+        """Return the current effective value, or ``None`` if absent."""
+        return self.get_effective_value_candidate().value
+
+    @property
+    def effective_value_source(self) -> ValueCandidateSource:
+        """Return the provenance for the current effective value."""
+        return self.get_effective_value_candidate().source
 
     def clear_direct_evaluation(self) -> None:
         """Clear direct-evaluation state while leaving backed-up state intact."""
