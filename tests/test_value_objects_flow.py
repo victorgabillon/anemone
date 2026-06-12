@@ -281,6 +281,7 @@ def test_get_value_prefers_minmax_else_direct() -> None:
 
     assert node.tree_evaluation.get_value() == direct
 
+    node.tree_node.all_branches_generated = True
     minmax = Value(score=0.6, certainty=Certainty.FORCED)
     node.tree_evaluation.minmax_value = minmax
 
@@ -309,8 +310,11 @@ def test_effective_value_candidate_uses_direct_source_without_tree_value() -> No
     node.tree_evaluation.direct_value = direct
 
     candidate = node.tree_evaluation.get_effective_value_candidate()
+    tree_candidate = node.tree_evaluation.get_tree_value_candidate()
 
     assert node.tree_evaluation.tree_value is None
+    assert tree_candidate.value is None
+    assert tree_candidate.source is ValueCandidateSource.NONE
     assert candidate.value == direct
     assert candidate.source is ValueCandidateSource.DIRECT_SELF
     assert candidate.has_value
@@ -319,11 +323,32 @@ def test_effective_value_candidate_uses_direct_source_without_tree_value() -> No
     assert node.tree_evaluation.get_value_candidate() == direct
 
 
+def test_effective_value_candidate_partial_node_direct_wins() -> None:
+    """Partially opened nodes can keep direct value when the objective prefers it."""
+    node = _make_node(node_id=103, turn=Color.WHITE, base_score=0.7, is_terminal=False)
+    node.tree_node.all_branches_generated = False
+    direct = Value(score=0.7, certainty=Certainty.ESTIMATE, over_event=None)
+    tree = Value(score=0.2, certainty=Certainty.ESTIMATE, over_event=None)
+    node.tree_evaluation.direct_value = direct
+    node.tree_evaluation.backed_up_value = tree
+
+    candidate = node.tree_evaluation.get_effective_value_candidate()
+
+    assert node.tree_evaluation.tree_value == tree
+    assert candidate.value == direct
+    assert candidate.source is ValueCandidateSource.DIRECT_SELF
+    assert node.tree_evaluation.effective_value == direct
+    assert node.tree_evaluation.effective_value_source is ValueCandidateSource.DIRECT_SELF
+    assert node.tree_evaluation.get_value_candidate() == direct
+    assert node.tree_evaluation.get_value() == direct
+
+
 def test_effective_value_candidate_prefers_tree_value_with_source() -> None:
-    """Tree/backed-up values remain preferred and expose tree-child provenance."""
+    """Partially opened nodes use tree value when the objective prefers it."""
     node = _make_node(node_id=101, turn=Color.WHITE, base_score=0.2, is_terminal=False)
+    node.tree_node.all_branches_generated = False
     direct = Value(score=0.2, certainty=Certainty.ESTIMATE, over_event=None)
-    tree = Value(score=0.7, certainty=Certainty.FORCED, over_event=None)
+    tree = Value(score=0.7, certainty=Certainty.ESTIMATE, over_event=None)
     node.tree_evaluation.direct_value = direct
     node.tree_evaluation.backed_up_value = tree
 
@@ -337,6 +362,42 @@ def test_effective_value_candidate_prefers_tree_value_with_source() -> None:
     assert tree_candidate.source is ValueCandidateSource.TREE_CHILD
     assert node.tree_evaluation.effective_value == tree
     assert node.tree_evaluation.effective_value_source is ValueCandidateSource.TREE_CHILD
+    assert node.tree_evaluation.get_value_candidate() == tree
+
+
+def test_effective_value_candidate_fully_open_node_uses_tree_even_if_direct_better() -> (
+    None
+):
+    """Fully opened nodes use tree value even when direct value scores higher."""
+    node = _make_node(node_id=104, turn=Color.WHITE, base_score=0.9, is_terminal=False)
+    node.tree_node.all_branches_generated = True
+    direct = Value(score=0.9, certainty=Certainty.ESTIMATE, over_event=None)
+    tree = Value(score=0.4, certainty=Certainty.ESTIMATE, over_event=None)
+    node.tree_evaluation.direct_value = direct
+    node.tree_evaluation.backed_up_value = tree
+
+    candidate = node.tree_evaluation.get_effective_value_candidate()
+
+    assert candidate.value == tree
+    assert candidate.source is ValueCandidateSource.TREE_CHILD
+    assert node.tree_evaluation.effective_value == tree
+    assert node.tree_evaluation.effective_value_source is ValueCandidateSource.TREE_CHILD
+    assert node.tree_evaluation.get_value_candidate() == tree
+    assert node.tree_evaluation.get_value() == tree
+
+
+def test_effective_value_candidate_tree_only_source() -> None:
+    """Tree-only nodes report tree-child provenance."""
+    node = _make_node(node_id=105, turn=Color.WHITE, base_score=0.0, is_terminal=False)
+    tree = Value(score=0.4, certainty=Certainty.ESTIMATE, over_event=None)
+    node.tree_evaluation.backed_up_value = tree
+
+    candidate = node.tree_evaluation.get_effective_value_candidate()
+
+    assert node.tree_evaluation.direct_value is None
+    assert node.tree_evaluation.tree_value == tree
+    assert candidate.value == tree
+    assert candidate.source is ValueCandidateSource.TREE_CHILD
     assert node.tree_evaluation.get_value_candidate() == tree
 
 
@@ -355,6 +416,22 @@ def test_effective_value_candidate_reports_none_when_no_value_exists() -> None:
     assert tree_candidate.source is ValueCandidateSource.NONE
     assert not tree_candidate.has_value
     assert node.tree_evaluation.get_value_candidate() is None
+
+
+def test_effective_value_candidate_partial_tie_prefers_tree_value() -> None:
+    """Partially opened nodes prefer tree-child evidence on objective ties."""
+    node = _make_node(node_id=106, turn=Color.WHITE, base_score=0.5, is_terminal=False)
+    node.tree_node.all_branches_generated = False
+    direct = Value(score=0.5, certainty=Certainty.ESTIMATE, over_event=None)
+    tree = Value(score=0.5, certainty=Certainty.ESTIMATE, over_event=None)
+    node.tree_evaluation.direct_value = direct
+    node.tree_evaluation.backed_up_value = tree
+
+    candidate = node.tree_evaluation.get_effective_value_candidate()
+
+    assert candidate.value == tree
+    assert candidate.source is ValueCandidateSource.TREE_CHILD
+    assert node.tree_evaluation.get_value_candidate() == tree
 
 
 def test_value_candidate_convenience_constructors_report_presence() -> None:

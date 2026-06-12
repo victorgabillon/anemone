@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from valanga import Color
 
+from anemone.node_evaluation.common import ValueCandidateSource
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -52,7 +53,7 @@ def test_no_children_values_keeps_direct_value_and_empty_pv() -> None:
     assert parent_eval.best_branch_sequence == []
 
 
-def test_partial_expansion_uses_child_backed_up_value_even_if_direct_is_higher() -> (
+def test_partial_expansion_keeps_tree_value_but_effective_can_use_direct() -> (
     None
 ):
     children = {
@@ -80,7 +81,9 @@ def test_partial_expansion_uses_child_backed_up_value_even_if_direct_is_higher()
     )
 
     assert parent_eval.minmax_value is not None
-    assert parent_eval.get_score() == 0.4
+    assert parent_eval.tree_value.score == 0.4
+    assert parent_eval.get_score() == 0.5
+    assert parent_eval.effective_value_source is ValueCandidateSource.DIRECT_SELF
     assert parent_eval.best_branch() == 1
 
 

@@ -136,7 +136,12 @@ def _child(
     *,
     best_branch_sequence: list[int] | None = None,
 ) -> Any:
-    tree_node = SimpleNamespace(id=node_id, state=_state(), branches_children={})
+    tree_node = SimpleNamespace(
+        id=node_id,
+        state=_state(),
+        branches_children={},
+        all_branches_generated=True,
+    )
     evaluation = NodeMaxEvaluation(tree_node=tree_node)
     evaluation.direct_value = value
     evaluation.backed_up_value = value
@@ -253,13 +258,14 @@ def test_explicit_max_backup_chooses_highest_scoring_child_and_updates_pv() -> N
     assert node.best_branch_sequence == [1, 8, 9]
 
 
-def test_explicit_max_backup_uses_best_child_backed_up_value_in_partial_mode() -> None:
+def test_explicit_max_backup_keeps_tree_value_but_effective_can_use_direct() -> None:
     children = {
         0: _child(10, Value(score=0.2, certainty=Certainty.ESTIMATE)),
     }
+    direct = Value(score=0.5, certainty=Certainty.ESTIMATE)
     node = _node(
         node_id=0,
-        direct_value=Value(score=0.5, certainty=Certainty.ESTIMATE),
+        direct_value=direct,
         children=children,
         all_branches_generated=False,
     )
@@ -271,7 +277,8 @@ def test_explicit_max_backup_uses_best_child_backed_up_value_in_partial_mode() -
     )
 
     assert node.backed_up_value == Value(score=0.2, certainty=Certainty.ESTIMATE)
-    assert node.get_value() == Value(score=0.2, certainty=Certainty.ESTIMATE)
+    assert node.tree_value == Value(score=0.2, certainty=Certainty.ESTIMATE)
+    assert node.get_value() == direct
     assert node.best_branch_sequence == [0]
 
 

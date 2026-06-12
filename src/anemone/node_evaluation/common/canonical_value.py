@@ -17,6 +17,7 @@ explicit about which notion they need.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from valanga.evaluations import Certainty, Value
@@ -25,6 +26,8 @@ from anemone.node_evaluation.common.value_candidate import ValueCandidate
 
 if TYPE_CHECKING:
     from anemone._valanga_types import AnyOverEvent
+
+ValueComparator = Callable[[Value, Value], int]
 
 
 class ValueSemanticsError(ValueError):
@@ -102,20 +105,31 @@ def get_effective_value_candidate(
     *,
     tree_value: Value | None,
     direct_value: Value | None,
+    all_branches_generated: bool = True,
+    semantic_compare: ValueComparator | None = None,
 ) -> ValueCandidate:
-    """Return the behavior-preserving effective value candidate.
+    """Return the effective value candidate for current opening completeness.
 
-    PR1 keeps the legacy rule: effective value is tree/backed-up when present,
-    otherwise direct.
+    Fully opened nodes use their child/subtree-derived tree value. Partially
+    opened nodes compare direct evaluator coverage against opened-child tree
+    coverage with the node-local objective, preferring tree on ties.
     """
     tree_candidate = get_tree_value_candidate(tree_value=tree_value)
-    if tree_candidate.has_value:
-        return tree_candidate
+    if not tree_candidate.has_value:
+        if direct_value is not None:
+            return ValueCandidate.direct(validate_value_semantics(direct_value))
+        return ValueCandidate.none()
 
-    if direct_value is not None:
-        return ValueCandidate.direct(validate_value_semantics(direct_value))
+    validated_tree = require_value(tree_candidate.value)
+    if direct_value is None or all_branches_generated:
+        return ValueCandidate.tree(validated_tree)
 
-    return ValueCandidate.none()
+    validated_direct = validate_value_semantics(direct_value)
+    if semantic_compare is None:
+        return ValueCandidate.tree(validated_tree)
+    if semantic_compare(validated_direct, validated_tree) > 0:
+        return ValueCandidate.direct(validated_direct)
+    return ValueCandidate.tree(validated_tree)
 
 
 def get_value(

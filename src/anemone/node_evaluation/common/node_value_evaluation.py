@@ -19,8 +19,8 @@ class NodeValueEvaluation(Protocol):
     * ``direct_value``: immediate evaluator output for this node
     * ``tree_value``: child/subtree-derived value propagated from children
     * ``backed_up_value``: legacy/internal name for ``tree_value``
-    * ``get_effective_value_candidate()``: best currently available value plus
-      source, preserving the legacy rule of preferring tree over direct
+    * ``get_effective_value_candidate()``: search-facing value plus source,
+      accounting for partial versus fully opened nodes
     * ``get_value_candidate()``: legacy value-only effective candidate
     * ``get_value()``: required canonical value for consumers that need a
       concrete ``Value``

@@ -286,6 +286,11 @@ class NodeTreeEvaluationState[
         self.backed_up_value = value
 
     @property
+    def all_branches_generated(self) -> bool:
+        """Return whether all legal child branches have been generated."""
+        return self.tree_node.all_branches_generated
+
+    @property
     def best_branch_sequence(self) -> list[BranchKey]:
         """Return the current principal-variation branch sequence."""
         return self.pv_state.best_branch_sequence
@@ -318,7 +323,7 @@ class NodeTreeEvaluationState[
         )
 
     def get_value_candidate(self) -> Value | None:
-        """Return effective value when present, preserving the legacy rule."""
+        """Return effective value when present for current opening completeness."""
         return value_access.get_value_candidate(self)
 
     def get_tree_value_candidate(self) -> ValueCandidate:

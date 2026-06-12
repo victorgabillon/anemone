@@ -32,6 +32,15 @@ class CanonicalNodeValueAccess(Protocol):
         """Return the child/subtree-derived value currently attached to the node."""
         ...
 
+    @property
+    def all_branches_generated(self) -> bool:
+        """Return whether this node has generated all legal child branches."""
+        ...
+
+    def compare_candidate_values(self, left: Value, right: Value) -> int:
+        """Compare two values using node-local objective semantics."""
+        ...
+
 
 class ChildValueCandidate(Protocol):
     """Minimal child evaluation surface needed for value lookup."""
@@ -53,7 +62,7 @@ class ChildTreeEvaluationLookup(Protocol):
 
 
 def get_value_candidate(node_eval: CanonicalNodeValueAccess) -> Value | None:
-    """Return effective value when present, preserving the legacy rule."""
+    """Return effective value when present for current opening completeness."""
     return get_effective_value_candidate(node_eval).value
 
 
@@ -65,27 +74,23 @@ def get_tree_value_candidate(node_eval: CanonicalNodeValueAccess) -> ValueCandid
 def get_effective_value_candidate(
     node_eval: CanonicalNodeValueAccess,
 ) -> ValueCandidate:
-    """Return effective value and source, preserving the legacy rule."""
+    """Return effective value and source for current opening completeness."""
     return canonical_value.get_effective_value_candidate(
         tree_value=node_eval.tree_value,
         direct_value=node_eval.direct_value,
+        all_branches_generated=node_eval.all_branches_generated,
+        semantic_compare=node_eval.compare_candidate_values,
     )
 
 
 def get_value(node_eval: CanonicalNodeValueAccess) -> Value:
     """Return the canonical value for one node."""
-    return canonical_value.get_value(
-        backed_up_value=node_eval.backed_up_value,
-        direct_value=node_eval.direct_value,
-    )
+    return canonical_value.require_value(get_value_candidate(node_eval))
 
 
 def get_score(node_eval: CanonicalNodeValueAccess) -> float:
     """Return the canonical scalar score for one node."""
-    return canonical_value.get_score(
-        backed_up_value=node_eval.backed_up_value,
-        direct_value=node_eval.direct_value,
-    )
+    return get_value(node_eval).score
 
 
 def has_exact_value(node_eval: CanonicalNodeValueAccess) -> bool:

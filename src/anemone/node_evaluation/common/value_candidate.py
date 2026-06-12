@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from valanga.evaluations import Value
+# Keep Value in module globals so runtime introspection via get_type_hints works.
+from valanga.evaluations import Value  # noqa: TC002
 
 
 class ValueCandidateSource(StrEnum):
