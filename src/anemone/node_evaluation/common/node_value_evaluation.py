@@ -18,10 +18,10 @@ class NodeValueEvaluation(Protocol):
 
     * ``direct_value``: immediate evaluator output for this node
     * ``tree_value``: child/subtree-derived value propagated from children
-    * ``backed_up_value``: legacy/internal name for ``tree_value``
+    * ``backed_up_value``: current storage property for ``tree_value``
     * ``get_effective_value_candidate()``: search-facing value plus source,
       accounting for partial versus fully opened nodes
-    * ``get_value_candidate()``: legacy value-only effective candidate
+    * ``get_value_candidate()``: value-only view of ``effective_value``
     * ``get_value()``: required canonical value for consumers that need a
       concrete ``Value``
     """
@@ -58,7 +58,7 @@ class NodeValueEvaluation(Protocol):
 
     @property
     def effective_value(self) -> Value | None:
-        """Return the current behavior-preserving effective value."""
+        """Return the current search-facing effective value."""
         ...
 
     @property

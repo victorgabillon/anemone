@@ -10,6 +10,7 @@ from valanga import BranchKey
 
 from anemone import nodes
 from anemone.dynamics import SearchDynamics
+from anemone.nodes.opening_status import openable_branch_keys
 from anemone.nodes.utils import (
     a_branch_key_sequence_from_root,
     a_branch_str_sequence_from_root,
@@ -229,8 +230,12 @@ class OpeningInstructor:
 
         """
         if self.opening_type == OpeningType.ALL_CHILDREN:
-            node_to_open.all_branches_generated = True
-            branches_to_play = self.dynamics.legal_actions(node_to_open.state).get_all()
+            branches_to_play = openable_branch_keys(
+                node=node_to_open,
+                dynamics=self.dynamics,
+            )
+            if not branches_to_play:
+                node_to_open.all_branches_generated = True
 
         else:
             raise NotImplementedError("Hello-la")

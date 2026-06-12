@@ -6,7 +6,7 @@ This package owns Anemone's value semantics and tree-evaluation state.
 
 - `direct_value`: immediate evaluator output for one node
 - `tree_value`: child/subtree-derived value propagated from children
-- `backed_up_value`: legacy/internal storage name for `tree_value`
+- `backed_up_value`: current storage property for `tree_value`
 - effective value: search-facing value; direct when no tree value exists,
   objective-best of direct and tree for partially opened nodes, and tree value
   for fully opened nodes

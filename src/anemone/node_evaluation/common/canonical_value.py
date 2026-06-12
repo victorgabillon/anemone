@@ -86,11 +86,15 @@ def get_value_candidate(
     *,
     backed_up_value: Value | None,
     direct_value: Value | None,
+    all_branches_generated: bool,
+    semantic_compare: ValueComparator,
 ) -> Value | None:
-    """Return the effective value, preferring tree/backed-up over direct."""
+    """Return the value-only view of the effective candidate."""
     return get_effective_value_candidate(
         tree_value=backed_up_value,
         direct_value=direct_value,
+        all_branches_generated=all_branches_generated,
+        semantic_compare=semantic_compare,
     ).value
 
 
@@ -105,8 +109,8 @@ def get_effective_value_candidate(
     *,
     tree_value: Value | None,
     direct_value: Value | None,
-    all_branches_generated: bool = True,
-    semantic_compare: ValueComparator | None = None,
+    all_branches_generated: bool,
+    semantic_compare: ValueComparator,
 ) -> ValueCandidate:
     """Return the effective value candidate for current opening completeness.
 
@@ -125,8 +129,6 @@ def get_effective_value_candidate(
         return ValueCandidate.tree(validated_tree)
 
     validated_direct = validate_value_semantics(direct_value)
-    if semantic_compare is None:
-        return ValueCandidate.tree(validated_tree)
     if semantic_compare(validated_direct, validated_tree) > 0:
         return ValueCandidate.direct(validated_direct)
     return ValueCandidate.tree(validated_tree)
@@ -136,12 +138,16 @@ def get_value(
     *,
     backed_up_value: Value | None,
     direct_value: Value | None,
+    all_branches_generated: bool,
+    semantic_compare: ValueComparator,
 ) -> Value:
     """Return the canonical ``Value`` for a node-evaluation family."""
     return require_value(
         get_value_candidate(
             backed_up_value=backed_up_value,
             direct_value=direct_value,
+            all_branches_generated=all_branches_generated,
+            semantic_compare=semantic_compare,
         )
     )
 
@@ -150,11 +156,15 @@ def get_score(
     *,
     backed_up_value: Value | None,
     direct_value: Value | None,
+    all_branches_generated: bool,
+    semantic_compare: ValueComparator,
 ) -> float:
     """Return the canonical scalar score for a node-evaluation family."""
     return get_value(
         backed_up_value=backed_up_value,
         direct_value=direct_value,
+        all_branches_generated=all_branches_generated,
+        semantic_compare=semantic_compare,
     ).score
 
 

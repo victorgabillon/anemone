@@ -251,6 +251,24 @@ def test_partial_expansion_black_keeps_tree_value_but_effective_can_use_direct()
     assert parent.effective_value_source is ValueCandidateSource.DIRECT_SELF
 
 
+def test_fully_open_black_node_uses_tree_even_when_direct_is_better() -> None:
+    """Fully opened adversarial nodes use tree value regardless of direct value."""
+    direct = Value(score=0.1, certainty=Certainty.ESTIMATE)
+    tree = Value(score=0.7, certainty=Certainty.ESTIMATE)
+    parent = _make_parent(
+        turn=Color.BLACK,
+        children={},
+        all_generated=True,
+        direct_value=direct,
+    )
+    parent.tree_value = tree
+
+    assert parent.compare_candidate_values(direct, tree) > 0
+    assert parent.get_effective_value_candidate().value == tree
+    assert parent.effective_value_source is ValueCandidateSource.TREE_CHILD
+    assert parent.get_value_candidate() == tree
+
+
 def test_explicit_minimax_backup_uses_injected_aggregation_policy() -> None:
     parent = _make_parent(
         turn=Color.WHITE,

@@ -17,10 +17,11 @@ Functions:
 from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from .factory import create_algorithm_node_tree_manager
 from .tree_expander import TreeExpansion, TreeExpansions
-from .tree_manager import TreeManager
+from .tree_manager import DuplicateBranchOpenError, TreeManager
 
 __all__ = [
     "AlgorithmNodeTreeManager",
+    "DuplicateBranchOpenError",
     "TreeExpansion",
     "TreeExpansions",
     "TreeManager",

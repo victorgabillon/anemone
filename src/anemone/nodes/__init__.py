@@ -14,6 +14,13 @@ runtime wrapper explicitly.
 """
 
 from .itree_node import ITreeNode
+from .opening_status import (
+    has_openable_branches,
+    is_fully_open_wrt_legal_actions,
+    openable_branch_keys,
+    opened_branch_keys,
+    sync_opening_status,
+)
 from .state_handles import MaterializedStateHandle, StateHandle
 from .tree_node import TreeNode
 
@@ -22,4 +29,9 @@ __all__ = [
     "MaterializedStateHandle",
     "StateHandle",
     "TreeNode",
+    "has_openable_branches",
+    "is_fully_open_wrt_legal_actions",
+    "openable_branch_keys",
+    "opened_branch_keys",
+    "sync_opening_status",
 ]

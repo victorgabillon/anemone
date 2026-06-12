@@ -262,19 +262,18 @@ class NodeTreeEvaluationState[
 
     @property
     def backed_up_value(self) -> Value | None:
-        """Return the legacy/internal name for the child/subtree-derived value."""
+        """Return the stored child/subtree-derived value for this node."""
         return self._backed_up_value
 
     @backed_up_value.setter
     def backed_up_value(self, value: Value | None) -> None:
-        """Set the legacy/internal name for the child/subtree-derived value."""
+        """Set the stored child/subtree-derived value for this node."""
         self._backed_up_value = value
 
     @property
     def tree_value(self) -> Value | None:
         """Return the child/subtree-derived value for this node.
 
-        ``backed_up_value`` remains the legacy/internal storage name for PR1.
         New runtime API should prefer ``tree_value`` when it means a value
         derived only from opened children or subtree information.
         """
@@ -331,7 +330,7 @@ class NodeTreeEvaluationState[
         return value_access.get_tree_value_candidate(self)
 
     def get_effective_value_candidate(self) -> ValueCandidate:
-        """Return effective value and source, preserving the legacy rule."""
+        """Return effective value and source for current opening completeness."""
         return value_access.get_effective_value_candidate(self)
 
     @property

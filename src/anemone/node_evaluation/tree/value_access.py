@@ -24,7 +24,7 @@ class CanonicalNodeValueAccess(Protocol):
 
     @property
     def backed_up_value(self) -> Value | None:
-        """Return the legacy backed-up value currently attached to the node."""
+        """Return the backed-up value currently attached to the node."""
         ...
 
     @property
