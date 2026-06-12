@@ -39,7 +39,7 @@ test = [
   "pytest>=9.0.2",
   "coverage",
   "pytest-cov>=6.0.0",
-  "atomheart==0.2.9",
+  "atomheart==0.2.10",
 ]
 
 lint = [

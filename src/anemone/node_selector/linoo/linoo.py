@@ -9,6 +9,9 @@ from heapq import heapify, heappop, heappush
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
+# Runtime import is intentional: parsley/get_type_hints() evaluates LinooArgs
+# annotations when Chipiron builds partial dataclasses.
+from anemone.node_selector.node_selector_types import NodeSelectorType  # noqa: TC001
 from anemone.node_selector.opening_instructions import (
     OpeningInstructions,
     OpeningInstructor,
@@ -31,7 +34,6 @@ if TYPE_CHECKING:
         LinooNodeStateCheckpointPayload,
         LinooSelectorCheckpointPayload,
     )
-    from anemone.node_selector.node_selector_types import NodeSelectorType
 
 
 @dataclass
