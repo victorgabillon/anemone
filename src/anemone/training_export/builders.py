@@ -10,11 +10,14 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 from anemone._best_effort import coerce_int as _coerce_int
 from anemone._best_effort import format_over_event as _format_over_event
 from anemone._best_effort import safe_getattr as _safe_getattr
+from anemone.node_evaluation.common.value_candidate import ValueCandidateSource
+from anemone.node_evaluation.common.value_snapshot import NodeTargetSource
 from anemone.training_export._logging import (
     log_training_export_event,
     log_training_export_phase,
 )
 from anemone.training_export.model import (
+    DEFAULT_TRAINING_NODE_TARGET_SOURCE,
     TRAINING_TREE_SNAPSHOT_FORMAT_KIND,
     TRAINING_TREE_SNAPSHOT_FORMAT_VERSION,
     TrainingNodeSnapshot,
@@ -103,6 +106,10 @@ def build_training_node_snapshot(
     *,
     state_ref_dumper: StateRefDumper | None = None,
     direct_value_extractor: ValueScalarExtractor | None = None,
+    tree_value_extractor: ValueScalarExtractor | None = None,
+    effective_value_extractor: ValueScalarExtractor | None = None,
+    target_value_extractor: ValueScalarExtractor | None = None,
+    target_source: NodeTargetSource | str = NodeTargetSource.TREE_VALUE,
     backed_up_value_extractor: ValueScalarExtractor | None = None,
     _build_stats: _TrainingExportBuildStats | None = None,
     _profile: TrainingExportProfiler | None = None,
@@ -126,14 +133,46 @@ def build_training_node_snapshot(
 
     value_started_at = perf_counter()
     direct_value = _get_direct_value(node)
-    backed_up_value = _get_backed_up_value(node)
+    tree_value = _get_tree_value(node)
+    effective_value, effective_value_source = _get_effective_value_and_source(
+        node,
+        direct_value=direct_value,
+        tree_value=tree_value,
+    )
+    resolved_target_source = _coerce_target_source(target_source)
+    target_value = _select_target_value(
+        direct_value=direct_value,
+        tree_value=tree_value,
+        effective_value=effective_value,
+        source=resolved_target_source,
+    )
+    resolved_tree_value_extractor = tree_value_extractor or backed_up_value_extractor
     direct_value_scalar = _extract_value_scalar(
         direct_value,
         extractor=direct_value_extractor,
     )
-    backed_up_value_scalar = _extract_value_scalar(
-        backed_up_value,
-        extractor=backed_up_value_extractor,
+    tree_value_scalar = _extract_value_scalar(
+        tree_value,
+        extractor=resolved_tree_value_extractor,
+    )
+    effective_value_scalar = _extract_value_scalar(
+        effective_value,
+        extractor=_value_extractor_for_source(
+            direct_value_extractor=direct_value_extractor,
+            tree_value_extractor=resolved_tree_value_extractor,
+            effective_value_extractor=effective_value_extractor,
+            source=effective_value_source,
+        ),
+    )
+    target_value_scalar = _extract_value_scalar(
+        target_value,
+        extractor=_value_extractor_for_target(
+            direct_value_extractor=direct_value_extractor,
+            tree_value_extractor=resolved_tree_value_extractor,
+            effective_value_extractor=effective_value_extractor,
+            target_value_extractor=target_value_extractor,
+            source=resolved_target_source,
+        ),
     )
     if _profile is not None:
         _profile.record_node_value(perf_counter() - value_started_at)
@@ -155,9 +194,13 @@ def build_training_node_snapshot(
         depth=depth,
         state_ref_payload=state_ref_payload,
         direct_value_scalar=direct_value_scalar,
-        backed_up_value_scalar=backed_up_value_scalar,
+        tree_value_scalar=tree_value_scalar,
+        effective_value_scalar=effective_value_scalar,
+        effective_value_source=effective_value_source.value,
+        target_value_scalar=target_value_scalar,
         is_terminal=is_terminal,
         is_exact=is_exact,
+        backed_up_value_scalar=tree_value_scalar,
         over_event_label=over_event_label,
         visit_count=visit_count,
         metadata=metadata,
@@ -173,6 +216,10 @@ def build_training_tree_snapshot(
     root_node_id: str | None = None,
     state_ref_dumper: StateRefDumper | None = None,
     direct_value_extractor: ValueScalarExtractor | None = None,
+    tree_value_extractor: ValueScalarExtractor | None = None,
+    effective_value_extractor: ValueScalarExtractor | None = None,
+    target_value_extractor: ValueScalarExtractor | None = None,
+    target_source: NodeTargetSource | str = NodeTargetSource.TREE_VALUE,
     backed_up_value_extractor: ValueScalarExtractor | None = None,
     created_at_unix_s: float | None = None,
     metadata: dict[str, object] | None = None,
@@ -197,6 +244,10 @@ def build_training_tree_snapshot(
                     node,
                     state_ref_dumper=state_ref_dumper,
                     direct_value_extractor=direct_value_extractor,
+                    tree_value_extractor=tree_value_extractor,
+                    effective_value_extractor=effective_value_extractor,
+                    target_value_extractor=target_value_extractor,
+                    target_source=target_source,
                     backed_up_value_extractor=backed_up_value_extractor,
                     _build_stats=build_stats,
                     _profile=profile,
@@ -379,10 +430,14 @@ def _get_direct_value(node: object) -> object | None:
     return cast("object | None", _safe_getattr(node, "direct_value"))
 
 
-def _get_backed_up_value(node: object) -> object | None:
-    """Return the backed-up value-like object when present."""
+def _get_tree_value(node: object) -> object | None:
+    """Return the child/subtree-derived value-like object when present."""
     evaluation = _get_tree_evaluation(node)
     if evaluation is not None:
+        tree_value = _safe_getattr(evaluation, "tree_value")
+        if tree_value is not None:
+            return cast("object", tree_value)
+
         backed_up_value = _safe_getattr(evaluation, "backed_up_value")
         if backed_up_value is not None:
             return cast("object", backed_up_value)
@@ -395,6 +450,133 @@ def _get_backed_up_value(node: object) -> object | None:
     if backed_up_value is not None:
         return cast("object", backed_up_value)
     return cast("object | None", _safe_getattr(node, "minmax_value"))
+
+def _get_effective_value_and_source(
+    node: object,
+    *,
+    direct_value: object | None,
+    tree_value: object | None,
+) -> tuple[object | None, ValueCandidateSource]:
+    """Return the search-facing value and its provenance."""
+    evaluation = _get_tree_evaluation(node)
+    if evaluation is not None:
+        candidate = _call_optional_no_arg(
+            _safe_getattr(evaluation, "get_effective_value_candidate")
+        )
+        if candidate is not None:
+            return (
+                cast("object | None", _safe_getattr(candidate, "value")),
+                _coerce_value_candidate_source(
+                    _safe_getattr(candidate, "source"),
+                    value_present=_safe_getattr(candidate, "value") is not None,
+                ),
+            )
+
+        effective_value = _safe_getattr(evaluation, "effective_value")
+        if effective_value is not None:
+            return (
+                cast("object", effective_value),
+                _coerce_value_candidate_source(
+                    _safe_getattr(evaluation, "effective_value_source"),
+                    value_present=True,
+                ),
+            )
+
+    effective_value = _safe_getattr(node, "effective_value")
+    if effective_value is not None:
+        return (
+            cast("object", effective_value),
+            _coerce_value_candidate_source(
+                _safe_getattr(node, "effective_value_source"),
+                value_present=True,
+            ),
+        )
+
+    if tree_value is not None:
+        return tree_value, ValueCandidateSource.TREE_CHILD
+    if direct_value is not None:
+        return direct_value, ValueCandidateSource.DIRECT_SELF
+    return None, ValueCandidateSource.NONE
+
+
+def _coerce_value_candidate_source(
+    source: object | None,
+    *,
+    value_present: bool,
+) -> ValueCandidateSource:
+    """Return a normalized effective-value source."""
+    if isinstance(source, ValueCandidateSource):
+        return source
+    if source is not None:
+        normalized = str(_safe_getattr(source, "value") or source)
+        try:
+            return ValueCandidateSource(normalized)
+        except ValueError:
+            pass
+    if value_present:
+        return ValueCandidateSource.DIRECT_SELF
+    return ValueCandidateSource.NONE
+
+
+def _coerce_target_source(source: NodeTargetSource | str) -> NodeTargetSource:
+    """Return a normalized training target source."""
+    if isinstance(source, NodeTargetSource):
+        return source
+    return NodeTargetSource(str(source))
+
+
+def _select_target_value(
+    *,
+    direct_value: object | None,
+    tree_value: object | None,
+    effective_value: object | None,
+    source: NodeTargetSource,
+) -> object | None:
+    """Select a training target without implicit direct-value fallback."""
+    if source is NodeTargetSource.TREE_VALUE:
+        return tree_value
+    if source is NodeTargetSource.EFFECTIVE_VALUE:
+        return effective_value
+    if source is NodeTargetSource.DIRECT_VALUE:
+        return direct_value
+    raise ValueError(source)
+
+
+def _value_extractor_for_source(
+    *,
+    direct_value_extractor: ValueScalarExtractor | None,
+    tree_value_extractor: ValueScalarExtractor | None,
+    effective_value_extractor: ValueScalarExtractor | None,
+    source: ValueCandidateSource,
+) -> ValueScalarExtractor | None:
+    """Return the scalar extractor to use for one effective-value source."""
+    if effective_value_extractor is not None:
+        return effective_value_extractor
+    if source is ValueCandidateSource.TREE_CHILD:
+        return tree_value_extractor
+    if source is ValueCandidateSource.DIRECT_SELF:
+        return direct_value_extractor
+    return None
+
+
+def _value_extractor_for_target(
+    *,
+    direct_value_extractor: ValueScalarExtractor | None,
+    tree_value_extractor: ValueScalarExtractor | None,
+    effective_value_extractor: ValueScalarExtractor | None,
+    target_value_extractor: ValueScalarExtractor | None,
+    source: NodeTargetSource,
+) -> ValueScalarExtractor | None:
+    """Return the scalar extractor to use for one explicit target source."""
+    if target_value_extractor is not None:
+        return target_value_extractor
+    if source is NodeTargetSource.TREE_VALUE:
+        return tree_value_extractor
+    if source is NodeTargetSource.EFFECTIVE_VALUE:
+        return effective_value_extractor or tree_value_extractor or direct_value_extractor
+    if source is NodeTargetSource.DIRECT_VALUE:
+        return direct_value_extractor
+    raise ValueError(source)
 
 
 def _extract_value_scalar(
@@ -501,10 +683,10 @@ def _coerce_optional_bool(value: object | None) -> bool | None:
 
 
 def _get_value_candidate(node: object) -> object | None:
-    """Return the best available value candidate for exactness fallbacks."""
-    backed_up_value = _get_backed_up_value(node)
-    if backed_up_value is not None:
-        return backed_up_value
+    """Return the tree-first candidate for exactness fallbacks."""
+    tree_value = _get_tree_value(node)
+    if tree_value is not None:
+        return tree_value
     return _get_direct_value(node)
 
 
@@ -562,6 +744,7 @@ def _build_tree_metadata(
     built_metadata: dict[str, Any] = {
         "format_kind": TRAINING_TREE_SNAPSHOT_FORMAT_KIND,
         "format_version": TRAINING_TREE_SNAPSHOT_FORMAT_VERSION,
+        "default_target_source": DEFAULT_TRAINING_NODE_TARGET_SOURCE,
     }
     if metadata is not None:
         built_metadata.update(metadata)

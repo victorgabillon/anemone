@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC_PACKAGE_ROOT = _REPO_ROOT / "src" / "anemone"
 
-if "anemone" not in sys.modules:
+try:
+    import anemone as _anemone  # noqa: F401
+except ModuleNotFoundError:
     _stub_package = ModuleType("anemone")
     _stub_package.__path__ = [str(_SRC_PACKAGE_ROOT)]
     sys.modules["anemone"] = _stub_package
@@ -45,6 +47,10 @@ def _build_snapshot() -> TrainingTreeSnapshot:
                     "state": {"board": [1, 2], "turn": "WHITE"},
                 },
                 direct_value_scalar=0.5,
+                tree_value_scalar=1.25,
+                effective_value_scalar=1.25,
+                effective_value_source="tree_child",
+                target_value_scalar=1.25,
                 backed_up_value_scalar=1.25,
                 is_terminal=False,
                 is_exact=True,
@@ -59,6 +65,10 @@ def _build_snapshot() -> TrainingTreeSnapshot:
                 depth=1,
                 state_ref_payload={"codec": "dummy", "state": {"board": [3]}},
                 direct_value_scalar=None,
+                tree_value_scalar=-1.0,
+                effective_value_scalar=-1.0,
+                effective_value_source="tree_child",
+                target_value_scalar=-1.0,
                 backed_up_value_scalar=-1.0,
                 is_terminal=True,
                 is_exact=True,

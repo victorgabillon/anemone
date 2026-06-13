@@ -14,6 +14,17 @@ This package owns Anemone's value semantics and tree-evaluation state.
 - canonical value: the required concrete `Value` returned to consumers that
   need one
 
+## Learning versus search values
+
+Search-facing code uses `effective_value`. On partially opened nodes this can
+come from `direct_value` when the direct estimate is better than the current
+opened-child tree value.
+
+Learning-oriented targets should normally use `tree_value`, because it is the
+child/subtree-derived signal. `effective_value_source` records whether search is
+currently relying on `direct_self` or `tree_child`; exporters should expose that
+provenance instead of treating effective values as implicit training targets.
+
 ## Structure
 
 - `common/`: shared value semantics and protocols

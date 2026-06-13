@@ -61,6 +61,26 @@ class FakeEvaluation:
 
 
 @dataclass
+class FakeValueCandidate:
+    value: FakeValue | None
+    source: str
+
+
+@dataclass
+class FakeSourceAwareEvaluation(FakeEvaluation):
+    effective_candidate: FakeValueCandidate | None = None
+
+    @property
+    def tree_value(self) -> FakeValue | None:
+        return self.backed_up_value
+
+    def get_effective_value_candidate(self) -> FakeValueCandidate:
+        if self.effective_candidate is None:
+            return FakeValueCandidate(value=None, source="none")
+        return self.effective_candidate
+
+
+@dataclass
 class FakeMinmaxEvaluation:
     direct_value: FakeValue | None = None
     minmax_value: FakeValue | None = None
@@ -364,6 +384,9 @@ def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> No
     )
     assert snapshot.nodes[0].state_tag == "state-tag"
     assert snapshot.nodes[0].direct_value == "score=0.75, certainty=high"
+    assert snapshot.nodes[0].tree_value == "score=1.0, over=mate"
+    assert snapshot.nodes[0].effective_value == "score=1.0, over=mate"
+    assert snapshot.nodes[0].effective_value_source == "tree_child"
     assert snapshot.nodes[0].backed_up_value == "score=1.0, over=mate"
     assert snapshot.nodes[0].principal_variation == "a -> b"
     assert snapshot.nodes[0].over_event == "terminal"
@@ -417,6 +440,30 @@ def test_node_debug_label_builder_delegates_evaluation_and_index_formatting() ->
     assert "over=done" in label
     assert "index=2.5" in label
     assert "max_depth_descendants=6" in label
+
+
+def test_tree_snapshot_adapter_exports_effective_value_provenance() -> None:
+    node = FakeNode(
+        id_=11,
+        tree_depth_=2,
+        state_=FakeState(tag="partial"),
+        tree_evaluation=FakeSourceAwareEvaluation(
+            direct_value=FakeValue(score=0.7),
+            backed_up_value=FakeValue(score=0.2),
+            effective_candidate=FakeValueCandidate(
+                value=FakeValue(score=0.7),
+                source="direct_self",
+            ),
+        ),
+    )
+
+    snapshot = TreeSnapshotAdapter().snapshot(cast("Any", node))
+
+    assert snapshot.nodes[0].direct_value == "score=0.7"
+    assert snapshot.nodes[0].tree_value == "score=0.2"
+    assert snapshot.nodes[0].backed_up_value == "score=0.2"
+    assert snapshot.nodes[0].effective_value == "score=0.7"
+    assert snapshot.nodes[0].effective_value_source == "direct_self"
 
 
 def test_tree_snapshot_adapter_uses_minmax_and_over_event_fallbacks() -> None:

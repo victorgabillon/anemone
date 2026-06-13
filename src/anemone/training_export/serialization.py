@@ -68,6 +68,10 @@ def _node_snapshot_to_dict(snapshot: TrainingNodeSnapshot) -> dict[str, object]:
         "depth": snapshot.depth,
         "state_ref_payload": snapshot.state_ref_payload,
         "direct_value_scalar": snapshot.direct_value_scalar,
+        "tree_value_scalar": snapshot.tree_value_scalar,
+        "effective_value_scalar": snapshot.effective_value_scalar,
+        "effective_value_source": snapshot.effective_value_source,
+        "target_value_scalar": snapshot.target_value_scalar,
         "backed_up_value_scalar": snapshot.backed_up_value_scalar,
         "is_terminal": snapshot.is_terminal,
         "is_exact": snapshot.is_exact,
@@ -81,6 +85,9 @@ def _node_snapshot_from_dict(data: dict[str, object]) -> TrainingNodeSnapshot:
     """Deserialize one node snapshot from JSON-friendly data."""
     loaded_parent_ids = _object_list(data.get("parent_ids"))
     loaded_child_ids = _object_list(data.get("child_ids"))
+    tree_value_scalar = _optional_float(
+        data.get("tree_value_scalar", data.get("backed_up_value_scalar"))
+    )
     return TrainingNodeSnapshot(
         node_id=str(data["node_id"]),
         parent_ids=tuple(str(parent_id) for parent_id in loaded_parent_ids),
@@ -88,9 +95,17 @@ def _node_snapshot_from_dict(data: dict[str, object]) -> TrainingNodeSnapshot:
         depth=_coerce_int(data.get("depth", 0), default=0),
         state_ref_payload=data.get("state_ref_payload"),
         direct_value_scalar=_optional_float(data.get("direct_value_scalar")),
-        backed_up_value_scalar=_optional_float(data.get("backed_up_value_scalar")),
+        tree_value_scalar=tree_value_scalar,
+        effective_value_scalar=_optional_float(data.get("effective_value_scalar")),
+        effective_value_source=str(data.get("effective_value_source", "none")),
+        target_value_scalar=_optional_float(
+            data.get("target_value_scalar", tree_value_scalar)
+        ),
         is_terminal=bool(data.get("is_terminal", False)),
         is_exact=bool(data.get("is_exact", False)),
+        backed_up_value_scalar=_optional_float(
+            data.get("backed_up_value_scalar", tree_value_scalar)
+        ),
         over_event_label=_optional_str(data.get("over_event_label")),
         visit_count=_optional_int(data.get("visit_count")),
         metadata=_metadata_dict(data.get("metadata")),

@@ -29,6 +29,9 @@ class NodeDebugMetadata:
     player_label: str | None = None
     state_tag: str | None = None
     direct_value: str | None = None
+    tree_value: str | None = None
+    effective_value: str | None = None
+    effective_value_source: str | None = None
     backed_up_value: str | None = None
     principal_variation: str | None = None
     over_event: str | None = None
@@ -47,7 +50,10 @@ class NodeDebugMetadataBuilder:
             player_label=self._get_player_label(node),
             state_tag=self._get_state_tag(node),
             direct_value=self._get_direct_value(evaluation),
-            backed_up_value=self._get_backed_up_value(evaluation),
+            tree_value=self._get_tree_value(evaluation),
+            effective_value=self._get_effective_value(evaluation),
+            effective_value_source=self._get_effective_value_source(evaluation),
+            backed_up_value=self._get_tree_value(evaluation),
             principal_variation=self._get_principal_variation(evaluation),
             over_event=self._get_over_event(evaluation),
             is_exact=self._has_exact_value(evaluation),
@@ -95,10 +101,14 @@ class NodeDebugMetadataBuilder:
         direct_value = safe_getattr(evaluation, "direct_value")
         return None if direct_value is None else format_value(direct_value)
 
-    def _get_backed_up_value(self, evaluation: Any) -> str | None:
-        """Return a formatted backed-up value when available."""
+    def _get_tree_value(self, evaluation: Any) -> str | None:
+        """Return a formatted child/subtree-derived value when available."""
         if evaluation is None:
             return None
+
+        tree_value = safe_getattr(evaluation, "tree_value")
+        if tree_value is not None:
+            return format_value(tree_value)
 
         backed_up_value = safe_getattr(evaluation, "backed_up_value")
         if backed_up_value is not None:
@@ -106,6 +116,53 @@ class NodeDebugMetadataBuilder:
 
         minmax_value = safe_getattr(evaluation, "minmax_value")
         return None if minmax_value is None else format_value(minmax_value)
+
+    def _get_effective_value(self, evaluation: Any) -> str | None:
+        """Return a formatted search-facing value when available."""
+        if evaluation is None:
+            return None
+
+        candidate = self._get_effective_candidate(evaluation)
+        if candidate is not None:
+            value = safe_getattr(candidate, "value")
+            return None if value is None else format_value(value)
+
+        effective_value = safe_getattr(evaluation, "effective_value")
+        if effective_value is not None:
+            return format_value(effective_value)
+
+        return self._get_tree_value(evaluation) or self._get_direct_value(evaluation)
+
+    def _get_effective_value_source(self, evaluation: Any) -> str | None:
+        """Return the source for the search-facing effective value."""
+        if evaluation is None:
+            return None
+
+        candidate = self._get_effective_candidate(evaluation)
+        if candidate is not None:
+            source = safe_getattr(candidate, "source")
+            if source is not None:
+                return str(safe_getattr(source, "value") or source)
+
+        source = safe_getattr(evaluation, "effective_value_source")
+        if source is not None:
+            return str(safe_getattr(source, "value") or source)
+
+        if self._get_tree_value(evaluation) is not None:
+            return "tree_child"
+        if self._get_direct_value(evaluation) is not None:
+            return "direct_self"
+        return "none"
+
+    def _get_effective_candidate(self, evaluation: Any) -> Any | None:
+        """Return a source-aware effective candidate when available."""
+        get_candidate = safe_getattr(evaluation, "get_effective_value_candidate")
+        if not callable(get_candidate):
+            return None
+        try:
+            return get_candidate()
+        except (AttributeError, TypeError):
+            return None
 
     def _get_principal_variation(self, evaluation: Any) -> str | None:
         """Return a formatted principal variation when available."""
@@ -149,6 +206,10 @@ class NodeDebugMetadataBuilder:
 
     def _get_candidate_value(self, evaluation: Any) -> Any | None:
         """Return the best-effort canonical value candidate for debug purposes."""
+        tree_value = safe_getattr(evaluation, "tree_value")
+        if tree_value is not None:
+            return tree_value
+
         backed_up_value = safe_getattr(evaluation, "backed_up_value")
         if backed_up_value is not None:
             return backed_up_value

@@ -33,6 +33,9 @@ def _build_snapshot() -> DebugTreeSnapshot:
                 player_label="MAX",
                 state_tag="root",
                 direct_value="score=0.1",
+                tree_value="score=0.9",
+                effective_value="score=0.1",
+                effective_value_source="direct_self",
                 backed_up_value="score=0.9",
                 principal_variation="a -> b",
                 over_event="done",
@@ -78,6 +81,10 @@ def test_export_snapshot_json_writes_readable_file(tmp_path: Path) -> None:
     assert payload["nodes"][0]["player_label"] == "MAX"
     assert payload["nodes"][0]["state_tag"] == "root"
     assert payload["nodes"][0]["direct_value"] == "score=0.1"
+    assert payload["nodes"][0]["tree_value"] == "score=0.9"
+    assert payload["nodes"][0]["effective_value"] == "score=0.1"
+    assert payload["nodes"][0]["effective_value_source"] == "direct_self"
+    assert payload["nodes"][0]["backed_up_value"] == "score=0.9"
     assert payload["nodes"][0]["is_exact"] is True
     assert payload["nodes"][0]["is_terminal"] is False
     assert payload["nodes"][0]["edge_labels_by_child"] == {"2": "a"}

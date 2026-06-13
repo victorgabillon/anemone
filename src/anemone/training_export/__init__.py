@@ -7,6 +7,7 @@ from .builders import (
     build_training_tree_snapshot,
 )
 from .model import (
+    DEFAULT_TRAINING_NODE_TARGET_SOURCE,
     TRAINING_TREE_SNAPSHOT_FORMAT_KIND,
     TRAINING_TREE_SNAPSHOT_FORMAT_VERSION,
     TrainingNodeSnapshot,
@@ -22,6 +23,7 @@ from .serialization import (
 )
 
 __all__ = [
+    "DEFAULT_TRAINING_NODE_TARGET_SOURCE",
     "TRAINING_TREE_SNAPSHOT_FORMAT_KIND",
     "TRAINING_TREE_SNAPSHOT_FORMAT_VERSION",
     "StateRefDumper",

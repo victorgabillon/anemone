@@ -7,6 +7,7 @@ from typing import Any
 
 TRAINING_TREE_SNAPSHOT_FORMAT_KIND = "training_tree_snapshot"
 TRAINING_TREE_SNAPSHOT_FORMAT_VERSION = 1
+DEFAULT_TRAINING_NODE_TARGET_SOURCE = "tree_value"
 
 
 def _empty_metadata() -> dict[str, Any]:
@@ -24,9 +25,13 @@ class TrainingNodeSnapshot:
     depth: int
     state_ref_payload: Any | None
     direct_value_scalar: float | None
-    backed_up_value_scalar: float | None
+    tree_value_scalar: float | None
+    effective_value_scalar: float | None
+    effective_value_source: str
+    target_value_scalar: float | None
     is_terminal: bool
     is_exact: bool
+    backed_up_value_scalar: float | None = None
     over_event_label: str | None = None
     visit_count: int | None = None
     metadata: dict[str, Any] = field(default_factory=_empty_metadata)
@@ -43,6 +48,7 @@ class TrainingTreeSnapshot:
 
 
 __all__ = [
+    "DEFAULT_TRAINING_NODE_TARGET_SOURCE",
     "TRAINING_TREE_SNAPSHOT_FORMAT_KIND",
     "TRAINING_TREE_SNAPSHOT_FORMAT_VERSION",
     "TrainingNodeSnapshot",

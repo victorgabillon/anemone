@@ -21,6 +21,9 @@ class DebugNodeView:
     player_label: str | None = None
     state_tag: str | None = None
     direct_value: str | None = None
+    tree_value: str | None = None
+    effective_value: str | None = None
+    effective_value_source: str | None = None
     backed_up_value: str | None = None
     principal_variation: str | None = None
     over_event: str | None = None
