@@ -85,9 +85,23 @@ class _FakeTreeManager:
             child_node=child,
             parent_node=parent_node,
             state_modifications=None,
-            creation_child_node=False,
+            creation_child_node=True,
             branch_key=branch,
         )
+
+
+@dataclass(slots=True)
+class _FakeDescendants:
+    registered_nodes: list[Any] = field(default_factory=list)
+
+    def register_descendant(self, node: Any) -> None:
+        self.registered_nodes.append(node)
+
+
+@dataclass(slots=True)
+class _FakeTree:
+    nodes_count: int = 1
+    descendants: _FakeDescendants = field(default_factory=_FakeDescendants)
 
 
 class _FakeOpeningInstructor:
@@ -167,7 +181,7 @@ def test_tree_manager_notifies_branch_frontier_when_opening_a_branch() -> None:
     )
 
     tree_manager.expand_instructions(
-        tree=cast("Any", object()),
+        tree=cast("Any", _FakeTree()),
         opening_instructions=cast("Any", opening_instructions),
     )
 

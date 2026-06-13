@@ -181,8 +181,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         opening_instructions: OpeningInstructions[NodeT],
     ) -> TreeExpansions[NodeT]:
         """Expand instructions through the configured opening executor."""
-        assert self.opening_expansion_executor is not None
-        return self.opening_expansion_executor.expand(
+        return self._require_opening_expansion_executor().expand(
             tree=tree,
             opening_instructions=opening_instructions,
         )
@@ -257,3 +256,12 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         require_branch_frontier_aware(parent_node.tree_evaluation).on_branch_opened(
             branch
         )
+
+    def _require_opening_expansion_executor(
+        self,
+    ) -> OpeningExpansionExecutor[NodeT]:
+        """Return the configured opening executor or fail with a runtime error."""
+        if self.opening_expansion_executor is None:
+            msg = "opening expansion executor was not initialized"
+            raise RuntimeError(msg)
+        return self.opening_expansion_executor

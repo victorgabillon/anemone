@@ -65,7 +65,7 @@ class BranchOpeningService[
         if self.on_branch_opened is not None:
             self.on_branch_opened(parent_node, branch)
 
-        tree_expansion = self.tree_manager.open_tree_expansion_from_branch(  # pylint: disable=assignment-from-no-return
+        tree_expansion = self._open_structural_branch(
             tree=tree,
             parent_node=parent_node,
             branch=branch,
@@ -76,6 +76,20 @@ class BranchOpeningService[
             tree_expansion=tree_expansion,
         )
         return tree_expansion
+
+    def _open_structural_branch(
+        self,
+        *,
+        tree: trees.Tree[FamilyT],
+        parent_node: FamilyT,
+        branch: BranchKey,
+    ) -> TreeExpansion[FamilyT]:
+        """Delegate the structural open to the wrapped tree manager."""
+        return self.tree_manager.open_tree_expansion_from_branch(
+            tree=tree,
+            parent_node=parent_node,
+            branch=branch,
+        )
 
 
 __all__ = [
