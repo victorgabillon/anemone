@@ -385,8 +385,8 @@ def test_tree_snapshot_adapter_includes_state_evaluation_and_index_lines() -> No
     assert snapshot.nodes[0].state_tag == "state-tag"
     assert snapshot.nodes[0].direct_value == "score=0.75, certainty=high"
     assert snapshot.nodes[0].tree_value == "score=1.0, over=mate"
-    assert snapshot.nodes[0].effective_value == "score=1.0, over=mate"
-    assert snapshot.nodes[0].effective_value_source == "tree_child"
+    assert snapshot.nodes[0].effective_value is None
+    assert snapshot.nodes[0].effective_value_source is None
     assert snapshot.nodes[0].backed_up_value == "score=1.0, over=mate"
     assert snapshot.nodes[0].principal_variation == "a -> b"
     assert snapshot.nodes[0].over_event == "terminal"

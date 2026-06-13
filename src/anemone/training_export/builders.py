@@ -39,6 +39,16 @@ class MissingNodeIdError(TypeError):
         )
 
 
+class EffectiveValueSourceMissingError(ValueError):
+    """Raised when an effective value is exported without provenance."""
+
+    def __init__(self) -> None:
+        """Initialize with a stable explanation."""
+        super().__init__(
+            "effective value is present but effective value source is missing or invalid"
+        )
+
+
 class StateRefDumper(Protocol):
     """Protocol for caller-supplied reversible state-reference dumping."""
 
@@ -134,11 +144,7 @@ def build_training_node_snapshot(
     value_started_at = perf_counter()
     direct_value = _get_direct_value(node)
     tree_value = _get_tree_value(node)
-    effective_value, effective_value_source = _get_effective_value_and_source(
-        node,
-        direct_value=direct_value,
-        tree_value=tree_value,
-    )
+    effective_value, effective_value_source = _get_effective_value_and_source(node)
     resolved_target_source = _coerce_target_source(target_source)
     target_value = _select_target_value(
         direct_value=direct_value,
@@ -451,11 +457,9 @@ def _get_tree_value(node: object) -> object | None:
         return cast("object", backed_up_value)
     return cast("object | None", _safe_getattr(node, "minmax_value"))
 
+
 def _get_effective_value_and_source(
     node: object,
-    *,
-    direct_value: object | None,
-    tree_value: object | None,
 ) -> tuple[object | None, ValueCandidateSource]:
     """Return the search-facing value and its provenance."""
     evaluation = _get_tree_evaluation(node)
@@ -492,10 +496,6 @@ def _get_effective_value_and_source(
             ),
         )
 
-    if tree_value is not None:
-        return tree_value, ValueCandidateSource.TREE_CHILD
-    if direct_value is not None:
-        return direct_value, ValueCandidateSource.DIRECT_SELF
     return None, ValueCandidateSource.NONE
 
 
@@ -514,7 +514,7 @@ def _coerce_value_candidate_source(
         except ValueError:
             pass
     if value_present:
-        return ValueCandidateSource.DIRECT_SELF
+        raise EffectiveValueSourceMissingError
     return ValueCandidateSource.NONE
 
 
@@ -573,7 +573,9 @@ def _value_extractor_for_target(
     if source is NodeTargetSource.TREE_VALUE:
         return tree_value_extractor
     if source is NodeTargetSource.EFFECTIVE_VALUE:
-        return effective_value_extractor or tree_value_extractor or direct_value_extractor
+        return (
+            effective_value_extractor or tree_value_extractor or direct_value_extractor
+        )
     if source is NodeTargetSource.DIRECT_VALUE:
         return direct_value_extractor
     raise ValueError(source)
@@ -752,6 +754,7 @@ def _build_tree_metadata(
 
 
 __all__ = [
+    "EffectiveValueSourceMissingError",
     "MissingNodeIdError",
     "StateRefDumper",
     "ValueScalarExtractor",

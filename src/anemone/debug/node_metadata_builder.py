@@ -131,7 +131,7 @@ class NodeDebugMetadataBuilder:
         if effective_value is not None:
             return format_value(effective_value)
 
-        return self._get_tree_value(evaluation) or self._get_direct_value(evaluation)
+        return None
 
     def _get_effective_value_source(self, evaluation: Any) -> str | None:
         """Return the source for the search-facing effective value."""
@@ -148,11 +148,7 @@ class NodeDebugMetadataBuilder:
         if source is not None:
             return str(safe_getattr(source, "value") or source)
 
-        if self._get_tree_value(evaluation) is not None:
-            return "tree_child"
-        if self._get_direct_value(evaluation) is not None:
-            return "direct_self"
-        return "none"
+        return None
 
     def _get_effective_candidate(self, evaluation: Any) -> Any | None:
         """Return a source-aware effective candidate when available."""

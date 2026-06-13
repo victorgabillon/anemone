@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SRC_PACKAGE_ROOT = _REPO_ROOT / "src" / "anemone"
 
@@ -98,6 +100,20 @@ class _EvaluationNode:
     all_branches_generated: bool = False
 
 
+@dataclass(slots=True)
+class _EvaluationWithSourceMissing:
+    """Evaluation-like object with invalid effective provenance."""
+
+    direct_value: _ScoreValue | None
+    backed_up_value: _ScoreValue | None
+    effective_value: _ScoreValue | None
+
+    @property
+    def tree_value(self) -> _ScoreValue | None:
+        """Return the tree-derived value."""
+        return self.backed_up_value
+
+
 class _MinimalDummyNode:
     """Dummy node exposing only a stable node id."""
 
@@ -159,8 +175,8 @@ def test_build_training_tree_snapshot_with_dummy_nodes() -> None:
     assert snapshot.nodes[0].direct_value_scalar == 1.0
     assert snapshot.nodes[0].tree_value_scalar == 2.5
     assert snapshot.nodes[0].backed_up_value_scalar == 2.5
-    assert snapshot.nodes[0].effective_value_scalar == 2.5
-    assert snapshot.nodes[0].effective_value_source == "tree_child"
+    assert snapshot.nodes[0].effective_value_scalar is None
+    assert snapshot.nodes[0].effective_value_source == "none"
     assert snapshot.nodes[0].target_value_scalar == 2.5
     assert snapshot.nodes[0].is_terminal is True
     assert snapshot.nodes[0].is_exact is True
@@ -337,7 +353,7 @@ def test_build_training_node_snapshot_keeps_structured_payloads_and_numeric_scal
     assert snapshot.direct_value_scalar == 3.0
     assert snapshot.tree_value_scalar == 4.0
     assert snapshot.backed_up_value_scalar == 4.0
-    assert snapshot.effective_value_scalar == 4.0
+    assert snapshot.effective_value_scalar is None
     assert snapshot.target_value_scalar == 4.0
 
 
@@ -354,9 +370,7 @@ def test_training_snapshot_separates_direct_tree_and_effective_values() -> None:
 
     snapshot = build_training_node_snapshot(
         node,
-        direct_value_extractor=lambda value: (
-            value.score if value is not None else None
-        ),
+        direct_value_extractor=lambda value: value.score if value is not None else None,
         tree_value_extractor=lambda value: value.score if value is not None else None,
     )
 
@@ -382,9 +396,7 @@ def test_training_snapshot_uses_tree_value_when_fully_opened() -> None:
 
     snapshot = build_training_node_snapshot(
         node,
-        direct_value_extractor=lambda value: (
-            value.score if value is not None else None
-        ),
+        direct_value_extractor=lambda value: value.score if value is not None else None,
         tree_value_extractor=lambda value: value.score if value is not None else None,
     )
 
@@ -408,9 +420,7 @@ def test_training_target_does_not_fallback_to_direct_without_tree_value() -> Non
 
     snapshot = build_training_node_snapshot(
         node,
-        direct_value_extractor=lambda value: (
-            value.score if value is not None else None
-        ),
+        direct_value_extractor=lambda value: value.score if value is not None else None,
         tree_value_extractor=lambda value: value.score if value is not None else None,
     )
 
@@ -419,6 +429,29 @@ def test_training_target_does_not_fallback_to_direct_without_tree_value() -> Non
     assert snapshot.effective_value_scalar == 0.7
     assert snapshot.effective_value_source == "direct_self"
     assert snapshot.target_value_scalar is None
+
+
+def test_effective_value_without_source_is_rejected() -> None:
+    """Effective values must carry explicit provenance."""
+    node = _EvaluationNode(
+        node_id="invalid",
+        tree_evaluation=_EvaluationWithSourceMissing(
+            direct_value=_ScoreValue(0.7),
+            backed_up_value=_ScoreValue(0.2),
+            effective_value=_ScoreValue(0.7),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="effective value source is missing"):
+        build_training_node_snapshot(
+            node,
+            direct_value_extractor=lambda value: (
+                value.score if value is not None else None
+            ),
+            tree_value_extractor=lambda value: (
+                value.score if value is not None else None
+            ),
+        )
 
 
 def test_training_target_source_must_be_explicit_for_effective_or_direct() -> None:
@@ -434,24 +467,18 @@ def test_training_target_source_must_be_explicit_for_effective_or_direct() -> No
 
     default_snapshot = build_training_node_snapshot(
         node,
-        direct_value_extractor=lambda value: (
-            value.score if value is not None else None
-        ),
+        direct_value_extractor=lambda value: value.score if value is not None else None,
         tree_value_extractor=lambda value: value.score if value is not None else None,
     )
     effective_snapshot = build_training_node_snapshot(
         node,
-        direct_value_extractor=lambda value: (
-            value.score if value is not None else None
-        ),
+        direct_value_extractor=lambda value: value.score if value is not None else None,
         tree_value_extractor=lambda value: value.score if value is not None else None,
         target_source=NodeTargetSource.EFFECTIVE_VALUE,
     )
     direct_snapshot = build_training_node_snapshot(
         node,
-        direct_value_extractor=lambda value: (
-            value.score if value is not None else None
-        ),
+        direct_value_extractor=lambda value: value.score if value is not None else None,
         tree_value_extractor=lambda value: value.score if value is not None else None,
         target_source=NodeTargetSource.DIRECT_VALUE,
     )
