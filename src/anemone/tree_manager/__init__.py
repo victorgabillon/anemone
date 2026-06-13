@@ -15,13 +15,22 @@ Functions:
 """
 
 from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
+from .branch_opening_service import BranchOpeningService, BranchOpeningTreeManager
 from .factory import create_algorithm_node_tree_manager
+from .opening_expansion_executor import (
+    OnePlyOpeningExpansionExecutor,
+    OpeningExpansionExecutor,
+)
 from .tree_expander import TreeExpansion, TreeExpansions
 from .tree_manager import DuplicateBranchOpenError, TreeManager
 
 __all__ = [
     "AlgorithmNodeTreeManager",
+    "BranchOpeningService",
+    "BranchOpeningTreeManager",
     "DuplicateBranchOpenError",
+    "OnePlyOpeningExpansionExecutor",
+    "OpeningExpansionExecutor",
     "TreeExpansion",
     "TreeExpansions",
     "TreeManager",

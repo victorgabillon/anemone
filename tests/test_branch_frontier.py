@@ -1,4 +1,5 @@
 """Focused tests for the extracted branch-frontier concept."""
+# ruff: noqa: D103, TRY003
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -31,7 +32,7 @@ from anemone.node_selector.recurzipf.recur_zipf_base import (
     RecurZipfBaseArgs,
 )
 from anemone.tree_manager.algorithm_node_tree_manager import AlgorithmNodeTreeManager
-from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
+from anemone.tree_manager.tree_expander import TreeExpansion
 
 
 class _SoloRole(Enum):
@@ -62,24 +63,31 @@ class _FakeFrontierEvaluation:
 
 
 class _FakeTreeManager:
-    def expand_instructions(
+    def __init__(self) -> None:
+        self.dynamics = SimpleNamespace(
+            legal_actions=lambda state: SimpleNamespace(get_all=lambda: ["left"])
+        )
+
+    def assert_branch_not_opened(self, *, parent_node: Any, branch: Any) -> None:
+        if parent_node.branches_children.get(branch) is not None:
+            raise AssertionError("branch already opened")
+
+    def open_tree_expansion_from_branch(
         self,
-        tree: object,
-        opening_instructions: OpeningInstructions[Any],
-    ) -> TreeExpansions[Any]:
+        tree: Any,
+        parent_node: Any,
+        branch: Any,
+    ) -> TreeExpansion[Any]:
         del tree
-        tree_expansions: TreeExpansions[Any] = TreeExpansions()
-        for opening_instruction in opening_instructions.values():
-            tree_expansions.add_creation(
-                TreeExpansion(
-                    child_node=SimpleNamespace(id=2),
-                    parent_node=opening_instruction.node_to_open,
-                    state_modifications=None,
-                    creation_child_node=True,
-                    branch_key=opening_instruction.branch,
-                )
-            )
-        return tree_expansions
+        child = SimpleNamespace(id=2)
+        parent_node.branches_children[branch] = child
+        return TreeExpansion(
+            child_node=child,
+            parent_node=parent_node,
+            state_modifications=None,
+            creation_child_node=False,
+            branch_key=branch,
+        )
 
 
 class _FakeOpeningInstructor:
@@ -140,7 +148,14 @@ def test_tree_manager_notifies_branch_frontier_when_opening_a_branch() -> None:
         index_manager=cast("Any", object()),
     )
     parent_evaluation = _FakeFrontierEvaluation(ordered_branches=["left"])
-    parent_node = SimpleNamespace(tree_evaluation=parent_evaluation)
+    parent_node = SimpleNamespace(
+        id=1,
+        state=SimpleNamespace(),
+        tree_evaluation=parent_evaluation,
+        branches_children={},
+        all_branches_generated=False,
+        non_opened_branches=set(),
+    )
 
     opening_instructions = OpeningInstructions(
         {

@@ -18,16 +18,18 @@ from anemone.node_evaluation.direct import (
     EvaluationQueries,
     NodeDirectEvaluator,
 )
-from anemone.node_selector.opening_instructions import (
-    OpeningInstruction,
-    OpeningInstructions,
-)
+from anemone.node_selector.opening_instructions import OpeningInstructions
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
 from anemone.updates.depth_index_propagator import DepthIndexPropagator
 from anemone.updates.value_propagator import ValuePropagator
 
+from .branch_opening_service import BranchOpeningService
+from .opening_expansion_executor import (
+    OnePlyOpeningExpansionExecutor,
+    OpeningExpansionExecutor,
+)
 from .tree_expander import TreeExpansions
 from .tree_manager import TreeManager
 
@@ -138,6 +140,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     index_manager: NodeExplorationIndexManager
     value_propagator: ValuePropagator = field(default_factory=ValuePropagator)
     depth_index_propagator: DepthIndexPropagator | None = None
+    opening_expansion_executor: OpeningExpansionExecutor[NodeT] | None = None
     _direct_evaluation: _DirectNodeEvaluation[NodeT] = field(
         init=False,
         repr=False,
@@ -157,6 +160,14 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             get_value_propagator=lambda: self.value_propagator,
             get_depth_index_propagator=lambda: self.depth_index_propagator,
         )
+        if self.opening_expansion_executor is None:
+            self.opening_expansion_executor = OnePlyOpeningExpansionExecutor(
+                branch_opening_service=BranchOpeningService(
+                    tree_manager=self.tree_manager,
+                    on_branch_opened=self._mark_branch_opened,
+                ),
+                dynamics=self.dynamics,
+            )
 
     @property
     def dynamics(self) -> SearchDynamics[Any, Any]:
@@ -169,9 +180,9 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         opening_instructions: OpeningInstructions[NodeT],
     ) -> TreeExpansions[NodeT]:
-        """Perform algorithm-aware pre-expansion bookkeeping, then expand structurally."""
-        self._mark_branches_opened(opening_instructions)
-        return self.tree_manager.expand_instructions(
+        """Expand instructions through the configured opening executor."""
+        assert self.opening_expansion_executor is not None
+        return self.opening_expansion_executor.expand(
             tree=tree,
             opening_instructions=opening_instructions,
         )
@@ -237,13 +248,12 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         cast("BestLinePrintable", tree.root_node.tree_evaluation).print_best_line()
 
     # Private helpers
-    def _mark_branches_opened(
+    def _mark_branch_opened(
         self,
-        opening_instructions: OpeningInstructions[NodeT],
+        parent_node: NodeT,
+        branch: Any,
     ) -> None:
-        """Update branch-frontier state before the structural expander mutates the tree."""
-        opening_instruction: OpeningInstruction[NodeT]
-        for opening_instruction in opening_instructions.values():
-            require_branch_frontier_aware(
-                opening_instruction.node_to_open.tree_evaluation
-            ).on_branch_opened(opening_instruction.branch)
+        """Update branch-frontier state before one structural branch is opened."""
+        require_branch_frontier_aware(parent_node.tree_evaluation).on_branch_opened(
+            branch
+        )

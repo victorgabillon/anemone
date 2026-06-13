@@ -11,8 +11,17 @@ remaining legal branches.
 
 - `tree_manager.py`: Base `TreeManager` for opening nodes and tracking
   expansions.
+- `branch_opening_service.py`: one-branch opening primitive that records
+  `TreeExpansion` objects and runs per-branch callbacks such as branch-frontier
+  bookkeeping.
+- `opening_expansion_executor.py`: one-ply `OpeningInstructions` executor that
+  opens requested branches and synchronizes touched parents once per batch.
 - `algorithm_node_tree_manager.py`: `AlgorithmNodeTreeManager` implementation
   for `AlgorithmNode` trees.
 - `tree_expander.py`: `TreeExpansion` and `TreeExpansions` helpers describing
   node creation events.
 - `factory.py`: `create_algorithm_node_tree_manager` convenience constructor.
+
+This split keeps `TreeManager` as the structural single-branch open/link
+primitive while allowing future expansion executors, such as rollout expansion,
+to reuse the same branch-opening path.
