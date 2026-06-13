@@ -319,7 +319,9 @@ def test_effective_value_candidate_uses_direct_source_without_tree_value() -> No
     assert candidate.source is ValueCandidateSource.DIRECT_SELF
     assert candidate.has_value
     assert node.tree_evaluation.effective_value == direct
-    assert node.tree_evaluation.effective_value_source is ValueCandidateSource.DIRECT_SELF
+    assert (
+        node.tree_evaluation.effective_value_source is ValueCandidateSource.DIRECT_SELF
+    )
     assert node.tree_evaluation.get_value_candidate() == direct
 
 
@@ -338,7 +340,9 @@ def test_effective_value_candidate_partial_node_direct_wins() -> None:
     assert candidate.value == direct
     assert candidate.source is ValueCandidateSource.DIRECT_SELF
     assert node.tree_evaluation.effective_value == direct
-    assert node.tree_evaluation.effective_value_source is ValueCandidateSource.DIRECT_SELF
+    assert (
+        node.tree_evaluation.effective_value_source is ValueCandidateSource.DIRECT_SELF
+    )
     assert node.tree_evaluation.get_value_candidate() == direct
     assert node.tree_evaluation.get_value() == direct
 
@@ -361,7 +365,9 @@ def test_effective_value_candidate_prefers_tree_value_with_source() -> None:
     assert tree_candidate.value == tree
     assert tree_candidate.source is ValueCandidateSource.TREE_CHILD
     assert node.tree_evaluation.effective_value == tree
-    assert node.tree_evaluation.effective_value_source is ValueCandidateSource.TREE_CHILD
+    assert (
+        node.tree_evaluation.effective_value_source is ValueCandidateSource.TREE_CHILD
+    )
     assert node.tree_evaluation.get_value_candidate() == tree
 
 
@@ -381,7 +387,9 @@ def test_effective_value_candidate_fully_open_node_uses_tree_even_if_direct_bett
     assert candidate.value == tree
     assert candidate.source is ValueCandidateSource.TREE_CHILD
     assert node.tree_evaluation.effective_value == tree
-    assert node.tree_evaluation.effective_value_source is ValueCandidateSource.TREE_CHILD
+    assert (
+        node.tree_evaluation.effective_value_source is ValueCandidateSource.TREE_CHILD
+    )
     assert node.tree_evaluation.get_value_candidate() == tree
     assert node.tree_evaluation.get_value() == tree
 

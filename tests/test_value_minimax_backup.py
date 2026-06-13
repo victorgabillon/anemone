@@ -196,7 +196,9 @@ def test_estimate_children_respect_side_to_move_ordering() -> None:
     assert black_parent.get_score() == 0.2
 
 
-def test_partial_expansion_white_keeps_tree_value_but_effective_can_use_direct() -> None:
+def test_partial_expansion_white_keeps_tree_value_but_effective_can_use_direct() -> (
+    None
+):
     parent = _make_parent(
         turn=Color.WHITE,
         children={0: _make_leaf(1, Value(score=0.2, certainty=Certainty.ESTIMATE))},
@@ -232,7 +234,9 @@ def test_partial_expansion_prefers_child_for_black_when_child_is_better() -> Non
     assert parent.get_score() == 0.2
 
 
-def test_partial_expansion_black_keeps_tree_value_but_effective_can_use_direct() -> None:
+def test_partial_expansion_black_keeps_tree_value_but_effective_can_use_direct() -> (
+    None
+):
     parent = _make_parent(
         turn=Color.BLACK,
         children={0: _make_leaf(1, Value(score=0.7, certainty=Certainty.ESTIMATE))},

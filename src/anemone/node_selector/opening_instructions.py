@@ -234,8 +234,6 @@ class OpeningInstructor:
                 node=node_to_open,
                 dynamics=self.dynamics,
             )
-            if not branches_to_play:
-                node_to_open.all_branches_generated = True
 
         else:
             raise NotImplementedError("Hello-la")

@@ -49,14 +49,15 @@ def test_all_children_requests_only_unopened_legal_branches() -> None:
     assert not node.all_branches_generated
 
 
-def test_all_children_marks_node_complete_when_no_branch_remains() -> None:
-    """Asking to open a structurally complete node marks the flag true."""
+def test_all_children_returns_empty_when_no_branch_remains() -> None:
+    """Opening instructors compute branches without mutating node status."""
     node = _Node(
         branches_children={
             0: SimpleNamespace(id=10),
             1: SimpleNamespace(id=11),
             2: SimpleNamespace(id=12),
-        }
+        },
+        all_branches_generated=False,
     )
     instructor = OpeningInstructor(
         opening_type=OpeningType.ALL_CHILDREN,
@@ -65,4 +66,4 @@ def test_all_children_marks_node_complete_when_no_branch_remains() -> None:
     )
 
     assert instructor.all_branches_to_open(node_to_open=node) == ()
-    assert node.all_branches_generated
+    assert not node.all_branches_generated

@@ -1,6 +1,7 @@
 """Tests for structural tree-manager opening safety."""
 
 from dataclasses import dataclass, field
+from random import Random
 from types import SimpleNamespace
 
 import pytest
@@ -8,6 +9,8 @@ import pytest
 from anemone.node_selector.opening_instructions import (
     OpeningInstruction,
     OpeningInstructions,
+    OpeningInstructor,
+    OpeningType,
 )
 from anemone.tree_manager import DuplicateBranchOpenError, TreeManager
 
@@ -142,7 +145,9 @@ def test_limited_expansion_keeps_node_partially_open_until_remaining_branches_op
         dynamics=_Dynamics({"root": [0, 1, 2]}),
     )
 
-    manager.expand_instructions(tree=tree, opening_instructions=_instructions(root, [0]))
+    manager.expand_instructions(
+        tree=tree, opening_instructions=_instructions(root, [0])
+    )
 
     assert set(root.branches_children) == {0}
     assert not root.all_branches_generated
@@ -166,10 +171,40 @@ def test_tree_manager_rejects_duplicate_branch_opening() -> None:
         node_factory=_NodeFactory(),
         dynamics=_Dynamics({"root": [1]}),
     )
-    manager.expand_instructions(tree=tree, opening_instructions=_instructions(root, [1]))
+    manager.expand_instructions(
+        tree=tree, opening_instructions=_instructions(root, [1])
+    )
 
     with pytest.raises(DuplicateBranchOpenError, match="branch already has child"):
         manager.expand_instructions(
             tree=tree,
             opening_instructions=_instructions(root, [1]),
         )
+
+
+def test_all_children_completes_partially_opened_node_without_duplicates() -> None:
+    """The instructor/tree-manager path opens only missing branches and then syncs."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    existing_child = _Node(id=99, state=_State("root:1"), tree_depth=1)
+    root.branches_children[1] = existing_child
+    tree = _Tree(root)
+    dynamics = _Dynamics({"root": [0, 1, 2]})
+    instructor = OpeningInstructor(
+        opening_type=OpeningType.ALL_CHILDREN,
+        random_generator=Random(0),
+        dynamics=dynamics,
+    )
+    manager = TreeManager(node_factory=_NodeFactory(), dynamics=dynamics)
+
+    branches_to_open = instructor.all_branches_to_open(node_to_open=root)
+    assert branches_to_open == (0, 2)
+
+    manager.expand_instructions(
+        tree=tree,
+        opening_instructions=_instructions(root, list(branches_to_open)),
+    )
+
+    assert set(root.branches_children) == {0, 1, 2}
+    assert root.branches_children[1] is existing_child
+    assert root.all_branches_generated
+    assert root.non_opened_branches == set()

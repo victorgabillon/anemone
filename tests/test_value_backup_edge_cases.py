@@ -53,9 +53,7 @@ def test_no_children_values_keeps_direct_value_and_empty_pv() -> None:
     assert parent_eval.best_branch_sequence == []
 
 
-def test_partial_expansion_keeps_tree_value_but_effective_can_use_direct() -> (
-    None
-):
+def test_partial_expansion_keeps_tree_value_but_effective_can_use_direct() -> None:
     children = {
         0: FakeChildNode(10, FakeChildEvaluation(value_white=0.2)),
         1: FakeChildNode(11, FakeChildEvaluation(value_white=0.1)),

@@ -30,8 +30,8 @@ class TreeNode[
             node.
         parent_nodes\_ (dict[ITreeNode, set[BranchKey]]): Parent nodes and the
             distinct branch keys linking them to this node.
-        all_branches_generated (bool): Whether all branches have been generated.
-        non_opened_branches (set[BranchKey]): The set of non-opened branches.
+        all_branches_generated (bool): Whether no legal branch remains unopened.
+        non_opened_branches (set[BranchKey]): Legal branches without concrete child links.
         branches_children\_ (dict[BranchKey, ITreeNode | None]): The dictionary mapping branches to child nodes.
         tag (str): The fast tag representation of the state.
 
@@ -60,9 +60,9 @@ class TreeNode[
     # Each parent can reach this node through multiple distinct branch keys.
     parent_nodes_: dict[FamilyT, set[BranchKey]]
 
-    # all_branches_generated is a boolean saying whether all branches have been generated.
-    # If true the branches are either opened in which case the corresponding opened node is stored in
-    # the dictionary self.branches_children, otherwise it is stored in self.non_opened_branches
+    # Opening status is synchronized from legal actions and concrete child links:
+    # all_branches_generated means no legal branch remains openable, and
+    # non_opened_branches stores the currently openable legal branches.
     all_branches_generated: bool = False
 
     @staticmethod
