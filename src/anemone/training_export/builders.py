@@ -514,7 +514,7 @@ def _coerce_value_candidate_source(
         except ValueError:
             pass
     if value_present:
-        raise EffectiveValueSourceMissingError
+        raise EffectiveValueSourceMissingError()  # noqa: RSE102
     return ValueCandidateSource.NONE
 
 

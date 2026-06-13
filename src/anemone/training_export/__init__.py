@@ -1,6 +1,7 @@
 """Public training-export schema and persistence helpers."""
 
 from .builders import (
+    EffectiveValueSourceMissingError,
     StateRefDumper,
     ValueScalarExtractor,
     build_training_node_snapshot,
@@ -26,6 +27,7 @@ __all__ = [
     "DEFAULT_TRAINING_NODE_TARGET_SOURCE",
     "TRAINING_TREE_SNAPSHOT_FORMAT_KIND",
     "TRAINING_TREE_SNAPSHOT_FORMAT_VERSION",
+    "EffectiveValueSourceMissingError",
     "StateRefDumper",
     "TrainingNodeSnapshot",
     "TrainingTreeSnapshot",

@@ -29,6 +29,7 @@ from anemone.node_evaluation.common import (
 from anemone.training_export import (
     TRAINING_TREE_SNAPSHOT_FORMAT_KIND,
     TRAINING_TREE_SNAPSHOT_FORMAT_VERSION,
+    EffectiveValueSourceMissingError,
     build_training_node_snapshot,
     build_training_tree_snapshot,
 )
@@ -442,7 +443,7 @@ def test_effective_value_without_source_is_rejected() -> None:
         ),
     )
 
-    with pytest.raises(ValueError, match="effective value source is missing"):
+    with pytest.raises(EffectiveValueSourceMissingError):
         build_training_node_snapshot(
             node,
             direct_value_extractor=lambda value: (
