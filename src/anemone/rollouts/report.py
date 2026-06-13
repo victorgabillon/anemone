@@ -9,7 +9,7 @@ from enum import StrEnum
 class RolloutStopReason(StrEnum):
     """Reasons a deterministic materialized rollout path stopped."""
 
-    POLICY_STOP = "policy_stop"
+    ACTION_SELECTOR_STOP = "action_selector_stop"
     MAX_EXTRA_STEPS = "max_extra_steps"
     TERMINAL = "terminal"
     NO_OPENABLE_ACTIONS = "no_openable_actions"

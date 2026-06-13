@@ -11,7 +11,7 @@ from anemone import trees
 from anemone.nodes.opening_status import openable_branch_keys, sync_opening_status
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
-from .policy import RolloutDecisionContext
+from .action_selector import RolloutDecisionContext
 from .report import (
     RolloutExpansionReport,
     RolloutExpansionReportBuilder,
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     )
     from anemone.tree_manager.branch_opening_service import BranchOpeningService
 
-    from .policy import RolloutPolicy
+    from .action_selector import RolloutActionSelector
 
 
 @dataclass(slots=True)
@@ -39,7 +39,7 @@ class RolloutOpeningExpansionExecutor[
 
     branch_opening_service: BranchOpeningService[NodeT]
     dynamics: SearchDynamics[Any, Any]
-    rollout_policy: RolloutPolicy[NodeT]
+    rollout_action_selector: RolloutActionSelector[NodeT]
     max_extra_steps: int
     stop_on_existing_node: bool = True
     last_report: RolloutExpansionReport | None = field(default=None, init=False)
@@ -125,7 +125,7 @@ class RolloutOpeningExpansionExecutor[
                 rollout_step_index=rollout_step_index,
             )
             if action is None:
-                return RolloutStopReason.POLICY_STOP
+                return RolloutStopReason.ACTION_SELECTOR_STOP
 
             rollout_expansion = self.branch_opening_service.open_branch(
                 tree=tree,
@@ -153,8 +153,8 @@ class RolloutOpeningExpansionExecutor[
         openable_actions: tuple[BranchKey, ...],
         rollout_step_index: int,
     ) -> BranchKey | None:
-        """Delegate deterministic action choice to the configured rollout policy."""
-        return self.rollout_policy.choose_action(
+        """Delegate deterministic action choice to the rollout action selector."""
+        return self.rollout_action_selector.choose_action(
             RolloutDecisionContext(
                 current_node=current_node,
                 openable_actions=openable_actions,

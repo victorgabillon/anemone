@@ -1,20 +1,21 @@
 """Deterministic materialized rollout expansion tools."""
+# pylint: disable=duplicate-code
 
-from .executor import RolloutOpeningExpansionExecutor
-from .policy import (
-    FirstOpenableActionPolicy,
-    NoRolloutPolicy,
+from .action_selector import (
+    FirstOpenableActionSelector,
+    NoRolloutActionSelector,
+    RolloutActionSelector,
     RolloutDecisionContext,
-    RolloutPolicy,
 )
+from .executor import RolloutOpeningExpansionExecutor
 from .report import RolloutExpansionReport, RolloutStopReason
 
 __all__ = [
-    "FirstOpenableActionPolicy",
-    "NoRolloutPolicy",
+    "FirstOpenableActionSelector",
+    "NoRolloutActionSelector",
+    "RolloutActionSelector",
     "RolloutDecisionContext",
     "RolloutExpansionReport",
     "RolloutOpeningExpansionExecutor",
-    "RolloutPolicy",
     "RolloutStopReason",
 ]

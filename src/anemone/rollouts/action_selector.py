@@ -1,4 +1,4 @@
-"""Deterministic rollout action policies."""
+"""Deterministic rollout action selectors."""
 
 from __future__ import annotations
 
@@ -15,14 +15,14 @@ if TYPE_CHECKING:
 class RolloutDecisionContext[
     NodeT: node.ITreeNode[Any] = node.ITreeNode[Any],
 ]:
-    """Context passed to a rollout policy for one continuation decision."""
+    """Context passed to a rollout action selector for one continuation decision."""
 
     current_node: NodeT
     openable_actions: tuple[BranchKey, ...]
     rollout_step_index: int
 
 
-class RolloutPolicy[
+class RolloutActionSelector[
     NodeT: node.ITreeNode[Any] = node.ITreeNode[Any],
 ](Protocol):
     """Choose one openable rollout action, or stop."""
@@ -36,8 +36,8 @@ class RolloutPolicy[
 
 
 @dataclass(frozen=True, slots=True)
-class NoRolloutPolicy[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
-    """Rollout policy that always stops."""
+class NoRolloutActionSelector[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
+    """Rollout action selector that always stops."""
 
     def choose_action(  # pylint: disable=useless-return
         self,
@@ -49,7 +49,7 @@ class NoRolloutPolicy[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
 
 
 @dataclass(frozen=True, slots=True)
-class FirstOpenableActionPolicy[
+class FirstOpenableActionSelector[
     NodeT: node.ITreeNode[Any] = node.ITreeNode[Any],
 ]:
     """Deterministically choose the first currently openable action."""
@@ -65,8 +65,8 @@ class FirstOpenableActionPolicy[
 
 
 __all__ = [
-    "FirstOpenableActionPolicy",
-    "NoRolloutPolicy",
+    "FirstOpenableActionSelector",
+    "NoRolloutActionSelector",
+    "RolloutActionSelector",
     "RolloutDecisionContext",
-    "RolloutPolicy",
 ]

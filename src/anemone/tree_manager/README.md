@@ -30,6 +30,14 @@ Deterministic materialized rollouts live in `anemone.rollouts`. A
 `RolloutOpeningExpansionExecutor` can be injected where an
 `OpeningExpansionExecutor` is accepted; it first opens the selected instruction
 edge and can then continue through newly created child nodes by asking a rollout
-policy to choose among currently openable branches. Existing-node connections
-are recorded and stop rollout by default. The default runtime remains one-ply
-unless a rollout executor is explicitly configured.
+action selector to choose among currently openable branches. Existing-node
+connections are recorded and stop rollout by default. The default runtime
+remains one-ply unless a rollout executor is explicitly configured.
+
+Rollout expansion is selector-agnostic. It depends on `OpeningInstructions`,
+`BranchOpeningService`, `SearchDynamics`, and opening-status helpers; it does
+not depend on Linoo, Uniform, Sequool, RecurZipf, or selector-specific state.
+Node selectors decide which not-fully-opened nodes and branches to open.
+Expansion executors decide how much tree to materialize after those initial
+openings. Rollout is therefore an expansion materialization strategy, not a
+node-selection algorithm.

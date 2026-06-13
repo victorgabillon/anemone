@@ -11,8 +11,8 @@ from anemone.node_selector.opening_instructions import (
     OpeningInstructions,
 )
 from anemone.rollouts import (
-    FirstOpenableActionPolicy,
-    NoRolloutPolicy,
+    FirstOpenableActionSelector,
+    NoRolloutActionSelector,
     RolloutOpeningExpansionExecutor,
     RolloutStopReason,
 )
@@ -151,7 +151,7 @@ def _executor(
     *,
     dynamics: _Dynamics,
     max_extra_steps: int,
-    policy: object | None = None,
+    action_selector: object | None = None,
     opened: list[tuple[int, int]] | None = None,
     node_factory: _NodeFactory | None = None,
 ) -> RolloutOpeningExpansionExecutor[_Node]:
@@ -171,7 +171,7 @@ def _executor(
             on_branch_opened=callback,
         ),
         dynamics=dynamics,
-        rollout_policy=policy or FirstOpenableActionPolicy(),
+        rollout_action_selector=action_selector or FirstOpenableActionSelector(),
         max_extra_steps=max_extra_steps,
     )
 
@@ -238,15 +238,15 @@ def test_deterministic_rollout_creates_chain() -> None:
     assert executor.last_report.max_extra_depth_reached == 2
 
 
-def test_no_rollout_policy_stops_after_initial_edge() -> None:
-    """NoRolloutPolicy opts out after opening the selected edge."""
+def test_no_rollout_action_selector_stops_after_initial_edge() -> None:
+    """NoRolloutActionSelector opts out after opening the selected edge."""
     root = _Node(id=0, state=_State("root"), tree_depth=0)
     tree = _Tree(root)
     dynamics = _Dynamics({"root": [0], "root:0": [1]})
     executor = _executor(
         dynamics=dynamics,
         max_extra_steps=3,
-        policy=NoRolloutPolicy(),
+        action_selector=NoRolloutActionSelector(),
     )
 
     expansions = executor.expand(
@@ -259,7 +259,9 @@ def test_no_rollout_policy_stops_after_initial_edge() -> None:
     assert len(expansions.expansions_with_node_creation) == 1
     assert executor.last_report is not None
     assert (
-        executor.last_report.stop_reason_counts[RolloutStopReason.POLICY_STOP.value]
+        executor.last_report.stop_reason_counts[
+            RolloutStopReason.ACTION_SELECTOR_STOP.value
+        ]
         == 1
     )
 
