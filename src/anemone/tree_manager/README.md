@@ -25,3 +25,11 @@ remaining legal branches.
 This split keeps `TreeManager` as the structural single-branch open/link
 primitive while allowing future expansion executors, such as rollout expansion,
 to reuse the same branch-opening path.
+
+Deterministic materialized rollouts live in `anemone.rollouts`. A
+`RolloutOpeningExpansionExecutor` can be injected where an
+`OpeningExpansionExecutor` is accepted; it first opens the selected instruction
+edge and can then continue through newly created child nodes by asking a rollout
+policy to choose among currently openable branches. Existing-node connections
+are recorded and stop rollout by default. The default runtime remains one-ply
+unless a rollout executor is explicitly configured.
