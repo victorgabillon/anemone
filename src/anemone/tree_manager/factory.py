@@ -1,6 +1,6 @@
 """Provide a factory function for creating an AlgorithmNodeTreeManager object."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from anemone.dynamics import SearchDynamics
 from anemone.indices.index_manager import (
@@ -24,6 +24,9 @@ from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from .opening_expansion_config import OpeningExpansionConfig
 from .tree_manager import TreeManager
 
+if TYPE_CHECKING:
+    from anemone.rollouts import RolloutActionSelector
+
 
 def create_algorithm_node_tree_manager(
     node_direct_evaluator: NodeDirectEvaluator[Any] | None,
@@ -32,6 +35,7 @@ def create_algorithm_node_tree_manager(
     index_computation: IndexComputationType | None,
     depth_index: bool = False,
     opening_expansion_config: OpeningExpansionConfig | None = None,
+    rollout_action_selector: "RolloutActionSelector[AlgorithmNode] | None" = None,
 ) -> AlgorithmNodeTreeManager:
     """Create an AlgorithmNodeTreeManager object.
 
@@ -42,6 +46,7 @@ def create_algorithm_node_tree_manager(
         dynamics: The SearchDynamics object used for labeling the edges in the visualization.
         depth_index: Whether to maintain descendant-depth metadata incrementally.
         opening_expansion_config: Optional opening expansion strategy config.
+        rollout_action_selector: Optional runtime rollout action selector override.
 
     Returns:
         An AlgorithmNodeTreeManager object.
@@ -65,6 +70,7 @@ def create_algorithm_node_tree_manager(
         index_manager=exploration_index_manager,
         depth_index_propagator=(DepthIndexPropagator() if depth_index else None),
         opening_expansion_config=opening_expansion_config or OpeningExpansionConfig(),
+        rollout_action_selector=rollout_action_selector,
     )
 
     return algorithm_node_tree_manager

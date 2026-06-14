@@ -11,6 +11,7 @@ from anemone.rollouts import (
     FirstOpenableActionSelector,
     NoRolloutActionSelector,
     RandomOpenableActionSelector,
+    RolloutDecisionContext,
     RolloutOpeningExpansionExecutor,
 )
 from anemone.tree_manager import (
@@ -40,6 +41,15 @@ class _FakeExecutor:
         del tree, opening_instructions
         self.expanded = True
         return TreeExpansions()
+
+
+@dataclass(frozen=True, slots=True)
+class _CustomRolloutActionSelector:
+    marker: str = "custom"
+
+    def choose_action(self, context: RolloutDecisionContext[Any]) -> None:
+        """Stop rollout; this object is only used to verify injection."""
+        del context
 
 
 def _tree_manager_stub() -> Any:
@@ -114,6 +124,55 @@ def test_create_opening_expansion_executor_rollout_creates_rollout_executor() ->
     assert executor.stop_on_existing_node
 
 
+def test_rollout_factory_uses_custom_action_selector_object() -> None:
+    """Explicit rollout selector objects override config-created selectors."""
+    custom_selector = _CustomRolloutActionSelector()
+
+    executor = create_opening_expansion_executor(
+        config=OpeningExpansionConfig(
+            kind=OpeningExpansionKind.ROLLOUT,
+            rollout=RolloutExpansionConfig(
+                action_selector_kind=RolloutActionSelectorKind.FIRST_OPENABLE,
+            ),
+        ),
+        tree_manager=cast("Any", _tree_manager_stub()),
+        dynamics=cast("Any", object()),
+        rollout_action_selector=custom_selector,
+    )
+
+    assert isinstance(executor, RolloutOpeningExpansionExecutor)
+    assert executor.rollout_action_selector is custom_selector
+
+
+def test_rollout_factory_uses_config_selector_without_custom_object() -> None:
+    """Rollout config still creates the built-in selector by default."""
+    executor = create_opening_expansion_executor(
+        config=OpeningExpansionConfig(
+            kind=OpeningExpansionKind.ROLLOUT,
+            rollout=RolloutExpansionConfig(
+                action_selector_kind=RolloutActionSelectorKind.FIRST_OPENABLE,
+            ),
+        ),
+        tree_manager=cast("Any", _tree_manager_stub()),
+        dynamics=cast("Any", object()),
+    )
+
+    assert isinstance(executor, RolloutOpeningExpansionExecutor)
+    assert isinstance(executor.rollout_action_selector, FirstOpenableActionSelector)
+
+
+def test_custom_rollout_selector_is_ignored_for_one_ply_config() -> None:
+    """One-ply config remains one-ply even when a rollout selector is provided."""
+    executor = create_opening_expansion_executor(
+        config=OpeningExpansionConfig(kind=OpeningExpansionKind.ONE_PLY),
+        tree_manager=cast("Any", _tree_manager_stub()),
+        dynamics=cast("Any", object()),
+        rollout_action_selector=_CustomRolloutActionSelector(),
+    )
+
+    assert isinstance(executor, OnePlyOpeningExpansionExecutor)
+
+
 def test_algorithm_node_tree_manager_default_uses_one_ply_executor() -> None:
     """Algorithm manager defaults to one-ply opening expansion."""
     manager = AlgorithmNodeTreeManager(
@@ -147,9 +206,9 @@ def test_algorithm_node_tree_manager_rollout_config_creates_rollout_executor() -
     assert manager.opening_expansion_executor.max_extra_steps == 1
 
 
-def test_algorithm_node_tree_manager_manual_executor_overrides_config() -> None:
-    """Explicit executor injection overrides opening expansion config."""
-    fake_executor = _FakeExecutor()
+def test_algorithm_node_tree_manager_uses_custom_rollout_action_selector() -> None:
+    """Algorithm manager forwards a custom rollout selector to executor creation."""
+    custom_selector = _CustomRolloutActionSelector()
     manager = AlgorithmNodeTreeManager(
         tree_manager=cast("Any", _tree_manager_stub()),
         evaluation_queries=EvaluationQueries(),
@@ -159,6 +218,29 @@ def test_algorithm_node_tree_manager_manual_executor_overrides_config() -> None:
             kind=OpeningExpansionKind.ROLLOUT,
             rollout=RolloutExpansionConfig(max_extra_steps=1),
         ),
+        rollout_action_selector=custom_selector,
+    )
+
+    assert isinstance(
+        manager.opening_expansion_executor, RolloutOpeningExpansionExecutor
+    )
+    assert manager.opening_expansion_executor.rollout_action_selector is custom_selector
+
+
+def test_algorithm_node_tree_manager_manual_executor_overrides_config() -> None:
+    """Explicit executor injection overrides opening expansion config."""
+    fake_executor = _FakeExecutor()
+    custom_selector = _CustomRolloutActionSelector()
+    manager = AlgorithmNodeTreeManager(
+        tree_manager=cast("Any", _tree_manager_stub()),
+        evaluation_queries=EvaluationQueries(),
+        node_evaluator=None,
+        index_manager=cast("Any", object()),
+        opening_expansion_config=OpeningExpansionConfig(
+            kind=OpeningExpansionKind.ROLLOUT,
+            rollout=RolloutExpansionConfig(max_extra_steps=1),
+        ),
+        rollout_action_selector=custom_selector,
         opening_expansion_executor=cast("Any", fake_executor),
     )
 

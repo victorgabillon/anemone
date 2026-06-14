@@ -79,8 +79,14 @@ def create_opening_expansion_executor[
     tree_manager: TreeManager[NodeT],
     dynamics: SearchDynamics[Any, Any],
     on_branch_opened: Callable[[NodeT, BranchKey], None] | None = None,
+    rollout_action_selector: RolloutActionSelector[NodeT] | None = None,
 ) -> OpeningExpansionExecutor[NodeT]:
-    """Create the configured opening expansion executor."""
+    """Create the configured opening expansion executor.
+
+    ``rollout_action_selector`` is a runtime object override used only for
+    rollout expansion. When omitted, rollout config creates the built-in
+    selector.
+    """
     branch_opening_service = BranchOpeningService(
         tree_manager=tree_manager,
         on_branch_opened=on_branch_opened,
@@ -96,10 +102,15 @@ def create_opening_expansion_executor[
     def create_rollout() -> OpeningExpansionExecutor[NodeT]:
         """Create a rollout opening expansion executor."""
         rollout_config = config.rollout
-        return RolloutOpeningExpansionExecutor(
+        selected_rollout_action_selector: RolloutActionSelector[NodeT] = (
+            rollout_action_selector
+            if rollout_action_selector is not None
+            else create_rollout_action_selector(rollout_config)
+        )
+        return RolloutOpeningExpansionExecutor[NodeT](
             branch_opening_service=branch_opening_service,
             dynamics=dynamics,
-            rollout_action_selector=create_rollout_action_selector(rollout_config),
+            rollout_action_selector=selected_rollout_action_selector,
             max_extra_steps=rollout_config.max_extra_steps,
             stop_on_existing_node=rollout_config.stop_on_existing_node,
         )

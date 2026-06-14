@@ -13,7 +13,6 @@ class RolloutStopReason(StrEnum):
     MAX_EXTRA_STEPS = "max_extra_steps"
     TERMINAL = "terminal"
     NO_LEGAL_ACTIONS = "no_legal_actions"
-    NO_OPENABLE_ACTIONS = "no_openable_actions"
     EXISTING_NODE = "existing_node"
     BRANCH_BUDGET_EXHAUSTED = "branch_budget_exhausted"
 

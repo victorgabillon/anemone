@@ -64,6 +64,29 @@ currently openable branches. Built-in selectors keep expansion-only behavior,
 but custom rollout action selectors can inspect legal, opened, and openable
 actions to perform guided traversal before opening a frontier edge.
 
+There are two rollout action-selector APIs. Serializable config is the right
+surface for YAML and reproducible experiments:
+
+```python
+OpeningExpansionConfig(
+    kind=OpeningExpansionKind.ROLLOUT,
+    rollout=RolloutExpansionConfig(
+        action_selector_kind=RolloutActionSelectorKind.RANDOM_OPENABLE,
+    ),
+)
+```
+
+Advanced callers can inject a `RolloutActionSelector` object at runtime through
+`AlgorithmNodeTreeManager` or `create_opening_expansion_executor(...)`. The
+precedence is:
+
+1. explicit `opening_expansion_executor`
+2. explicit `rollout_action_selector`
+3. selector created from `RolloutExpansionConfig`
+
+The object-injection API is intentionally separate from `RolloutExpansionConfig`
+so serializable config stays YAML-friendly.
+
 ## Expansion Budgets
 
 Search has two separate branch limiting layers. The existing initial-opening

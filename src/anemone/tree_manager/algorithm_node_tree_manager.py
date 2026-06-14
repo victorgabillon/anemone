@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from anemone import trees
 from anemone.dynamics import SearchDynamics
@@ -33,6 +33,9 @@ from .opening_expansion_executor import (
 from .opening_expansion_factory import create_opening_expansion_executor
 from .tree_expander import TreeExpansions
 from .tree_manager import TreeManager
+
+if TYPE_CHECKING:
+    from anemone.rollouts import RolloutActionSelector
 
 
 class BestLinePrintable(Protocol):
@@ -144,6 +147,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     opening_expansion_config: OpeningExpansionConfig = field(
         default_factory=OpeningExpansionConfig
     )
+    rollout_action_selector: "RolloutActionSelector[NodeT] | None" = None
     opening_expansion_executor: OpeningExpansionExecutor[NodeT] | None = None
     _direct_evaluation: _DirectNodeEvaluation[NodeT] = field(
         init=False,
@@ -170,6 +174,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 tree_manager=self.tree_manager,
                 dynamics=self.dynamics,
                 on_branch_opened=self._mark_branch_opened,
+                rollout_action_selector=self.rollout_action_selector,
             )
 
     @property
