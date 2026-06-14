@@ -19,9 +19,15 @@ if TYPE_CHECKING:
 class RolloutDecisionContext[
     NodeT: node.ITreeNode[Any] = node.ITreeNode[Any],
 ]:
-    """Context passed to a rollout action selector for one continuation decision."""
+    """Context passed to a rollout action selector for one continuation decision.
+
+    Selectors may choose an openable action to materialize a new edge, choose an
+    opened action to traverse an existing edge, or return ``None`` to stop.
+    """
 
     current_node: NodeT
+    legal_actions: tuple[BranchKey, ...]
+    opened_actions: tuple[BranchKey, ...]
     openable_actions: tuple[BranchKey, ...]
     rollout_step_index: int
 
@@ -29,7 +35,7 @@ class RolloutDecisionContext[
 class RolloutActionSelector[
     NodeT: node.ITreeNode[Any] = node.ITreeNode[Any],
 ](Protocol):
-    """Choose one openable rollout action, or stop."""
+    """Choose one legal rollout action, or stop."""
 
     def choose_action(
         self,

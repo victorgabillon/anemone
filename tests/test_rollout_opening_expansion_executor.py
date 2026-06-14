@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
+import pytest
+
 from anemone.node_selector.opening_instructions import (
     OpeningInstruction,
     OpeningInstructions,
@@ -13,7 +15,9 @@ from anemone.node_selector.opening_instructions import (
 from anemone.progress_monitor.progress_monitor import TreeBranchLimit
 from anemone.rollouts import (
     FirstOpenableActionSelector,
+    InvalidRolloutActionError,
     NoRolloutActionSelector,
+    RolloutDecisionContext,
     RolloutOpeningExpansionExecutor,
     RolloutStopReason,
 )
@@ -25,6 +29,37 @@ from anemone.tree_manager import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+
+@dataclass(frozen=True, slots=True)
+class _PreferOpenedThenOpenableSelector:
+    """Choose opened edges for traversal before opening a frontier edge."""
+
+    def choose_action(
+        self,
+        context: RolloutDecisionContext[_Node],
+    ) -> int | None:
+        """Return an opened action if possible, otherwise the first openable one."""
+        if context.opened_actions:
+            return context.opened_actions[0]
+        if context.openable_actions:
+            return context.openable_actions[0]
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class _InvalidActionSelector:
+    """Return an illegal rollout action for error-path tests."""
+
+    action: int
+
+    def choose_action(
+        self,
+        context: RolloutDecisionContext[_Node],
+    ) -> int:
+        """Return the configured invalid action."""
+        del context
+        return self.action
 
 
 @dataclass(frozen=True)
@@ -281,6 +316,69 @@ def test_rollout_consumes_budget_for_initial_and_extra_edges() -> None:
     )
 
 
+def test_rollout_traverses_opened_action_before_opening_frontier() -> None:
+    """Traversal through opened edges records no expansion and consumes no budget."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics(
+        {
+            "root": [0],
+            "root:0": [7],
+            "root:0:preopened:7": [8],
+            "root:0:preopened:7:8": [],
+        }
+    )
+    opened: list[tuple[int, int]] = []
+    executor = _executor(
+        dynamics=dynamics,
+        max_extra_steps=2,
+        action_selector=_PreferOpenedThenOpenableSelector(),
+        opened=opened,
+        node_factory=_NodeFactory(preopened_branches_by_tag={"root:0": {7}}),
+    )
+    budget = OpeningExpansionBudget(remaining_branch_openings=2)
+
+    expansions = executor.expand(
+        tree=tree,
+        opening_instructions=_instructions(root, [0]),
+        budget=budget,
+    )
+
+    child = root.branches_children[0]
+    assert child is not None
+    traversed_child = child.branches_children[7]
+    assert traversed_child is not None
+    frontier_child = traversed_child.branches_children[8]
+    assert frontier_child is not None
+    assert len(expansions.expansions_with_node_creation) == 2
+    assert expansions.expansions_without_node_creation == []
+    assert tree.branch_count == 2
+    assert budget.remaining_branch_openings == 0
+    assert opened == [(0, 0), (traversed_child.id, 8)]
+    assert executor.last_report is not None
+    assert executor.last_report.traversal_count == 1
+    assert executor.last_report.extra_edge_count == 1
+    assert executor.last_report.total_edge_count == 2
+
+
+def test_rollout_invalid_action_raises() -> None:
+    """A selector returning an illegal action fails loudly."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics({"root": [0], "root:0": [1]})
+    executor = _executor(
+        dynamics=dynamics,
+        max_extra_steps=1,
+        action_selector=_InvalidActionSelector(action=99),
+    )
+
+    with pytest.raises(InvalidRolloutActionError) as error:
+        executor.expand(tree=tree, opening_instructions=_instructions(root, [0]))
+
+    assert "99" in str(error.value)
+    assert "legal_actions=(1,)" in str(error.value)
+
+
 def test_rollout_does_not_start_initial_edge_when_budget_is_exhausted() -> None:
     """Rollout executor does not materialize initial edges without branch budget."""
     root = _Node(id=0, state=_State("root"), tree_depth=0)
@@ -337,8 +435,8 @@ def test_no_rollout_action_selector_stops_after_initial_edge() -> None:
     )
 
 
-def test_no_openable_actions_stops_after_initial_edge() -> None:
-    """A child with no openable branches stops rollout."""
+def test_no_legal_actions_stops_after_initial_edge() -> None:
+    """A child with no legal branches stops rollout."""
     root = _Node(id=0, state=_State("root"), tree_depth=0)
     tree = _Tree(root)
     dynamics = _Dynamics({"root": [0], "root:0": []})
@@ -349,7 +447,7 @@ def test_no_openable_actions_stops_after_initial_edge() -> None:
     assert executor.last_report is not None
     assert (
         executor.last_report.stop_reason_counts[
-            RolloutStopReason.NO_OPENABLE_ACTIONS.value
+            RolloutStopReason.NO_LEGAL_ACTIONS.value
         ]
         == 1
     )
@@ -421,6 +519,7 @@ def test_existing_node_reached_during_rollout_stops_after_recording_edge() -> No
     assert executor.last_report is not None
     assert executor.last_report.extra_edge_count == 1
     assert executor.last_report.existing_node_stop_count == 1
+    assert executor.last_report.traversal_count == 0
 
 
 def test_rollout_edges_call_branch_opened_callback() -> None:

@@ -8,11 +8,12 @@ from .action_selector import (
     RolloutActionSelector,
     RolloutDecisionContext,
 )
-from .executor import RolloutOpeningExpansionExecutor
+from .executor import InvalidRolloutActionError, RolloutOpeningExpansionExecutor
 from .report import RolloutExpansionReport, RolloutStopReason
 
 __all__ = [
     "FirstOpenableActionSelector",
+    "InvalidRolloutActionError",
     "NoRolloutActionSelector",
     "RandomOpenableActionSelector",
     "RolloutActionSelector",

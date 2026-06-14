@@ -30,9 +30,12 @@ Deterministic materialized rollouts live in `anemone.rollouts`. A
 `RolloutOpeningExpansionExecutor` can be injected where an
 `OpeningExpansionExecutor` is accepted; it first opens the selected instruction
 edge and can then continue through newly created child nodes by asking a rollout
-action selector to choose among currently openable branches. Existing-node
-connections are recorded and stop rollout by default. The default runtime
-remains one-ply unless a rollout executor is explicitly configured.
+action selector to choose among legal branches. Choosing an openable branch
+materializes a new edge; choosing an already-opened branch traverses the
+existing child link without recording a `TreeExpansion`. Existing-node
+connections from newly materialized branches are recorded and stop rollout by
+default. The default runtime remains one-ply unless a rollout executor is
+explicitly configured.
 
 Rollout expansion is selector-agnostic. It depends on `OpeningInstructions`,
 `BranchOpeningService`, `SearchDynamics`, and opening-status helpers; it does
@@ -57,7 +60,9 @@ OpeningExpansionConfig(
 The default config is `one_ply`. Rollout action selector kinds are
 `first_openable`, `random_openable`, and `no_rollout`. `random_openable` uses a
 local `random.Random` instance seeded from rollout config and samples only among
-currently openable branches.
+currently openable branches. Built-in selectors keep expansion-only behavior,
+but custom rollout action selectors can inspect legal, opened, and openable
+actions to perform guided traversal before opening a frontier edge.
 
 ## Expansion Budgets
 
@@ -69,8 +74,10 @@ plausibly allow. That pre-trim remains useful for planning initial openings.
 Runtime opening expansion budgets are stricter: they are consumed by every
 actual materialized tree edge immediately before it is opened. This includes
 initial selector edges, rollout continuation edges, and existing-node
-connections. The budget is enforced inside expansion executors because rollout
-length is only known while materializing the path.
+connections. Traversing an already-opened rollout edge does not consume branch
+budget because it does not materialize a new edge. The budget is enforced inside
+expansion executors because rollout length is only known while materializing the
+path.
 
 For example, with two branch slots remaining, a selector may ask to open
 branches `[a, b]`. A rollout executor can spend one slot on `a`, spend the

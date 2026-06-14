@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING, Any
 
 from anemone import nodes as node
 from anemone import trees
-from anemone.nodes.opening_status import openable_branch_keys, sync_opening_status
+from anemone.nodes.opening_status import (
+    legal_branch_keys,
+    opened_branch_keys,
+    sync_opening_status,
+)
 from anemone.tree_manager.opening_expansion_budget import reserve_branch_opening
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
@@ -31,6 +35,24 @@ if TYPE_CHECKING:
     from anemone.tree_manager.opening_expansion_budget import OpeningExpansionBudget
 
     from .action_selector import RolloutActionSelector
+
+
+class InvalidRolloutActionError(ValueError):
+    """Raised when a rollout action selector returns an invalid action."""
+
+
+def _invalid_rollout_action_error(
+    *,
+    action: BranchKey,
+    current_node: node.ITreeNode[Any],
+    context: RolloutDecisionContext[Any],
+) -> InvalidRolloutActionError:
+    return InvalidRolloutActionError(
+        f"Invalid rollout action {action!r} from node {current_node.id}: "
+        f"legal_actions={context.legal_actions!r}, "
+        f"opened_actions={context.opened_actions!r}, "
+        f"openable_actions={context.openable_actions!r}"
+    )
 
 
 @dataclass(slots=True)
@@ -120,58 +142,93 @@ class RolloutOpeningExpansionExecutor[
             if _is_terminal_node(current_node):
                 return RolloutStopReason.TERMINAL
 
-            openable_actions = openable_branch_keys(
-                node=current_node,
-                dynamics=self.dynamics,
-            )
-            if not openable_actions:
-                return RolloutStopReason.NO_OPENABLE_ACTIONS
-
-            action = self._choose_rollout_action(
+            context = self._decision_context(
                 current_node=current_node,
-                openable_actions=openable_actions,
                 rollout_step_index=rollout_step_index,
             )
+            if not context.legal_actions:
+                return RolloutStopReason.NO_LEGAL_ACTIONS
+
+            action = self._choose_rollout_action(context)
             if action is None:
                 return RolloutStopReason.ACTION_SELECTOR_STOP
 
-            if not reserve_branch_opening(budget):
-                return RolloutStopReason.BRANCH_BUDGET_EXHAUSTED
+            if action in context.openable_actions:
+                if not reserve_branch_opening(budget):
+                    return RolloutStopReason.BRANCH_BUDGET_EXHAUSTED
 
-            rollout_expansion = self.branch_opening_service.open_branch(
-                tree=tree,
-                parent_node=current_node,
-                branch=action,
-                tree_expansions=tree_expansions,
+                rollout_expansion = self.branch_opening_service.open_branch(
+                    tree=tree,
+                    parent_node=current_node,
+                    branch=action,
+                    tree_expansions=tree_expansions,
+                )
+                touched_parent_nodes_by_id[current_node.id] = current_node
+                report_builder.record_extra_edge(
+                    rollout_depth=rollout_step_index + 1,
+                    created_node=rollout_expansion.creation_child_node,
+                )
+
+                if (
+                    self.stop_on_existing_node
+                    and not rollout_expansion.creation_child_node
+                ):
+                    return RolloutStopReason.EXISTING_NODE
+
+                current_node = rollout_expansion.child_node
+                continue
+
+            if action in context.opened_actions:
+                child_node = current_node.branches_children.get(action)
+                if child_node is None:
+                    raise _invalid_rollout_action_error(
+                        action=action,
+                        current_node=current_node,
+                        context=context,
+                    )
+                report_builder.record_traversal()
+                current_node = child_node
+                continue
+
+            raise _invalid_rollout_action_error(
+                action=action,
+                current_node=current_node,
+                context=context,
             )
-            touched_parent_nodes_by_id[current_node.id] = current_node
-            report_builder.record_extra_edge(
-                rollout_depth=rollout_step_index + 1,
-                created_node=rollout_expansion.creation_child_node,
-            )
-
-            if self.stop_on_existing_node and not rollout_expansion.creation_child_node:
-                return RolloutStopReason.EXISTING_NODE
-
-            current_node = rollout_expansion.child_node
 
         return RolloutStopReason.MAX_EXTRA_STEPS
 
-    def _choose_rollout_action(
+    def _decision_context(
         self,
         *,
         current_node: NodeT,
-        openable_actions: tuple[BranchKey, ...],
         rollout_step_index: int,
-    ) -> BranchKey | None:
-        """Delegate deterministic action choice to the rollout action selector."""
-        return self.rollout_action_selector.choose_action(
-            RolloutDecisionContext(
-                current_node=current_node,
-                openable_actions=openable_actions,
-                rollout_step_index=rollout_step_index,
-            )
+    ) -> RolloutDecisionContext[NodeT]:
+        """Build a traversal-aware action-selection context."""
+        legal_actions = tuple(
+            legal_branch_keys(node=current_node, dynamics=self.dynamics)
         )
+        opened_action_set = opened_branch_keys(current_node)
+        opened_actions = tuple(
+            action for action in legal_actions if action in opened_action_set
+        )
+        openable_actions = tuple(
+            action for action in legal_actions if action not in opened_action_set
+        )
+        return RolloutDecisionContext(
+            current_node=current_node,
+            legal_actions=legal_actions,
+            opened_actions=opened_actions,
+            openable_actions=openable_actions,
+            rollout_step_index=rollout_step_index,
+        )
+
+    def _choose_rollout_action(
+        self,
+        context: RolloutDecisionContext[NodeT],
+    ) -> BranchKey | None:
+        """Delegate action choice to the configured rollout action selector."""
+        return self.rollout_action_selector.choose_action(context)
 
 
 def _is_terminal_node(node_to_check: node.ITreeNode[Any]) -> bool:
@@ -189,5 +246,6 @@ def _is_terminal_node(node_to_check: node.ITreeNode[Any]) -> bool:
 
 
 __all__ = [
+    "InvalidRolloutActionError",
     "RolloutOpeningExpansionExecutor",
 ]

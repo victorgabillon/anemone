@@ -23,7 +23,12 @@ class RolloutActionSelectorKind(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class RolloutExpansionConfig:
-    """Configuration for materialized rollout expansion."""
+    """Configuration for materialized rollout expansion.
+
+    ``max_extra_steps`` limits continuation decisions after each initial edge.
+    A continuation decision may traverse an already-opened edge or materialize
+    a new edge at the frontier.
+    """
 
     max_extra_steps: int = 0
     action_selector_kind: RolloutActionSelectorKind = (

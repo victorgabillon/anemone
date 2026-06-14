@@ -12,6 +12,7 @@ class RolloutStopReason(StrEnum):
     ACTION_SELECTOR_STOP = "action_selector_stop"
     MAX_EXTRA_STEPS = "max_extra_steps"
     TERMINAL = "terminal"
+    NO_LEGAL_ACTIONS = "no_legal_actions"
     NO_OPENABLE_ACTIONS = "no_openable_actions"
     EXISTING_NODE = "existing_node"
     BRANCH_BUDGET_EXHAUSTED = "branch_budget_exhausted"
@@ -29,6 +30,7 @@ class RolloutExpansionReport:
     path_count: int = 0
     initial_edge_count: int = 0
     extra_edge_count: int = 0
+    traversal_count: int = 0
     total_edge_count: int = 0
     created_node_count: int = 0
     existing_node_stop_count: int = 0
@@ -43,6 +45,7 @@ class RolloutExpansionReportBuilder:
     path_count: int = 0
     initial_edge_count: int = 0
     extra_edge_count: int = 0
+    traversal_count: int = 0
     created_node_count: int = 0
     existing_node_stop_count: int = 0
     max_extra_depth_reached: int = 0
@@ -70,6 +73,10 @@ class RolloutExpansionReportBuilder:
         if created_node:
             self.created_node_count += 1
 
+    def record_traversal(self) -> None:
+        """Record traversal through an already-opened rollout edge."""
+        self.traversal_count += 1
+
     def record_stop(self, reason: RolloutStopReason) -> None:
         """Record one path stop reason."""
         self.stop_reason_counts[reason.value] += 1
@@ -83,6 +90,7 @@ class RolloutExpansionReportBuilder:
             path_count=self.path_count,
             initial_edge_count=self.initial_edge_count,
             extra_edge_count=self.extra_edge_count,
+            traversal_count=self.traversal_count,
             total_edge_count=total_edge_count,
             created_node_count=self.created_node_count,
             existing_node_stop_count=self.existing_node_stop_count,
