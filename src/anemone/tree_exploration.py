@@ -602,7 +602,12 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         opening_instructions: node_sel.OpeningInstructions[NodeT],
     ) -> tree_man.TreeExpansions[NodeT]:
-        """Run the structural expansion phase for one iteration."""
+        """Materialize selected initial openings into a full expansion batch.
+
+        The configured opening executor may return more edges than the selector's
+        initial instructions, for example rollout continuation edges. Downstream
+        evaluation and backup phases consume the whole returned batch.
+        """
         return self.tree_manager.expand_instructions(
             tree=self.tree,
             opening_instructions=opening_instructions,
@@ -645,10 +650,15 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         total_started_at = perf_counter()
         nodes_before = self.tree.nodes_count
+
+        # 1. Selection: ask the node selector for initial branches to open.
         select_started_at = perf_counter()
         opening_instructions = self._select_node_for_expansion()
         selector_report = getattr(self.node_selector, "latest_selection_report", None)
         select_elapsed_s = perf_counter() - select_started_at
+
+        # 2. Initial limiting: trim selector-proposed openings before expansion.
+        # Runtime expansion budgets are enforced later, branch by branch.
         limit_started_at = perf_counter()
         opening_instructions_subset = self._limit_opening_instructions(
             opening_instructions
@@ -657,18 +667,28 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         selected_node_id, selected_depth = _selected_node_summary(
             opening_instructions_subset
         )
+
+        # 3. Expansion: materialize the selected openings into tree edges.
+        # Depending on the configured executor, this may include rollout edges.
         expand_started_at = perf_counter()
         tree_expansions = self._expand_opening_instructions(opening_instructions_subset)
         expand_elapsed_s = perf_counter() - expand_started_at
+
+        # 4. Direct evaluation: evaluate all newly created nodes in the batch.
         evaluate_started_at = perf_counter()
         self._evaluate_expansions(tree_expansions)
         evaluate_elapsed_s = perf_counter() - evaluate_started_at
+
+        # 5. Propagation and indices: update values, depths, and search indices.
         propagate_started_at = perf_counter()
         self._propagate_iteration_updates(tree_expansions)
         propagate_elapsed_s = perf_counter() - propagate_started_at
+
+        # 6. Reporting: keep the full expansion batch and timing summary.
         self._latest_tree_expansions = tree_expansions
         nodes_after = self.tree.nodes_count
         branch_count = getattr(self.tree, "branch_count", None)
+
         selector_report_rows = None
         depth_rows = getattr(selector_report, "depth_rows", None)
         if depth_rows is not None:
@@ -676,6 +696,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 selector_report_rows = len(depth_rows)
             except TypeError:
                 selector_report_rows = None
+
         report = TreeGrowthStepReport(
             selected_node_id=selected_node_id,
             selected_depth=selected_depth,

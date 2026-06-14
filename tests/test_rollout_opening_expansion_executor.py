@@ -470,11 +470,17 @@ def test_initial_limiter_and_runtime_budget_interact_for_rollout() -> None:
         }
     )
     stopping = TreeBranchLimit(tree_branch_limit=2)
+    # OpeningInstructions.pop_items treats later insertions as higher priority.
+    # Put branch 0 last so the pre-trim layer keeps the rollout-capable path.
     proposed_instructions = _instructions(root, [9, 0])
     trimmed_instructions = stopping.respectful_opening_instructions(
         opening_instructions=proposed_instructions,
         tree=tree,
     )
+    assert [instruction.branch for instruction in trimmed_instructions.values()] == [
+        0,
+        9,
+    ]
     budget = stopping.opening_expansion_budget(tree)
     executor = _executor(dynamics=dynamics, max_extra_steps=5)
 
