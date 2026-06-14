@@ -35,6 +35,12 @@ from anemone.progress_monitor.progress_monitor import (
     DepthLimitArgs,
     StoppingCriterionTypes,
 )
+from anemone.tree_manager import (
+    OpeningExpansionConfig,
+    OpeningExpansionKind,
+    RolloutActionSelectorKind,
+    RolloutExpansionConfig,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -54,6 +60,7 @@ else:
         reason=(
             "requires an Atomheart installation that exposes the integer_reduction game"
         ),
+        exc_type=ImportError,
     )
     IntegerReductionDynamics = _integer_reduction_module.IntegerReductionDynamics
     IntegerReductionState = _integer_reduction_module.IntegerReductionState
@@ -258,7 +265,23 @@ def _reached_one_over_event() -> OverEvent:
     )
 
 
-def _build_search_args(*, search_depth: int) -> TreeAndValuePlayerArgs:
+def _rollout_opening_expansion(max_extra_steps: int = 2) -> OpeningExpansionConfig:
+    """Return a deterministic rollout expansion config for integration tests."""
+    return OpeningExpansionConfig(
+        kind=OpeningExpansionKind.ROLLOUT,
+        rollout=RolloutExpansionConfig(
+            max_extra_steps=max_extra_steps,
+            action_selector_kind=RolloutActionSelectorKind.FIRST_OPENABLE,
+            stop_on_existing_node=True,
+        ),
+    )
+
+
+def _build_search_args(
+    *,
+    search_depth: int,
+    opening_expansion: OpeningExpansionConfig | None = None,
+) -> TreeAndValuePlayerArgs:
     """Return the minimal deterministic uniform-search configuration."""
     return TreeAndValuePlayerArgs(
         node_selector=ComposedNodeSelectorArgs(
@@ -273,6 +296,7 @@ def _build_search_args(*, search_depth: int) -> TreeAndValuePlayerArgs:
         ),
         recommender_rule=cast("Any", _GreedyBestBranchRule()),
         index_computation=None,
+        opening_expansion=opening_expansion or OpeningExpansionConfig(),
     )
 
 
@@ -281,6 +305,7 @@ def make_integer_reduction_selector(
     start_value: int,
     search_depth: int,
     distinguish_incoming_edges: bool = True,
+    opening_expansion: OpeningExpansionConfig | None = None,
 ) -> tuple[
     TreeAndValueBranchSelector[_IntegerReductionTurnState],
     _IntegerReductionTurnState,
@@ -303,7 +328,10 @@ def make_integer_reduction_selector(
     selector = create_tree_and_value_branch_selector_with_tree_eval_factory(
         state_type=_IntegerReductionTurnState,
         dynamics=dynamics,
-        args=_build_search_args(search_depth=search_depth),
+        args=_build_search_args(
+            search_depth=search_depth,
+            opening_expansion=opening_expansion,
+        ),
         random_generator=Random(0),
         master_state_evaluator=master_evaluator,
         state_representation_factory=None,
@@ -323,6 +351,36 @@ def make_integer_reduction_selector(
     selector.tree_manager.node_evaluator = depth_aware_evaluator
 
     return selector, state, dynamics
+
+
+def test_integer_reduction_rollout_preserves_existing_node_connections() -> None:
+    """Rollout config does not break real same-state child reuse."""
+    selector, state, dynamics = make_integer_reduction_selector(
+        start_value=2,
+        search_depth=1,
+        distinguish_incoming_edges=False,
+        opening_expansion=_rollout_opening_expansion(max_extra_steps=2),
+    )
+    exploration = selector.create_tree_exploration(state=state)
+
+    exploration.step()
+
+    parent = exploration.tree.root_node
+    dec1_branch = dynamics.action_from_name(state, "dec1")
+    half_branch = dynamics.action_from_name(state, "half")
+
+    child_from_dec1 = parent.branches_children[dec1_branch]
+    child_from_half = parent.branches_children[half_branch]
+
+    assert child_from_dec1 is not None
+    assert child_from_half is not None
+    assert child_from_dec1 is child_from_half
+    assert exploration.tree.branch_count == 2
+    assert exploration.tree.nodes_count == 2
+
+    latest_report = exploration.tree_manager.latest_rollout_report
+    assert latest_report is not None
+    assert latest_report.existing_node_stop_count >= 1
 
 
 def test_integer_reduction_same_parent_two_branches_to_same_child_reuses_node_and_records_both_edges() -> (

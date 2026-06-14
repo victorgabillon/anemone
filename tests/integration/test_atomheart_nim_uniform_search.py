@@ -30,6 +30,13 @@ from anemone.objectives import AdversarialZeroSumObjective
 from anemone.progress_monitor.progress_monitor import (
     DepthLimitArgs,
     StoppingCriterionTypes,
+    TreeBranchLimitArgs,
+)
+from anemone.tree_manager import (
+    OpeningExpansionConfig,
+    OpeningExpansionKind,
+    RolloutActionSelectorKind,
+    RolloutExpansionConfig,
 )
 
 if TYPE_CHECKING:
@@ -45,6 +52,7 @@ else:
     _nim_module = pytest.importorskip(
         "atomheart.games.nim",
         reason="requires an Atomheart installation that exposes the Nim game",
+        exc_type=ImportError,
     )
     NimDynamics = _nim_module.NimDynamics
     NimState = _nim_module.NimState
@@ -142,8 +150,35 @@ class _GreedyBestBranchRule:
         return next(iter(policy.probs))
 
 
-def _build_search_args(*, search_depth: int) -> TreeAndValuePlayerArgs:
+def _rollout_opening_expansion(max_extra_steps: int = 2) -> OpeningExpansionConfig:
+    """Return a deterministic rollout expansion config for integration tests."""
+    return OpeningExpansionConfig(
+        kind=OpeningExpansionKind.ROLLOUT,
+        rollout=RolloutExpansionConfig(
+            max_extra_steps=max_extra_steps,
+            action_selector_kind=RolloutActionSelectorKind.FIRST_OPENABLE,
+        ),
+    )
+
+
+def _build_search_args(
+    *,
+    search_depth: int,
+    opening_expansion: OpeningExpansionConfig | None = None,
+    tree_branch_limit: int | None = None,
+) -> TreeAndValuePlayerArgs:
     """Return a minimal deterministic uniform-search configuration."""
+    stopping_criterion = (
+        TreeBranchLimitArgs(
+            type=StoppingCriterionTypes.TREE_BRANCH_LIMIT,
+            tree_branch_limit=tree_branch_limit,
+        )
+        if tree_branch_limit is not None
+        else DepthLimitArgs(
+            type=StoppingCriterionTypes.DEPTH_LIMIT,
+            depth_limit=search_depth,
+        )
+    )
     return TreeAndValuePlayerArgs(
         node_selector=ComposedNodeSelectorArgs(
             type=NodeSelectorType.COMPOSED,
@@ -151,12 +186,10 @@ def _build_search_args(*, search_depth: int) -> TreeAndValuePlayerArgs:
             base=UniformArgs(type=NodeSelectorType.UNIFORM),
         ),
         opening_type=OpeningType.ALL_CHILDREN,
-        stopping_criterion=DepthLimitArgs(
-            type=StoppingCriterionTypes.DEPTH_LIMIT,
-            depth_limit=search_depth,
-        ),
+        stopping_criterion=stopping_criterion,
         recommender_rule=cast("Any", _GreedyBestBranchRule()),
         index_computation=None,
+        opening_expansion=opening_expansion or OpeningExpansionConfig(),
     )
 
 
@@ -165,6 +198,8 @@ def make_nim_selector(
     stones: int,
     turn: Color = Color.WHITE,
     search_depth: int,
+    opening_expansion: OpeningExpansionConfig | None = None,
+    tree_branch_limit: int | None = None,
 ) -> tuple[TreeAndValueBranchSelector[NimState], NimState, NimDynamics]:
     """Build the real search stack for a tiny adversarial Nim position."""
     state = NimState(stones=stones, turn=turn)
@@ -172,7 +207,11 @@ def make_nim_selector(
     selector = create_tree_and_value_branch_selector_with_tree_eval_factory(
         state_type=NimState,
         dynamics=dynamics,
-        args=_build_search_args(search_depth=search_depth),
+        args=_build_search_args(
+            search_depth=search_depth,
+            opening_expansion=opening_expansion,
+            tree_branch_limit=tree_branch_limit,
+        ),
         random_generator=Random(0),
         master_state_evaluator=_NeutralNimEvaluator(),
         state_representation_factory=None,
@@ -182,6 +221,63 @@ def make_nim_selector(
         hooks=None,
     )
     return selector, state, dynamics
+
+
+def _expansion_count(exploration: Any) -> int:
+    """Return the number of edges materialized in the latest expansion batch."""
+    latest_tree_expansions = exploration.latest_tree_expansions
+    return len(latest_tree_expansions.expansions_with_node_creation) + len(
+        latest_tree_expansions.expansions_without_node_creation
+    )
+
+
+def test_nim_uniform_search_with_rollout_materializes_continuation_edges() -> None:
+    """Real Nim search can enable rollout through public opening-expansion config."""
+    selector, state, _dynamics = make_nim_selector(
+        stones=5,
+        search_depth=2,
+        opening_expansion=_rollout_opening_expansion(max_extra_steps=2),
+    )
+    exploration = selector.create_tree_exploration(state=state)
+
+    exploration.step()
+
+    latest_report = getattr(exploration.tree_manager, "latest_rollout_report", None)
+    assert latest_report is not None
+    assert latest_report.total_edge_count >= 1
+    assert latest_report.extra_edge_count >= 1
+    assert _expansion_count(exploration) == latest_report.total_edge_count
+    assert exploration.tree.branch_count >= latest_report.total_edge_count
+    for expansion in exploration.latest_tree_expansions.expansions_with_node_creation:
+        assert expansion.child_node.tree_evaluation.direct_value is not None
+
+
+def test_nim_uniform_search_default_opening_expansion_is_one_ply() -> None:
+    """Real Nim search keeps one-ply expansion as the default strategy."""
+    selector, state, _dynamics = make_nim_selector(stones=5, search_depth=2)
+    exploration = selector.create_tree_exploration(state=state)
+
+    exploration.step()
+
+    assert exploration.tree_manager.latest_rollout_report is None
+
+
+def test_nim_rollout_respects_tree_branch_limit_as_materialized_edge_limit() -> None:
+    """Runtime expansion budget keeps tree_branch_limit hard under rollout."""
+    selector, state, _dynamics = make_nim_selector(
+        stones=5,
+        search_depth=2,
+        opening_expansion=_rollout_opening_expansion(max_extra_steps=5),
+        tree_branch_limit=2,
+    )
+    exploration = selector.create_tree_exploration(state=state)
+
+    exploration.step()
+
+    assert exploration.tree.branch_count <= 2
+    latest_report = exploration.tree_manager.latest_rollout_report
+    assert latest_report is not None
+    assert latest_report.stop_reason_counts["branch_budget_exhausted"] >= 1
 
 
 @pytest.mark.parametrize("stones", [1, 2, 3, 4, 5, 6, 7, 8])
