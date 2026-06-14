@@ -4,6 +4,7 @@
 from .action_selector import (
     FirstOpenableActionSelector,
     NoRolloutActionSelector,
+    RandomOpenableActionSelector,
     RolloutActionSelector,
     RolloutDecisionContext,
 )
@@ -13,6 +14,7 @@ from .report import RolloutExpansionReport, RolloutStopReason
 __all__ = [
     "FirstOpenableActionSelector",
     "NoRolloutActionSelector",
+    "RandomOpenableActionSelector",
     "RolloutActionSelector",
     "RolloutDecisionContext",
     "RolloutExpansionReport",

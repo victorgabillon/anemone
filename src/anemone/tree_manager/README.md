@@ -41,3 +41,20 @@ Node selectors decide which not-fully-opened nodes and branches to open.
 Expansion executors decide how much tree to materialize after those initial
 openings. Rollout is therefore an expansion materialization strategy, not a
 node-selection algorithm.
+
+Opening expansion can be configured independently from node selection:
+
+```python
+OpeningExpansionConfig(
+    kind=OpeningExpansionKind.ROLLOUT,
+    rollout=RolloutExpansionConfig(
+        max_extra_steps=3,
+        action_selector_kind=RolloutActionSelectorKind.FIRST_OPENABLE,
+    ),
+)
+```
+
+The default config is `one_ply`. Rollout action selector kinds are
+`first_openable`, `random_openable`, and `no_rollout`. `random_openable` uses a
+local `random.Random` instance seeded from rollout config and samples only among
+currently openable branches.

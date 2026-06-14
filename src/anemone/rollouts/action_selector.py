@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any, Protocol
 from anemone import nodes as node
 
 if TYPE_CHECKING:
+    from random import Random
+
     from valanga import BranchKey
 
 
@@ -64,9 +66,28 @@ class FirstOpenableActionSelector[
         return context.openable_actions[0]
 
 
+@dataclass(slots=True)
+class RandomOpenableActionSelector[
+    NodeT: node.ITreeNode[Any] = node.ITreeNode[Any],
+]:
+    """Randomly choose one currently openable action using an injected RNG."""
+
+    random_generator: Random
+
+    def choose_action(
+        self,
+        context: RolloutDecisionContext[NodeT],
+    ) -> BranchKey | None:
+        """Return a random openable action, if one exists."""
+        if not context.openable_actions:
+            return None
+        return self.random_generator.choice(context.openable_actions)
+
+
 __all__ = [
     "FirstOpenableActionSelector",
     "NoRolloutActionSelector",
+    "RandomOpenableActionSelector",
     "RolloutActionSelector",
     "RolloutDecisionContext",
 ]

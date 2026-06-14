@@ -12,7 +12,7 @@ Internal collaborator wiring lives in ``anemone._runtime_assembly``. Legacy
 # pylint: disable=duplicate-code
 
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from random import Random
 from typing import Literal
 
@@ -55,6 +55,7 @@ from anemone.tree_exploration_debug import (
     log_final_best_line,
     maybe_log_iteration_progress,
 )
+from anemone.tree_manager import OpeningExpansionConfig
 
 TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 
@@ -73,6 +74,9 @@ class TreeAndValuePlayerArgs:
     stopping_criterion: AllStoppingCriterionArgs
     recommender_rule: recommender_rule.AllRecommendFunctionsArgs
     index_computation: IndexComputationType | None = None
+    opening_expansion: OpeningExpansionConfig = field(
+        default_factory=OpeningExpansionConfig
+    )
     type: Literal["TreeAndValue"] = TREE_AND_VALUE_LITERAL_STRING
 
 

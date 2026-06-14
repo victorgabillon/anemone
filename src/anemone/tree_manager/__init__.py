@@ -17,9 +17,19 @@ Functions:
 from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from .branch_opening_service import BranchOpeningService, BranchOpeningTreeManager
 from .factory import create_algorithm_node_tree_manager
+from .opening_expansion_config import (
+    OpeningExpansionConfig,
+    OpeningExpansionKind,
+    RolloutActionSelectorKind,
+    RolloutExpansionConfig,
+)
 from .opening_expansion_executor import (
     OnePlyOpeningExpansionExecutor,
     OpeningExpansionExecutor,
+)
+from .opening_expansion_factory import (
+    create_opening_expansion_executor,
+    create_rollout_action_selector,
 )
 from .tree_expander import TreeExpansion, TreeExpansions
 from .tree_manager import DuplicateBranchOpenError, TreeManager
@@ -30,9 +40,15 @@ __all__ = [
     "BranchOpeningTreeManager",
     "DuplicateBranchOpenError",
     "OnePlyOpeningExpansionExecutor",
+    "OpeningExpansionConfig",
     "OpeningExpansionExecutor",
+    "OpeningExpansionKind",
+    "RolloutActionSelectorKind",
+    "RolloutExpansionConfig",
     "TreeExpansion",
     "TreeExpansions",
     "TreeManager",
     "create_algorithm_node_tree_manager",
+    "create_opening_expansion_executor",
+    "create_rollout_action_selector",
 ]

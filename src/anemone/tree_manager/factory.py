@@ -21,6 +21,7 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.updates.depth_index_propagator import DepthIndexPropagator
 
 from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
+from .opening_expansion_config import OpeningExpansionConfig
 from .tree_manager import TreeManager
 
 
@@ -30,6 +31,7 @@ def create_algorithm_node_tree_manager(
     dynamics: SearchDynamics[Any, Any],
     index_computation: IndexComputationType | None,
     depth_index: bool = False,
+    opening_expansion_config: OpeningExpansionConfig | None = None,
 ) -> AlgorithmNodeTreeManager:
     """Create an AlgorithmNodeTreeManager object.
 
@@ -39,6 +41,7 @@ def create_algorithm_node_tree_manager(
         index_computation: The type of index computation to be used.
         dynamics: The SearchDynamics object used for labeling the edges in the visualization.
         depth_index: Whether to maintain descendant-depth metadata incrementally.
+        opening_expansion_config: Optional opening expansion strategy config.
 
     Returns:
         An AlgorithmNodeTreeManager object.
@@ -61,6 +64,7 @@ def create_algorithm_node_tree_manager(
         evaluation_queries=evaluation_queries,
         index_manager=exploration_index_manager,
         depth_index_propagator=(DepthIndexPropagator() if depth_index else None),
+        opening_expansion_config=opening_expansion_config or OpeningExpansionConfig(),
     )
 
     return algorithm_node_tree_manager

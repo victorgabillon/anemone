@@ -25,11 +25,11 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 from anemone.updates.depth_index_propagator import DepthIndexPropagator
 from anemone.updates.value_propagator import ValuePropagator
 
-from .branch_opening_service import BranchOpeningService
+from .opening_expansion_config import OpeningExpansionConfig
 from .opening_expansion_executor import (
-    OnePlyOpeningExpansionExecutor,
     OpeningExpansionExecutor,
 )
+from .opening_expansion_factory import create_opening_expansion_executor
 from .tree_expander import TreeExpansions
 from .tree_manager import TreeManager
 
@@ -140,6 +140,9 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     index_manager: NodeExplorationIndexManager
     value_propagator: ValuePropagator = field(default_factory=ValuePropagator)
     depth_index_propagator: DepthIndexPropagator | None = None
+    opening_expansion_config: OpeningExpansionConfig = field(
+        default_factory=OpeningExpansionConfig
+    )
     opening_expansion_executor: OpeningExpansionExecutor[NodeT] | None = None
     _direct_evaluation: _DirectNodeEvaluation[NodeT] = field(
         init=False,
@@ -161,12 +164,11 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             get_depth_index_propagator=lambda: self.depth_index_propagator,
         )
         if self.opening_expansion_executor is None:
-            self.opening_expansion_executor = OnePlyOpeningExpansionExecutor(
-                branch_opening_service=BranchOpeningService(
-                    tree_manager=self.tree_manager,
-                    on_branch_opened=self._mark_branch_opened,
-                ),
+            self.opening_expansion_executor = create_opening_expansion_executor(
+                config=self.opening_expansion_config,
+                tree_manager=self.tree_manager,
                 dynamics=self.dynamics,
+                on_branch_opened=self._mark_branch_opened,
             )
 
     @property
@@ -223,6 +225,12 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def refresh_exploration_indices(self, tree: trees.Tree[NodeT]) -> None:
         """Refresh exploration indices after the upward propagation phases."""
         update_all_indices(index_manager=self.index_manager, tree=tree)
+
+    @property
+    def latest_rollout_report(self) -> Any | None:
+        """Return the latest rollout report when the configured executor exposes one."""
+        executor = self.opening_expansion_executor
+        return getattr(executor, "last_report", None)
 
     # Presentation helpers
     def print_some_stats(self, tree: trees.Tree[NodeT]) -> None:

@@ -29,6 +29,7 @@ from anemone.node_selector.opening_instructions import OpeningType
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.tree_manager import (
     AlgorithmNodeTreeManager,
+    OpeningExpansionConfig,
     create_algorithm_node_tree_manager,
 )
 from anemone.trees.factory import ValueTreeFactory
@@ -45,6 +46,7 @@ class _SearchBuildArgsP(Protocol):
     node_selector: ComposedNodeSelectorArgs
     opening_type: OpeningType
     index_computation: IndexComputationType | None
+    opening_expansion: OpeningExpansionConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +112,7 @@ def assemble_search_runtime_dependencies[
         node_direct_evaluator=node_evaluator,
         index_computation=args.index_computation,
         depth_index=search_factory.depth_index,
+        opening_expansion_config=args.opening_expansion,
     )
 
     return SearchRuntimeDependencies(
