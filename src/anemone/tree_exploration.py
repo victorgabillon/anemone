@@ -606,7 +606,20 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return self.tree_manager.expand_instructions(
             tree=self.tree,
             opening_instructions=opening_instructions,
+            budget=self._opening_expansion_budget(),
         )
+
+    def _opening_expansion_budget(self) -> tree_man.OpeningExpansionBudget:
+        """Return the runtime materialized-edge budget for this iteration."""
+        get_expansion_budget = getattr(
+            self.stopping_criterion,
+            "opening_expansion_budget",
+            None,
+        )
+        if not callable(get_expansion_budget):
+            return tree_man.OpeningExpansionBudget.unlimited()
+        budget = get_expansion_budget(tree=self.tree)
+        return cast("tree_man.OpeningExpansionBudget", budget)
 
     def _evaluate_expansions(
         self,

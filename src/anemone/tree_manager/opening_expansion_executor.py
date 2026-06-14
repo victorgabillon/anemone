@@ -9,6 +9,7 @@ from anemone import nodes as node
 from anemone import trees
 from anemone.nodes.opening_status import sync_opening_status
 
+from .opening_expansion_budget import reserve_branch_opening
 from .tree_expander import TreeExpansions
 
 if TYPE_CHECKING:
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     )
 
     from .branch_opening_service import BranchOpeningService
+    from .opening_expansion_budget import OpeningExpansionBudget
 
 
 class OpeningExpansionExecutor[
@@ -31,6 +33,7 @@ class OpeningExpansionExecutor[
         *,
         tree: trees.Tree[FamilyT],
         opening_instructions: OpeningInstructions[FamilyT],
+        budget: OpeningExpansionBudget | None = None,
     ) -> TreeExpansions[FamilyT]:
         """Expand a batch of opening instructions."""
         ...
@@ -50,6 +53,7 @@ class OnePlyOpeningExpansionExecutor[
         *,
         tree: trees.Tree[FamilyT],
         opening_instructions: OpeningInstructions[FamilyT],
+        budget: OpeningExpansionBudget | None = None,
     ) -> TreeExpansions[FamilyT]:
         """Expand instructions and sync each touched parent exactly once."""
         tree_expansions: TreeExpansions[FamilyT] = TreeExpansions()
@@ -57,6 +61,8 @@ class OnePlyOpeningExpansionExecutor[
 
         opening_instruction: OpeningInstruction[FamilyT]
         for opening_instruction in opening_instructions.values():
+            if not reserve_branch_opening(budget):
+                break
             parent_node = opening_instruction.node_to_open
             self.branch_opening_service.open_branch(
                 tree=tree,

@@ -56,7 +56,12 @@ class ObservableAlgorithmNodeTreeManager:
         """Return the wrapped manager's search dynamics."""
         return self._base.dynamics
 
-    def expand_instructions(self, tree: Any, opening_instructions: Any) -> Any:
+    def expand_instructions(
+        self,
+        tree: Any,
+        opening_instructions: Any,
+        budget: Any = None,
+    ) -> Any:
         """Delegate structural expansion and infer structural debug events."""
         nodes_to_open = collect_unique_nodes_from_opening_instructions(
             opening_instructions
@@ -68,6 +73,7 @@ class ObservableAlgorithmNodeTreeManager:
         result = self._base.expand_instructions(
             tree=tree,
             opening_instructions=opening_instructions,
+            budget=budget,
         )
 
         for node in nodes_to_open:

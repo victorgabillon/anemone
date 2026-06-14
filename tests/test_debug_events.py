@@ -253,7 +253,13 @@ class _FakeObservedOpenManager:
         self.received_opening_instructions: Any | None = None
         self.result: tuple[_FakeTreeExpansion, ...] = ()
 
-    def expand_instructions(self, tree: Any, opening_instructions: Any) -> Any:
+    def expand_instructions(
+        self,
+        tree: Any,
+        opening_instructions: Any,
+        budget: Any = None,
+    ) -> Any:
+        del budget
         self.was_called = True
         self.received_tree = tree
         self.received_opening_instructions = opening_instructions
@@ -347,9 +353,12 @@ class _FakeObservedExplorationManager:
         )
 
     def expand_instructions(
-        self, tree: Any, opening_instructions: Any
+        self,
+        tree: Any,
+        opening_instructions: Any,
+        budget: Any = None,
     ) -> tuple[_FakeTreeExpansion, ...]:
-        del tree, opening_instructions
+        del tree, opening_instructions, budget
         self._root.branches_children[self._branch_key] = self._child
         return (
             _FakeTreeExpansion(

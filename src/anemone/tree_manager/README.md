@@ -58,3 +58,22 @@ The default config is `one_ply`. Rollout action selector kinds are
 `first_openable`, `random_openable`, and `no_rollout`. `random_openable` uses a
 local `random.Random` instance seeded from rollout config and samples only among
 currently openable branches.
+
+## Expansion Budgets
+
+Search has two separate branch limiting layers. The existing initial-opening
+limiter trims selector-proposed `OpeningInstructions` before expansion, so a
+selector does not start more initial openings than the current branch limit can
+plausibly allow. That pre-trim remains useful for planning initial openings.
+
+Runtime opening expansion budgets are stricter: they are consumed by every
+actual materialized tree edge immediately before it is opened. This includes
+initial selector edges, rollout continuation edges, and existing-node
+connections. The budget is enforced inside expansion executors because rollout
+length is only known while materializing the path.
+
+For example, with two branch slots remaining, a selector may ask to open
+branches `[a, b]`. A rollout executor can spend one slot on `a`, spend the
+second slot on a rollout continuation from `a`'s child, and then stop before
+opening `b`. This keeps `tree_branch_limit` as a hard materialized-edge limit
+without requiring the selector or pre-trim layer to predict rollout length.

@@ -13,6 +13,7 @@ from anemone.tree_manager import (
     BranchOpeningService,
     DuplicateBranchOpenError,
     OnePlyOpeningExpansionExecutor,
+    OpeningExpansionBudget,
     TreeExpansions,
     TreeManager,
 )
@@ -173,6 +174,32 @@ def test_one_ply_executor_syncs_each_parent_once_per_batch() -> None:
     executor.expand(tree=tree, opening_instructions=_instructions(root, [0, 1]))
 
     assert dynamics.legal_action_calls == 1
+
+
+def test_one_ply_executor_respects_materialized_branch_budget() -> None:
+    """One-ply expansion stops before opening beyond the runtime branch budget."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics({"root": [0, 1, 2]})
+    manager = _tree_manager(dynamics)
+    executor = OnePlyOpeningExpansionExecutor(
+        branch_opening_service=BranchOpeningService(tree_manager=manager),
+        dynamics=dynamics,
+    )
+    budget = OpeningExpansionBudget(remaining_branch_openings=2)
+
+    expansions = executor.expand(
+        tree=tree,
+        opening_instructions=_instructions(root, [0, 1, 2]),
+        budget=budget,
+    )
+
+    assert len(expansions.expansions_with_node_creation) == 2
+    assert set(root.branches_children) == {0, 1}
+    assert 2 not in root.branches_children
+    assert tree.branch_count == 2
+    assert budget.remaining_branch_openings == 0
+    assert root.non_opened_branches == {2}
 
 
 def test_branch_opening_service_calls_callback_for_each_opened_branch() -> None:

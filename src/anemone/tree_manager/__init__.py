@@ -17,6 +17,7 @@ Functions:
 from .algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from .branch_opening_service import BranchOpeningService, BranchOpeningTreeManager
 from .factory import create_algorithm_node_tree_manager
+from .opening_expansion_budget import OpeningExpansionBudget
 from .opening_expansion_config import (
     OpeningExpansionConfig,
     OpeningExpansionKind,
@@ -40,6 +41,7 @@ __all__ = [
     "BranchOpeningTreeManager",
     "DuplicateBranchOpenError",
     "OnePlyOpeningExpansionExecutor",
+    "OpeningExpansionBudget",
     "OpeningExpansionConfig",
     "OpeningExpansionExecutor",
     "OpeningExpansionKind",

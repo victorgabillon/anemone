@@ -25,6 +25,7 @@ from anemone.nodes.algorithm_node.algorithm_node import (
 from anemone.updates.depth_index_propagator import DepthIndexPropagator
 from anemone.updates.value_propagator import ValuePropagator
 
+from .opening_expansion_budget import OpeningExpansionBudget
 from .opening_expansion_config import OpeningExpansionConfig
 from .opening_expansion_executor import (
     OpeningExpansionExecutor,
@@ -181,11 +182,13 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         tree: trees.Tree[NodeT],
         opening_instructions: OpeningInstructions[NodeT],
+        budget: OpeningExpansionBudget | None = None,
     ) -> TreeExpansions[NodeT]:
         """Expand instructions through the configured opening executor."""
         return self._require_opening_expansion_executor().expand(
             tree=tree,
             opening_instructions=opening_instructions,
+            budget=budget,
         )
 
     # Direct evaluation phase

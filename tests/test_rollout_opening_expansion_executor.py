@@ -10,13 +10,18 @@ from anemone.node_selector.opening_instructions import (
     OpeningInstruction,
     OpeningInstructions,
 )
+from anemone.progress_monitor.progress_monitor import TreeBranchLimit
 from anemone.rollouts import (
     FirstOpenableActionSelector,
     NoRolloutActionSelector,
     RolloutOpeningExpansionExecutor,
     RolloutStopReason,
 )
-from anemone.tree_manager import BranchOpeningService, TreeManager
+from anemone.tree_manager import (
+    BranchOpeningService,
+    OpeningExpansionBudget,
+    TreeManager,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -238,6 +243,72 @@ def test_deterministic_rollout_creates_chain() -> None:
     assert executor.last_report.max_extra_depth_reached == 2
 
 
+def test_rollout_consumes_budget_for_initial_and_extra_edges() -> None:
+    """Rollout stops when the runtime branch budget is exhausted."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics(
+        {
+            "root": [0],
+            "root:0": [1],
+            "root:0:1": [2],
+            "root:0:1:2": [3],
+        }
+    )
+    executor = _executor(dynamics=dynamics, max_extra_steps=5)
+    budget = OpeningExpansionBudget(remaining_branch_openings=2)
+
+    expansions = executor.expand(
+        tree=tree,
+        opening_instructions=_instructions(root, [0]),
+        budget=budget,
+    )
+
+    child = root.branches_children[0]
+    assert child is not None
+    assert set(child.branches_children) == {1}
+    assert len(expansions.expansions_with_node_creation) == 2
+    assert tree.branch_count == 2
+    assert budget.remaining_branch_openings == 0
+    assert executor.last_report is not None
+    assert executor.last_report.total_edge_count == 2
+    assert executor.last_report.extra_edge_count == 1
+    assert (
+        executor.last_report.stop_reason_counts[
+            RolloutStopReason.BRANCH_BUDGET_EXHAUSTED.value
+        ]
+        == 1
+    )
+
+
+def test_rollout_does_not_start_initial_edge_when_budget_is_exhausted() -> None:
+    """Rollout executor does not materialize initial edges without branch budget."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics({"root": [0], "root:0": [1]})
+    executor = _executor(dynamics=dynamics, max_extra_steps=5)
+    budget = OpeningExpansionBudget(remaining_branch_openings=0)
+
+    expansions = executor.expand(
+        tree=tree,
+        opening_instructions=_instructions(root, [0]),
+        budget=budget,
+    )
+
+    assert expansions.expansions_with_node_creation == []
+    assert expansions.expansions_without_node_creation == []
+    assert root.branches_children == {}
+    assert tree.branch_count == 0
+    assert executor.last_report is not None
+    assert executor.last_report.total_edge_count == 0
+    assert (
+        executor.last_report.stop_reason_counts[
+            RolloutStopReason.BRANCH_BUDGET_EXHAUSTED.value
+        ]
+        == 1
+    )
+
+
 def test_no_rollout_action_selector_stops_after_initial_edge() -> None:
     """NoRolloutActionSelector opts out after opening the selected edge."""
     root = _Node(id=0, state=_State("root"), tree_depth=0)
@@ -305,6 +376,29 @@ def test_existing_initial_child_stops_rollout() -> None:
     assert executor.last_report.existing_node_stop_count == 1
 
 
+def test_existing_initial_child_consumes_branch_budget() -> None:
+    """Existing-node branch connections still consume materialized branch budget."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    existing = _Node(id=99, state=_State("root:0"), tree_depth=1)
+    tree.descendants.register_existing(existing)
+    dynamics = _Dynamics({"root": [0], "root:0": [1]})
+    executor = _executor(dynamics=dynamics, max_extra_steps=3)
+    budget = OpeningExpansionBudget(remaining_branch_openings=1)
+
+    expansions = executor.expand(
+        tree=tree,
+        opening_instructions=_instructions(root, [0]),
+        budget=budget,
+    )
+
+    assert root.branches_children[0] is existing
+    assert expansions.expansions_with_node_creation == []
+    assert len(expansions.expansions_without_node_creation) == 1
+    assert tree.branch_count == 1
+    assert budget.remaining_branch_openings == 0
+
+
 def test_existing_node_reached_during_rollout_stops_after_recording_edge() -> None:
     """Existing-node rollout edge is recorded, then rollout stops."""
     root = _Node(id=0, state=_State("root"), tree_depth=0)
@@ -361,3 +455,45 @@ def test_rollout_uses_openable_actions_not_all_legal_actions() -> None:
     assert child.branches_children[0] is not None
     assert child.branches_children[1] is not None
     assert 2 in child.non_opened_branches
+
+
+def test_initial_limiter_and_runtime_budget_interact_for_rollout() -> None:
+    """Pre-trim limits initial openings while runtime budget stops rollout edges."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics(
+        {
+            "root": [0, 9],
+            "root:0": [1],
+            "root:0:1": [2],
+            "root:9": [],
+        }
+    )
+    stopping = TreeBranchLimit(tree_branch_limit=2)
+    proposed_instructions = _instructions(root, [9, 0])
+    trimmed_instructions = stopping.respectful_opening_instructions(
+        opening_instructions=proposed_instructions,
+        tree=tree,
+    )
+    budget = stopping.opening_expansion_budget(tree)
+    executor = _executor(dynamics=dynamics, max_extra_steps=5)
+
+    executor.expand(
+        tree=tree,
+        opening_instructions=trimmed_instructions,
+        budget=budget,
+    )
+
+    child = root.branches_children[0]
+    assert child is not None
+    assert set(root.branches_children) == {0}
+    assert set(child.branches_children) == {1}
+    assert tree.branch_count == 2
+    assert budget.remaining_branch_openings == 0
+    assert executor.last_report is not None
+    assert (
+        executor.last_report.stop_reason_counts[
+            RolloutStopReason.BRANCH_BUDGET_EXHAUSTED.value
+        ]
+        == 2
+    )

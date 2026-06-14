@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from anemone import nodes as node
 from anemone import trees
 from anemone.nodes.opening_status import openable_branch_keys, sync_opening_status
+from anemone.tree_manager.opening_expansion_budget import reserve_branch_opening
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
 from .action_selector import RolloutDecisionContext
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
         OpeningInstructions,
     )
     from anemone.tree_manager.branch_opening_service import BranchOpeningService
+    from anemone.tree_manager.opening_expansion_budget import OpeningExpansionBudget
 
     from .action_selector import RolloutActionSelector
 
@@ -55,6 +57,7 @@ class RolloutOpeningExpansionExecutor[
         *,
         tree: trees.Tree[NodeT],
         opening_instructions: OpeningInstructions[NodeT],
+        budget: OpeningExpansionBudget | None = None,
     ) -> TreeExpansions[NodeT]:
         """Expand instructions, then materialize deterministic rollout edges."""
         tree_expansions: TreeExpansions[NodeT] = TreeExpansions()
@@ -63,6 +66,9 @@ class RolloutOpeningExpansionExecutor[
 
         opening_instruction: OpeningInstruction[NodeT]
         for opening_instruction in opening_instructions.values():
+            if not reserve_branch_opening(budget):
+                report_builder.record_stop(RolloutStopReason.BRANCH_BUDGET_EXHAUSTED)
+                break
             parent_node = opening_instruction.node_to_open
             initial_expansion = self.branch_opening_service.open_branch(
                 tree=tree,
@@ -81,6 +87,7 @@ class RolloutOpeningExpansionExecutor[
                 tree_expansions=tree_expansions,
                 touched_parent_nodes_by_id=touched_parent_nodes_by_id,
                 report_builder=report_builder,
+                budget=budget,
             )
             report_builder.record_stop(stop_reason)
 
@@ -98,6 +105,7 @@ class RolloutOpeningExpansionExecutor[
         tree_expansions: TreeExpansions[NodeT],
         touched_parent_nodes_by_id: dict[int, NodeT],
         report_builder: RolloutExpansionReportBuilder,
+        budget: OpeningExpansionBudget | None,
     ) -> RolloutStopReason:
         """Materialize rollout continuation edges after one initial expansion."""
         if self.max_extra_steps == 0:
@@ -126,6 +134,9 @@ class RolloutOpeningExpansionExecutor[
             )
             if action is None:
                 return RolloutStopReason.ACTION_SELECTOR_STOP
+
+            if not reserve_branch_opening(budget):
+                return RolloutStopReason.BRANCH_BUDGET_EXHAUSTED
 
             rollout_expansion = self.branch_opening_service.open_branch(
                 tree=tree,

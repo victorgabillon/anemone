@@ -15,6 +15,7 @@ from anemone.node_selector.opening_instructions import (
 )
 from anemone.nodes.state_handles import MaterializedStateHandle
 from anemone.tree_manager.branch_opening_service import BranchOpeningService
+from anemone.tree_manager.opening_expansion_budget import OpeningExpansionBudget
 from anemone.tree_manager.opening_expansion_executor import (
     OnePlyOpeningExpansionExecutor,
 )
@@ -199,12 +200,14 @@ class TreeManager[
         self,
         tree: trees.Tree[FamilyT],
         opening_instructions: OpeningInstructions[FamilyT],
+        budget: OpeningExpansionBudget | None = None,
     ) -> TreeExpansions[FamilyT]:
         """Expand multiple branches and return purely structural expansion records.
 
         Args:
             tree: The tree object.
             opening_instructions: The opening instructions.
+            budget: Runtime materialized branch-opening budget.
 
         Returns:
             The structural tree expansions that were performed.
@@ -214,7 +217,11 @@ class TreeManager[
             branch_opening_service=BranchOpeningService(tree_manager=self),
             dynamics=self.dynamics,
         )
-        return executor.expand(tree=tree, opening_instructions=opening_instructions)
+        return executor.expand(
+            tree=tree,
+            opening_instructions=opening_instructions,
+            budget=budget,
+        )
 
     def assert_branch_not_opened(
         self,

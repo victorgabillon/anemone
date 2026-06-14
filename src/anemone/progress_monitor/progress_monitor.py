@@ -21,6 +21,7 @@ from anemone import node_selector as node_sel
 from anemone import trees
 from anemone.node_selector.composed.composed_node_selector import ComposedNodeSelector
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.tree_manager.opening_expansion_budget import OpeningExpansionBudget
 
 
 @runtime_checkable
@@ -118,6 +119,13 @@ class ProgressMonitorP[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol)
         """Return a human-readable percent progress string."""
         ...
 
+    def opening_expansion_budget(
+        self,
+        tree: trees.Tree[NodeT],
+    ) -> OpeningExpansionBudget:
+        """Return the runtime materialization budget for one expansion phase."""
+        ...
+
 
 class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """The general stopping criterion base class."""
@@ -134,6 +142,14 @@ class ProgressMonitor[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Ensure the opening request does not exceed the stopping criterion."""
         _ = tree
         return opening_instructions
+
+    def opening_expansion_budget(
+        self,
+        tree: trees.Tree[NodeT],
+    ) -> OpeningExpansionBudget:
+        """Return an unlimited runtime materialization budget by default."""
+        _ = tree
+        return OpeningExpansionBudget.unlimited()
 
     def get_string_of_progress(self, _tree: trees.Tree[NodeT]) -> str:
         """Return a string representation of the progress made by the stopping criterion.
@@ -205,6 +221,16 @@ class TreeBranchLimit[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](
             how_many=self.tree_branch_limit - tree.branch_count,
         )
         return opening_instructions_subset
+
+    def opening_expansion_budget(
+        self,
+        tree: trees.Tree[NodeT],
+    ) -> OpeningExpansionBudget:
+        """Return the remaining runtime materialized branch budget."""
+        return OpeningExpansionBudget.from_tree_limits(
+            tree_branch_limit=self.tree_branch_limit,
+            current_branch_count=tree.branch_count,
+        )
 
     def get_string_of_progress(self, tree: trees.Tree[NodeT]) -> str:
         """Compute the string that display the progress in the terminal.

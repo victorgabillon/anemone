@@ -14,6 +14,7 @@ class RolloutStopReason(StrEnum):
     TERMINAL = "terminal"
     NO_OPENABLE_ACTIONS = "no_openable_actions"
     EXISTING_NODE = "existing_node"
+    BRANCH_BUDGET_EXHAUSTED = "branch_budget_exhausted"
 
 
 def _new_stop_reason_counts() -> dict[str, int]:

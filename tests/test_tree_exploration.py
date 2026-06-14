@@ -16,6 +16,7 @@ from anemone.node_selector.opening_instructions import (
 )
 from anemone.objectives import SingleAgentMaxObjective
 from anemone.tree_exploration import TreeExploration
+from anemone.tree_manager import OpeningExpansionBudget
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
 
@@ -112,8 +113,9 @@ class _ManagerSpy:
         *,
         tree: Any,
         opening_instructions: Any,
+        budget: OpeningExpansionBudget | None = None,
     ) -> TreeExpansions[Any]:
-        del tree, opening_instructions
+        del tree, opening_instructions, budget
         self.calls.append("expand")
         expansions: TreeExpansions[Any] = TreeExpansions()
         expansions.add_creation(
@@ -388,7 +390,9 @@ class _LinooIntegrationManager:
         *,
         tree: SimpleNamespace,
         opening_instructions: OpeningInstructions[_LinooIntegrationNode],
+        budget: OpeningExpansionBudget | None = None,
     ) -> TreeExpansions[_LinooIntegrationNode]:
+        del budget
         instruction = next(iter(opening_instructions.values()))
         selected_node = instruction.node_to_open
         selected_node.all_branches_generated = True
