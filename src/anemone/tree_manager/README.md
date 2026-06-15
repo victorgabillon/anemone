@@ -64,6 +64,14 @@ currently openable branches. Built-in selectors keep expansion-only behavior,
 but custom rollout action selectors can inspect legal, opened, and openable
 actions to perform guided traversal before opening a frontier edge.
 
+`max_extra_steps` controls rollout continuation decisions after each initial
+edge. `0` disables continuation, a positive integer bounds the number of
+continuation decisions, and `None` continues until a normal stop condition:
+terminal node, no legal action, action-selector stop, branch-budget exhaustion,
+or existing-node stop. Unbounded rollout is useful for long-horizon games such
+as Morpion solitaire and should generally be paired with a global materialized
+branch budget such as `tree_branch_limit`.
+
 There are two rollout action-selector APIs. Serializable config is the right
 surface for YAML and reproducible experiments:
 

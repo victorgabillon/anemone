@@ -190,7 +190,7 @@ def _instructions(node: _Node, branches: list[int]) -> OpeningInstructions[_Node
 def _executor(
     *,
     dynamics: _Dynamics,
-    max_extra_steps: int,
+    max_extra_steps: int | None,
     action_selector: object | None = None,
     opened: list[tuple[int, int]] | None = None,
     node_factory: _NodeFactory | None = None,
@@ -276,6 +276,77 @@ def test_deterministic_rollout_creates_chain() -> None:
     assert executor.last_report.extra_edge_count == 2
     assert executor.last_report.total_edge_count == 3
     assert executor.last_report.max_extra_depth_reached == 2
+
+
+def test_unbounded_rollout_continues_until_no_legal_actions() -> None:
+    """None rollout step limit continues until a normal stop condition."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics(
+        {
+            "root": [0],
+            "root:0": [1],
+            "root:0:1": [2],
+            "root:0:1:2": [],
+        }
+    )
+    executor = _executor(dynamics=dynamics, max_extra_steps=None)
+
+    expansions = executor.expand(
+        tree=tree,
+        opening_instructions=_instructions(root, [0]),
+    )
+
+    assert len(expansions.expansions_with_node_creation) == 3
+    assert tree.branch_count == 3
+    assert executor.last_report is not None
+    assert executor.last_report.total_edge_count == 3
+    assert executor.last_report.extra_edge_count == 2
+    assert (
+        executor.last_report.stop_reason_counts[
+            RolloutStopReason.NO_LEGAL_ACTIONS.value
+        ]
+        == 1
+    )
+    assert (
+        executor.last_report.stop_reason_counts[RolloutStopReason.MAX_EXTRA_STEPS.value]
+        == 0
+    )
+
+
+def test_unbounded_rollout_respects_branch_budget() -> None:
+    """None rollout step limit still stops on materialized branch budget."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics(
+        {
+            "root": [0],
+            "root:0": [1],
+            "root:0:1": [2],
+            "root:0:1:2": [],
+        }
+    )
+    executor = _executor(dynamics=dynamics, max_extra_steps=None)
+    budget = OpeningExpansionBudget(remaining_branch_openings=2)
+
+    expansions = executor.expand(
+        tree=tree,
+        opening_instructions=_instructions(root, [0]),
+        budget=budget,
+    )
+
+    assert len(expansions.expansions_with_node_creation) == 2
+    assert tree.branch_count == 2
+    assert budget.remaining_branch_openings == 0
+    assert executor.last_report is not None
+    assert executor.last_report.total_edge_count == 2
+    assert executor.last_report.extra_edge_count == 1
+    assert (
+        executor.last_report.stop_reason_counts[
+            RolloutStopReason.BRANCH_BUDGET_EXHAUSTED.value
+        ]
+        == 1
+    )
 
 
 def test_rollout_consumes_budget_for_initial_and_extra_edges() -> None:

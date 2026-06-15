@@ -97,6 +97,13 @@ def test_rollout_expansion_config_rejects_negative_max_extra_steps() -> None:
         RolloutExpansionConfig(max_extra_steps=-1)
 
 
+def test_rollout_expansion_config_accepts_unbounded_max_extra_steps() -> None:
+    """None means rollout continues until a normal stop condition."""
+    config = RolloutExpansionConfig(max_extra_steps=None)
+
+    assert config.max_extra_steps is None
+
+
 def test_create_opening_expansion_executor_default_creates_one_ply() -> None:
     """Default opening expansion config preserves one-ply behavior."""
     executor = create_opening_expansion_executor(
@@ -122,6 +129,23 @@ def test_create_opening_expansion_executor_rollout_creates_rollout_executor() ->
     assert isinstance(executor, RolloutOpeningExpansionExecutor)
     assert executor.max_extra_steps == 2
     assert executor.stop_on_existing_node
+
+
+def test_create_opening_expansion_executor_rollout_passes_unbounded_step_limit() -> (
+    None
+):
+    """Rollout factory passes through an unbounded continuation step limit."""
+    executor = create_opening_expansion_executor(
+        config=OpeningExpansionConfig(
+            kind=OpeningExpansionKind.ROLLOUT,
+            rollout=RolloutExpansionConfig(max_extra_steps=None),
+        ),
+        tree_manager=cast("Any", _tree_manager_stub()),
+        dynamics=cast("Any", object()),
+    )
+
+    assert isinstance(executor, RolloutOpeningExpansionExecutor)
+    assert executor.max_extra_steps is None
 
 
 def test_rollout_factory_uses_custom_action_selector_object() -> None:

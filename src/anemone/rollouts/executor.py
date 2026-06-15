@@ -64,13 +64,13 @@ class RolloutOpeningExpansionExecutor[
     branch_opening_service: BranchOpeningService[NodeT]
     dynamics: SearchDynamics[Any, Any]
     rollout_action_selector: RolloutActionSelector[NodeT]
-    max_extra_steps: int
+    max_extra_steps: int | None
     stop_on_existing_node: bool = True
     last_report: RolloutExpansionReport | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         """Reject invalid rollout configuration."""
-        if self.max_extra_steps < 0:
+        if self.max_extra_steps is not None and self.max_extra_steps < 0:
             msg = "max_extra_steps must be non-negative"
             raise ValueError(msg)
 
@@ -137,8 +137,9 @@ class RolloutOpeningExpansionExecutor[
             return RolloutStopReason.EXISTING_NODE
 
         current_node = initial_expansion.child_node
+        rollout_step_index = 0
 
-        for rollout_step_index in range(self.max_extra_steps):
+        while self._has_remaining_rollout_decision_budget(rollout_step_index):
             if _is_terminal_node(current_node):
                 return RolloutStopReason.TERMINAL
 
@@ -176,6 +177,7 @@ class RolloutOpeningExpansionExecutor[
                     return RolloutStopReason.EXISTING_NODE
 
                 current_node = rollout_expansion.child_node
+                rollout_step_index += 1
                 continue
 
             if action in context.opened_actions:
@@ -188,6 +190,7 @@ class RolloutOpeningExpansionExecutor[
                     )
                 report_builder.record_traversal()
                 current_node = child_node
+                rollout_step_index += 1
                 continue
 
             raise _invalid_rollout_action_error(
@@ -197,6 +200,13 @@ class RolloutOpeningExpansionExecutor[
             )
 
         return RolloutStopReason.MAX_EXTRA_STEPS
+
+    def _has_remaining_rollout_decision_budget(
+        self,
+        rollout_step_index: int,
+    ) -> bool:
+        """Return whether another rollout continuation decision may run."""
+        return self.max_extra_steps is None or rollout_step_index < self.max_extra_steps
 
     def _decision_context(
         self,

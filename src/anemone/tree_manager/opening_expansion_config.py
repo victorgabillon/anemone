@@ -27,10 +27,12 @@ class RolloutExpansionConfig:
 
     ``max_extra_steps`` limits continuation decisions after each initial edge.
     A continuation decision may traverse an already-opened edge or materialize
-    a new edge at the frontier.
+    a new edge at the frontier. If ``None``, rollout continues until a normal
+    stop condition such as terminal state, no legal action, action-selector
+    stop, branch-budget exhaustion, or existing-node stop.
     """
 
-    max_extra_steps: int = 0
+    max_extra_steps: int | None = 0
     action_selector_kind: RolloutActionSelectorKind = (
         RolloutActionSelectorKind.FIRST_OPENABLE
     )
@@ -39,7 +41,7 @@ class RolloutExpansionConfig:
 
     def __post_init__(self) -> None:
         """Validate rollout expansion settings."""
-        if self.max_extra_steps < 0:
+        if self.max_extra_steps is not None and self.max_extra_steps < 0:
             msg = "max_extra_steps must be non-negative"
             raise ValueError(msg)
 
