@@ -86,6 +86,7 @@ class _Node:
     non_opened_branches: set[int] = field(default_factory=set)
     parent_nodes: dict[_Node, set[int]] = field(default_factory=dict)
     terminal: bool = False
+    exact: bool = False
 
     def add_parent(self, branch_key: int, new_parent_node: _Node) -> None:
         """Record an incoming edge."""
@@ -95,10 +96,17 @@ class _Node:
         """Return whether this fake node is terminal."""
         return self.terminal
 
+    @property
+    def tree_evaluation(self) -> object:
+        """Return a tiny tree-evaluation facade for report metadata tests."""
+        return SimpleNamespace(has_exact_value=lambda: self.exact)
+
 
 @dataclass
 class _NodeFactory:
     preopened_branches_by_tag: dict[str, set[int]] = field(default_factory=dict)
+    terminal_tags: set[str] = field(default_factory=set)
+    exact_tags: set[str] = field(default_factory=set)
 
     def create(
         self,
@@ -113,7 +121,13 @@ class _NodeFactory:
         """Create a fake node from a materialized state handle."""
         del branch_from_parent, parent_node, modifications
         state = state_handle.get()
-        node = _Node(id=count, state=state, tree_depth=tree_depth)
+        node = _Node(
+            id=count,
+            state=state,
+            tree_depth=tree_depth,
+            terminal=state.tag in self.terminal_tags,
+            exact=state.tag in self.exact_tags,
+        )
         for branch in self.preopened_branches_by_tag.get(state.tag, set()):
             node.branches_children[branch] = _Node(
                 id=1000 + branch,
@@ -240,6 +254,15 @@ def test_max_extra_steps_zero_matches_one_ply() -> None:
         executor.last_report.stop_reason_counts[RolloutStopReason.MAX_EXTRA_STEPS.value]
         == 1
     )
+    assert len(executor.last_report.path_reports) == 1
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.initial_edge_count == 1
+    assert path_report.extra_edge_count == 0
+    assert path_report.traversal_count == 0
+    assert path_report.total_edge_count == 1
+    assert path_report.stop_reason == RolloutStopReason.MAX_EXTRA_STEPS.value
+    assert path_report.end_node_id == str(child.id)
+    assert path_report.end_depth == 1
 
 
 def test_deterministic_rollout_creates_chain() -> None:
@@ -276,6 +299,17 @@ def test_deterministic_rollout_creates_chain() -> None:
     assert executor.last_report.extra_edge_count == 2
     assert executor.last_report.total_edge_count == 3
     assert executor.last_report.max_extra_depth_reached == 2
+    assert len(executor.last_report.path_reports) == 1
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.start_node_id == str(first.id)
+    assert path_report.start_depth == 1
+    assert path_report.end_node_id == str(third.id)
+    assert path_report.end_depth == 3
+    assert path_report.extra_edge_count == 2
+    assert path_report.total_edge_count == 3
+    assert path_report.stop_reason == RolloutStopReason.MAX_EXTRA_STEPS.value
+    assert path_report.end_is_terminal is False
+    assert path_report.end_is_exact is False
 
 
 def test_unbounded_rollout_continues_until_no_legal_actions() -> None:
@@ -312,6 +346,35 @@ def test_unbounded_rollout_continues_until_no_legal_actions() -> None:
         executor.last_report.stop_reason_counts[RolloutStopReason.MAX_EXTRA_STEPS.value]
         == 0
     )
+    assert executor.last_report.path_reports[0].extra_edge_count == 2
+    assert (
+        executor.last_report.path_reports[0].stop_reason
+        == RolloutStopReason.NO_LEGAL_ACTIONS.value
+    )
+
+
+def test_rollout_path_report_records_terminal_end_state() -> None:
+    """Path reports include terminal and exact metadata from the final node."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics({"root": [0], "root:0": [1]})
+    executor = _executor(
+        dynamics=dynamics,
+        max_extra_steps=3,
+        node_factory=_NodeFactory(
+            terminal_tags={"root:0"},
+            exact_tags={"root:0"},
+        ),
+    )
+
+    executor.expand(tree=tree, opening_instructions=_instructions(root, [0]))
+
+    assert executor.last_report is not None
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.stop_reason == RolloutStopReason.TERMINAL.value
+    assert path_report.extra_edge_count == 0
+    assert path_report.end_is_terminal is True
+    assert path_report.end_is_exact is True
 
 
 def test_unbounded_rollout_respects_branch_budget() -> None:
@@ -430,6 +493,10 @@ def test_rollout_traverses_opened_action_before_opening_frontier() -> None:
     assert executor.last_report.traversal_count == 1
     assert executor.last_report.extra_edge_count == 1
     assert executor.last_report.total_edge_count == 2
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.traversal_count == 1
+    assert path_report.extra_edge_count == 1
+    assert path_report.total_edge_count == 2
 
 
 def test_rollout_invalid_action_raises() -> None:
@@ -470,12 +537,28 @@ def test_rollout_does_not_start_initial_edge_when_budget_is_exhausted() -> None:
     assert tree.branch_count == 0
     assert executor.last_report is not None
     assert executor.last_report.total_edge_count == 0
+    assert executor.last_report.path_reports == ()
     assert (
         executor.last_report.stop_reason_counts[
             RolloutStopReason.BRANCH_BUDGET_EXHAUSTED.value
         ]
         == 1
     )
+
+
+def test_rollout_report_has_no_path_reports_without_initial_openings() -> None:
+    """An empty opening batch leaves the per-path report empty."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics({"root": [0]})
+    executor = _executor(dynamics=dynamics, max_extra_steps=3)
+
+    executor.expand(tree=tree, opening_instructions=OpeningInstructions())
+
+    assert executor.last_report is not None
+    assert executor.last_report.total_edge_count == 0
+    assert executor.last_report.path_count == 0
+    assert executor.last_report.path_reports == ()
 
 
 def test_no_rollout_action_selector_stops_after_initial_edge() -> None:
@@ -504,6 +587,10 @@ def test_no_rollout_action_selector_stops_after_initial_edge() -> None:
         ]
         == 1
     )
+    assert (
+        executor.last_report.path_reports[0].stop_reason
+        == RolloutStopReason.ACTION_SELECTOR_STOP.value
+    )
 
 
 def test_no_legal_actions_stops_after_initial_edge() -> None:
@@ -521,6 +608,10 @@ def test_no_legal_actions_stops_after_initial_edge() -> None:
             RolloutStopReason.NO_LEGAL_ACTIONS.value
         ]
         == 1
+    )
+    assert (
+        executor.last_report.path_reports[0].stop_reason
+        == RolloutStopReason.NO_LEGAL_ACTIONS.value
     )
 
 

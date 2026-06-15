@@ -20,6 +20,7 @@ from .action_selector import RolloutDecisionContext
 from .report import (
     RolloutExpansionReport,
     RolloutExpansionReportBuilder,
+    RolloutPathReport,
     RolloutStopReason,
 )
 
@@ -53,6 +54,16 @@ def _invalid_rollout_action_error(
         f"opened_actions={context.opened_actions!r}, "
         f"openable_actions={context.openable_actions!r}"
     )
+
+
+@dataclass(frozen=True, slots=True)
+class _RolloutPathOutcome[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
+    """Internal result for one rollout path after the initial opening."""
+
+    stop_reason: RolloutStopReason
+    end_node: NodeT
+    extra_edge_count: int = 0
+    traversal_count: int = 0
 
 
 @dataclass(slots=True)
@@ -103,7 +114,7 @@ class RolloutOpeningExpansionExecutor[
                 created_node=initial_expansion.creation_child_node
             )
 
-            stop_reason = self._rollout_from_initial_child(
+            path_outcome = self._rollout_from_initial_child(
                 tree=tree,
                 initial_expansion=initial_expansion,
                 tree_expansions=tree_expansions,
@@ -111,7 +122,17 @@ class RolloutOpeningExpansionExecutor[
                 report_builder=report_builder,
                 budget=budget,
             )
-            report_builder.record_stop(stop_reason)
+            report_builder.record_stop(path_outcome.stop_reason)
+            report_builder.record_path(
+                _rollout_path_report(
+                    tree=tree,
+                    start_node=initial_expansion.child_node,
+                    end_node=path_outcome.end_node,
+                    extra_edge_count=path_outcome.extra_edge_count,
+                    traversal_count=path_outcome.traversal_count,
+                    stop_reason=path_outcome.stop_reason,
+                )
+            )
 
         for parent_node in touched_parent_nodes_by_id.values():
             sync_opening_status(node=parent_node, dynamics=self.dynamics)
@@ -128,35 +149,64 @@ class RolloutOpeningExpansionExecutor[
         touched_parent_nodes_by_id: dict[int, NodeT],
         report_builder: RolloutExpansionReportBuilder,
         budget: OpeningExpansionBudget | None,
-    ) -> RolloutStopReason:
+    ) -> _RolloutPathOutcome[NodeT]:
         """Materialize rollout continuation edges after one initial expansion."""
+        current_node = initial_expansion.child_node
+        extra_edge_count = 0
+        traversal_count = 0
+
         if self.max_extra_steps == 0:
-            return RolloutStopReason.MAX_EXTRA_STEPS
+            return _RolloutPathOutcome(
+                stop_reason=RolloutStopReason.MAX_EXTRA_STEPS,
+                end_node=current_node,
+            )
 
         if self.stop_on_existing_node and not initial_expansion.creation_child_node:
-            return RolloutStopReason.EXISTING_NODE
+            return _RolloutPathOutcome(
+                stop_reason=RolloutStopReason.EXISTING_NODE,
+                end_node=current_node,
+            )
 
-        current_node = initial_expansion.child_node
         rollout_step_index = 0
 
         while self._has_remaining_rollout_decision_budget(rollout_step_index):
             if _is_terminal_node(current_node):
-                return RolloutStopReason.TERMINAL
+                return _RolloutPathOutcome(
+                    stop_reason=RolloutStopReason.TERMINAL,
+                    end_node=current_node,
+                    extra_edge_count=extra_edge_count,
+                    traversal_count=traversal_count,
+                )
 
             context = self._decision_context(
                 current_node=current_node,
                 rollout_step_index=rollout_step_index,
             )
             if not context.legal_actions:
-                return RolloutStopReason.NO_LEGAL_ACTIONS
+                return _RolloutPathOutcome(
+                    stop_reason=RolloutStopReason.NO_LEGAL_ACTIONS,
+                    end_node=current_node,
+                    extra_edge_count=extra_edge_count,
+                    traversal_count=traversal_count,
+                )
 
             action = self._choose_rollout_action(context)
             if action is None:
-                return RolloutStopReason.ACTION_SELECTOR_STOP
+                return _RolloutPathOutcome(
+                    stop_reason=RolloutStopReason.ACTION_SELECTOR_STOP,
+                    end_node=current_node,
+                    extra_edge_count=extra_edge_count,
+                    traversal_count=traversal_count,
+                )
 
             if action in context.openable_actions:
                 if not reserve_branch_opening(budget):
-                    return RolloutStopReason.BRANCH_BUDGET_EXHAUSTED
+                    return _RolloutPathOutcome(
+                        stop_reason=RolloutStopReason.BRANCH_BUDGET_EXHAUSTED,
+                        end_node=current_node,
+                        extra_edge_count=extra_edge_count,
+                        traversal_count=traversal_count,
+                    )
 
                 rollout_expansion = self.branch_opening_service.open_branch(
                     tree=tree,
@@ -169,12 +219,18 @@ class RolloutOpeningExpansionExecutor[
                     rollout_depth=rollout_step_index + 1,
                     created_node=rollout_expansion.creation_child_node,
                 )
+                extra_edge_count += 1
 
                 if (
                     self.stop_on_existing_node
                     and not rollout_expansion.creation_child_node
                 ):
-                    return RolloutStopReason.EXISTING_NODE
+                    return _RolloutPathOutcome(
+                        stop_reason=RolloutStopReason.EXISTING_NODE,
+                        end_node=rollout_expansion.child_node,
+                        extra_edge_count=extra_edge_count,
+                        traversal_count=traversal_count,
+                    )
 
                 current_node = rollout_expansion.child_node
                 rollout_step_index += 1
@@ -189,6 +245,7 @@ class RolloutOpeningExpansionExecutor[
                         context=context,
                     )
                 report_builder.record_traversal()
+                traversal_count += 1
                 current_node = child_node
                 rollout_step_index += 1
                 continue
@@ -199,7 +256,12 @@ class RolloutOpeningExpansionExecutor[
                 context=context,
             )
 
-        return RolloutStopReason.MAX_EXTRA_STEPS
+        return _RolloutPathOutcome(
+            stop_reason=RolloutStopReason.MAX_EXTRA_STEPS,
+            end_node=current_node,
+            extra_edge_count=extra_edge_count,
+            traversal_count=traversal_count,
+        )
 
     def _has_remaining_rollout_decision_budget(
         self,
@@ -243,6 +305,59 @@ class RolloutOpeningExpansionExecutor[
 
 def _is_terminal_node(node_to_check: node.ITreeNode[Any]) -> bool:
     """Return whether a node exposes terminal state through existing APIs."""
+    terminal = _terminal_status(node_to_check)
+    return bool(terminal) if terminal is not None else False
+
+
+def _rollout_path_report(
+    *,
+    tree: trees.Tree[node.ITreeNode[Any]],
+    start_node: node.ITreeNode[Any],
+    end_node: node.ITreeNode[Any],
+    extra_edge_count: int,
+    traversal_count: int,
+    stop_reason: RolloutStopReason,
+) -> RolloutPathReport:
+    """Build a stable public report for one rollout path."""
+    initial_edge_count = 1
+    total_edge_count = initial_edge_count + extra_edge_count
+    return RolloutPathReport(
+        start_node_id=_node_id(start_node),
+        start_depth=_node_depth(tree=tree, node_to_check=start_node),
+        end_node_id=_node_id(end_node),
+        end_depth=_node_depth(tree=tree, node_to_check=end_node),
+        initial_edge_count=initial_edge_count,
+        extra_edge_count=extra_edge_count,
+        traversal_count=traversal_count,
+        total_edge_count=total_edge_count,
+        stop_reason=stop_reason.value,
+        end_is_terminal=_terminal_status(end_node),
+        end_is_exact=_exact_status(end_node),
+    )
+
+
+def _node_id(node_to_check: node.ITreeNode[Any]) -> str | None:
+    """Return a stable string node id when exposed by the node."""
+    node_id = getattr(node_to_check, "id", None)
+    return None if node_id is None else str(node_id)
+
+
+def _node_depth(
+    *,
+    tree: trees.Tree[node.ITreeNode[Any]],
+    node_to_check: node.ITreeNode[Any],
+) -> int | None:
+    """Return the node depth through the tree API when available."""
+    node_depth = getattr(tree, "node_depth", None)
+    if callable(node_depth):
+        depth = node_depth(node_to_check)
+        return depth if isinstance(depth, int) else None
+    depth = getattr(node_to_check, "tree_depth", None)
+    return depth if isinstance(depth, int) else None
+
+
+def _terminal_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
+    """Return terminal status when the node exposes it cheaply."""
     is_over = getattr(node_to_check, "is_over", None)
     if callable(is_over):
         return bool(is_over())
@@ -252,7 +367,25 @@ def _is_terminal_node(node_to_check: node.ITreeNode[Any]) -> bool:
     if callable(is_terminal):
         return bool(is_terminal())
 
-    return False
+    return None
+
+
+def _exact_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
+    """Return exact-value status when the node exposes it cheaply."""
+    tree_evaluation = getattr(node_to_check, "tree_evaluation", None)
+    has_exact_value = getattr(tree_evaluation, "has_exact_value", None)
+    if callable(has_exact_value):
+        return bool(has_exact_value())
+
+    node_has_exact_value = getattr(node_to_check, "has_exact_value", None)
+    if callable(node_has_exact_value):
+        return bool(node_has_exact_value())
+
+    exact = getattr(node_to_check, "exact", None)
+    if isinstance(exact, bool):
+        return exact
+
+    return None
 
 
 __all__ = [
