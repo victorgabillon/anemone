@@ -64,6 +64,19 @@ class _RolloutPathOutcome[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
     end_node: NodeT
     extra_edge_count: int = 0
     traversal_count: int = 0
+    end_created_node: bool | None = None
+    end_legal_action_count: int | None = None
+    end_openable_action_count: int | None = None
+    end_opened_action_count: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _RolloutContextCounts:
+    """Cheap action-count diagnostics from one rollout decision context."""
+
+    legal_action_count: int
+    openable_action_count: int
+    opened_action_count: int
 
 
 @dataclass(slots=True)
@@ -131,6 +144,10 @@ class RolloutOpeningExpansionExecutor[
                     extra_edge_count=path_outcome.extra_edge_count,
                     traversal_count=path_outcome.traversal_count,
                     stop_reason=path_outcome.stop_reason,
+                    end_created_node=path_outcome.end_created_node,
+                    end_legal_action_count=path_outcome.end_legal_action_count,
+                    end_openable_action_count=path_outcome.end_openable_action_count,
+                    end_opened_action_count=path_outcome.end_opened_action_count,
                 )
             )
 
@@ -159,15 +176,18 @@ class RolloutOpeningExpansionExecutor[
             return _RolloutPathOutcome(
                 stop_reason=RolloutStopReason.MAX_EXTRA_STEPS,
                 end_node=current_node,
+                end_created_node=initial_expansion.creation_child_node,
             )
 
         if self.stop_on_existing_node and not initial_expansion.creation_child_node:
             return _RolloutPathOutcome(
                 stop_reason=RolloutStopReason.EXISTING_NODE,
                 end_node=current_node,
+                end_created_node=False,
             )
 
         rollout_step_index = 0
+        end_created_node = initial_expansion.creation_child_node
 
         while self._has_remaining_rollout_decision_budget(rollout_step_index):
             if _is_terminal_node(current_node):
@@ -176,18 +196,24 @@ class RolloutOpeningExpansionExecutor[
                     end_node=current_node,
                     extra_edge_count=extra_edge_count,
                     traversal_count=traversal_count,
+                    end_created_node=end_created_node,
                 )
 
             context = self._decision_context(
                 current_node=current_node,
                 rollout_step_index=rollout_step_index,
             )
+            context_counts = _rollout_context_counts(context)
             if not context.legal_actions:
                 return _RolloutPathOutcome(
                     stop_reason=RolloutStopReason.NO_LEGAL_ACTIONS,
                     end_node=current_node,
                     extra_edge_count=extra_edge_count,
                     traversal_count=traversal_count,
+                    end_created_node=end_created_node,
+                    end_legal_action_count=context_counts.legal_action_count,
+                    end_openable_action_count=context_counts.openable_action_count,
+                    end_opened_action_count=context_counts.opened_action_count,
                 )
 
             action = self._choose_rollout_action(context)
@@ -197,6 +223,10 @@ class RolloutOpeningExpansionExecutor[
                     end_node=current_node,
                     extra_edge_count=extra_edge_count,
                     traversal_count=traversal_count,
+                    end_created_node=end_created_node,
+                    end_legal_action_count=context_counts.legal_action_count,
+                    end_openable_action_count=context_counts.openable_action_count,
+                    end_opened_action_count=context_counts.opened_action_count,
                 )
 
             if action in context.openable_actions:
@@ -206,6 +236,10 @@ class RolloutOpeningExpansionExecutor[
                         end_node=current_node,
                         extra_edge_count=extra_edge_count,
                         traversal_count=traversal_count,
+                        end_created_node=end_created_node,
+                        end_legal_action_count=context_counts.legal_action_count,
+                        end_openable_action_count=context_counts.openable_action_count,
+                        end_opened_action_count=context_counts.opened_action_count,
                     )
 
                 rollout_expansion = self.branch_opening_service.open_branch(
@@ -230,9 +264,11 @@ class RolloutOpeningExpansionExecutor[
                         end_node=rollout_expansion.child_node,
                         extra_edge_count=extra_edge_count,
                         traversal_count=traversal_count,
+                        end_created_node=rollout_expansion.creation_child_node,
                     )
 
                 current_node = rollout_expansion.child_node
+                end_created_node = rollout_expansion.creation_child_node
                 rollout_step_index += 1
                 continue
 
@@ -247,6 +283,7 @@ class RolloutOpeningExpansionExecutor[
                 report_builder.record_traversal()
                 traversal_count += 1
                 current_node = child_node
+                end_created_node = False
                 rollout_step_index += 1
                 continue
 
@@ -261,6 +298,7 @@ class RolloutOpeningExpansionExecutor[
             end_node=current_node,
             extra_edge_count=extra_edge_count,
             traversal_count=traversal_count,
+            end_created_node=end_created_node,
         )
 
     def _has_remaining_rollout_decision_budget(
@@ -304,9 +342,20 @@ class RolloutOpeningExpansionExecutor[
 
 
 def _is_terminal_node(node_to_check: node.ITreeNode[Any]) -> bool:
-    """Return whether a node exposes terminal state through existing APIs."""
-    terminal = _terminal_status(node_to_check)
+    """Return whether the pre-existing rollout stop API marks the node terminal."""
+    terminal = _rollout_stop_terminal_status(node_to_check)
     return bool(terminal) if terminal is not None else False
+
+
+def _rollout_context_counts(
+    context: RolloutDecisionContext[node.ITreeNode[Any]],
+) -> _RolloutContextCounts:
+    """Return count-only diagnostics from a rollout decision context."""
+    return _RolloutContextCounts(
+        legal_action_count=len(context.legal_actions),
+        openable_action_count=len(context.openable_actions),
+        opened_action_count=len(context.opened_actions),
+    )
 
 
 def _rollout_path_report(
@@ -317,10 +366,15 @@ def _rollout_path_report(
     extra_edge_count: int,
     traversal_count: int,
     stop_reason: RolloutStopReason,
+    end_created_node: bool | None,
+    end_legal_action_count: int | None,
+    end_openable_action_count: int | None,
+    end_opened_action_count: int | None,
 ) -> RolloutPathReport:
     """Build a stable public report for one rollout path."""
     initial_edge_count = 1
     total_edge_count = initial_edge_count + extra_edge_count
+    end_is_terminal = _terminal_status(end_node)
     return RolloutPathReport(
         start_node_id=_node_id(start_node),
         start_depth=_node_depth(tree=tree, node_to_check=start_node),
@@ -331,8 +385,18 @@ def _rollout_path_report(
         traversal_count=traversal_count,
         total_edge_count=total_edge_count,
         stop_reason=stop_reason.value,
-        end_is_terminal=_terminal_status(end_node),
+        end_is_terminal=end_is_terminal,
         end_is_exact=_exact_status(end_node),
+        end_legal_action_count=end_legal_action_count,
+        end_openable_action_count=end_openable_action_count,
+        end_opened_action_count=end_opened_action_count,
+        end_non_opened_branch_count=_non_opened_branch_count(end_node),
+        end_was_existing_node=_inverse_optional_bool(end_created_node),
+        end_was_created_node=end_created_node,
+        no_legal_actions_but_not_terminal=_no_legal_actions_but_not_terminal(
+            stop_reason=stop_reason,
+            end_is_terminal=end_is_terminal,
+        ),
     )
 
 
@@ -357,7 +421,40 @@ def _node_depth(
 
 
 def _terminal_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
-    """Return terminal status when the node exposes it cheaply."""
+    """Return report terminal status from cheap node, state, or evaluation APIs."""
+    known_false = False
+
+    is_over = getattr(node_to_check, "is_over", None)
+    if callable(is_over):
+        if bool(is_over()):
+            return True
+        known_false = True
+
+    state = getattr(node_to_check, "state", None)
+    is_game_over = getattr(state, "is_game_over", None)
+    if callable(is_game_over):
+        if bool(is_game_over()):
+            return True
+        known_false = True
+
+    state_is_terminal = getattr(state, "is_terminal", None)
+    if isinstance(state_is_terminal, bool):
+        if state_is_terminal:
+            return True
+        known_false = True
+
+    tree_evaluation = getattr(node_to_check, "tree_evaluation", None)
+    is_terminal = getattr(tree_evaluation, "is_terminal", None)
+    if callable(is_terminal):
+        if bool(is_terminal()):
+            return True
+        known_false = True
+
+    return False if known_false else None
+
+
+def _rollout_stop_terminal_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
+    """Return terminal status using only the original rollout stop surfaces."""
     is_over = getattr(node_to_check, "is_over", None)
     if callable(is_over):
         return bool(is_over())
@@ -386,6 +483,35 @@ def _exact_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
         return exact
 
     return None
+
+
+def _non_opened_branch_count(node_to_check: node.ITreeNode[Any]) -> int | None:
+    """Return the node's stored non-opened branch count when available."""
+    non_opened_branches = getattr(node_to_check, "non_opened_branches", None)
+    if non_opened_branches is None:
+        return None
+    try:
+        return len(non_opened_branches)
+    except TypeError:
+        return None
+
+
+def _inverse_optional_bool(value: bool | None) -> bool | None:
+    """Return the inverse of an optional boolean."""
+    return None if value is None else not value
+
+
+def _no_legal_actions_but_not_terminal(
+    *,
+    stop_reason: RolloutStopReason,
+    end_is_terminal: bool | None,
+) -> bool | None:
+    """Return whether a no-legal-actions stop was not tagged terminal."""
+    if stop_reason is not RolloutStopReason.NO_LEGAL_ACTIONS:
+        return False
+    if end_is_terminal is None:
+        return None
+    return not end_is_terminal
 
 
 __all__ = [

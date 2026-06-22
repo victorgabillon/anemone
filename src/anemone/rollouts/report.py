@@ -42,6 +42,13 @@ class RolloutPathReport:
     stop_reason: str
     end_is_terminal: bool | None
     end_is_exact: bool | None
+    end_legal_action_count: int | None = None
+    end_openable_action_count: int | None = None
+    end_opened_action_count: int | None = None
+    end_non_opened_branch_count: int | None = None
+    end_was_existing_node: bool | None = None
+    end_was_created_node: bool | None = None
+    no_legal_actions_but_not_terminal: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -310,6 +310,8 @@ def test_deterministic_rollout_creates_chain() -> None:
     assert path_report.stop_reason == RolloutStopReason.MAX_EXTRA_STEPS.value
     assert path_report.end_is_terminal is False
     assert path_report.end_is_exact is False
+    assert path_report.end_was_created_node is True
+    assert path_report.end_was_existing_node is False
 
 
 def test_unbounded_rollout_continues_until_no_legal_actions() -> None:
@@ -351,6 +353,13 @@ def test_unbounded_rollout_continues_until_no_legal_actions() -> None:
         executor.last_report.path_reports[0].stop_reason
         == RolloutStopReason.NO_LEGAL_ACTIONS.value
     )
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.end_legal_action_count == 0
+    assert path_report.end_openable_action_count == 0
+    assert path_report.end_opened_action_count == 0
+    assert path_report.end_non_opened_branch_count == 0
+    assert path_report.end_is_terminal is False
+    assert path_report.no_legal_actions_but_not_terminal is True
 
 
 def test_rollout_path_report_records_terminal_end_state() -> None:
@@ -375,6 +384,9 @@ def test_rollout_path_report_records_terminal_end_state() -> None:
     assert path_report.extra_edge_count == 0
     assert path_report.end_is_terminal is True
     assert path_report.end_is_exact is True
+    assert path_report.end_legal_action_count is None
+    assert path_report.end_openable_action_count is None
+    assert path_report.end_opened_action_count is None
 
 
 def test_unbounded_rollout_respects_branch_budget() -> None:
@@ -682,6 +694,10 @@ def test_existing_node_reached_during_rollout_stops_after_recording_edge() -> No
     assert executor.last_report.extra_edge_count == 1
     assert executor.last_report.existing_node_stop_count == 1
     assert executor.last_report.traversal_count == 0
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.end_node_id == str(existing.id)
+    assert path_report.end_was_created_node is False
+    assert path_report.end_was_existing_node is True
 
 
 def test_rollout_edges_call_branch_opened_callback() -> None:
