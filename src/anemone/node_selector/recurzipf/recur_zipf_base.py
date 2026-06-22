@@ -9,7 +9,7 @@ Classes:
 
 from dataclasses import dataclass
 from random import Random
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from anemone import trees
 from anemone.node_evaluation.common.branch_frontier import (
@@ -95,7 +95,12 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             branch = self.branch_explorer.sample_branch_to_explore(
                 tree_node_to_sample_from=wandering_node
             )
-            next_node = wandering_node.branches_children[branch]
+            child_for_branch = getattr(wandering_node, "child_for_branch", None)
+            next_node = (
+                cast("NodeT | None", child_for_branch(branch))
+                if callable(child_for_branch)
+                else wandering_node.branches_children[branch]
+            )
             assert next_node is not None
             wandering_node = next_node
 

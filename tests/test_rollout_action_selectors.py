@@ -4,8 +4,10 @@ from random import Random
 from typing import Any, cast
 
 from anemone.rollouts import (
+    FirstLegalPreferOpenableActionSelector,
     FirstOpenableActionSelector,
     NoRolloutActionSelector,
+    RandomLegalPreferOpenableActionSelector,
     RandomOpenableActionSelector,
     RolloutDecisionContext,
 )
@@ -46,6 +48,34 @@ def test_first_openable_action_selector_ignores_opened_actions() -> None:
     assert selector.choose_action(context) == 1
 
 
+def test_first_legal_prefer_openable_prefers_openable_order() -> None:
+    """First legal-prefer-openable selector keeps frontier work first."""
+    selector: FirstLegalPreferOpenableActionSelector[Any] = (
+        FirstLegalPreferOpenableActionSelector()
+    )
+    context = _context(
+        legal_actions=(0, 1, 2),
+        opened_actions=(0,),
+        openable_actions=(1, 2),
+    )
+
+    assert selector.choose_action(context) == 1
+
+
+def test_first_legal_prefer_openable_traverses_when_saturated() -> None:
+    """First legal-prefer-openable selector traverses opened saturated nodes."""
+    selector: FirstLegalPreferOpenableActionSelector[Any] = (
+        FirstLegalPreferOpenableActionSelector()
+    )
+    context = _context(
+        legal_actions=(0, 1),
+        opened_actions=(0, 1),
+        openable_actions=(),
+    )
+
+    assert selector.choose_action(context) == 0
+
+
 def test_no_rollout_action_selector_stops() -> None:
     """No-rollout selector returns no action."""
     selector: NoRolloutActionSelector[Any] = NoRolloutActionSelector()
@@ -83,4 +113,56 @@ def test_random_openable_action_selector_stops_when_no_action_is_openable() -> N
 
     assert (
         selector.choose_action(_context(legal_actions=(), openable_actions=())) is None
+    )
+
+
+def test_random_legal_prefer_openable_action_selector_is_reproducible() -> None:
+    """Random legal-prefer-openable selector uses its injected random generator."""
+    selector_a: RandomLegalPreferOpenableActionSelector[Any] = (
+        RandomLegalPreferOpenableActionSelector(Random(123))
+    )
+    selector_b: RandomLegalPreferOpenableActionSelector[Any] = (
+        RandomLegalPreferOpenableActionSelector(Random(123))
+    )
+    context = _context(
+        legal_actions=(0, 1, 2),
+        opened_actions=(0,),
+        openable_actions=(1, 2),
+    )
+
+    choices_a = [selector_a.choose_action(context) for _ in range(10)]
+    choices_b = [selector_b.choose_action(context) for _ in range(10)]
+
+    assert choices_a == choices_b
+    assert all(choice in context.openable_actions for choice in choices_a)
+    assert 0 not in choices_a
+
+
+def test_random_legal_prefer_openable_traverses_when_saturated() -> None:
+    """Random legal-prefer-openable selector samples opened saturated actions."""
+    selector: RandomLegalPreferOpenableActionSelector[Any] = (
+        RandomLegalPreferOpenableActionSelector(Random(0))
+    )
+    context = _context(
+        legal_actions=(0, 1),
+        opened_actions=(0, 1),
+        openable_actions=(),
+    )
+
+    choices = [selector.choose_action(context) for _ in range(10)]
+
+    assert all(choice in context.opened_actions for choice in choices)
+
+
+def test_random_legal_prefer_openable_stops_when_no_action_exists() -> None:
+    """Random legal-prefer-openable selector returns no action when empty."""
+    selector: RandomLegalPreferOpenableActionSelector[Any] = (
+        RandomLegalPreferOpenableActionSelector(Random(0))
+    )
+
+    assert (
+        selector.choose_action(
+            _context(legal_actions=(), opened_actions=(), openable_actions=())
+        )
+        is None
     )

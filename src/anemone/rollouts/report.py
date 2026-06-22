@@ -22,6 +22,11 @@ def _new_stop_reason_counts() -> dict[str, int]:
     return {reason.value: 0 for reason in RolloutStopReason}
 
 
+def _new_path_reports() -> list[RolloutPathReport]:
+    """Return a fresh rollout path-report list."""
+    return []
+
+
 @dataclass(frozen=True, slots=True)
 class RolloutPathReport:
     """Summary of one materialized rollout trajectory.
@@ -79,7 +84,7 @@ class RolloutExpansionReportBuilder:
     existing_node_stop_count: int = 0
     max_extra_depth_reached: int = 0
     stop_reason_counts: dict[str, int] = field(default_factory=_new_stop_reason_counts)
-    path_reports: list[RolloutPathReport] = field(default_factory=list)
+    path_reports: list[RolloutPathReport] = field(default_factory=_new_path_reports)
 
     def record_initial_edge(self, *, created_node: bool) -> None:
         """Record an initial instruction edge."""

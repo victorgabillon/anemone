@@ -50,7 +50,7 @@ def print_best_line(node_eval: BestLinePrintableNodeEval) -> None:
     info_string = f"Best line from node {node_eval.tree_node.id!s}: "
     running_node_eval: Any = node_eval
     for branch in node_eval.best_branch_sequence:
-        child = running_node_eval.tree_node.branches_children[branch]
+        child = running_node_eval.tree_node.child_for_branch(branch)
         if child is None:
             raise _missing_pv_child_error(
                 node_id=running_node_eval.tree_node.id,

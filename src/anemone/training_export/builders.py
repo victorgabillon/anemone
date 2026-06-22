@@ -25,7 +25,7 @@ from anemone.training_export.model import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Iterable, Sequence
 
 
 class MissingNodeIdError(TypeError):
@@ -350,6 +350,11 @@ def _get_child_ids(node: object) -> tuple[str, ...]:
         return tuple(
             sorted(_normalize_node_id(child_id) for child_id in loaded_child_id_set)
         )
+
+    iter_child_nodes = _safe_getattr(node, "iter_child_nodes")
+    if callable(iter_child_nodes):
+        child_nodes = cast("Iterable[object]", iter_child_nodes())
+        return tuple(sorted(_normalize_node_id(child) for child in child_nodes))
 
     branches_children = _safe_getattr(node, "branches_children")
     if not isinstance(branches_children, Mapping):

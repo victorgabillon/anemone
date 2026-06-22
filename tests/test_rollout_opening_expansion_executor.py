@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from random import Random
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
@@ -14,9 +15,12 @@ from anemone.node_selector.opening_instructions import (
 )
 from anemone.progress_monitor.progress_monitor import TreeBranchLimit
 from anemone.rollouts import (
+    FirstLegalPreferOpenableActionSelector,
     FirstOpenableActionSelector,
     InvalidRolloutActionError,
     NoRolloutActionSelector,
+    RandomLegalPreferOpenableActionSelector,
+    RandomOpenableActionSelector,
     RolloutDecisionContext,
     RolloutOpeningExpansionExecutor,
     RolloutStopReason,
@@ -460,6 +464,186 @@ def test_rollout_consumes_budget_for_initial_and_extra_edges() -> None:
         ]
         == 1
     )
+
+
+def test_random_openable_stops_on_saturated_node() -> None:
+    """Random-openable remains a fresh-edge-only rollout policy."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics(
+        {
+            "root": [0],
+            "root:0": [7],
+            "root:0:preopened:7": [8],
+        }
+    )
+    executor = _executor(
+        dynamics=dynamics,
+        max_extra_steps=3,
+        action_selector=RandomOpenableActionSelector(Random(0)),
+        node_factory=_NodeFactory(
+            preopened_branches_by_tag={"root:0": {7}},
+            exact_tags={"root:0"},
+        ),
+    )
+
+    executor.expand(tree=tree, opening_instructions=_instructions(root, [0]))
+
+    child = root.branches_children[0]
+    assert child is not None
+    assert executor.last_report is not None
+    assert executor.last_report.traversal_count == 0
+    assert (
+        executor.last_report.stop_reason_counts[
+            RolloutStopReason.ACTION_SELECTOR_STOP.value
+        ]
+        == 1
+    )
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.stop_reason == RolloutStopReason.ACTION_SELECTOR_STOP.value
+    assert path_report.traversal_count == 0
+    assert path_report.extra_edge_count == 0
+    assert path_report.end_node_id == str(child.id)
+    assert path_report.end_legal_action_count == 1
+    assert path_report.end_openable_action_count == 0
+    assert path_report.end_opened_action_count == 1
+    assert path_report.end_non_opened_branch_count == 0
+    assert path_report.end_is_exact is True
+
+
+def test_random_legal_prefer_openable_traverses_saturated_node() -> None:
+    """Legal-prefer-openable rollout can traverse to a later frontier edge."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics(
+        {
+            "root": [0],
+            "root:0": [7],
+            "root:0:preopened:7": [8],
+            "root:0:preopened:7:8": [],
+        }
+    )
+    opened: list[tuple[int, int]] = []
+    executor = _executor(
+        dynamics=dynamics,
+        max_extra_steps=None,
+        action_selector=RandomLegalPreferOpenableActionSelector(Random(0)),
+        opened=opened,
+        node_factory=_NodeFactory(preopened_branches_by_tag={"root:0": {7}}),
+    )
+    budget = OpeningExpansionBudget(remaining_branch_openings=2)
+
+    expansions = executor.expand(
+        tree=tree,
+        opening_instructions=_instructions(root, [0]),
+        budget=budget,
+    )
+
+    child = root.branches_children[0]
+    assert child is not None
+    traversed_child = child.branches_children[7]
+    assert traversed_child is not None
+    frontier_child = traversed_child.branches_children[8]
+    assert frontier_child is not None
+    assert len(expansions.expansions_with_node_creation) == 2
+    assert expansions.expansions_without_node_creation == []
+    assert tree.branch_count == 2
+    assert budget.remaining_branch_openings == 0
+    assert opened == [(0, 0), (traversed_child.id, 8)]
+    assert executor.last_report is not None
+    assert executor.last_report.traversal_count == 1
+    assert executor.last_report.extra_edge_count == 1
+    assert executor.last_report.total_edge_count == 2
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.traversal_count == 1
+    assert path_report.extra_edge_count == 1
+    assert path_report.initial_edge_count == 1
+    assert path_report.total_edge_count == 2
+    assert path_report.stop_reason == RolloutStopReason.NO_LEGAL_ACTIONS.value
+    assert path_report.end_node_id == str(frontier_child.id)
+    assert path_report.end_legal_action_count == 0
+    assert path_report.end_openable_action_count == 0
+    assert path_report.end_opened_action_count == 0
+    assert path_report.end_non_opened_branch_count == 0
+
+
+def test_first_legal_prefer_openable_prefers_openable_over_opened() -> None:
+    """Legal-prefer-openable chooses frontier work before traversal."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics(
+        {
+            "root": [0],
+            "root:0": [7, 8],
+            "root:0:8": [],
+        }
+    )
+    opened: list[tuple[int, int]] = []
+    executor = _executor(
+        dynamics=dynamics,
+        max_extra_steps=1,
+        action_selector=FirstLegalPreferOpenableActionSelector(),
+        opened=opened,
+        node_factory=_NodeFactory(preopened_branches_by_tag={"root:0": {7}}),
+    )
+
+    executor.expand(tree=tree, opening_instructions=_instructions(root, [0]))
+
+    child = root.branches_children[0]
+    assert child is not None
+    assert child.branches_children[7] is not None
+    assert child.branches_children[8] is not None
+    assert opened == [(0, 0), (child.id, 8)]
+    assert executor.last_report is not None
+    assert executor.last_report.traversal_count == 0
+    assert executor.last_report.extra_edge_count == 1
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.traversal_count == 0
+    assert path_report.extra_edge_count == 1
+    assert path_report.stop_reason == RolloutStopReason.MAX_EXTRA_STEPS.value
+
+
+def test_legal_prefer_openable_stops_when_no_legal_actions_exist() -> None:
+    """Legal-prefer-openable respects no-legal-actions executor semantics."""
+    root = _Node(id=0, state=_State("root"), tree_depth=0)
+    tree = _Tree(root)
+    dynamics = _Dynamics({"root": [0], "root:0": []})
+    executor = _executor(
+        dynamics=dynamics,
+        max_extra_steps=3,
+        action_selector=FirstLegalPreferOpenableActionSelector(),
+    )
+
+    executor.expand(tree=tree, opening_instructions=_instructions(root, [0]))
+
+    assert executor.last_report is not None
+    path_report = executor.last_report.path_reports[0]
+    assert path_report.stop_reason == RolloutStopReason.NO_LEGAL_ACTIONS.value
+    assert path_report.end_legal_action_count == 0
+    assert path_report.end_openable_action_count == 0
+    assert path_report.end_opened_action_count == 0
+
+
+def test_random_legal_prefer_openable_executor_is_seed_reproducible() -> None:
+    """Random legal-prefer-openable rollout is reproducible with a fixed seed."""
+
+    def opened_actions_for_seed(seed: int) -> list[tuple[int, int]]:
+        root = _Node(id=0, state=_State("root"), tree_depth=0)
+        tree = _Tree(root)
+        dynamics = _Dynamics({"root": [0], "root:0": [1, 2, 3]})
+        opened: list[tuple[int, int]] = []
+        executor = _executor(
+            dynamics=dynamics,
+            max_extra_steps=1,
+            action_selector=RandomLegalPreferOpenableActionSelector(Random(seed)),
+            opened=opened,
+        )
+
+        executor.expand(tree=tree, opening_instructions=_instructions(root, [0]))
+
+        return opened
+
+    assert opened_actions_for_seed(123) == opened_actions_for_seed(123)
 
 
 def test_rollout_traverses_opened_action_before_opening_frontier() -> None:

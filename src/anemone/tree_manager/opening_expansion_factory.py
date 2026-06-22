@@ -7,8 +7,10 @@ from typing import TYPE_CHECKING, Any
 
 from anemone import nodes as node
 from anemone.rollouts import (
+    FirstLegalPreferOpenableActionSelector,
     FirstOpenableActionSelector,
     NoRolloutActionSelector,
+    RandomLegalPreferOpenableActionSelector,
     RandomOpenableActionSelector,
     RolloutActionSelector,
     RolloutOpeningExpansionExecutor,
@@ -47,6 +49,10 @@ def create_rollout_action_selector[
         """Create a first-openable rollout action selector."""
         return FirstOpenableActionSelector[NodeT]()
 
+    def create_first_legal_prefer_openable() -> RolloutActionSelector[NodeT]:
+        """Create a first-legal-prefer-openable rollout action selector."""
+        return FirstLegalPreferOpenableActionSelector[NodeT]()
+
     def create_no_rollout() -> RolloutActionSelector[NodeT]:
         """Create a no-rollout action selector."""
         return NoRolloutActionSelector[NodeT]()
@@ -55,11 +61,23 @@ def create_rollout_action_selector[
         """Create a random-openable rollout action selector."""
         return RandomOpenableActionSelector[NodeT](Random(config.random_seed))
 
+    def create_random_legal_prefer_openable() -> RolloutActionSelector[NodeT]:
+        """Create a random-legal-prefer-openable rollout action selector."""
+        return RandomLegalPreferOpenableActionSelector[NodeT](
+            Random(config.random_seed)
+        )
+
     selector_factories: dict[
         RolloutActionSelectorKind, Callable[[], RolloutActionSelector[NodeT]]
     ] = {
         RolloutActionSelectorKind.FIRST_OPENABLE: create_first_openable,
+        RolloutActionSelectorKind.FIRST_LEGAL_PREFER_OPENABLE: (
+            create_first_legal_prefer_openable
+        ),
         RolloutActionSelectorKind.NO_ROLLOUT: create_no_rollout,
+        RolloutActionSelectorKind.RANDOM_LEGAL_PREFER_OPENABLE: (
+            create_random_legal_prefer_openable
+        ),
         RolloutActionSelectorKind.RANDOM_OPENABLE: create_random_openable,
     }
     try:

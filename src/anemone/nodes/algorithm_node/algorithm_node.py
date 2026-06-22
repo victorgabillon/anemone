@@ -1,6 +1,6 @@
 """Runtime/search wrapper built on top of a structural ``TreeNode``."""
 
-from collections.abc import MutableMapping
+from collections.abc import Iterable, Iterator, MutableMapping
 from typing import Self
 
 from valanga import (
@@ -97,13 +97,53 @@ class AlgorithmNode[StateT: State = State]:
 
     @property
     def branches_children(self) -> MutableMapping[BranchKey, Self | None]:
-        """Returns the bidirectional dictionary of branches and their corresponding child nodes.
+        """Materialize and return the compatibility child-link dictionary.
 
-        Returns:
-            dict[BranchKey, ITreeNode | None]: The bidirectional dictionary of branches and their corresponding child nodes.
-
+        Core runtime code should prefer explicit structural helpers such as
+        ``iter_child_links`` and ``child_for_branch``.
         """
         return self.tree_node.branches_children
+
+    @branches_children.setter
+    def branches_children(self, value: MutableMapping[BranchKey, Self | None]) -> None:
+        """Set compatibility child links, preserving lazy empty storage."""
+        self.tree_node.branches_children = dict(value)
+
+    def has_child_links(self) -> bool:
+        """Return whether any structural child-link slot is stored."""
+        return self.tree_node.has_child_links()
+
+    def child_link_count(self) -> int:
+        """Return the number of stored child-link slots without allocating."""
+        return self.tree_node.child_link_count()
+
+    def iter_child_links(self) -> Iterator[tuple[BranchKey, Self | None]]:
+        """Iterate child-link slots without materializing empty storage."""
+        return self.tree_node.iter_child_links()
+
+    def iter_child_nodes(self) -> Iterator[Self]:
+        """Iterate concrete non-``None`` child nodes without allocating."""
+        return self.tree_node.iter_child_nodes()
+
+    def child_for_branch(self, branch: BranchKey) -> Self | None:
+        """Return the child linked to ``branch``, if any, without allocating."""
+        return self.tree_node.child_for_branch(branch)
+
+    def has_child_for_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` has a concrete child node."""
+        return self.tree_node.has_child_for_branch(branch)
+
+    def set_child_for_branch(self, branch: BranchKey, child: Self | None) -> None:
+        """Set one child-link slot."""
+        self.tree_node.set_child_for_branch(branch, child)
+
+    def remove_child_link(self, branch: BranchKey) -> None:
+        """Remove one child-link slot."""
+        self.tree_node.remove_child_link(branch)
+
+    def clear_child_links(self) -> None:
+        """Remove all child-link slots."""
+        self.tree_node.clear_child_links()
 
     @property
     def parent_nodes(self) -> dict[Self, set[BranchKey]]:
@@ -168,13 +208,49 @@ class AlgorithmNode[StateT: State = State]:
 
     @property
     def non_opened_branches(self) -> set[BranchKey]:
-        """Returns the set of non-opened branches.
+        """Materialize and return the compatibility unopened-branch set.
 
-        Returns:
-            set[BranchKey]: The set of non-opened branches.
-
+        Core runtime code should prefer explicit structural helpers such as
+        ``iter_unopened_branches`` and ``set_unopened_branches``.
         """
         return self.tree_node.non_opened_branches
+
+    @non_opened_branches.setter
+    def non_opened_branches(self, value: set[BranchKey]) -> None:
+        """Set compatibility unopened branches, preserving lazy empty storage."""
+        self.tree_node.non_opened_branches = value
+
+    def has_unopened_branches(self) -> bool:
+        """Return whether any unopened branches are stored."""
+        return self.tree_node.has_unopened_branches()
+
+    def unopened_branch_count(self) -> int:
+        """Return the stored unopened-branch count without allocating."""
+        return self.tree_node.unopened_branch_count()
+
+    def iter_unopened_branches(self) -> Iterator[BranchKey]:
+        """Iterate unopened branches without materializing empty storage."""
+        return self.tree_node.iter_unopened_branches()
+
+    def contains_unopened_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` is currently stored as unopened."""
+        return self.tree_node.contains_unopened_branch(branch)
+
+    def set_unopened_branches(self, branches: Iterable[BranchKey]) -> None:
+        """Replace unopened branches."""
+        self.tree_node.set_unopened_branches(branches)
+
+    def add_unopened_branch(self, branch: BranchKey) -> None:
+        """Add one unopened branch."""
+        self.tree_node.add_unopened_branch(branch)
+
+    def discard_unopened_branch(self, branch: BranchKey) -> None:
+        """Discard one unopened branch."""
+        self.tree_node.discard_unopened_branch(branch)
+
+    def clear_unopened_branches(self) -> None:
+        """Remove all unopened branches."""
+        self.tree_node.clear_unopened_branches()
 
     def __str__(self) -> str:
         """Return a concise string representation of the node."""

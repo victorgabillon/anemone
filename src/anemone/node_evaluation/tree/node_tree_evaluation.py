@@ -163,13 +163,47 @@ class ChildTreeEvaluation(Protocol):
         ...
 
 
+def _child_for_branch(
+    tree_node: Any,
+    branch: BranchKey,
+) -> TreeEvaluationChild[Any] | None:
+    """Return a child through the structural API with a compatibility fallback."""
+    child_for_branch = getattr(tree_node, "child_for_branch", None)
+    if callable(child_for_branch):
+        return cast("TreeEvaluationChild[Any] | None", child_for_branch(branch))
+    return cast(
+        "TreeEvaluationChild[Any] | None", tree_node.branches_children.get(branch)
+    )
+
+
+def _child_branches(tree_node: Any) -> tuple[BranchKey, ...]:
+    """Return child-link branch keys without materializing for new nodes."""
+    iter_child_links = getattr(tree_node, "iter_child_links", None)
+    if callable(iter_child_links):
+        child_links = cast(
+            "Iterable[tuple[BranchKey, TreeEvaluationChild[Any] | None]]",
+            iter_child_links(),
+        )
+        return tuple(branch for branch, _child in child_links)
+    return tuple(cast("Mapping[BranchKey, object]", tree_node.branches_children))
+
+
+def _child_link_count(tree_node: Any) -> int:
+    """Return child-link count without materializing for new nodes."""
+    child_link_count = getattr(tree_node, "child_link_count", None)
+    if callable(child_link_count):
+        return cast("int", child_link_count())
+    return len(cast("Mapping[BranchKey, object]", tree_node.branches_children))
+
+
 @dataclass(frozen=True, slots=True)
 class _TreeEvaluationContext:
     """Read-only node-local inputs repeatedly needed by tree-evaluation helpers."""
 
     node_id: int
     state: AnyTurnState
-    children: Mapping[BranchKey, TreeEvaluationChild[Any] | None]
+    child_node_getter: Callable[[BranchKey], TreeEvaluationChild[Any] | None]
+    child_branches: tuple[BranchKey, ...]
 
 
 @dataclass(slots=True, frozen=True)
@@ -309,7 +343,8 @@ class NodeTreeEvaluationState[
         return _TreeEvaluationContext(
             node_id=self.tree_node.id,
             state=self.tree_node.state,
-            children=self.tree_node.branches_children,
+            child_node_getter=lambda branch: _child_for_branch(self.tree_node, branch),
+            child_branches=_child_branches(self.tree_node),
         )
 
     def _capture_node_delta_snapshot(self) -> _NodeDeltaSnapshot:
@@ -387,7 +422,7 @@ class NodeTreeEvaluationState[
     ) -> ChildTreeEvaluation | None:
         """Return one child evaluation when the branch currently exists."""
         context = self._context()
-        child = context.children.get(branch_key)
+        child = context.child_node_getter(branch_key)
         if child is None:
             return None
         return child.tree_evaluation
@@ -467,7 +502,7 @@ class NodeTreeEvaluationState[
         context = self._context()
         return branch_ordering_runtime.ordered_candidate_branches_with_child_fallback(
             preferred_ordered_branches=preferred_ordered_branches,
-            available_child_branches=context.children,
+            available_child_branches=context.child_branches,
         )
 
     def _ordered_candidate_branches_for_frontier(self) -> tuple[BranchKey, ...]:
@@ -730,7 +765,7 @@ class NodeTreeEvaluationState[
         branch without an exact child value as keeping closure false.
         """
         return self.tree_node.all_branches_generated and (
-            exact_child_count == len(self.tree_node.branches_children)
+            exact_child_count == _child_link_count(self.tree_node)
         )
 
     def _runtime_update_pv_for_best_child_selection(
@@ -937,7 +972,7 @@ class NodeTreeEvaluationState[
         state = self.tree_node.state
         return branch_ordering_runtime.compute_branch_ordering_key(
             branch_key=branch_key,
-            child_node_getter=context.children.get,
+            child_node_getter=context.child_node_getter,
             child_value_candidate_getter=self.child_value_candidate,
             primary_score_getter=lambda key: objective.evaluate_value(
                 cast("Value", self.child_value_candidate(key)),
@@ -953,7 +988,7 @@ class NodeTreeEvaluationState[
         context = self._context()
         best_branch_key = self.best_branch()
         best_child = (
-            context.children.get(best_branch_key)
+            context.child_node_getter(best_branch_key)
             if best_branch_key is not None
             else None
         )

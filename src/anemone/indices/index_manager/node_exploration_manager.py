@@ -117,7 +117,7 @@ def update_all_indices[NodeT: AlgorithmNode[Any]](
             tree_eval = cast("DecisionOrderedEvaluation", parent_node.tree_evaluation)
             ordered_branches: list[BranchKey] = tree_eval.decision_ordered_branches()
             for child_rank, branch in enumerate(ordered_branches):
-                child_node = parent_node.branches_children[branch]
+                child_node = parent_node.child_for_branch(branch)
                 if child_node is None:
                     continue
 

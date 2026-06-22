@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from anemone import nodes as node
 from anemone import trees
@@ -273,7 +273,12 @@ class RolloutOpeningExpansionExecutor[
                 continue
 
             if action in context.opened_actions:
-                child_node = current_node.branches_children.get(action)
+                child_for_branch = getattr(current_node, "child_for_branch", None)
+                child_node: NodeT | None = (
+                    cast("NodeT | None", child_for_branch(action))
+                    if callable(child_for_branch)
+                    else current_node.branches_children.get(action)
+                )
                 if child_node is None:
                     raise _invalid_rollout_action_error(
                         action=action,
@@ -348,7 +353,7 @@ def _is_terminal_node(node_to_check: node.ITreeNode[Any]) -> bool:
 
 
 def _rollout_context_counts(
-    context: RolloutDecisionContext[node.ITreeNode[Any]],
+    context: RolloutDecisionContext[Any],
 ) -> _RolloutContextCounts:
     """Return count-only diagnostics from a rollout decision context."""
     return _RolloutContextCounts(
@@ -360,9 +365,9 @@ def _rollout_context_counts(
 
 def _rollout_path_report(
     *,
-    tree: trees.Tree[node.ITreeNode[Any]],
-    start_node: node.ITreeNode[Any],
-    end_node: node.ITreeNode[Any],
+    tree: trees.Tree[Any],
+    start_node: Any,
+    end_node: Any,
     extra_edge_count: int,
     traversal_count: int,
     stop_reason: RolloutStopReason,
@@ -487,6 +492,9 @@ def _exact_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
 
 def _non_opened_branch_count(node_to_check: node.ITreeNode[Any]) -> int | None:
     """Return the node's stored non-opened branch count when available."""
+    unopened_branch_count = getattr(node_to_check, "unopened_branch_count", None)
+    if callable(unopened_branch_count):
+        return cast("int", unopened_branch_count())
     non_opened_branches = getattr(node_to_check, "non_opened_branches", None)
     if non_opened_branches is None:
         return None

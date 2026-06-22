@@ -167,7 +167,7 @@ class UpdateIndexLocalMinChange:
             )
         inter_level_interval: Interval | None
         local_index: float | None
-        if len(parent_node.branches_children) == 1:
+        if parent_node.child_link_count() == 1:
             local_index = parent_node_exploration_index_data.index
             inter_level_interval = parent_node_exploration_index_data.interval
         else:
@@ -230,17 +230,16 @@ class UpdateIndexLocalMinChange:
             )
         second_best_branch = top_two_branches.second_best_branch()
 
-        best_child = parent_node.branches_children[best_branch]
+        best_child = parent_node.child_for_branch(best_branch)
         if best_child is None:
             raise _missing_best_child_error(
                 parent_node_id=parent_node.id,
                 best_branch=best_branch,
             )
-        comparison_child = parent_node.branches_children[
-            second_best_branch
-            if child_node == parent_node.branches_children[best_branch]
-            else best_branch
-        ]
+        comparison_branch = (
+            second_best_branch if child_node == best_child else best_branch
+        )
+        comparison_child = parent_node.child_for_branch(comparison_branch)
         if comparison_child is None:
             raise _missing_comparison_child_error(
                 parent_node_id=parent_node.id,

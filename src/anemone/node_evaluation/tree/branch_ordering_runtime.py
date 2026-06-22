@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Protocol, cast
 
 from valanga import BranchKey
@@ -47,21 +47,23 @@ def _missing_branch_value_error(branch_key: BranchKey) -> RuntimeError:
 def ordered_candidate_branches_with_child_fallback(
     *,
     preferred_ordered_branches: Iterable[BranchKey],
-    available_child_branches: Mapping[BranchKey, object],
+    available_child_branches: Iterable[BranchKey],
 ) -> tuple[BranchKey, ...]:
     """Return preferred branches first, then remaining child branches."""
+    available_branches = tuple(available_child_branches)
+    available_branch_set = set(available_branches)
     ordered_branches: list[BranchKey] = []
     seen_branches: set[BranchKey] = set()
 
     for branch in preferred_ordered_branches:
         if branch in seen_branches:
             continue
-        if branch not in available_child_branches:
+        if branch not in available_branch_set:
             continue
         ordered_branches.append(branch)
         seen_branches.add(branch)
 
-    for branch in available_child_branches:
+    for branch in available_branches:
         if branch in seen_branches:
             continue
         ordered_branches.append(branch)

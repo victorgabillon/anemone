@@ -15,7 +15,7 @@ Example usage:
 from dataclasses import dataclass
 from enum import StrEnum
 from random import Random
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from valanga import BranchKey, Color, State
 from valanga.policy import BranchPolicy
@@ -27,6 +27,9 @@ from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
 from anemone.utils.small_tools import softmax
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def sample_from_policy(policy: BranchPolicy, rng: Random) -> BranchKey:
@@ -81,15 +84,25 @@ class AlmostEqualLogistic:
 
     def policy[StateT: State](self, root_node: AlgorithmNode[StateT]) -> BranchPolicy:
         """Compute a policy based on near-equal best branches."""
+        iter_child_links = getattr(root_node, "iter_child_links", None)
+        child_links = (
+            cast(
+                "Iterable[tuple[BranchKey, AlgorithmNode[StateT] | None]]",
+                iter_child_links(),
+            )
+            if callable(iter_child_links)
+            else cast(
+                "Iterable[tuple[BranchKey, AlgorithmNode[StateT] | None]]",
+                root_node.branches_children.items(),
+            )
+        )
         best = root_node.tree_evaluation.best_equivalent_branches(
             mode=BestBranchEquivalenceMode.ALMOST_EQUAL_LOGISTIC
         )
 
         # Fallback: if empty, uniform over all existing children
         if not best:
-            best = [
-                bk for bk, ch in root_node.branches_children.items() if ch is not None
-            ]
+            best = [bk for bk, ch in child_links if ch is not None]
 
         # If still empty, something is wrong (no legal branches / not expanded)
         if not best:
@@ -116,7 +129,19 @@ class SoftmaxRule:
         scores: list[float] = []
 
         root_turn = _state_turn(root_node)
-        for bk, child in root_node.branches_children.items():
+        iter_child_links = getattr(root_node, "iter_child_links", None)
+        child_links = (
+            cast(
+                "Iterable[tuple[BranchKey, AlgorithmNode[StateT] | None]]",
+                iter_child_links(),
+            )
+            if callable(iter_child_links)
+            else cast(
+                "Iterable[tuple[BranchKey, AlgorithmNode[StateT] | None]]",
+                root_node.branches_children.items(),
+            )
+        )
+        for bk, child in child_links:
             if child is None:
                 continue
             branches.append(bk)

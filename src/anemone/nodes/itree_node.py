@@ -6,7 +6,7 @@ runtime details such as evaluations, exploration indices, and PV bookkeeping
 belong on higher-level wrappers like `AlgorithmNode`, not on this protocol.
 """
 
-from collections.abc import MutableMapping
+from collections.abc import Iterable, Iterator, MutableMapping
 from typing import Protocol, Self
 
 from valanga import BranchKey, State, StateTag
@@ -47,12 +47,46 @@ class ITreeNode[StateT: State = State](Protocol):
 
     @property
     def branches_children(self) -> MutableMapping[BranchKey, Self | None]:
-        """Get the child nodes of the node.
+        """Materialize and return compatibility child-link storage.
 
-        Returns:
-            A bidirectional dictionary mapping branches to child nodes.
-
+        Core runtime code should prefer the explicit structural methods below.
         """
+        ...
+
+    def has_child_links(self) -> bool:
+        """Return whether any structural child-link slot is stored."""
+        ...
+
+    def child_link_count(self) -> int:
+        """Return the number of stored child-link slots."""
+        ...
+
+    def iter_child_links(self) -> Iterator[tuple[BranchKey, Self | None]]:
+        """Iterate child-link slots without requiring materialized storage."""
+        ...
+
+    def iter_child_nodes(self) -> Iterator[Self]:
+        """Iterate concrete child nodes."""
+        ...
+
+    def child_for_branch(self, branch: BranchKey) -> Self | None:
+        """Return the concrete child for ``branch`` when linked."""
+        ...
+
+    def has_child_for_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` has a concrete child node."""
+        ...
+
+    def set_child_for_branch(self, branch: BranchKey, child: Self | None) -> None:
+        """Set one child-link slot."""
+        ...
+
+    def remove_child_link(self, branch: BranchKey) -> None:
+        """Remove one child-link slot."""
+        ...
+
+    def clear_child_links(self) -> None:
+        """Remove all child-link slots."""
         ...
 
     @property
@@ -89,7 +123,39 @@ class ITreeNode[StateT: State = State](Protocol):
 
     @property
     def non_opened_branches(self) -> set[BranchKey]:
-        """Return structural branches that exist conceptually but are not opened yet."""
+        """Materialize and return compatibility unopened-branch storage."""
+        ...
+
+    def has_unopened_branches(self) -> bool:
+        """Return whether any unopened branches are stored."""
+        ...
+
+    def unopened_branch_count(self) -> int:
+        """Return the stored unopened-branch count."""
+        ...
+
+    def iter_unopened_branches(self) -> Iterator[BranchKey]:
+        """Iterate unopened branches without requiring materialized storage."""
+        ...
+
+    def contains_unopened_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` is currently stored as unopened."""
+        ...
+
+    def set_unopened_branches(self, branches: Iterable[BranchKey]) -> None:
+        """Replace unopened branches."""
+        ...
+
+    def add_unopened_branch(self, branch: BranchKey) -> None:
+        """Add one unopened branch."""
+        ...
+
+    def discard_unopened_branch(self, branch: BranchKey) -> None:
+        """Discard one unopened branch."""
+        ...
+
+    def clear_unopened_branches(self) -> None:
+        """Remove all unopened branches."""
         ...
 
     @property

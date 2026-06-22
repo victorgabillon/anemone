@@ -25,7 +25,7 @@ deliberately out of scope here.
 """
 
 from collections.abc import Callable, Iterable
-from typing import Any
+from typing import Any, cast
 
 from valanga import BranchKey
 
@@ -145,8 +145,12 @@ class ValuePropagator:
         node: AlgorithmNode[Any],
     ) -> set[BranchKey]:
         """Return the full snapshot of currently-open child branches."""
-        return {
-            branch_key
-            for branch_key, child in node.branches_children.items()
-            if child is not None
-        }
+        iter_child_links = getattr(node, "iter_child_links", None)
+        if callable(iter_child_links):
+            child_links = cast(
+                "Iterable[tuple[BranchKey, AlgorithmNode[Any] | None]]",
+                iter_child_links(),
+            )
+        else:
+            child_links = node.branches_children.items()
+        return {branch_key for branch_key, child in child_links if child is not None}

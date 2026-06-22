@@ -47,7 +47,7 @@ def are_all_branches_and_children_opened(tree_node: ITreeNode[Any]) -> bool:
         bool: True if all branches and children are opened, False otherwise.
 
     """
-    return tree_node.all_branches_generated and tree_node.non_opened_branches == set()
+    return tree_node.all_branches_generated and not tree_node.has_unopened_branches()
 
 
 def a_branch_key_sequence_from_root[StateT: State](
@@ -122,9 +122,9 @@ def best_node_sequence_from_node[StateT: State](
     index = 0
     branch_sequence: list[AlgorithmNode[StateT]] = [tree_node]
     child: AlgorithmNode[StateT] = tree_node
-    while child.branches_children:
+    while child.has_child_links():
         branch: BranchKey = best_branch_seq[index]
-        child_ = child.branches_children[branch]
+        child_ = child.child_for_branch(branch)
         assert child_ is not None
         child = child_
         branch_sequence.append(child)

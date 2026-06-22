@@ -47,7 +47,7 @@ from .value_serialization import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, MutableMapping
+    from collections.abc import Iterable
 
     from valanga import BranchKey
     from valanga.evaluations import Value
@@ -305,13 +305,13 @@ def _build_node_payload(
     )
     unopened_branches_started_at = perf_counter()
     unopened_branches = _serialize_branch_collection(
-        node.non_opened_branches,
+        node.iter_unopened_branches(),
         context=context,
     )
     metrics.unopened_branches_total_s += perf_counter() - unopened_branches_started_at
     linked_children_started_at = perf_counter()
     linked_children = _serialize_linked_children(
-        node.branches_children,
+        node.iter_child_links(),
         context=context,
     )
     metrics.linked_children_total_s += perf_counter() - linked_children_started_at
@@ -775,7 +775,7 @@ def _dump_optional_state_summary[StateT: Any](
 
 
 def _serialize_linked_children(
-    branches_children: MutableMapping[Any, AlgorithmNode[Any] | None],
+    child_links: Iterable[tuple[Any, AlgorithmNode[Any] | None]],
     *,
     context: _CheckpointBuildContext,
 ) -> list[LinkedChildCheckpointPayload]:
@@ -790,7 +790,7 @@ def _serialize_linked_children(
             ),
             child_node_id=child.id,
         )
-        for branch, child in branches_children.items()
+        for branch, child in child_links
         if child is not None
     ]
     sort_started_at = perf_counter()

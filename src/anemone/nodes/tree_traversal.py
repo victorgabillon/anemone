@@ -20,18 +20,14 @@ def get_descendants[NodeT: ITreeNode[Any]](from_tree_node: NodeT) -> dict[NodeT,
 
     """
     des: dict[NodeT, None] = {from_tree_node: None}  # include itself
-    generation: set[NodeT] = {
-        node for node in from_tree_node.branches_children.values() if node is not None
-    }
+    generation: set[NodeT] = set(from_tree_node.iter_child_nodes())
 
     while generation:
         next_depth_generation: set[NodeT] = set()
         for node in generation:
             assert node is not None
             des[node] = None
-            for next_generation_child in node.branches_children.values():
-                if next_generation_child is not None:
-                    next_depth_generation.add(next_generation_child)
+            next_depth_generation.update(node.iter_child_nodes())
         generation = next_depth_generation
     return des
 
@@ -58,9 +54,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
         des = {from_tree_node: None}  # include itself maybe
     else:
         des = {}
-    generation: set[NodeT] = {
-        node for node in from_tree_node.branches_children.values() if node is not None
-    }
+    generation: set[NodeT] = set(from_tree_node.iter_child_nodes())
     depth: int = 1
     assert max_depth is not None
     while generation and depth <= max_depth:
@@ -71,9 +65,7 @@ def get_descendants_candidate_to_open[NodeT: AlgorithmNode[Any]](
                 and not node.tree_evaluation.has_exact_value()
             ):
                 des[node] = None
-            for next_generation_child in node.branches_children.values():
-                if next_generation_child is not None:
-                    next_depth_generation.add(next_generation_child)
+            next_depth_generation.update(node.iter_child_nodes())
         generation = next_depth_generation
     return list(des.keys())
 
@@ -92,12 +84,10 @@ def get_descendants_candidate_unresolved[NodeT: AlgorithmNode[Any]](
 
     """
     assert not from_tree_node.tree_evaluation.has_exact_value()
-    if not from_tree_node.branches_children:
+    if not from_tree_node.has_child_links():
         return [from_tree_node]
     des: dict[NodeT, None] = {}
-    generation: set[NodeT] = {
-        node for node in from_tree_node.branches_children.values() if node is not None
-    }
+    generation: set[NodeT] = set(from_tree_node.iter_child_nodes())
 
     depth: int = 1
     assert max_depth is not None
@@ -106,8 +96,6 @@ def get_descendants_candidate_unresolved[NodeT: AlgorithmNode[Any]](
         for node in generation:
             if not node.tree_evaluation.has_exact_value():
                 des[node] = None
-            for next_generation_child in node.branches_children.values():
-                if next_generation_child is not None:
-                    next_depth_generation.add(next_generation_child)
+            next_depth_generation.update(node.iter_child_nodes())
         generation = next_depth_generation
     return list(des.keys())

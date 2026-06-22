@@ -426,7 +426,7 @@ def _link_nodes(
         for linked_child in node_payload.linked_children:
             child_node = _require_node(nodes_by_id, linked_child.child_node_id)
             branch = _deserialize_branch(linked_child.branch_key)
-            parent_node.branches_children[branch] = child_node
+            parent_node.set_child_for_branch(branch, child_node)
             child_node.add_parent(branch_key=branch, new_parent_node=parent_node)
 
 
@@ -439,8 +439,7 @@ def _restore_node_runtime_state(
     for node_payload in node_payloads:
         node = nodes_by_id[node_payload.node_id]
         node.all_branches_generated = node_payload.generated_all_branches
-        node.non_opened_branches.clear()
-        node.non_opened_branches.update(
+        node.set_unopened_branches(
             _deserialize_branch(branch_payload)
             for branch_payload in node_payload.unopened_branches
         )

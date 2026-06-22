@@ -58,11 +58,14 @@ OpeningExpansionConfig(
 ```
 
 The default config is `one_ply`. Rollout action selector kinds are
-`first_openable`, `random_openable`, and `no_rollout`. `random_openable` uses a
-local `random.Random` instance seeded from rollout config and samples only among
-currently openable branches. Built-in selectors keep expansion-only behavior,
-but custom rollout action selectors can inspect legal, opened, and openable
-actions to perform guided traversal before opening a frontier edge.
+`first_openable`, `random_openable`, `first_legal_prefer_openable`,
+`random_legal_prefer_openable`, and `no_rollout`. `random_openable` uses a local
+`random.Random` instance seeded from rollout config and samples only among
+currently openable branches, so it stops on saturated nodes. The
+legal-prefer-openable selectors materialize fresh edges whenever possible and
+traverse already-opened legal edges only when a node has no openable actions.
+Custom rollout action selectors can inspect legal, opened, and openable actions
+to perform guided traversal before opening a frontier edge.
 
 `max_extra_steps` controls rollout continuation decisions after each initial
 edge. `0` disables continuation, a positive integer bounds the number of

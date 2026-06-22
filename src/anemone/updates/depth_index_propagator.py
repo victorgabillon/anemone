@@ -19,7 +19,7 @@ exploration-index refresh. It maintains only ``MaxDepthDescendants`` metadata.
 """
 
 from collections.abc import Callable, Iterable
-from typing import Any
+from typing import Any, cast
 
 from anemone.indices.node_indices.index_data import MaxDepthDescendants
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
@@ -79,10 +79,16 @@ class DepthIndexPropagator:
         previous_max_depth = exploration_index_data.max_depth_descendants
         exploration_index_data.max_depth_descendants = 0
 
-        child_node: AlgorithmNode[Any] | None
-        for child_node in node.branches_children.values():
-            if child_node is None:
-                continue
+        iter_child_nodes = getattr(node, "iter_child_nodes", None)
+        child_nodes = (
+            cast("Iterable[AlgorithmNode[Any]]", iter_child_nodes())
+            if callable(iter_child_nodes)
+            else (
+                child for child in node.branches_children.values() if child is not None
+            )
+        )
+        child_node: AlgorithmNode[Any]
+        for child_node in child_nodes:
             exploration_index_data.update_from_child(
                 self._child_max_depth_descendants(child_node)
             )

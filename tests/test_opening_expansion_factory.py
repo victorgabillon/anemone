@@ -8,8 +8,10 @@ import pytest
 
 from anemone.node_evaluation.direct import EvaluationQueries
 from anemone.rollouts import (
+    FirstLegalPreferOpenableActionSelector,
     FirstOpenableActionSelector,
     NoRolloutActionSelector,
+    RandomLegalPreferOpenableActionSelector,
     RandomOpenableActionSelector,
     RolloutDecisionContext,
     RolloutOpeningExpansionExecutor,
@@ -68,6 +70,19 @@ def test_create_rollout_action_selector_first_openable() -> None:
     assert isinstance(selector, FirstOpenableActionSelector)
 
 
+def test_create_rollout_action_selector_first_legal_prefer_openable() -> None:
+    """Factory creates the first-legal-prefer-openable action selector."""
+    selector = create_rollout_action_selector(
+        RolloutExpansionConfig(
+            action_selector_kind=(
+                RolloutActionSelectorKind.FIRST_LEGAL_PREFER_OPENABLE
+            )
+        )
+    )
+
+    assert isinstance(selector, FirstLegalPreferOpenableActionSelector)
+
+
 def test_create_rollout_action_selector_no_rollout() -> None:
     """Factory creates the no-rollout action selector."""
     selector = create_rollout_action_selector(
@@ -89,6 +104,20 @@ def test_create_rollout_action_selector_random_openable() -> None:
     )
 
     assert isinstance(selector, RandomOpenableActionSelector)
+
+
+def test_create_rollout_action_selector_random_legal_prefer_openable() -> None:
+    """Factory creates a random-legal-prefer-openable selector with a local RNG."""
+    selector = create_rollout_action_selector(
+        RolloutExpansionConfig(
+            action_selector_kind=(
+                RolloutActionSelectorKind.RANDOM_LEGAL_PREFER_OPENABLE
+            ),
+            random_seed=123,
+        )
+    )
+
+    assert isinstance(selector, RandomLegalPreferOpenableActionSelector)
 
 
 def test_rollout_expansion_config_rejects_negative_max_extra_steps() -> None:

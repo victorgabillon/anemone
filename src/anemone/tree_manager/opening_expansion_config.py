@@ -17,7 +17,9 @@ class RolloutActionSelectorKind(StrEnum):
     """Built-in rollout continuation action selectors."""
 
     FIRST_OPENABLE = "first_openable"
+    FIRST_LEGAL_PREFER_OPENABLE = "first_legal_prefer_openable"
     RANDOM_OPENABLE = "random_openable"
+    RANDOM_LEGAL_PREFER_OPENABLE = "random_legal_prefer_openable"
     NO_ROLLOUT = "no_rollout"
 
 
