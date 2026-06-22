@@ -74,9 +74,7 @@ def test_create_rollout_action_selector_first_legal_prefer_openable() -> None:
     """Factory creates the first-legal-prefer-openable action selector."""
     selector = create_rollout_action_selector(
         RolloutExpansionConfig(
-            action_selector_kind=(
-                RolloutActionSelectorKind.FIRST_LEGAL_PREFER_OPENABLE
-            )
+            action_selector_kind=(RolloutActionSelectorKind.FIRST_LEGAL_PREFER_OPENABLE)
         )
     )
 

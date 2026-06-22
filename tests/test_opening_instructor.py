@@ -1,5 +1,6 @@
 """Tests for opening-instruction branch selection."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from random import Random
 from types import SimpleNamespace
@@ -34,6 +35,10 @@ class _Node:
     branches_children: dict[int, Any | None] = field(default_factory=dict)
     all_branches_generated: bool = False
     non_opened_branches: set[int] = field(default_factory=set)
+
+    def iter_child_links(self) -> Iterator[tuple[int, Any | None]]:
+        """Iterate structural child links."""
+        return iter(self.branches_children.items())
 
 
 def test_all_children_requests_only_unopened_legal_branches() -> None:

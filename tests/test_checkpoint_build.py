@@ -450,7 +450,7 @@ def test_root_is_anchor_and_non_root_nodes_use_deltas_under_default_policy() -> 
     root_payload = payload_nodes[runtime.tree.root_node.id]
 
     assert isinstance(root_payload.state_payload, AnchorCheckpointStatePayload)
-    for branch_child in runtime.tree.root_node.branches_children.values():
+    for branch_child in runtime.tree.root_node.iter_child_nodes():
         assert branch_child is not None
         child_payload = payload_nodes[branch_child.id]
         assert isinstance(child_payload.state_payload, DeltaCheckpointStatePayload)
@@ -690,7 +690,7 @@ def test_direct_and_backed_up_values_are_serialized_from_live_nodes() -> None:
         root.tree_evaluation.backed_up_value.score
     )
 
-    for child in root.branches_children.values():
+    for child in root.iter_child_nodes():
         assert child is not None
         child_payload = _nodes_by_id(payload)[child.id]
         assert child_payload.evaluation is not None
@@ -715,13 +715,13 @@ def test_structural_parent_and_child_relationships_are_exported() -> None:
                 branch_key=serialize_checkpoint_atom(branch),
                 child_node_id=child.id,
             )
-            for branch, child in root.branches_children.items()
+            for branch, child in root.iter_child_links()
             if child is not None
         ],
         key=lambda item: (repr(item.branch_key), item.child_node_id),
     )
 
-    for branch, child in root.branches_children.items():
+    for branch, child in root.iter_child_links():
         assert child is not None
         child_payload = payload_nodes[child.id]
         assert child_payload.parent_node_id == root.id

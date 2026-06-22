@@ -16,6 +16,7 @@ from anemone.node_evaluation.common import FieldChange, NodeDelta
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
+from tests.structural_node_helpers import make_structural_tree_node
 
 if TYPE_CHECKING:
     from anemone.backup_policies.types import BackupResult
@@ -95,8 +96,8 @@ def _make_leaf_eval(
     value: Value,
     pv_tail: list[int],
 ) -> NodeMinmaxEvaluation[Any, Any]:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={},
         all_branches_generated=True,
@@ -144,8 +145,8 @@ def _make_parent_eval(
             pv_tail=[5],
         ),
     }
-    tree_node = SimpleNamespace(
-        id=0,
+    tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children=child_map,
         all_branches_generated=True,

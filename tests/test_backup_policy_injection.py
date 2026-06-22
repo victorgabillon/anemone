@@ -1,5 +1,6 @@
 """Tests proving injected backup policy semantics remain on the active path."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -65,6 +66,10 @@ class _FakeNode:
     tree_evaluation: _FakeTreeEvaluation
     branches_children: dict[int, "_FakeNode | None"] = field(default_factory=dict)
     parent_nodes: dict["_FakeNode", set[int]] = field(default_factory=dict)
+
+    def iter_child_links(self) -> Iterator[tuple[int, "_FakeNode | None"]]:
+        """Iterate structural child links."""
+        return iter(self.branches_children.items())
 
 
 def _connect(parent: _FakeNode, branch: int, child: _FakeNode) -> None:

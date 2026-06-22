@@ -14,6 +14,7 @@ from tests.fakes_tree_evaluation import (
     FakeChildNode,
     set_estimate_value,
 )
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 def _build_parent_eval(
@@ -23,8 +24,8 @@ def _build_parent_eval(
     all_generated: bool,
     parent_eval_value: float,
 ) -> NodeMinmaxEvaluation[Any, Any]:
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=turn),
         branches_children=children,
         all_branches_generated=all_generated,

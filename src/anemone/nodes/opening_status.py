@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Sequence
 
     from valanga import BranchKey
 
@@ -13,25 +13,10 @@ if TYPE_CHECKING:
     from anemone.nodes.itree_node import ITreeNode
 
 
-def _iter_child_links(
-    node: ITreeNode[Any],
-) -> Iterable[tuple[BranchKey, ITreeNode[Any] | None]]:
-    """Iterate child links, preferring the structural API when available."""
-    iter_child_links = getattr(node, "iter_child_links", None)
-    if callable(iter_child_links):
-        return cast(
-            "Iterable[tuple[BranchKey, ITreeNode[Any] | None]]", iter_child_links()
-        )
-    return cast(
-        "Iterable[tuple[BranchKey, ITreeNode[Any] | None]]",
-        node.branches_children.items(),
-    )
-
-
 def opened_branch_keys(node: ITreeNode[Any]) -> set[BranchKey]:
     """Return branch keys with concrete child links from ``node``."""
     return {
-        branch_key for branch_key, child in _iter_child_links(node) if child is not None
+        branch_key for branch_key, child in node.iter_child_links() if child is not None
     }
 
 
@@ -84,9 +69,4 @@ def sync_opening_status(
     """Synchronize opening bookkeeping from actual legal/opened branch state."""
     openable = openable_branch_keys(node=node, dynamics=dynamics)
     node.all_branches_generated = not openable
-    set_unopened_branches = getattr(node, "set_unopened_branches", None)
-    if callable(set_unopened_branches):
-        set_unopened_branches(openable)
-        return
-    node.non_opened_branches.clear()
-    node.non_opened_branches.update(openable)
+    node.set_unopened_branches(openable)

@@ -18,6 +18,7 @@ from anemone.objectives import SingleAgentMaxObjective
 from anemone.tree_exploration import TreeExploration
 from anemone.tree_manager import OpeningExpansionBudget
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 def _fake_root() -> Any:
@@ -29,8 +30,8 @@ def _fake_root() -> Any:
         print_branch_ordering=lambda dynamics: None,
     )
     state = SimpleNamespace()
-    return SimpleNamespace(
-        id=0,
+    return make_structural_tree_node(
+        node_id=0,
         state=state,
         tree_depth=0,
         branches_children={},

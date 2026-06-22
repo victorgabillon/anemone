@@ -101,6 +101,9 @@ def test_child_mutation_allocates_only_when_needed() -> None:
 
     node.set_child_for_branch(5, None)
     assert node.branches_children_ == {5: None}
+    assert node.has_child_link_for_branch(5)
+    assert not node.has_concrete_child_for_branch(5)
+    assert not node.has_child_for_branch(5)
     node.clear_child_links()
     assert node.branches_children_ is None
 

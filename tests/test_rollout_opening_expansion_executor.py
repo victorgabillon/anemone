@@ -32,7 +32,7 @@ from anemone.tree_manager import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable, Iterator
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +95,30 @@ class _Node:
     def add_parent(self, branch_key: int, new_parent_node: _Node) -> None:
         """Record an incoming edge."""
         self.parent_nodes.setdefault(new_parent_node, set()).add(branch_key)
+
+    def iter_child_links(self) -> Iterator[tuple[int, _Node | None]]:
+        """Iterate structural child links."""
+        return iter(self.branches_children.items())
+
+    def child_for_branch(self, branch: int) -> _Node | None:
+        """Return one linked child."""
+        return self.branches_children.get(branch)
+
+    def set_child_for_branch(self, branch: int, child: _Node | None) -> None:
+        """Set one linked child."""
+        self.branches_children[branch] = child
+
+    def set_unopened_branches(self, branches: Iterable[int]) -> None:
+        """Replace unopened branches."""
+        self.non_opened_branches = set(branches)
+
+    def discard_unopened_branch(self, branch: int) -> None:
+        """Discard one unopened branch."""
+        self.non_opened_branches.discard(branch)
+
+    def unopened_branch_count(self) -> int:
+        """Return the unopened branch count."""
+        return len(self.non_opened_branches)
 
     def is_over(self) -> bool:
         """Return whether this fake node is terminal."""

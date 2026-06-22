@@ -9,7 +9,6 @@ from typing import Any, Self, cast
 
 import pytest
 import valanga
-import anemone.checkpoints.build as checkpoint_build_module
 from valanga import (
     BranchKey,
     Color,
@@ -21,6 +20,7 @@ from valanga import (
 )
 from valanga.evaluations import Certainty
 
+import anemone.checkpoints.build as checkpoint_build_module
 from anemone import SearchArgs, create_search, create_search_with_tree_eval_factory
 from anemone.checkpoints import (
     AlgorithmNodeCheckpointPayload,
@@ -662,7 +662,7 @@ def _child_signature(node: Any) -> dict[object, int]:
     """Return a comparable child mapping for one live node."""
     return {
         serialize_checkpoint_atom(branch): child.id
-        for branch, child in node.branches_children.items()
+        for branch, child in node.iter_child_links()
         if child is not None
     }
 
@@ -861,6 +861,14 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
         assert restored_node.tree_depth == original_node.tree_depth
         assert _child_signature(restored_node) == _child_signature(original_node)
         assert _parent_signature(restored_node) == _parent_signature(original_node)
+
+    terminal_restored_nodes = [
+        node for node in restored_nodes.values() if not node.state.branch_keys.get_all()
+    ]
+    assert terminal_restored_nodes
+    assert all(
+        node.tree_node.non_opened_branches_ is None for node in terminal_restored_nodes
+    )
 
 
 def test_checkpoint_restore_without_selector_state_keeps_linoo_backward_compatible() -> (
@@ -1608,11 +1616,7 @@ def test_checkpoint_restore_preserves_terminal_direct_value() -> None:
     """Terminal direct values should remain selector-observable after restore."""
     runtime = _build_runtime()
     runtime.step()
-    terminal_child = next(
-        child
-        for child in runtime.tree.root_node.branches_children.values()
-        if child is not None
-    )
+    terminal_child = next(child for child in runtime.tree.root_node.iter_child_nodes())
     terminal_child.tree_evaluation.direct_value = canonical_value.make_terminal_value(
         score=1.0,
         over_event=OverEvent(
@@ -1649,11 +1653,7 @@ def test_checkpoint_restored_runtime_supports_reevaluation() -> None:
     runtime = _build_runtime()
     runtime.step()
     restored = _roundtrip_runtime(runtime)
-    root_children = [
-        child
-        for child in restored.tree.root_node.branches_children.values()
-        if child is not None
-    ]
+    root_children = [child for child in restored.tree.root_node.iter_child_nodes()]
     new_values = {node_id: float(node_id + 100) for node_id in _CHILDREN_BY_ID}
 
     restored.set_evaluator(MasterStateValueEvaluatorFromYaml(new_values))
@@ -1817,21 +1817,21 @@ def test_checkpoint_restore_preserves_tuple_branch_labels() -> None:
     assert sorted(
         [
             (serialize_checkpoint_atom(branch), child.id)
-            for branch, child in restored_root.branches_children.items()
+            for branch, child in restored_root.iter_child_links()
             if child is not None
         ],
         key=lambda item: (repr(item[0]), item[1]),
     ) == sorted(
         [
             (serialize_checkpoint_atom(branch), child.id)
-            for branch, child in original_root.branches_children.items()
+            for branch, child in original_root.iter_child_links()
             if child is not None
         ],
         key=lambda item: (repr(item[0]), item[1]),
     )
     assert {
         branch
-        for branch, child in restored_root.branches_children.items()
+        for branch, child in restored_root.iter_child_links()
         if child is not None
     } == {(1, 2, 3, 4), (5, 6, 7, 8)}
 

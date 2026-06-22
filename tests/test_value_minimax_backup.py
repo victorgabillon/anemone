@@ -23,6 +23,7 @@ from anemone.node_evaluation.tree.node_tree_evaluation import (
     BestBranchEquivalenceMode,
 )
 from anemone.values import DEFAULT_EVALUATION_ORDERING
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 @dataclass(frozen=True)
@@ -98,8 +99,8 @@ class _FlipAllBranchesGeneratedPolicy:
 
 
 def _make_leaf(node_id: int, value: Value) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={},
         all_branches_generated=True,
@@ -111,8 +112,8 @@ def _make_leaf(node_id: int, value: Value) -> Any:
 
 
 def _make_unvalued_leaf(node_id: int) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={},
         all_branches_generated=True,
@@ -128,8 +129,8 @@ def _make_parent(
     all_generated: bool,
     direct_value: Value,
 ) -> NodeMinmaxEvaluation[Any, Any]:
-    tree_node = SimpleNamespace(
-        id=0,
+    tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=turn),
         branches_children=children,
         all_branches_generated=all_generated,

@@ -129,8 +129,16 @@ class AlgorithmNode[StateT: State = State]:
         """Return the child linked to ``branch``, if any, without allocating."""
         return self.tree_node.child_for_branch(branch)
 
+    def has_child_link_for_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` has a stored child-link slot."""
+        return self.tree_node.has_child_link_for_branch(branch)
+
+    def has_concrete_child_for_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` maps to a concrete child node."""
+        return self.tree_node.has_concrete_child_for_branch(branch)
+
     def has_child_for_branch(self, branch: BranchKey) -> bool:
-        """Return whether ``branch`` has a concrete child node."""
+        """Compatibility alias for concrete-child semantics."""
         return self.tree_node.has_child_for_branch(branch)
 
     def set_child_for_branch(self, branch: BranchKey, child: Self | None) -> None:

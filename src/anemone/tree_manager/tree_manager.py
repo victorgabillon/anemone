@@ -1,6 +1,6 @@
 """Core structural helpers for expanding tree nodes and wiring descendants."""
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from valanga import BranchKey, State, StateModifications, StateTag
 
@@ -44,48 +44,12 @@ def _duplicate_branch_open_error(
     )
 
 
-def _child_for_branch(
-    parent_node: node.ITreeNode[Any],
-    branch: BranchKey,
-) -> node.ITreeNode[Any] | None:
-    """Return a linked child, preferring the structural API when available."""
-    child_for_branch = getattr(parent_node, "child_for_branch", None)
-    if callable(child_for_branch):
-        return cast("node.ITreeNode[Any] | None", child_for_branch(branch))
-    return parent_node.branches_children.get(branch)
-
-
-def _set_child_for_branch(
-    parent_node: node.ITreeNode[Any],
-    branch: BranchKey,
-    child: node.ITreeNode[Any] | None,
-) -> None:
-    """Set a linked child, preferring the structural API when available."""
-    set_child_for_branch = getattr(parent_node, "set_child_for_branch", None)
-    if callable(set_child_for_branch):
-        set_child_for_branch(branch, child)
-        return
-    parent_node.branches_children[branch] = child
-
-
-def _discard_unopened_branch(
-    parent_node: node.ITreeNode[Any],
-    branch: BranchKey,
-) -> None:
-    """Discard an unopened branch, preferring the structural API when available."""
-    discard_unopened_branch = getattr(parent_node, "discard_unopened_branch", None)
-    if callable(discard_unopened_branch):
-        discard_unopened_branch(branch)
-        return
-    parent_node.non_opened_branches.discard(branch)
-
-
 def _raise_if_branch_already_opened(
     *,
     parent_node: node.ITreeNode[Any],
     branch: BranchKey,
 ) -> None:
-    existing_child = _child_for_branch(parent_node, branch)
+    existing_child = parent_node.child_for_branch(branch)
     if existing_child is not None:
         raise _duplicate_branch_open_error(
             parent_node=parent_node,
@@ -226,8 +190,8 @@ class TreeManager[
         # Add it to opened branch links. Opening-status synchronization runs
         # after the whole instruction batch so stopping criteria can drop
         # requested branches without incorrectly marking the parent complete.
-        _set_child_for_branch(parent_node, branch, tree_expansion.child_node)
-        _discard_unopened_branch(parent_node, branch)
+        parent_node.set_child_for_branch(branch, tree_expansion.child_node)
+        parent_node.discard_unopened_branch(branch)
         tree.branch_count += 1  # counting branches
 
         return tree_expansion

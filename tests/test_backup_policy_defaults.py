@@ -25,6 +25,7 @@ from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 class _SoloRole(Enum):
@@ -32,8 +33,8 @@ class _SoloRole(Enum):
 
 
 def _leaf(score: float) -> SimpleNamespace:
-    tree_node = SimpleNamespace(
-        id=1,
+    tree_node = make_structural_tree_node(
+        node_id=1,
         state=SimpleNamespace(turn=Color.BLACK),
         branches_children={},
         all_branches_generated=True,
@@ -45,8 +46,8 @@ def _leaf(score: float) -> SimpleNamespace:
 
 
 def _single_agent_tree_node() -> SimpleNamespace:
-    return SimpleNamespace(
-        id=7,
+    return make_structural_tree_node(
+        node_id=7,
         state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={},
         all_branches_generated=True,
@@ -56,8 +57,8 @@ def _single_agent_tree_node() -> SimpleNamespace:
 def test_node_minmax_evaluation_backup_default_is_explicit_policy() -> None:
     """Backup fallback policy should initialize to explicit minimax."""
     child = _leaf(0.6)
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={0: child},
         all_branches_generated=True,

@@ -11,7 +11,7 @@ from anemone.backup_policies.types import BackupResult
 from anemone.node_evaluation.common import canonical_value
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Mapping
 
     from valanga.evaluations import Value
 
@@ -445,19 +445,7 @@ class Top2ExactnessPvRuntime[BranchKeyT: BranchKey]:
     ) -> int:
         """Count child branches whose current canonical value is exact."""
         exact_child_count = 0
-        iter_child_links = getattr(node_eval.tree_node, "iter_child_links", None)
-        child_links = (
-            cast(
-                "Iterable[tuple[BranchKeyT, object | None]]",
-                iter_child_links(),
-            )
-            if callable(iter_child_links)
-            else cast(
-                "Iterable[tuple[BranchKeyT, object | None]]",
-                node_eval.tree_node.branches_children.items(),
-            )
-        )
-        for branch_key, child in child_links:
+        for branch_key, child in node_eval.tree_node.iter_child_links():
             if child is None:
                 continue
             if canonical_value.is_exact_value(

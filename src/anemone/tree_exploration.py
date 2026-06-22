@@ -143,19 +143,7 @@ def compute_child_evals[StateT: State](
 ) -> dict[BranchName, Value]:
     """Compute evaluations for each existing child branch."""
     evals: dict[BranchName, Value] = {}
-    iter_child_links = getattr(root, "iter_child_links", None)
-    child_links = (
-        cast(
-            "Iterable[tuple[BranchKey, AlgorithmNode[StateT] | None]]",
-            iter_child_links(),
-        )
-        if callable(iter_child_links)
-        else cast(
-            "Iterable[tuple[BranchKey, AlgorithmNode[StateT] | None]]",
-            root.branches_children.items(),
-        )
-    )
-    for bk, child in child_links:
+    for bk, child in root.iter_child_links():
         if child is None:
             continue
 
@@ -456,10 +444,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         ordering accessor here, so this helper intentionally follows the
         insertion-ordered structural child mapping.
         """
-        iter_child_nodes = getattr(node, "iter_child_nodes", None)
-        if callable(iter_child_nodes):
-            return list(cast("Iterable[NodeT]", iter_child_nodes()))
-        return [child for child in node.branches_children.values() if child is not None]
+        return list(node.iter_child_nodes())
 
     def _collect_root_children(self) -> list[NodeT]:
         """Collect the current root's linked children."""
@@ -514,12 +499,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 return
 
             for branch in frontier_aware.frontier_branches_in_order():
-                child_for_branch = getattr(node, "child_for_branch", None)
-                child = (
-                    cast("NodeT | None", child_for_branch(branch))
-                    if callable(child_for_branch)
-                    else node.branches_children.get(branch)
-                )
+                child = node.child_for_branch(branch)
                 if child is None:
                     continue
                 visit(child)

@@ -1,5 +1,6 @@
 """Focused tests for ``DepthIndexPropagator`` scheduling and recomputation."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any, cast
@@ -28,6 +29,10 @@ class _FakeNode:
     def __repr__(self) -> str:
         """Return a stable name to make assertion failures readable."""
         return self.name
+
+    def iter_child_nodes(self) -> Iterator["_FakeNode"]:
+        """Iterate non-empty structural child nodes."""
+        return (child for child in self.branches_children.values() if child is not None)
 
 
 def _connect(parent: _FakeNode, branch: int, child: _FakeNode) -> None:

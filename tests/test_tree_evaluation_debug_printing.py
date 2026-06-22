@@ -33,16 +33,33 @@ class _FakeDynamics:
         return f"move:{action}"
 
 
+def _tree_node(
+    *,
+    node_id: int,
+    state: Any,
+    branches_children: dict[Any, Any] | None = None,
+) -> Any:
+    branches = branches_children if branches_children is not None else {}
+    return SimpleNamespace(
+        id=node_id,
+        state=state,
+        branches_children=branches,
+        all_branches_generated=True,
+        child_for_branch=branches.get,
+        iter_child_links=lambda: iter(branches.items()),
+        child_link_count=lambda: len(branches),
+        has_child_links=lambda: bool(branches),
+    )
+
+
 def _call_generic_debug_print(node_eval: NodeTreeEvaluation[Any]) -> None:
     debug_printing.print_branch_ordering(node_eval, dynamics=_FakeDynamics())
 
 
 def _max_child(node_id: int, score: float) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = _tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
-        branches_children={},
-        all_branches_generated=True,
     )
     evaluation = NodeMaxEvaluation(tree_node=tree_node)
     value = Value(score=score, certainty=Certainty.ESTIMATE)
@@ -52,11 +69,9 @@ def _max_child(node_id: int, score: float) -> Any:
 
 
 def _minimax_child(node_id: int, score: float) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = _tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=Color.WHITE),
-        branches_children={},
-        all_branches_generated=True,
     )
     evaluation = NodeMinmaxEvaluation(tree_node=tree_node)
     value = Value(score=score, certainty=Certainty.ESTIMATE)
@@ -70,11 +85,10 @@ def _make_single_agent_parent() -> NodeMaxEvaluation[Any]:
         0: _max_child(20, 0.5),
         1: _max_child(10, 0.5),
     }
-    tree_node = SimpleNamespace(
-        id=0,
+    tree_node = _tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children=children,
-        all_branches_generated=True,
     )
     evaluation = NodeMaxEvaluation(tree_node=tree_node)
     evaluation.update_branches_values({0, 1})
@@ -86,11 +100,10 @@ def _make_minimax_parent() -> NodeMinmaxEvaluation[Any, Any]:
         0: _minimax_child(10, 0.2),
         1: _minimax_child(11, 0.7),
     }
-    tree_node = SimpleNamespace(
-        id=0,
+    tree_node = _tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children=children,
-        all_branches_generated=True,
     )
     evaluation = NodeMinmaxEvaluation(tree_node=tree_node)
     evaluation.update_branches_values({0, 1})

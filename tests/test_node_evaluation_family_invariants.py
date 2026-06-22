@@ -27,6 +27,7 @@ from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
 from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObjective
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 class _SoloRole(Enum):
@@ -91,8 +92,8 @@ class _HookDrivenEvaluation(NodeTreeEvaluationState[Any, Any]):
 
 
 def _adversarial_tree_node() -> Any:
-    return SimpleNamespace(
-        id=1,
+    return make_structural_tree_node(
+        node_id=1,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={},
         all_branches_generated=True,
@@ -100,8 +101,8 @@ def _adversarial_tree_node() -> Any:
 
 
 def _single_agent_tree_node() -> Any:
-    return SimpleNamespace(
-        id=2,
+    return make_structural_tree_node(
+        node_id=2,
         state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={},
         all_branches_generated=True,
@@ -312,8 +313,8 @@ def test_families_inherit_shared_exact_outcome_polarity() -> None:
 
 def test_shared_tree_evaluation_base_owns_generic_best_equivalence_dispatch() -> None:
     generic_eval = _HookDrivenEvaluation(
-        tree_node=SimpleNamespace(
-            id=3,
+        tree_node=make_structural_tree_node(
+            node_id=3,
             state=SimpleNamespace(),
             branches_children={0: object(), 1: object(), 2: object()},
             all_branches_generated=True,
@@ -363,8 +364,8 @@ def test_shared_frontier_candidate_helper_preserves_order_and_appends_children()
     None
 ):
     generic_eval = _HookDrivenEvaluation(
-        tree_node=SimpleNamespace(
-            id=4,
+        tree_node=make_structural_tree_node(
+            node_id=4,
             state=SimpleNamespace(),
             branches_children={2: object(), 0: object(), 1: object(), 3: object()},
             all_branches_generated=True,

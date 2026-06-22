@@ -13,6 +13,7 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
 )
 from anemone.objectives import AdversarialZeroSumObjective
 from anemone.values import EvaluationOrdering
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 @dataclass(frozen=True)
@@ -59,8 +60,8 @@ def _state(turn: Color) -> Any:
 
 
 def _leaf(node_id: int, score: float) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=_state(Color.WHITE),
         branches_children={},
         all_branches_generated=True,
@@ -84,8 +85,8 @@ def _exact_leaf(
     over_event: _FakeOverEvent,
     pv_length: int,
 ) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=_state(turn),
         branches_children={},
         all_branches_generated=True,
@@ -182,8 +183,8 @@ def test_adversarial_objective_rejects_unsupported_turn_types() -> None:
 
 
 def test_minimax_best_branch_uses_injected_objective() -> None:
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=_state(Color.WHITE),
         branches_children={0: _leaf(1, 0.9), 1: _leaf(2, 0.1)},
         all_branches_generated=True,
@@ -204,8 +205,8 @@ def test_minimax_best_branch_uses_injected_objective() -> None:
 
 
 def test_minimax_branch_order_prefers_shorter_exact_win_lines() -> None:
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=_state(Color.WHITE),
         branches_children={
             0: _exact_leaf(
@@ -233,8 +234,8 @@ def test_minimax_branch_order_prefers_shorter_exact_win_lines() -> None:
 
 
 def test_minimax_branch_order_prefers_longer_exact_loss_lines() -> None:
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=_state(Color.WHITE),
         branches_children={
             0: _exact_leaf(

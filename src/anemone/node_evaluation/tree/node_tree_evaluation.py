@@ -163,39 +163,6 @@ class ChildTreeEvaluation(Protocol):
         ...
 
 
-def _child_for_branch(
-    tree_node: Any,
-    branch: BranchKey,
-) -> TreeEvaluationChild[Any] | None:
-    """Return a child through the structural API with a compatibility fallback."""
-    child_for_branch = getattr(tree_node, "child_for_branch", None)
-    if callable(child_for_branch):
-        return cast("TreeEvaluationChild[Any] | None", child_for_branch(branch))
-    return cast(
-        "TreeEvaluationChild[Any] | None", tree_node.branches_children.get(branch)
-    )
-
-
-def _child_branches(tree_node: Any) -> tuple[BranchKey, ...]:
-    """Return child-link branch keys without materializing for new nodes."""
-    iter_child_links = getattr(tree_node, "iter_child_links", None)
-    if callable(iter_child_links):
-        child_links = cast(
-            "Iterable[tuple[BranchKey, TreeEvaluationChild[Any] | None]]",
-            iter_child_links(),
-        )
-        return tuple(branch for branch, _child in child_links)
-    return tuple(cast("Mapping[BranchKey, object]", tree_node.branches_children))
-
-
-def _child_link_count(tree_node: Any) -> int:
-    """Return child-link count without materializing for new nodes."""
-    child_link_count = getattr(tree_node, "child_link_count", None)
-    if callable(child_link_count):
-        return cast("int", child_link_count())
-    return len(cast("Mapping[BranchKey, object]", tree_node.branches_children))
-
-
 @dataclass(frozen=True, slots=True)
 class _TreeEvaluationContext:
     """Read-only node-local inputs repeatedly needed by tree-evaluation helpers."""
@@ -343,8 +310,10 @@ class NodeTreeEvaluationState[
         return _TreeEvaluationContext(
             node_id=self.tree_node.id,
             state=self.tree_node.state,
-            child_node_getter=lambda branch: _child_for_branch(self.tree_node, branch),
-            child_branches=_child_branches(self.tree_node),
+            child_node_getter=self.tree_node.child_for_branch,
+            child_branches=tuple(
+                branch for branch, _child in self.tree_node.iter_child_links()
+            ),
         )
 
     def _capture_node_delta_snapshot(self) -> _NodeDeltaSnapshot:
@@ -765,7 +734,7 @@ class NodeTreeEvaluationState[
         branch without an exact child value as keeping closure false.
         """
         return self.tree_node.all_branches_generated and (
-            exact_child_count == _child_link_count(self.tree_node)
+            exact_child_count == self.tree_node.child_link_count()
         )
 
     def _runtime_update_pv_for_best_child_selection(

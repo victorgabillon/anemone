@@ -1,5 +1,6 @@
 """Tests for the tree-manager orchestration around value propagation."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any, cast
@@ -13,6 +14,7 @@ from anemone.tree_manager.algorithm_node_tree_manager import (
     AlgorithmNodeTreeManager,
 )
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 @dataclass(eq=False)
@@ -25,6 +27,10 @@ class _FakeNode:
     tree_evaluation: Any = field(default_factory=SimpleNamespace)
     branches_children: dict[int, "_FakeNode | None"] = field(default_factory=dict)
     parent_nodes: dict["_FakeNode", set[int]] = field(default_factory=dict)
+
+    def iter_child_links(self) -> Iterator[tuple[int, "_FakeNode | None"]]:
+        """Iterate structural child links."""
+        return iter(self.branches_children.items())
 
 
 class _SpyValuePropagator:
@@ -118,8 +124,9 @@ def _build_manager(
 
 def _algorithm_node(node_id: int, *, tree_depth: int) -> AlgorithmNode[Any]:
     """Build a minimal real ``AlgorithmNode`` for direct-evaluation tests."""
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
+        tree_depth=tree_depth,
         tree_depth_=tree_depth,
         state=SimpleNamespace(tag=f"state-{node_id}"),
         tag=f"tag-{node_id}",

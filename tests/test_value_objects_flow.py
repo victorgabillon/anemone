@@ -18,6 +18,7 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from anemone.objectives import Objective
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 class _OverDetector:
@@ -123,8 +124,8 @@ def _make_node(
     *, node_id: int, turn: Color, base_score: float, is_terminal: bool
 ) -> Any:
     state = SimpleNamespace(turn=turn, base_score=base_score, is_terminal=is_terminal)
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=state,
         branches_children={},
         all_branches_generated=False,

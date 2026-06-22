@@ -1,5 +1,6 @@
 """Tests for structural opening-status helpers."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any
@@ -35,6 +36,10 @@ class _Dynamics:
 class _Node:
     state: object = field(default_factory=object)
     branches_children: dict[int, Any | None] = field(default_factory=dict)
+
+    def iter_child_links(self) -> Iterator[tuple[int, Any | None]]:
+        """Iterate stored child-link slots."""
+        return iter(self.branches_children.items())
 
 
 def test_unopened_node_reports_all_legal_branches_openable() -> None:

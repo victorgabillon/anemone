@@ -22,6 +22,7 @@ from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
 )
 from anemone.objectives import SingleAgentMaxObjective
 from anemone.recommender_rule.recommender_rule import AlmostEqualLogistic
+from tests.structural_node_helpers import make_structural_tree_node
 
 if TYPE_CHECKING:
     from anemone.node_evaluation.tree.top2_exactness_pv_runtime import (
@@ -106,8 +107,8 @@ def _node(
     children: dict[int, Any] | None = None,
     all_branches_generated: bool = True,
 ) -> NodeMaxEvaluation[Any]:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=_state(),
         branches_children=children or {},
         all_branches_generated=all_branches_generated,
@@ -136,8 +137,8 @@ def _child(
     *,
     best_branch_sequence: list[int] | None = None,
 ) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=_state(),
         branches_children={},
         all_branches_generated=True,
@@ -770,7 +771,8 @@ def test_almost_equal_logistic_recommender_uses_generic_evaluation_capability() 
             2: _child(12, Value(score=0.2, certainty=Certainty.ESTIMATE)),
         },
     )
-    root_node = SimpleNamespace(
+    root_node = make_structural_tree_node(
+        node_id=0,
         tree_evaluation=tree_evaluation,
         branches_children=tree_evaluation.tree_node.branches_children,
     )

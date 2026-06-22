@@ -73,8 +73,16 @@ class ITreeNode[StateT: State = State](Protocol):
         """Return the concrete child for ``branch`` when linked."""
         ...
 
+    def has_child_link_for_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` has a stored child-link slot."""
+        ...
+
+    def has_concrete_child_for_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` maps to a concrete child node."""
+        ...
+
     def has_child_for_branch(self, branch: BranchKey) -> bool:
-        """Return whether ``branch`` has a concrete child node."""
+        """Compatibility alias for concrete-child semantics."""
         ...
 
     def set_child_for_branch(self, branch: BranchKey, child: Self | None) -> None:

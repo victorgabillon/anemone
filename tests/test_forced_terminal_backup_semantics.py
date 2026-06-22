@@ -14,6 +14,7 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 class _SoloRole(Enum):
@@ -46,8 +47,8 @@ def _single_state() -> Any:
 
 
 def _single_leaf(node_id: int, value: Value) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=_single_state(),
         branches_children={},
         all_branches_generated=True,
@@ -59,8 +60,8 @@ def _single_leaf(node_id: int, value: Value) -> Any:
 
 
 def _single_parent(*, children: dict[int, Any]) -> NodeMaxEvaluation[Any]:
-    tree_node = SimpleNamespace(
-        id=0,
+    tree_node = make_structural_tree_node(
+        node_id=0,
         state=_single_state(),
         branches_children=children,
         all_branches_generated=True,
@@ -71,8 +72,8 @@ def _single_parent(*, children: dict[int, Any]) -> NodeMaxEvaluation[Any]:
 
 
 def _minimax_leaf(node_id: int, value: Value) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={},
         all_branches_generated=True,
@@ -89,8 +90,8 @@ def _minimax_parent(
     children: dict[int | str, Any],
     all_generated: bool,
 ) -> NodeMinmaxEvaluation[Any, Any]:
-    tree_node = SimpleNamespace(
-        id=0,
+    tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=turn),
         branches_children=children,
         all_branches_generated=all_generated,

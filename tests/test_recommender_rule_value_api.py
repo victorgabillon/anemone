@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
 from types import SimpleNamespace
 
@@ -23,6 +24,9 @@ class _ChildNode:
 class _RootNode:
     state: object
     branches_children: dict[int, _ChildNode | None]
+
+    def iter_child_links(self) -> Iterator[tuple[int, _ChildNode | None]]:
+        return iter(self.branches_children.items())
 
 
 def test_softmax_rule_uses_score_not_legacy_float_api() -> None:

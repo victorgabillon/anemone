@@ -61,19 +61,9 @@ def _missing_terminal_over_event_error() -> ValueError:
 
 def all_child_values_exact(node_eval: ChildValueReader) -> bool:
     """Return True when every existing child branch has an exact Value."""
-    has_child_links = getattr(node_eval.tree_node, "has_child_links", None)
-    if callable(has_child_links):
-        has_children = bool(has_child_links())
-        child_links = node_eval.tree_node.iter_child_links()
-    else:
-        has_children = bool(node_eval.tree_node.branches_children)
-        child_links = (
-            (branch_key, child)
-            for branch_key, child in node_eval.tree_node.branches_children.items()
-        )
-    if not has_children:
+    if not node_eval.tree_node.has_child_links():
         return False
-    for branch_key, _child in child_links:
+    for branch_key, _child in node_eval.tree_node.iter_child_links():
         child_value = node_eval.child_value_candidate(branch_key)
         if not canonical_value.is_exact_value(child_value):
             return False

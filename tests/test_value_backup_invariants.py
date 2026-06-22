@@ -14,6 +14,7 @@ from tests.fakes_tree_evaluation import (
     FakeChildNode,
     set_estimate_value,
 )
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 def _build_parent_eval(
@@ -22,8 +23,8 @@ def _build_parent_eval(
     children: dict[int, FakeChildNode],
     parent_eval_value: float = 0.0,
 ) -> NodeMinmaxEvaluation[Any, Any]:
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=turn),
         branches_children=children,
         all_branches_generated=True,
@@ -100,8 +101,8 @@ def test_backup_tie_break_is_deterministic() -> None:
 
 
 def test_setting_estimate_value_sets_canonical_value_views() -> None:
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={},
         all_branches_generated=True,
@@ -116,8 +117,8 @@ def test_setting_estimate_value_sets_canonical_value_views() -> None:
 
 
 def test_setting_estimate_value_populates_direct_value_guardrail() -> None:
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={},
         all_branches_generated=True,

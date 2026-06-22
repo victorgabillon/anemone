@@ -15,6 +15,7 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
 from tests.fakes_tree_evaluation import set_estimate_value
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 class _SelectDirectAggregationPolicy:
@@ -49,8 +50,8 @@ def _make_leaf_eval(
     pv_tail: list[int],
     node_id: int,
 ) -> NodeMinmaxEvaluation[Any, Any]:
-    leaf_tree_node = SimpleNamespace(
-        id=node_id,
+    leaf_tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=turn),
         branches_children={},
         all_branches_generated=True,
@@ -74,8 +75,8 @@ def _make_parent_eval() -> tuple[
             _make_leaf_eval(turn=Color.WHITE, value_white=0.2, pv_tail=[5], node_id=11),
         ),
     }
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children=children,
         all_branches_generated=True,

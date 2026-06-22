@@ -162,9 +162,22 @@ class TreeNode[
             return None
         return self.branches_children_.get(branch)
 
-    def has_child_for_branch(self, branch: BranchKey) -> bool:
-        """Return whether ``branch`` has a concrete child node."""
+    def has_child_link_for_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` has a stored child-link slot, even if ``None``."""
+        return self.branches_children_ is not None and branch in self.branches_children_
+
+    def has_concrete_child_for_branch(self, branch: BranchKey) -> bool:
+        """Return whether ``branch`` maps to a concrete non-``None`` child."""
         return self.child_for_branch(branch) is not None
+
+    def has_child_for_branch(self, branch: BranchKey) -> bool:
+        """Compatibility alias for concrete-child semantics.
+
+        Prefer ``has_child_link_for_branch`` when a stored ``branch -> None``
+        slot should count, and ``has_concrete_child_for_branch`` when only a
+        real child node should count.
+        """
+        return self.has_concrete_child_for_branch(branch)
 
     def mutable_child_links(self) -> dict[BranchKey, FamilyT | None]:
         """Materialize and return the mutable child-link dictionary."""

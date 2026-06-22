@@ -33,6 +33,7 @@ from anemone.node_selector.recurzipf.recur_zipf_base import (
 )
 from anemone.tree_manager.algorithm_node_tree_manager import AlgorithmNodeTreeManager
 from anemone.tree_manager.tree_expander import TreeExpansion
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 class _SoloRole(Enum):
@@ -69,7 +70,7 @@ class _FakeTreeManager:
         )
 
     def assert_branch_not_opened(self, *, parent_node: Any, branch: Any) -> None:
-        if parent_node.branches_children.get(branch) is not None:
+        if parent_node.child_for_branch(branch) is not None:
             raise AssertionError("branch already opened")
 
     def open_tree_expansion_from_branch(
@@ -80,7 +81,7 @@ class _FakeTreeManager:
     ) -> TreeExpansion[Any]:
         del tree
         child = SimpleNamespace(id=2)
-        parent_node.branches_children[branch] = child
+        parent_node.set_child_for_branch(branch, child)
         return TreeExpansion(
             child_node=child,
             parent_node=parent_node,
@@ -129,8 +130,8 @@ class _FakeOverEvent:
 
 
 def _minimax_leaf(node_id: int, value: Value) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={},
         all_branches_generated=True,
@@ -142,8 +143,8 @@ def _minimax_leaf(node_id: int, value: Value) -> Any:
 
 
 def _single_leaf(node_id: int, value: Value) -> Any:
-    tree_node = SimpleNamespace(
-        id=node_id,
+    tree_node = make_structural_tree_node(
+        node_id=node_id,
         state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={},
         all_branches_generated=True,
@@ -162,8 +163,8 @@ def test_tree_manager_notifies_branch_frontier_when_opening_a_branch() -> None:
         index_manager=cast("Any", object()),
     )
     parent_evaluation = _FakeFrontierEvaluation(ordered_branches=["left"])
-    parent_node = SimpleNamespace(
-        id=1,
+    parent_node = make_structural_tree_node(
+        node_id=1,
         state=SimpleNamespace(),
         tree_evaluation=parent_evaluation,
         branches_children={},
@@ -190,15 +191,15 @@ def test_tree_manager_notifies_branch_frontier_when_opening_a_branch() -> None:
 
 
 def test_recurzipf_uses_branch_frontier_capability_for_tree_descent() -> None:
-    leaf = SimpleNamespace(
-        id=2,
+    leaf = make_structural_tree_node(
+        node_id=2,
         branches_children={},
         tree_evaluation=_FakeFrontierEvaluation(),
     )
     root_evaluation = _FakeFrontierEvaluation(ordered_branches=["left"])
     root_evaluation.on_branch_opened("left")
-    root = SimpleNamespace(
-        id=1,
+    root = make_structural_tree_node(
+        node_id=1,
         branches_children={"left": leaf},
         tree_evaluation=root_evaluation,
     )
@@ -231,8 +232,8 @@ def test_minimax_frontier_follows_branch_order_and_clears_for_exact_nodes() -> N
         2,
         Value(score=0.9, certainty=Certainty.ESTIMATE),
     )
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={"low": low_child, "high": high_child},
         all_branches_generated=False,
@@ -263,8 +264,8 @@ def test_minimax_frontier_follows_branch_order_and_clears_for_exact_nodes() -> N
         4,
         Value(score=0.2, certainty=Certainty.ESTIMATE),
     )
-    exact_parent_tree_node = SimpleNamespace(
-        id=5,
+    exact_parent_tree_node = make_structural_tree_node(
+        node_id=5,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={"win": winning_child, "live": live_child},
         all_branches_generated=False,
@@ -299,8 +300,8 @@ def test_single_agent_frontier_tracks_only_unresolved_children() -> None:
         2,
         Value(score=5.0, certainty=Certainty.ESTIMATE),
     )
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={0: exact_child, 1: live_child},
         all_branches_generated=False,
@@ -331,8 +332,8 @@ def test_single_agent_frontier_uses_explicit_ordering_cache_updates() -> None:
         2,
         Value(score=0.9, certainty=Certainty.ESTIMATE),
     )
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent"),
         branches_children={0: low_child, 1: high_child},
         all_branches_generated=False,
@@ -379,8 +380,8 @@ def test_minimax_frontier_reappears_and_resorts_after_exactness_reversal() -> No
         2,
         Value(score=0.2, certainty=Certainty.ESTIMATE),
     )
-    parent_tree_node = SimpleNamespace(
-        id=0,
+    parent_tree_node = make_structural_tree_node(
+        node_id=0,
         state=SimpleNamespace(turn=Color.WHITE),
         branches_children={"win": winning_child, "live": live_child},
         all_branches_generated=False,

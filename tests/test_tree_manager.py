@@ -1,5 +1,6 @@
 """Tests for structural tree-manager opening safety."""
 
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from random import Random
 from types import SimpleNamespace
@@ -42,6 +43,26 @@ class _Node:
     def add_parent(self, branch_key: int, new_parent_node: "_Node") -> None:
         """Record an incoming edge for existing-node connections."""
         self.parent_nodes.setdefault(new_parent_node, set()).add(branch_key)
+
+    def iter_child_links(self) -> Iterator[tuple[int, "_Node | None"]]:
+        """Iterate stored child-link slots."""
+        return iter(self.branches_children.items())
+
+    def child_for_branch(self, branch: int) -> "_Node | None":
+        """Return the concrete child for a branch."""
+        return self.branches_children.get(branch)
+
+    def set_child_for_branch(self, branch: int, child: "_Node | None") -> None:
+        """Set one child-link slot."""
+        self.branches_children[branch] = child
+
+    def discard_unopened_branch(self, branch: int) -> None:
+        """Discard one unopened branch."""
+        self.non_opened_branches.discard(branch)
+
+    def set_unopened_branches(self, branches: Iterable[int]) -> None:
+        """Replace unopened branches."""
+        self.non_opened_branches = set(branches)
 
 
 class _StateHandle:

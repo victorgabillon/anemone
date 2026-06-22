@@ -1,5 +1,6 @@
 """Focused tests for ``ValuePropagator`` scheduling semantics."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any, cast
@@ -14,6 +15,7 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
 )
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.updates.value_propagator import ValuePropagator
+from tests.structural_node_helpers import make_structural_tree_node
 
 
 @dataclass(eq=False)
@@ -53,6 +55,10 @@ class _FakeNode:
     def __repr__(self) -> str:
         """Return a stable name to make assertion failures readable."""
         return self.name
+
+    def iter_child_links(self) -> Iterator[tuple[int, "_FakeNode | None"]]:
+        """Iterate structural child links."""
+        return iter(self.branches_children.items())
 
 
 def _connect(parent: _FakeNode, branch: int, child: _FakeNode) -> None:
@@ -187,9 +193,10 @@ class _SemanticNode:
     tree_evaluation: NodeMinmaxEvaluation[Any, Any] = field(init=False)
 
     def __post_init__(self) -> None:
-        tree_node = SimpleNamespace(
-            id=self.node_id,
+        tree_node = make_structural_tree_node(
+            node_id=self.node_id,
             state=SimpleNamespace(turn=self.turn),
+            tree_depth=self.tree_depth,
             tree_depth_=self.tree_depth,
             branches_children=self.branches_children,
             parent_nodes=self.parent_nodes,
@@ -209,6 +216,10 @@ class _SemanticNode:
 
     def __repr__(self) -> str:
         return self.name
+
+    def iter_child_links(self) -> Iterator[tuple[int, "_SemanticNode | None"]]:
+        """Iterate structural child links."""
+        return iter(self.branches_children.items())
 
 
 def _connect_semantic(parent: _SemanticNode, branch: int, child: _SemanticNode) -> None:
