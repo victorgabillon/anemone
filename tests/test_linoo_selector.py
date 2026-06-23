@@ -7,6 +7,11 @@ from types import SimpleNamespace
 import pytest
 from valanga.evaluations import Certainty, Value
 
+from anemone.checkpoints.payloads import (
+    LinooDepthStatsCheckpointPayload,
+    LinooNodeStateCheckpointPayload,
+    LinooSelectorCheckpointPayload,
+)
 from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
 from anemone.node_selector.factory import create, create_composed_node_selector
 from anemone.node_selector.linoo import (
@@ -184,11 +189,10 @@ def _scan_selected_depth(tree: SimpleNamespace) -> int:
         for depth, (_opened_count, frontier_nodes) in depth_state_by_depth.items()
         if frontier_nodes
     }
-    selected_depth = min(
+    return min(
         frontier_by_depth,
         key=lambda depth: (depth_state_by_depth[depth][0] * (depth + 1), depth),
     )
-    return selected_depth
 
 
 def test_linoo_chooses_depth_with_minimum_opened_count_index() -> None:
@@ -363,6 +367,73 @@ def test_linoo_updates_latest_expansion_incrementally() -> None:
     assert rows_by_depth[1].opened_count == 1
     assert rows_by_depth[1].frontier_count == 1
     assert rows_by_depth[2].frontier_count == 1
+
+
+def test_linoo_sparse_state_omits_default_opened_nodes() -> None:
+    """Default opened nodes should be counted without per-node state objects."""
+    selector = _selector()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, opened=True),
+        _node(11, 1, score=4.0),
+    )
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert selector._node_state_or_none(0) is None
+    assert selector._node_state_or_none(10) is None
+    frontier_state = selector._node_state_or_none(11)
+    assert frontier_state is not None
+    assert frontier_state.status == "frontier"
+    assert set(selector._node_state_by_id) == {11}
+
+
+def test_linoo_sparse_state_discards_node_that_returns_to_default() -> None:
+    """Reclassification should drop materialized state once it becomes opened."""
+    selector = _selector()
+    root = _node(0, 0, opened=True)
+    first = _node(10, 1, score=5.0)
+    tree = _tree(root, first)
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+    assert selector._node_state_or_none(10) is not None
+
+    first.all_branches_generated = True
+    expansions: TreeExpansions[_FakeNode] = TreeExpansions()
+    expansions.record_connection(
+        TreeExpansion(
+            child_node=first,
+            parent_node=root,
+            state_modifications=None,
+            creation_child_node=False,
+            branch_key=0,
+        )
+    )
+    child = _node(20, 2, score=100.0)
+    tree.descendants.setdefault(child.tree_depth, {})[child.id] = child
+    tree.nodes_count += 1
+    expansions.record_creation(
+        TreeExpansion(
+            child_node=child,
+            parent_node=first,
+            state_modifications=None,
+            creation_child_node=True,
+            branch_key=0,
+        )
+    )
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree, latest_tree_expansions=expansions
+    )
+
+    assert selector._node_state_or_none(10) is None
+    assert selector._node_state_or_none(20) is not None
 
 
 def test_linoo_selection_report_keeps_depths_without_frontier() -> None:
@@ -632,10 +703,12 @@ def test_linoo_checkpoint_payload_roundtrips_initialized_cache() -> None:
     )
     assert restored_selector.latest_selection_report is not None
     assert restored_selector.latest_selection_report.state_rebuilt is False
+    assert restored_selector._node_state_or_none(0) is None
+    assert restored_selector._node_state_or_none(10) is not None
 
 
-def test_linoo_checkpoint_restore_rejects_missing_node_state() -> None:
-    """Stale selector payloads should be discarded without breaking selection."""
+def test_linoo_checkpoint_restore_accepts_missing_default_node_state() -> None:
+    """Sparse selector payloads may omit default opened nodes."""
     objective = SingleAgentMaxObjective()
     tree = _tree(
         _node(0, 0, opened=True),
@@ -649,7 +722,56 @@ def test_linoo_checkpoint_restore_rejects_missing_node_state() -> None:
     )
     payload = selector.build_checkpoint_payload(objective)
     assert payload is not None
-    payload.node_states[0].node_id = 999999
+
+    payload.node_states = [
+        node_state for node_state in payload.node_states if node_state.node_id != 0
+    ]
+
+    restored_selector = _selector()
+    restored = restored_selector.restore_from_checkpoint_payload(
+        tree=tree,
+        objective=objective,
+        payload=payload,
+    )
+
+    assert restored is True
+    assert restored_selector._node_state_or_none(0) is None
+    assert restored_selector._node_state_or_none(10) is not None
+
+
+def test_linoo_checkpoint_restore_rejects_missing_non_default_node_state() -> None:
+    """Missing non-default node states should still invalidate stale payloads."""
+    objective = SingleAgentMaxObjective()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=5.0),
+        objective=objective,
+    )
+    payload = LinooSelectorCheckpointPayload(
+        depth_stats=[
+            LinooDepthStatsCheckpointPayload(
+                depth=0,
+                total_nodes=1,
+                opened_count=1,
+                frontier_count=0,
+                terminal_count=0,
+                exact_count=0,
+                uncached_terminal_candidates=0,
+                non_openable_count=0,
+            ),
+            LinooDepthStatsCheckpointPayload(
+                depth=1,
+                total_nodes=1,
+                opened_count=0,
+                frontier_count=1,
+                terminal_count=0,
+                exact_count=0,
+                uncached_terminal_candidates=0,
+                non_openable_count=0,
+            ),
+        ],
+        node_states=[],
+    )
 
     restored_selector = _selector()
     restored = restored_selector.restore_from_checkpoint_payload(
@@ -666,6 +788,55 @@ def test_linoo_checkpoint_restore_rejects_missing_node_state() -> None:
     assert _selected_node_id(instructions) == 10
     assert restored_selector.latest_selection_report is not None
     assert restored_selector.latest_selection_report.state_rebuilt is True
+
+
+def test_linoo_checkpoint_restore_skips_explicit_default_node_state() -> None:
+    """Old dense checkpoints with explicit opened entries should load sparsely."""
+    objective = SingleAgentMaxObjective()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=5.0),
+        objective=objective,
+    )
+    payload = LinooSelectorCheckpointPayload(
+        depth_stats=[
+            LinooDepthStatsCheckpointPayload(
+                depth=0,
+                total_nodes=1,
+                opened_count=1,
+                frontier_count=0,
+                terminal_count=0,
+                exact_count=0,
+                uncached_terminal_candidates=0,
+                non_openable_count=0,
+            ),
+            LinooDepthStatsCheckpointPayload(
+                depth=1,
+                total_nodes=1,
+                opened_count=0,
+                frontier_count=1,
+                terminal_count=0,
+                exact_count=0,
+                uncached_terminal_candidates=0,
+                non_openable_count=0,
+            ),
+        ],
+        node_states=[
+            LinooNodeStateCheckpointPayload(node_id=0, depth=0, status="opened"),
+            LinooNodeStateCheckpointPayload(node_id=10, depth=1, status="frontier"),
+        ],
+    )
+
+    restored_selector = _selector()
+    restored = restored_selector.restore_from_checkpoint_payload(
+        tree=tree,
+        objective=objective,
+        payload=payload,
+    )
+
+    assert restored is True
+    assert restored_selector._node_state_or_none(0) is None
+    assert restored_selector._node_state_or_none(10) is not None
 
 
 def test_linoo_checkpoint_restore_rejects_changed_classification() -> None:
@@ -741,17 +912,10 @@ def test_linoo_refresh_state_for_checkpoint_updates_initialized_cache_only() -> 
 
     assert payload is not None
     assert {node_state.node_id for node_state in payload.node_states} == {
-        0,
-        10,
         11,
         20,
     }
-    assert (
-        next(
-            node_state for node_state in payload.node_states if node_state.node_id == 10
-        ).status
-        == "opened"
-    )
+    assert selector._node_state_or_none(10) is None
 
 
 def test_linoo_zipf_sampling_respects_rank_intervals() -> None:
