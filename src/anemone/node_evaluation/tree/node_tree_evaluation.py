@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol, assert_never, cast
 
@@ -229,18 +229,10 @@ class NodeTreeEvaluationState[
     direct_value: Value | None = None
     direct_evaluation_version: int | None = None
     _backed_up_value: Value | None = None
-    decision_ordering: DecisionOrderingState = field(
-        default_factory=DecisionOrderingState
-    )
-    pv_state: PrincipalVariationState = field(
-        default_factory=make_principal_variation_state_factory
-    )
-    branch_frontier: BranchFrontierState = field(
-        default_factory=make_branch_frontier_factory
-    )
-    backup_runtime: BackupRuntime[BranchKey] = field(
-        default_factory=make_backup_runtime_factory
-    )
+    decision_ordering_: DecisionOrderingState | None = None
+    pv_state_: PrincipalVariationState | None = None
+    branch_frontier_: BranchFrontierState | None = None
+    backup_runtime_: BackupRuntime[BranchKey] | None = None
 
     def __post_init__(self) -> None:
         """Eagerly install the family's default backup policy when omitted."""
@@ -284,6 +276,86 @@ class NodeTreeEvaluationState[
     def tree_value(self, value: Value | None) -> None:
         """Set the child/subtree-derived value for this node."""
         self.backed_up_value = value
+
+    @property
+    def decision_ordering(self) -> DecisionOrderingState:
+        """Return branch-ordering cache state, materializing it on first use."""
+        if self.decision_ordering_ is None:
+            self.decision_ordering_ = DecisionOrderingState()
+        return self.decision_ordering_
+
+    @decision_ordering.setter
+    def decision_ordering(self, value: DecisionOrderingState) -> None:
+        """Set branch-ordering cache state for compatibility."""
+        self.decision_ordering_ = value
+
+    def has_decision_ordering_state(self) -> bool:
+        """Return whether branch-ordering cache state has been materialized."""
+        return self.decision_ordering_ is not None
+
+    def decision_ordering_state_or_none(self) -> DecisionOrderingState | None:
+        """Return branch-ordering state without materializing defaults."""
+        return self.decision_ordering_
+
+    @property
+    def pv_state(self) -> PrincipalVariationState:
+        """Return principal-variation state, materializing it on first use."""
+        if self.pv_state_ is None:
+            self.pv_state_ = make_principal_variation_state_factory()
+        return self.pv_state_
+
+    @pv_state.setter
+    def pv_state(self, value: PrincipalVariationState) -> None:
+        """Set principal-variation state for compatibility."""
+        self.pv_state_ = value
+
+    def has_pv_state(self) -> bool:
+        """Return whether principal-variation state has been materialized."""
+        return self.pv_state_ is not None
+
+    def pv_state_or_none(self) -> PrincipalVariationState | None:
+        """Return principal-variation state without materializing defaults."""
+        return self.pv_state_
+
+    @property
+    def branch_frontier(self) -> BranchFrontierState:
+        """Return branch-frontier state, materializing it on first use."""
+        if self.branch_frontier_ is None:
+            self.branch_frontier_ = make_branch_frontier_factory()
+        return self.branch_frontier_
+
+    @branch_frontier.setter
+    def branch_frontier(self, value: BranchFrontierState) -> None:
+        """Set branch-frontier state for compatibility."""
+        self.branch_frontier_ = value
+
+    def has_branch_frontier_state(self) -> bool:
+        """Return whether branch-frontier state has been materialized."""
+        return self.branch_frontier_ is not None
+
+    def branch_frontier_state_or_none(self) -> BranchFrontierState | None:
+        """Return branch-frontier state without materializing defaults."""
+        return self.branch_frontier_
+
+    @property
+    def backup_runtime(self) -> BackupRuntime[BranchKey]:
+        """Return backup runtime cache state, materializing it on first use."""
+        if self.backup_runtime_ is None:
+            self.backup_runtime_ = make_backup_runtime_factory()
+        return self.backup_runtime_
+
+    @backup_runtime.setter
+    def backup_runtime(self, value: BackupRuntime[BranchKey]) -> None:
+        """Set backup runtime cache state for compatibility."""
+        self.backup_runtime_ = value
+
+    def has_backup_runtime_state(self) -> bool:
+        """Return whether backup runtime cache state has been materialized."""
+        return self.backup_runtime_ is not None
+
+    def backup_runtime_state_or_none(self) -> BackupRuntime[BranchKey] | None:
+        """Return backup runtime cache state without materializing defaults."""
+        return self.backup_runtime_
 
     @property
     def all_branches_generated(self) -> bool:
@@ -412,16 +484,18 @@ class NodeTreeEvaluationState[
 
     def has_frontier_branches(self) -> bool:
         """Return whether some child branches remain search-relevant."""
-        return self.branch_frontier.has_frontier_branches()
+        frontier = self.branch_frontier_
+        return frontier is not None and frontier.has_frontier_branches()
 
     def ordered_frontier_branches_from(
         self,
         ordered_candidate_branches: Iterable[BranchKey],
     ) -> list[BranchKey]:
         """Project frontier membership onto one caller-supplied branch ordering."""
-        return self.branch_frontier.ordered_frontier_branches(
-            ordered_candidate_branches
-        )
+        frontier = self.branch_frontier_
+        if frontier is None:
+            return []
+        return frontier.ordered_frontier_branches(ordered_candidate_branches)
 
     def _branch_is_frontier_relevant(self, branch_key: BranchKey) -> bool:
         """Return whether a child branch can still affect future search results."""
@@ -449,7 +523,9 @@ class NodeTreeEvaluationState[
     def sync_branch_frontier(self, branches_to_refresh: set[BranchKey]) -> None:
         """Refresh frontier bookkeeping from updated child values."""
         if self.has_exact_value():
-            self.branch_frontier.clear()
+            frontier = self.branch_frontier_
+            if frontier is not None:
+                frontier.clear()
             return
 
         self.branch_frontier.sync_with_current_state(

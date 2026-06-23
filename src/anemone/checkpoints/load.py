@@ -476,12 +476,21 @@ def _restore_evaluation(
     _restore_backup_runtime(node_eval, payload.backup_runtime)
 
 
+def _clear_private_lazy_state(node_eval: object, attribute_name: str) -> None:
+    """Clear one optional lazy state slot when it exists on the evaluation."""
+    if hasattr(node_eval, attribute_name):
+        object.__setattr__(node_eval, attribute_name, None)
+
+
 def _restore_decision_ordering(
     node_eval: object,
     payload: DecisionOrderingCheckpointPayload | None,
 ) -> None:
     """Restore cached branch-ordering keys when the evaluation exposes them."""
     if payload is None:
+        return
+    if not payload.branch_ordering:
+        _clear_private_lazy_state(node_eval, "decision_ordering_")
         return
     decision_ordering = getattr(node_eval, "decision_ordering", None)
     if decision_ordering is None:
@@ -504,6 +513,13 @@ def _restore_principal_variation(
     """Restore principal-variation content and version metadata."""
     if payload is None:
         return
+    if (
+        not payload.best_branch_sequence
+        and payload.pv_version == 0
+        and payload.cached_best_child_version is None
+    ):
+        _clear_private_lazy_state(node_eval, "pv_state_")
+        return
     pv_state = getattr(node_eval, "pv_state", None)
     if pv_state is None:
         return
@@ -523,6 +539,9 @@ def _restore_branch_frontier(
     """Restore branch-frontier membership for one node."""
     if payload is None:
         return
+    if not payload.frontier_branches:
+        _clear_private_lazy_state(node_eval, "branch_frontier_")
+        return
     branch_frontier = getattr(node_eval, "branch_frontier", None)
     if branch_frontier is None:
         return
@@ -539,6 +558,15 @@ def _restore_backup_runtime(
 ) -> None:
     """Restore the conservative backup-runtime cache when present."""
     if payload is None:
+        return
+    if (
+        payload.best_branch is None
+        and payload.second_best_branch is None
+        and payload.exact_child_count == 0
+        and payload.selected_child_pv_version is None
+        and not payload.is_initialized
+    ):
+        _clear_private_lazy_state(node_eval, "backup_runtime_")
         return
     backup_runtime = getattr(node_eval, "backup_runtime", None)
     if backup_runtime is None:

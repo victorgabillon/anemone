@@ -52,6 +52,14 @@ if TYPE_CHECKING:
     from valanga import BranchKey
     from valanga.evaluations import Value
 
+    from anemone.node_evaluation.common.branch_frontier import BranchFrontierState
+    from anemone.node_evaluation.common.principal_variation import (
+        PrincipalVariationState,
+    )
+    from anemone.node_evaluation.tree.decision_ordering import DecisionOrderingState
+    from anemone.node_evaluation.tree.top2_exactness_pv_runtime import (
+        Top2ExactnessPvRuntime,
+    )
     from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
     from anemone.tree_exploration import TreeExploration
     from anemone.tree_manager import TreeExpansion, TreeExpansions
@@ -928,7 +936,16 @@ def _build_decision_ordering_payload(
     context: _CheckpointBuildContext,
 ) -> DecisionOrderingCheckpointPayload | None:
     """Serialize cached decision-ordering keys when the evaluation exposes them."""
-    decision_ordering = getattr(node_eval, "decision_ordering", None)
+    state_getter = getattr(node_eval, "decision_ordering_state_or_none", None)
+    if callable(state_getter):
+        decision_ordering = cast("DecisionOrderingState | None", state_getter())
+        if decision_ordering is None:
+            return DecisionOrderingCheckpointPayload()
+    else:
+        decision_ordering = cast(
+            "DecisionOrderingState | None",
+            getattr(node_eval, "decision_ordering", None),
+        )
     if decision_ordering is None:
         return None
 
@@ -963,7 +980,16 @@ def _build_principal_variation_payload(
     context: _CheckpointBuildContext,
 ) -> PrincipalVariationCheckpointPayload | None:
     """Serialize principal-variation state when present."""
-    pv_state = getattr(node_eval, "pv_state", None)
+    state_getter = getattr(node_eval, "pv_state_or_none", None)
+    if callable(state_getter):
+        pv_state = cast("PrincipalVariationState | None", state_getter())
+        if pv_state is None:
+            return PrincipalVariationCheckpointPayload()
+    else:
+        pv_state = cast(
+            "PrincipalVariationState | None",
+            getattr(node_eval, "pv_state", None),
+        )
     if pv_state is None:
         return None
 
@@ -988,7 +1014,16 @@ def _build_branch_frontier_payload(
     context: _CheckpointBuildContext,
 ) -> BranchFrontierCheckpointPayload | None:
     """Serialize branch-frontier membership when present."""
-    branch_frontier = getattr(node_eval, "branch_frontier", None)
+    state_getter = getattr(node_eval, "branch_frontier_state_or_none", None)
+    if callable(state_getter):
+        branch_frontier = cast("BranchFrontierState | None", state_getter())
+        if branch_frontier is None:
+            return BranchFrontierCheckpointPayload()
+    else:
+        branch_frontier = cast(
+            "BranchFrontierState | None",
+            getattr(node_eval, "branch_frontier", None),
+        )
     if branch_frontier is None:
         return None
 
@@ -1016,7 +1051,16 @@ def _build_backup_runtime_payload(
     context: _CheckpointBuildContext,
 ) -> BackupRuntimeCheckpointPayload | None:
     """Serialize conservative backup-runtime cache state when present."""
-    backup_runtime = getattr(node_eval, "backup_runtime", None)
+    state_getter = getattr(node_eval, "backup_runtime_state_or_none", None)
+    if callable(state_getter):
+        backup_runtime = cast("Top2ExactnessPvRuntime[Any] | None", state_getter())
+        if backup_runtime is None:
+            return BackupRuntimeCheckpointPayload()
+    else:
+        backup_runtime = cast(
+            "Top2ExactnessPvRuntime[Any] | None",
+            getattr(node_eval, "backup_runtime", None),
+        )
     if backup_runtime is None:
         return None
 

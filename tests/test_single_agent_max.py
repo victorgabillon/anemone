@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, cast
 from valanga import BranchKey
 from valanga.evaluations import Certainty, Value
 
+import anemone.checkpoints.build as checkpoint_build_module
 from anemone.backup_policies.common import ProofClassification, SelectedValue
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.node_evaluation.common import FieldChange
@@ -152,6 +153,104 @@ def _child(
         tree_node=tree_node,
         tree_evaluation=evaluation,
     )
+
+
+def test_fresh_node_max_evaluation_keeps_runtime_substates_lazy() -> None:
+    evaluation = _node(node_id=1)
+
+    assert evaluation.decision_ordering_ is None
+    assert evaluation.pv_state_ is None
+    assert evaluation.branch_frontier_ is None
+    assert evaluation.backup_runtime_ is None
+    assert not evaluation.has_decision_ordering_state()
+    assert not evaluation.has_pv_state()
+    assert not evaluation.has_branch_frontier_state()
+    assert not evaluation.has_backup_runtime_state()
+    assert evaluation.decision_ordering_state_or_none() is None
+    assert evaluation.pv_state_or_none() is None
+    assert evaluation.branch_frontier_state_or_none() is None
+    assert evaluation.backup_runtime_state_or_none() is None
+    assert not evaluation.has_frontier_branches()
+    assert evaluation.ordered_frontier_branches_from(["a"]) == []
+
+    assert evaluation.decision_ordering_ is None
+    assert evaluation.pv_state_ is None
+    assert evaluation.branch_frontier_ is None
+    assert evaluation.backup_runtime_ is None
+
+
+def test_runtime_substate_properties_materialize_default_state() -> None:
+    evaluation = _node(node_id=1)
+
+    assert evaluation.decision_ordering.branch_ordering_keys == {}
+    assert evaluation.pv_state.best_branch_sequence == []
+    assert evaluation.branch_frontier.frontier_branches == set()
+    runtime = cast("Top2ExactnessPvRuntime[BranchKey]", evaluation.backup_runtime)
+    assert runtime.best_branch is None
+    assert not runtime.is_initialized
+
+    assert evaluation.has_decision_ordering_state()
+    assert evaluation.has_pv_state()
+    assert evaluation.has_branch_frontier_state()
+    assert evaluation.has_backup_runtime_state()
+
+
+def test_branch_frontier_update_materializes_only_frontier_state() -> None:
+    evaluation = _node(node_id=1)
+
+    evaluation.on_branch_opened("a")
+
+    assert evaluation.branch_frontier_ is not None
+    assert evaluation.branch_frontier.frontier_branches == {"a"}
+    assert evaluation.decision_ordering_ is None
+    assert evaluation.pv_state_ is None
+    assert evaluation.backup_runtime_ is None
+
+
+def test_checkpoint_default_runtime_payloads_do_not_materialize_state() -> None:
+    evaluation = _node(node_id=1)
+    context = checkpoint_build_module._CheckpointBuildContext(
+        metrics=checkpoint_build_module._CheckpointBuildMetrics()
+    )
+
+    decision_ordering_payload = (
+        checkpoint_build_module._build_decision_ordering_payload(
+            evaluation,
+            context=context,
+        )
+    )
+    pv_payload = checkpoint_build_module._build_principal_variation_payload(
+        evaluation,
+        context=context,
+    )
+    frontier_payload = checkpoint_build_module._build_branch_frontier_payload(
+        evaluation,
+        context=context,
+    )
+    backup_runtime_payload = checkpoint_build_module._build_backup_runtime_payload(
+        evaluation,
+        context=context,
+    )
+
+    assert decision_ordering_payload is not None
+    assert decision_ordering_payload.branch_ordering == []
+    assert pv_payload is not None
+    assert pv_payload.best_branch_sequence == []
+    assert pv_payload.pv_version == 0
+    assert pv_payload.cached_best_child_version is None
+    assert frontier_payload is not None
+    assert frontier_payload.frontier_branches == []
+    assert backup_runtime_payload is not None
+    assert backup_runtime_payload.best_branch is None
+    assert backup_runtime_payload.second_best_branch is None
+    assert backup_runtime_payload.exact_child_count == 0
+    assert backup_runtime_payload.selected_child_pv_version is None
+    assert not backup_runtime_payload.is_initialized
+
+    assert evaluation.decision_ordering_ is None
+    assert evaluation.pv_state_ is None
+    assert evaluation.branch_frontier_ is None
+    assert evaluation.backup_runtime_ is None
 
 
 def _set_child_value(child: Any, value: Value) -> None:
