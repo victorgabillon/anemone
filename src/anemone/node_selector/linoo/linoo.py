@@ -481,13 +481,19 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         if not self._active_frontier_depths():
             raise _no_frontier_nodes_error()
 
+        nodes_by_id = self._nodes_by_id_from_tree(tree)
+
         choose_depth_started_at = perf_counter()
         selected_depth = self._choose_depth_from_cache()
         choose_depth_s = perf_counter() - choose_depth_started_at
         heap_update_started_at = perf_counter()
         heap_candidates_registered = self._register_frontier_candidates(
             depth=selected_depth,
-            nodes=self._frontier_nodes_at_depth(tree=tree, depth=selected_depth),
+            nodes=self._frontier_nodes_at_depth(
+                tree=tree,
+                nodes_by_id=nodes_by_id,
+                depth=selected_depth,
+            ),
             objective=objective,
         )
         heap_update_s = perf_counter() - heap_update_started_at
@@ -500,6 +506,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             selected_node_priority,
         ) = self._choose_zipf_node_at_depth(
             tree=tree,
+            nodes_by_id=nodes_by_id,
             depth=selected_depth,
         )
         choose_node_s = perf_counter() - choose_node_started_at
@@ -1023,10 +1030,8 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             return None
         nodes_by_id: dict[int, NodeT] = {}
         if self._last_selected_node_id is not None:
-            last_selected_node = self._node_from_tree_by_id(
-                tree=tree,
-                node_id=self._last_selected_node_id,
-            )
+            tree_nodes_by_id = self._nodes_by_id_from_tree(tree)
+            last_selected_node = tree_nodes_by_id.get(self._last_selected_node_id)
             if last_selected_node is not None:
                 nodes_by_id[self._last_selected_node_id] = last_selected_node
 
@@ -1137,47 +1142,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             if frontier_ids
         )
 
-    def _nodes_at_depth(
-        self,
-        *,
-        tree: trees.Tree[NodeT],
-        depth: int,
-    ) -> tuple[NodeT, ...]:
-        """Return live nodes at one relative depth from the current tree."""
-        absolute_depth = (
-            getattr(tree, "tree_root_tree_depth", tree.root_node.tree_depth) + depth
-        )
-        try:
-            return tuple(tree.descendants[absolute_depth].values())
-        except KeyError:
-            return ()
-
-    def _node_from_tree_by_id_and_depth(
-        self,
-        *,
-        tree: trees.Tree[NodeT],
-        node_id: int,
-        depth: int,
-    ) -> NodeT | None:
-        """Return one live tree node at ``depth`` by public id."""
-        for node in self._nodes_at_depth(tree=tree, depth=depth):
-            if node.id == node_id:
-                return node
-        return None
-
-    def _node_from_tree_by_id(
-        self,
-        *,
-        tree: trees.Tree[NodeT],
-        node_id: int,
-    ) -> NodeT | None:
-        """Return one live tree node by public id from the current tree."""
-        for absolute_tree_depth in tree.descendants:
-            for node in tree.descendants[absolute_tree_depth].values():
-                if node.id == node_id:
-                    return node
-        return None
-
     def _choose_depth_from_cache(self) -> int:
         """Choose the active depth from cached counts using Linoo policy."""
         return min(
@@ -1192,17 +1156,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         *,
         tree: trees.Tree[NodeT],
+        nodes_by_id: dict[int, NodeT],
         depth: int,
     ) -> list[NodeT]:
         """Return cached frontier nodes at one depth."""
         frontier_nodes: list[NodeT] = []
         for node_id in self._frontier_node_ids_by_depth.get(depth, set()):
-            node = self._node_from_tree_by_id_and_depth(
-                tree=tree,
-                node_id=node_id,
-                depth=depth,
-            )
-            if node is not None:
+            node = nodes_by_id.get(node_id)
+            if node is not None and tree.node_depth(node) == depth:
                 frontier_nodes.append(node)
         return frontier_nodes
 
@@ -1258,6 +1219,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         *,
         tree: trees.Tree[NodeT],
+        nodes_by_id: dict[int, NodeT],
         depth: int,
     ) -> tuple[list[_LinooRankedCandidate], int]:
         """Return valid candidates sorted by priority, compacting stale heap entries."""
@@ -1273,6 +1235,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
             if not self._is_current_frontier_candidate(
                 tree=tree,
+                nodes_by_id=nodes_by_id,
                 node_id=node_id,
                 expected_depth=depth,
             ):
@@ -1300,12 +1263,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         *,
         tree: trees.Tree[NodeT],
+        nodes_by_id: dict[int, NodeT],
         depth: int,
     ) -> tuple[NodeT, int, int, int, float]:
         """Sample one valid frontier candidate using Zipf rank weights."""
         ranked_candidates, stale_candidates_skipped = (
             self._rank_valid_candidates_at_depth(
                 tree=tree,
+                nodes_by_id=nodes_by_id,
                 depth=depth,
             )
         )
@@ -1319,11 +1284,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             cumulative_weight += 1.0 / rank
             if threshold < cumulative_weight or rank == len(ranked_candidates):
                 priority_key, node_id, _version = candidate
-                node = self._node_from_tree_by_id_and_depth(
-                    tree=tree,
-                    node_id=node_id,
-                    depth=depth,
-                )
+                node = nodes_by_id.get(node_id)
+                if node is not None and tree.node_depth(node) != depth:
+                    node = None
                 if node is None:
                     raise _no_frontier_nodes_error()
                 return (
@@ -1340,16 +1303,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         *,
         tree: trees.Tree[NodeT],
+        nodes_by_id: dict[int, NodeT],
         node_id: int,
         expected_depth: int,
     ) -> bool:
         """Return whether one cached node is still selectable frontier."""
         node_state = self._node_state_or_none(node_id)
-        node = self._node_from_tree_by_id_and_depth(
-            tree=tree,
-            node_id=node_id,
-            depth=expected_depth,
-        )
+        node = nodes_by_id.get(node_id)
         return (
             node_state is not None
             and node is not None

@@ -434,6 +434,31 @@ def test_linoo_candidate_heap_stores_node_ids_only() -> None:
     )
 
 
+def test_linoo_builds_nodes_by_id_once_per_selection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One selection should build a node-id lookup once, not scan per candidate."""
+    selector = _selector()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        *[_node(100 + index, 1, score=float(index)) for index in range(1, 40)],
+    )
+    call_count = 0
+    original = selector._nodes_by_id_from_tree
+
+    def _counted_nodes_by_id(tree_arg: SimpleNamespace) -> dict[int, _FakeNode]:
+        nonlocal call_count
+        call_count += 1
+        return original(tree_arg)
+
+    monkeypatch.setattr(selector, "_nodes_by_id_from_tree", _counted_nodes_by_id)
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert call_count == 1
+
+
 def test_linoo_sparse_state_discards_node_that_returns_to_default() -> None:
     """Reclassification should drop materialized state once it becomes opened."""
     selector = _selector()
