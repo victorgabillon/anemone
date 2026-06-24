@@ -387,8 +387,51 @@ def test_linoo_sparse_state_omits_default_opened_nodes() -> None:
     assert selector._node_state_or_none(10) is None
     frontier_state = selector._node_state_or_none(11)
     assert frontier_state is not None
+    assert frontier_state.node_id == 11
+    assert not hasattr(frontier_state, "node")
     assert frontier_state.status == "frontier"
     assert set(selector._node_state_by_id) == {11}
+
+
+def test_linoo_tracks_last_selected_node_id_without_node_reference() -> None:
+    """The latest selected node cache should retain only the public node id."""
+    selector = _selector()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=4.0),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert _selected_node_id(instructions) == 10
+    assert selector._last_selected_node_id == 10
+    assert not hasattr(selector, "_last_selected_node")
+
+
+def test_linoo_candidate_heap_stores_node_ids_only() -> None:
+    """Candidate heaps should not retain live node objects after registration."""
+    selector = _selector()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=5.0),
+        _node(11, 1, score=4.0),
+    )
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    heap_entries = selector._candidates_by_depth[1]
+    assert heap_entries
+    assert all(len(entry) == 3 for entry in heap_entries)
+    assert all(
+        not any(isinstance(value, _FakeNode) for value in entry)
+        for entry in heap_entries
+    )
 
 
 def test_linoo_sparse_state_discards_node_that_returns_to_default() -> None:
@@ -685,6 +728,7 @@ def test_linoo_checkpoint_payload_roundtrips_initialized_cache() -> None:
     )
     payload = selector.build_checkpoint_payload(objective)
     assert payload is not None
+    assert payload.last_selected_node_id == _selected_node_id(first_instructions)
 
     restored_selector = _selector()
     restored = restored_selector.restore_from_checkpoint_payload(
@@ -705,6 +749,9 @@ def test_linoo_checkpoint_payload_roundtrips_initialized_cache() -> None:
     assert restored_selector.latest_selection_report.state_rebuilt is False
     assert restored_selector._node_state_or_none(0) is None
     assert restored_selector._node_state_or_none(10) is not None
+    assert restored_selector._last_selected_node_id == _selected_node_id(
+        restored_instructions
+    )
 
 
 def test_linoo_checkpoint_restore_accepts_missing_default_node_state() -> None:
@@ -837,6 +884,77 @@ def test_linoo_checkpoint_restore_skips_explicit_default_node_state() -> None:
     assert restored is True
     assert restored_selector._node_state_or_none(0) is None
     assert restored_selector._node_state_or_none(10) is not None
+
+
+def test_linoo_checkpoint_restore_accepts_legacy_node_reference_payloads() -> None:
+    """Legacy selector payloads with node references should still restore."""
+    objective = SingleAgentMaxObjective()
+    frontier = _node(10, 1, score=5.0)
+    tree = _tree(
+        _node(0, 0, opened=True),
+        frontier,
+        objective=objective,
+    )
+    payload = SimpleNamespace(
+        type="linoo",
+        version=1,
+        depth_stats=[
+            LinooDepthStatsCheckpointPayload(
+                depth=0,
+                total_nodes=1,
+                opened_count=1,
+                frontier_count=0,
+                terminal_count=0,
+                exact_count=0,
+                uncached_terminal_candidates=0,
+                non_openable_count=0,
+            ),
+            LinooDepthStatsCheckpointPayload(
+                depth=1,
+                total_nodes=1,
+                opened_count=0,
+                frontier_count=1,
+                terminal_count=0,
+                exact_count=0,
+                uncached_terminal_candidates=0,
+                non_openable_count=0,
+            ),
+        ],
+        node_states=[
+            SimpleNamespace(node=frontier, depth=1, status="frontier"),
+        ],
+        candidates_by_depth=[
+            SimpleNamespace(
+                depth=1,
+                candidates=[
+                    SimpleNamespace(
+                        node=frontier,
+                        depth=1,
+                        priority=5.0,
+                        version=1,
+                    )
+                ],
+            )
+        ],
+        last_selected_node=frontier,
+    )
+
+    restored_selector = _selector()
+    restored = restored_selector.restore_from_checkpoint_payload(
+        tree=tree,
+        objective=objective,
+        payload=payload,
+    )
+    instructions = restored_selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert restored is True
+    assert _selected_node_id(instructions) == 10
+    assert restored_selector.latest_selection_report is not None
+    assert restored_selector.latest_selection_report.state_rebuilt is False
+    assert restored_selector._last_selected_node_id == 10
 
 
 def test_linoo_checkpoint_restore_rejects_changed_classification() -> None:

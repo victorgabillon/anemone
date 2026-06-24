@@ -202,10 +202,10 @@ _LINOO_DEFAULT_NODE_STATUS: _LinooNodeStatus = "opened"
 
 
 @dataclass(frozen=True, slots=True)
-class _LinooNodeState[NodeT]:
+class _LinooNodeState:
     """Cached non-default Linoo classification for one tree node.
 
-    Linoo classifies each live node by ``node``, relative ``depth``, and
+    Linoo classifies each live node by ``node_id``, relative ``depth``, and
     ``status``. The sparse runtime treats absence from ``_node_state_by_id`` as
     the default state: the current live node at its current depth with status
     ``"opened"``. That state contributes only aggregate depth accounting, so it
@@ -216,7 +216,7 @@ class _LinooNodeState[NodeT]:
     checkpoint serialization plus frontier/candidate validation helpers.
     """
 
-    node: NodeT
+    node_id: int
     depth: int
     status: _LinooNodeStatus
 
@@ -225,8 +225,8 @@ class _LinooNodeState[NodeT]:
         return self.status == _LINOO_DEFAULT_NODE_STATUS
 
 
-type _LinooHeapEntry[NodeT] = tuple[float, int, int, NodeT]
-type _LinooRankedCandidate[NodeT] = tuple[float, int, int, NodeT]
+type _LinooHeapEntry = tuple[float, int, int]
+type _LinooRankedCandidate = tuple[float, int, int]
 
 
 class LinooSelectionError(ValueError):
@@ -325,15 +325,15 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     latest_selection_report: LinooSelectionReport | None
     _depth_stats_by_depth: dict[int, _LinooDepthStats]
     _frontier_node_ids_by_depth: dict[int, set[int]]
-    _node_state_by_id: dict[int, _LinooNodeState[NodeT]]
-    _candidates_by_depth: dict[int, list[_LinooHeapEntry[NodeT]]]
+    _node_state_by_id: dict[int, _LinooNodeState]
+    _candidates_by_depth: dict[int, list[_LinooHeapEntry]]
     _candidate_versions_by_node_id: dict[int, int]
     _candidate_signature_by_node_id: dict[int, object]
     _candidate_heap_present_by_node_id: dict[int, bool]
     _cache_tree_identity: int | None
     _cache_objective_identity: int | None
     _cache_initialized: bool
-    _last_selected_node: NodeT | None
+    _last_selected_node_id: int | None
 
     def __init__(
         self,
@@ -354,7 +354,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._cache_tree_identity = None
         self._cache_objective_identity = None
         self._cache_initialized = False
-        self._last_selected_node = None
+        self._last_selected_node_id = None
 
     def invalidate(self) -> None:
         """Discard incremental selector state so the next selection rebuilds."""
@@ -392,11 +392,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             depth_stats=self._depth_stats_payload_from_cache(),
             node_states=self._node_states_payload_from_cache(),
             candidates_by_depth=self._candidate_payloads_from_cache(),
-            last_selected_node_id=(
-                self._last_selected_node.id
-                if self._last_selected_node is not None
-                else None
-            ),
+            last_selected_node_id=self._last_selected_node_id,
         )
 
     def restore_from_checkpoint_payload(
@@ -428,11 +424,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             if not self._depth_stats_match_payload(depth_stats, payload.depth_stats):
                 raise _invalid_linoo_checkpoint_payload_error()
             frontier_node_ids = self._frontier_ids_from_node_states(node_states)
-            last_selected_node = (
-                None
-                if payload.last_selected_node_id is None
-                else nodes_by_id[payload.last_selected_node_id]
-            )
+            last_selected_node_id = self._payload_last_selected_node_id(payload)
+            if last_selected_node_id is not None:
+                nodes_by_id[last_selected_node_id]
         except (KeyError, ValueError):
             self.invalidate()
             return False
@@ -444,7 +438,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._cache_tree_identity = id(tree.root_node)
         self._cache_objective_identity = id(objective)
         self._cache_initialized = True
-        self._last_selected_node = last_selected_node
+        self._last_selected_node_id = last_selected_node_id
         self._restore_candidate_payloads(
             tree=tree,
             payload=payload,
@@ -493,7 +487,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         heap_update_started_at = perf_counter()
         heap_candidates_registered = self._register_frontier_candidates(
             depth=selected_depth,
-            nodes=self._frontier_nodes_at_depth(selected_depth),
+            nodes=self._frontier_nodes_at_depth(tree=tree, depth=selected_depth),
             objective=objective,
         )
         heap_update_s = perf_counter() - heap_update_started_at
@@ -543,7 +537,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         all_branches_to_open = self.opening_instructor.all_branches_to_open(
             node_to_open=selected_node
         )
-        self._last_selected_node = selected_node
+        self._last_selected_node_id = selected_node.id
         return create_instructions_to_open_all_branches(
             branches_to_play=all_branches_to_open,
             node_to_open=selected_node,
@@ -576,7 +570,8 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             return True, 0
 
         incremental_nodes = self._incremental_nodes_from_expansions(
-            latest_tree_expansions
+            tree,
+            latest_tree_expansions,
         )
         if incremental_nodes is None:
             self._rebuild_runtime_state(tree=tree, objective=objective)
@@ -623,9 +618,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._cache_initialized = False
         self._cache_tree_identity = None
         self._cache_objective_identity = None
-        self._last_selected_node = None
+        self._last_selected_node_id = None
 
-    def _node_state_or_none(self, node_id: int) -> _LinooNodeState[NodeT] | None:
+    def _node_state_or_none(self, node_id: int) -> _LinooNodeState | None:
         """Return existing Linoo state without materializing defaults."""
         return self._node_state_by_id.get(node_id)
 
@@ -633,15 +628,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         node_id: int,
         *,
-        node: NodeT,
         depth: int,
-    ) -> _LinooNodeState[NodeT]:
+    ) -> _LinooNodeState:
         """Return Linoo state, materializing default state for mutation."""
         state = self._node_state_or_none(node_id)
         if state is not None:
             return state
         return _LinooNodeState(
-            node=node,
+            node_id=node_id,
             depth=depth,
             status=_LINOO_DEFAULT_NODE_STATUS,
         )
@@ -649,7 +643,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def _set_node_state_if_non_default(
         self,
         node_id: int,
-        state: _LinooNodeState[NodeT],
+        state: _LinooNodeState,
     ) -> None:
         """Store state only when non-default; otherwise remove the entry."""
         if state.is_default():
@@ -732,12 +726,11 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                     priority=-priority_key,
                     version=version,
                 )
-                for priority_key, node_id, version, node in heap
+                for priority_key, node_id, version in heap
                 if self._should_serialize_candidate(
                     depth=depth,
                     node_id=node_id,
                     version=version,
-                    node=node,
                 )
             ]
             if candidates:
@@ -762,7 +755,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         depth: int,
         node_id: int,
         version: int,
-        node: NodeT,
     ) -> bool:
         """Return whether one heap entry is current enough to checkpoint."""
         node_state = self._node_state_or_none(node_id)
@@ -770,9 +762,40 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             node_state is not None
             and node_state.status == "frontier"
             and node_state.depth == depth
-            and node_state.node is node
             and version == self._candidate_versions_by_node_id.get(node_id, 0)
         )
+
+    def _coerce_node_id(self, node_or_id: object) -> int:
+        """Return one node id from an int or a legacy node-bearing field."""
+        if isinstance(node_or_id, int):
+            return node_or_id
+        node_id = getattr(node_or_id, "id", None)
+        if isinstance(node_id, int):
+            return node_id
+        raise _invalid_linoo_checkpoint_payload_error()
+
+    def _payload_node_id(self, payload: object) -> int:
+        """Return one payload node id, accepting legacy node-bearing schemas."""
+        node_id = getattr(payload, "node_id", None)
+        if isinstance(node_id, int):
+            return node_id
+        legacy_node = getattr(payload, "node", None)
+        if legacy_node is not None:
+            return self._coerce_node_id(legacy_node)
+        raise _invalid_linoo_checkpoint_payload_error()
+
+    def _payload_last_selected_node_id(
+        self,
+        payload: LinooSelectorCheckpointPayload,
+    ) -> int | None:
+        """Return the last-selected id, accepting legacy node-bearing payloads."""
+        last_selected_node_id = getattr(payload, "last_selected_node_id", None)
+        if last_selected_node_id is None:
+            legacy_last_selected = getattr(payload, "last_selected_node", None)
+            if legacy_last_selected is None:
+                return None
+            return self._coerce_node_id(legacy_last_selected)
+        return self._coerce_node_id(last_selected_node_id)
 
     def _restore_node_states_from_payload(
         self,
@@ -780,17 +803,18 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         nodes_by_id: dict[int, NodeT],
         payload: LinooSelectorCheckpointPayload,
-    ) -> dict[int, _LinooNodeState[NodeT]]:
+    ) -> dict[int, _LinooNodeState]:
         """Restore and validate cached node states from payload."""
-        node_states: dict[int, _LinooNodeState[NodeT]] = {}
+        node_states: dict[int, _LinooNodeState] = {}
         seen_node_ids: set[int] = set()
         for node_payload in payload.node_states:
-            if node_payload.node_id in seen_node_ids:
+            node_id = self._payload_node_id(node_payload)
+            if node_id in seen_node_ids:
                 raise _invalid_linoo_checkpoint_payload_error()
-            seen_node_ids.add(node_payload.node_id)
+            seen_node_ids.add(node_id)
             if node_payload.status not in _LINOO_NODE_STATUSES:
                 raise _invalid_linoo_checkpoint_payload_error()
-            node = nodes_by_id[node_payload.node_id]
+            node = nodes_by_id[node_id]
             depth = tree.node_depth(node)
             if node_payload.depth != depth:
                 raise _invalid_linoo_checkpoint_payload_error()
@@ -799,9 +823,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 raise _invalid_linoo_checkpoint_payload_error()
             self._set_restored_node_state_if_non_default(
                 node_states=node_states,
-                node_id=node.id,
+                node_id=node_id,
                 state=_LinooNodeState(
-                    node=node,
+                    node_id=node_id,
                     depth=depth,
                     status=status,
                 ),
@@ -817,9 +841,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def _set_restored_node_state_if_non_default(
         self,
         *,
-        node_states: dict[int, _LinooNodeState[NodeT]],
+        node_states: dict[int, _LinooNodeState],
         node_id: int,
-        state: _LinooNodeState[NodeT],
+        state: _LinooNodeState,
     ) -> None:
         """Store one restored state only when absence cannot represent it."""
         if state.is_default():
@@ -832,7 +856,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         *,
         tree: trees.Tree[NodeT],
         nodes_by_id: dict[int, NodeT],
-        node_states: dict[int, _LinooNodeState[NodeT]],
+        node_states: dict[int, _LinooNodeState],
     ) -> dict[int, _LinooDepthStats]:
         """Rebuild depth accounting, treating missing node states as opened."""
         depth_stats_by_depth: dict[int, _LinooDepthStats] = {}
@@ -840,7 +864,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             node_state = node_states.get(node_id)
             if node_state is None:
                 node_state = _LinooNodeState(
-                    node=node,
+                    node_id=node_id,
                     depth=tree.node_depth(node),
                     status=_LINOO_DEFAULT_NODE_STATUS,
                 )
@@ -875,7 +899,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def _frontier_ids_from_node_states(
         self,
-        node_states: dict[int, _LinooNodeState[NodeT]],
+        node_states: dict[int, _LinooNodeState],
     ) -> dict[int, set[int]]:
         """Rebuild frontier id buckets from restored node states."""
         frontier_ids_by_depth: dict[int, set[int]] = {}
@@ -894,12 +918,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Restore valid candidate heap entries and discard stale ones."""
         for depth_payload in payload.candidates_by_depth:
             for candidate in depth_payload.candidates:
+                node_id = self._payload_node_id(candidate)
                 if candidate.depth != depth_payload.depth:
                     continue
-                node = nodes_by_id.get(candidate.node_id)
+                node = nodes_by_id.get(node_id)
                 if node is None:
                     continue
-                node_state = self._node_state_by_id.get(candidate.node_id)
+                node_state = self._node_state_by_id.get(node_id)
                 if (
                     node_state is None
                     or node_state.status != "frontier"
@@ -908,7 +933,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 ):
                     continue
                 current_version = self._candidate_versions_by_node_id.get(
-                    candidate.node_id,
+                    node_id,
                     candidate.version,
                 )
                 if candidate.version != current_version:
@@ -916,16 +941,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 direct_value = self._direct_value_or_none(node)
                 if direct_value is None:
                     continue
-                self._candidate_versions_by_node_id[candidate.node_id] = (
-                    candidate.version
-                )
-                self._candidate_signature_by_node_id[candidate.node_id] = (
+                self._candidate_versions_by_node_id[node_id] = candidate.version
+                self._candidate_signature_by_node_id[node_id] = (
                     self._candidate_signature(node=node, direct_value=direct_value)
                 )
-                self._candidate_heap_present_by_node_id[candidate.node_id] = True
+                self._candidate_heap_present_by_node_id[node_id] = True
                 heappush(
                     self._candidates_by_depth.setdefault(candidate.depth, []),
-                    (-candidate.priority, candidate.node_id, candidate.version, node),
+                    (-candidate.priority, node_id, candidate.version),
                 )
 
     def _rebuild_runtime_state(
@@ -984,6 +1007,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def _incremental_nodes_from_expansions(
         self,
+        tree: trees.Tree[NodeT],
         latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> tuple[dict[int, NodeT], set[int]] | None:
         """Collect touched nodes using the explicit ``TreeExpansions`` API."""
@@ -998,8 +1022,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             # Defensive fallback for legacy tests/non-standard selector callers.
             return None
         nodes_by_id: dict[int, NodeT] = {}
-        if self._last_selected_node is not None:
-            nodes_by_id[self._last_selected_node.id] = self._last_selected_node
+        if self._last_selected_node_id is not None:
+            last_selected_node = self._node_from_tree_by_id(
+                tree=tree,
+                node_id=self._last_selected_node_id,
+            )
+            if last_selected_node is not None:
+                nodes_by_id[self._last_selected_node_id] = last_selected_node
 
         created_node_ids: set[int] = set()
         for expansion in (*creation_expansions, *connection_expansions):
@@ -1028,7 +1057,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """Refresh cached state for one node that may have changed."""
         depth = tree.node_depth(node)
         if already_cached:
-            self._remove_node_state(node_id=node.id, node=node, depth=depth)
+            self._remove_node_state(node_id=node.id, depth=depth)
         self._add_node_state(
             node=node,
             depth=depth,
@@ -1051,15 +1080,15 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._set_node_state_if_non_default(
             node.id,
             _LinooNodeState(
-                node=node,
+                node_id=node.id,
                 depth=depth,
                 status=status,
             ),
         )
 
-    def _remove_node_state(self, *, node_id: int, node: NodeT, depth: int) -> None:
+    def _remove_node_state(self, *, node_id: int, depth: int) -> None:
         """Remove one cached node classification if it already exists."""
-        old_state = self._node_state(node_id, node=node, depth=depth)
+        old_state = self._node_state(node_id, depth=depth)
         self._node_state_by_id.pop(node_id, None)
         depth_stats = self._depth_stats_by_depth.get(old_state.depth)
         if depth_stats is None:
@@ -1108,6 +1137,47 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             if frontier_ids
         )
 
+    def _nodes_at_depth(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        depth: int,
+    ) -> tuple[NodeT, ...]:
+        """Return live nodes at one relative depth from the current tree."""
+        absolute_depth = (
+            getattr(tree, "tree_root_tree_depth", tree.root_node.tree_depth) + depth
+        )
+        try:
+            return tuple(tree.descendants[absolute_depth].values())
+        except KeyError:
+            return ()
+
+    def _node_from_tree_by_id_and_depth(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        node_id: int,
+        depth: int,
+    ) -> NodeT | None:
+        """Return one live tree node at ``depth`` by public id."""
+        for node in self._nodes_at_depth(tree=tree, depth=depth):
+            if node.id == node_id:
+                return node
+        return None
+
+    def _node_from_tree_by_id(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        node_id: int,
+    ) -> NodeT | None:
+        """Return one live tree node by public id from the current tree."""
+        for absolute_tree_depth in tree.descendants:
+            for node in tree.descendants[absolute_tree_depth].values():
+                if node.id == node_id:
+                    return node
+        return None
+
     def _choose_depth_from_cache(self) -> int:
         """Choose the active depth from cached counts using Linoo policy."""
         return min(
@@ -1118,13 +1188,22 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             ),
         )
 
-    def _frontier_nodes_at_depth(self, depth: int) -> list[NodeT]:
+    def _frontier_nodes_at_depth(
+        self,
+        *,
+        tree: trees.Tree[NodeT],
+        depth: int,
+    ) -> list[NodeT]:
         """Return cached frontier nodes at one depth."""
         frontier_nodes: list[NodeT] = []
         for node_id in self._frontier_node_ids_by_depth.get(depth, set()):
-            node_state = self._node_state_or_none(node_id)
-            if node_state is not None:
-                frontier_nodes.append(node_state.node)
+            node = self._node_from_tree_by_id_and_depth(
+                tree=tree,
+                node_id=node_id,
+                depth=depth,
+            )
+            if node is not None:
+                frontier_nodes.append(node)
         return frontier_nodes
 
     def _register_frontier_candidates(
@@ -1171,7 +1250,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         priority = objective.evaluate_value(direct_value, node.state)
         heappush(
             self._candidates_by_depth.setdefault(depth, []),
-            (-priority, node_id, version, node),
+            (-priority, node_id, version),
         )
         return True
 
@@ -1180,13 +1259,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         *,
         tree: trees.Tree[NodeT],
         depth: int,
-    ) -> tuple[list[_LinooRankedCandidate[NodeT]], int]:
+    ) -> tuple[list[_LinooRankedCandidate], int]:
         """Return valid candidates sorted by priority, compacting stale heap entries."""
         heap = self._candidates_by_depth.setdefault(depth, [])
         stale_candidates_skipped = 0
-        valid_entries_by_node_id: dict[int, _LinooHeapEntry[NodeT]] = {}
+        valid_entries_by_node_id: dict[int, _LinooHeapEntry] = {}
         while heap:
-            priority_key, node_id, version, node = heappop(heap)
+            priority_key, node_id, version = heappop(heap)
             current_version = self._candidate_versions_by_node_id.get(node_id)
             if version != current_version:
                 stale_candidates_skipped += 1
@@ -1194,19 +1273,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
             if not self._is_current_frontier_candidate(
                 tree=tree,
-                node=node,
+                node_id=node_id,
                 expected_depth=depth,
             ):
                 self._candidate_heap_present_by_node_id[node_id] = False
                 stale_candidates_skipped += 1
                 continue
 
-            valid_entries_by_node_id[node_id] = (
-                priority_key,
-                node_id,
-                version,
-                node,
-            )
+            valid_entries_by_node_id[node_id] = (priority_key, node_id, version)
 
         compacted_heap = list(valid_entries_by_node_id.values())
         for node_id in tuple(self._frontier_node_ids_by_depth.get(depth, set())):
@@ -1244,7 +1318,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         for rank, candidate in enumerate(ranked_candidates, start=1):
             cumulative_weight += 1.0 / rank
             if threshold < cumulative_weight or rank == len(ranked_candidates):
-                priority_key, _node_id, _version, node = candidate
+                priority_key, node_id, _version = candidate
+                node = self._node_from_tree_by_id_and_depth(
+                    tree=tree,
+                    node_id=node_id,
+                    depth=depth,
+                )
+                if node is None:
+                    raise _no_frontier_nodes_error()
                 return (
                     node,
                     stale_candidates_skipped,
@@ -1259,16 +1340,21 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self,
         *,
         tree: trees.Tree[NodeT],
-        node: NodeT,
+        node_id: int,
         expected_depth: int,
     ) -> bool:
         """Return whether one cached node is still selectable frontier."""
-        node_state = self._node_state_or_none(node.id)
+        node_state = self._node_state_or_none(node_id)
+        node = self._node_from_tree_by_id_and_depth(
+            tree=tree,
+            node_id=node_id,
+            depth=expected_depth,
+        )
         return (
             node_state is not None
+            and node is not None
             and node_state.depth == expected_depth
             and node_state.status == "frontier"
-            and node_state.node is node
             and tree.node_depth(node) == expected_depth
         )
 
