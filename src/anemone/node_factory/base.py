@@ -58,12 +58,12 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
         # TreeNode doesn't use modifications (it's a pure data container).
         _ = modifications
 
-        parent_nodes: dict[T, set[BranchKey]]
+        parent_nodes: None | tuple[T, BranchKey]
         if parent_node is None:
-            parent_nodes = {}
+            parent_nodes = None
         else:
             assert branch_from_parent is not None
-            parent_nodes = {parent_node: {branch_from_parent}}
+            parent_nodes = (parent_node, branch_from_parent)
 
         tree_node: TreeNode[T, StateT] = TreeNode[T, StateT](
             state_handle_=state_handle,

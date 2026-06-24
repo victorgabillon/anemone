@@ -6,7 +6,7 @@ runtime details such as evaluations, exploration indices, and PV bookkeeping
 belong on higher-level wrappers like `AlgorithmNode`, not on this protocol.
 """
 
-from collections.abc import Iterable, Iterator, MutableMapping
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
 from typing import Protocol, Self
 
 from valanga import BranchKey, State, StateTag
@@ -104,6 +104,22 @@ class ITreeNode[StateT: State = State](Protocol):
         Each key is a parent node. Each value is the set of distinct branch keys
         through which that parent reaches this node.
         """
+        ...
+
+    def parent_nodes_view(self) -> Mapping[Self, set[BranchKey]]:
+        """Return a read-only mapping view over parent edges."""
+        ...
+
+    def iter_parent_items(self) -> Iterator[tuple[Self, set[BranchKey]]]:
+        """Iterate parent-edge items without requiring a materialized dict."""
+        ...
+
+    def parent_count(self) -> int:
+        """Return the number of distinct parent nodes."""
+        ...
+
+    def add_parent_link(self, parent_node: Self, branch: BranchKey) -> None:
+        """Add one incoming parent edge using the compact storage helpers."""
         ...
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: Self) -> None:

@@ -363,7 +363,7 @@ def _build_node_checkpoint_cache(
                 branch_keys,
                 context=context,
             )
-            for parent_node, branch_keys in node.parent_nodes.items()
+            for parent_node, branch_keys in node.iter_parent_items()
         ]
     )
 

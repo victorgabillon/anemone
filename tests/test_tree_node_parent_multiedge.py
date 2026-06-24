@@ -52,7 +52,23 @@ def test_tree_node_factory_wraps_single_parent_branch_in_set() -> None:
     )
 
     assert child.parent_nodes == {parent: {7}}
+    assert child.parent_count() == 1
+    assert not isinstance(child.parent_nodes_, dict)
     assert child.state is child_state
+
+
+def test_root_tree_node_keeps_zero_parent_storage_compact() -> None:
+    """Root nodes should normalize empty parent input to ``None`` storage."""
+    child = TreeNode[Any, _ConcreteFakeYamlState](
+        state_handle_=MaterializedStateHandle(state_=_make_state(2)),
+        tree_depth_=0,
+        id_=2,
+        parent_nodes_={},
+    )
+
+    assert child.parent_count() == 0
+    assert list(child.iter_parent_items()) == []
+    assert child.parent_nodes_ is None
 
 
 def test_tree_node_factory_create_from_state_wraps_materialized_state_handle() -> None:
@@ -84,9 +100,45 @@ def test_tree_node_add_parent_allows_distinct_branches_from_same_parent() -> Non
     )
 
     child.add_parent(branch_key=3, new_parent_node=parent)
+    assert not isinstance(child.parent_nodes_, dict)
     child.add_parent(branch_key=5, new_parent_node=parent)
 
     assert child.parent_nodes == {parent: {3, 5}}
+    assert list(child.iter_parent_items()) == [(parent, {3, 5})]
+
+
+def test_tree_node_add_parent_upgrades_to_many_parent_dict() -> None:
+    """A transposition should promote one-parent storage to the many-parent dict."""
+    parent_a = _ParentNode(id=1)
+    parent_b = _ParentNode(id=2)
+    child = TreeNode[Any, _ConcreteFakeYamlState](
+        state_handle_=MaterializedStateHandle(state_=_make_state(3)),
+        tree_depth_=1,
+        id_=3,
+        parent_nodes_=(parent_a, 3),
+    )
+
+    child.add_parent(branch_key=5, new_parent_node=parent_b)
+
+    assert isinstance(child.parent_nodes_, dict)
+    assert child.parent_count() == 2
+    assert child.parent_nodes == {parent_a: {3}, parent_b: {5}}
+
+
+def test_tree_node_parent_nodes_view_preserves_mapping_iteration() -> None:
+    """Read-only parent mapping views should preserve indexed iteration semantics."""
+    parent = _ParentNode(id=1)
+    child = TreeNode[Any, _ConcreteFakeYamlState](
+        state_handle_=MaterializedStateHandle(state_=_make_state(2)),
+        tree_depth_=1,
+        id_=2,
+        parent_nodes_=(parent, 7),
+    )
+
+    parent_view = child.parent_nodes_view()
+
+    assert list(parent_view.items()) == [(parent, {7})]
+    assert parent_view[parent] == {7}
 
 
 def test_tree_node_add_parent_rejects_duplicate_parent_branch_edge() -> None:

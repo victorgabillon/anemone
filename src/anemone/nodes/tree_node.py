@@ -1,8 +1,8 @@
 """Generic structural node implementation shared by tree wrappers."""
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from valanga import BranchKey, State, StateTag
 
@@ -10,6 +10,52 @@ from .itree_node import ITreeNode
 from .state_handles import StateHandle
 
 # TODO: replace the any with a defaut value in ITReenode when availble in python; 3.13?
+
+
+@dataclass(slots=True)
+class _SingleParentLink[FamilyT: ITreeNode[Any]]:
+    """Compact storage for one parent and its incoming branch keys."""
+
+    parent_node: FamilyT
+    branch_keys: set[BranchKey]
+
+
+class _ParentNodesView[FamilyT: ITreeNode[Any]](Mapping[FamilyT, set[BranchKey]]):
+    """Read-only mapping view over compact parent-link storage."""
+
+    __slots__ = ("_node",)
+
+    def __init__(self, node: "TreeNode[FamilyT, Any]") -> None:
+        self._node = node
+
+    def __getitem__(self, parent_node: FamilyT) -> set[BranchKey]:
+        storage = cast(_ParentNodesStorage[FamilyT], self._node.parent_nodes_)
+        if storage is None:
+            raise KeyError(parent_node)
+        if isinstance(storage, _SingleParentLink):
+            if storage.parent_node == parent_node:
+                return storage.branch_keys
+            raise KeyError(parent_node)
+        return storage[parent_node]
+
+    def __iter__(self) -> Iterator[FamilyT]:
+        for parent_node, _branch_keys in self._node.iter_parent_items():
+            yield parent_node
+
+    def __len__(self) -> int:
+        return self._node.parent_count()
+
+
+type _ParentNodesStorage[FamilyT: ITreeNode[Any]] = (
+    None | _SingleParentLink[FamilyT] | dict[FamilyT, set[BranchKey]]
+)
+
+type _ParentNodesInput[FamilyT: ITreeNode[Any]] = (
+    None
+    | tuple[FamilyT, BranchKey]
+    | _SingleParentLink[FamilyT]
+    | dict[FamilyT, set[BranchKey]]
+)
 
 
 @dataclass(slots=True)
@@ -29,8 +75,9 @@ class TreeNode[
         tree_depth\_ (int): The depth of the node in the tree.
         state\_handle\_ (StateHandle[StateT]): The explicit handle owned by the
             node.
-        parent_nodes\_ (dict[ITreeNode, set[BranchKey]]): Parent nodes and the
-            distinct branch keys linking them to this node.
+        parent_nodes\_ (None | tuple[ITreeNode, BranchKey] |
+            dict[ITreeNode, set[BranchKey]]): Parent-link storage accepted at
+            construction time and normalized to a compact runtime shape.
         all_branches_generated (bool): Whether no legal branch remains unopened.
         non_opened_branches\_ (set[BranchKey] | None): Lazy legal branches
             without concrete child links.
@@ -61,7 +108,7 @@ class TreeNode[
     state_handle_: StateHandle[StateT]
 
     # Each parent can reach this node through multiple distinct branch keys.
-    parent_nodes_: dict[FamilyT, set[BranchKey]]
+    parent_nodes_: _ParentNodesInput[FamilyT]
 
     # Opening status is synchronized from legal actions and concrete child links:
     # all_branches_generated means no legal branch remains openable, and
@@ -72,6 +119,41 @@ class TreeNode[
 
     # dictionary mapping branches to children nodes. Node is set to None if not created
     branches_children_: dict[BranchKey, FamilyT | None] | None = None
+
+    def __post_init__(self) -> None:
+        """Normalize constructor parent-link input to compact runtime storage."""
+        self.parent_nodes_ = self._normalize_parent_nodes(self.parent_nodes_)
+
+    @staticmethod
+    def _normalize_parent_nodes(
+        parent_nodes: _ParentNodesInput[FamilyT],
+    ) -> _ParentNodesStorage[FamilyT]:
+        """Convert compatibility parent-link input to compact internal storage."""
+        if parent_nodes is None:
+            return None
+        if isinstance(parent_nodes, _SingleParentLink):
+            branch_keys = set(parent_nodes.branch_keys)
+            if not branch_keys:
+                return None
+            return _SingleParentLink(
+                parent_node=parent_nodes.parent_node,
+                branch_keys=branch_keys,
+            )
+        if isinstance(parent_nodes, tuple):
+            parent_node, branch_key = parent_nodes
+            return _SingleParentLink(parent_node=parent_node, branch_keys={branch_key})
+
+        normalized = {
+            parent_node: set(branch_keys)
+            for parent_node, branch_keys in parent_nodes.items()
+            if branch_keys
+        }
+        if not normalized:
+            return None
+        if len(normalized) == 1:
+            parent_node, branch_keys = next(iter(normalized.items()))
+            return _SingleParentLink(parent_node=parent_node, branch_keys=branch_keys)
+        return normalized
 
     @property
     def tag(self) -> StateTag:
@@ -265,12 +347,71 @@ class TreeNode[
 
     @property
     def parent_nodes(self) -> dict[FamilyT, set[BranchKey]]:
-        """Return the incoming parent-edge mapping for this node.
+        """Return the compatibility incoming parent-edge mapping for this node.
 
         Each key is a parent node. Each value is the set of distinct branch keys
         through which that parent reaches this node.
         """
-        return self.parent_nodes_
+        storage = cast(_ParentNodesStorage[FamilyT], self.parent_nodes_)
+        if storage is None:
+            return {}
+        if isinstance(storage, _SingleParentLink):
+            return {storage.parent_node: storage.branch_keys}
+        return storage
+
+    def parent_nodes_view(self) -> Mapping[FamilyT, set[BranchKey]]:
+        """Return a read-only mapping view over incoming parent edges."""
+        return _ParentNodesView(self)
+
+    def iter_parent_items(self) -> Iterator[tuple[FamilyT, set[BranchKey]]]:
+        """Iterate parent-edge items without materializing zero/one-parent dicts."""
+        storage = cast(_ParentNodesStorage[FamilyT], self.parent_nodes_)
+        if storage is None:
+            return
+        if isinstance(storage, _SingleParentLink):
+            yield storage.parent_node, storage.branch_keys
+            return
+        yield from storage.items()
+
+    def parent_count(self) -> int:
+        """Return the number of distinct parent nodes without allocating."""
+        storage = cast(_ParentNodesStorage[FamilyT], self.parent_nodes_)
+        if storage is None:
+            return 0
+        if isinstance(storage, _SingleParentLink):
+            return 1
+        return len(storage)
+
+    def add_parent_link(self, parent_node: FamilyT, branch: BranchKey) -> None:
+        """Add one incoming parent edge using compact zero/one/many storage."""
+        storage = cast(_ParentNodesStorage[FamilyT], self.parent_nodes_)
+        if storage is None:
+            self.parent_nodes_ = _SingleParentLink(
+                parent_node=parent_node,
+                branch_keys={branch},
+            )
+            return
+
+        if isinstance(storage, _SingleParentLink):
+            if storage.parent_node == parent_node:
+                assert branch not in storage.branch_keys, (
+                    f"Duplicate parent edge for child {self.id} from parent "
+                    f"{parent_node.id} via branch {branch!r}"
+                )
+                storage.branch_keys.add(branch)
+                return
+            self.parent_nodes_ = {
+                storage.parent_node: storage.branch_keys,
+                parent_node: {branch},
+            }
+            return
+
+        branch_keys = storage.setdefault(parent_node, set())
+        assert branch not in branch_keys, (
+            f"Duplicate parent edge for child {self.id} from parent "
+            f"{parent_node.id} via branch {branch!r}"
+        )
+        branch_keys.add(branch)
 
     def is_root_node(self) -> bool:
         """Check if the current node is a root node.
@@ -279,7 +420,7 @@ class TreeNode[
             bool: True if the node is a root node, False otherwise.
 
         """
-        return not self.parent_nodes
+        return self.parent_count() == 0
 
     def add_parent(self, branch_key: BranchKey, new_parent_node: FamilyT) -> None:
         """Add a new parent node to the current node.
@@ -295,12 +436,7 @@ class TreeNode[
             None
 
         """
-        branch_keys = self.parent_nodes.setdefault(new_parent_node, set())
-        assert branch_key not in branch_keys, (
-            f"Duplicate parent edge for child {self.id} from parent "
-            f"{new_parent_node.id} via branch {branch_key!r}"
-        )
-        branch_keys.add(branch_key)
+        self.add_parent_link(parent_node=new_parent_node, branch=branch_key)
 
     def is_over(self) -> bool:
         """Check if the resolved state is terminal.

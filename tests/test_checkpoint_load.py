@@ -871,6 +871,23 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
     )
 
 
+def test_checkpoint_roundtrip_restores_compact_single_parent_storage() -> None:
+    """Checkpoint restore should keep single-parent nodes out of dict storage."""
+    runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
+    runtime.step()
+    runtime.step()
+
+    restored = _roundtrip_runtime(runtime, children_by_id=_DAG_CHILDREN_BY_ID)
+    restored_nodes = _runtime_nodes_by_id(restored)
+
+    single_parent_node = next(
+        node for node in restored_nodes.values() if node.parent_count() == 1
+    )
+
+    assert not isinstance(single_parent_node.tree_node.parent_nodes_, dict)
+    assert list(single_parent_node.iter_parent_items())
+
+
 def test_checkpoint_restore_without_selector_state_keeps_linoo_backward_compatible() -> (
     None
 ):

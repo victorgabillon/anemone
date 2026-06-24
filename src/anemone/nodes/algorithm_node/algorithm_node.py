@@ -1,6 +1,6 @@
 """Runtime/search wrapper built on top of a structural ``TreeNode``."""
 
-from collections.abc import Iterable, Iterator, MutableMapping
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
 from typing import Self
 
 from valanga import (
@@ -158,6 +158,22 @@ class AlgorithmNode[StateT: State = State]:
         """Return the incoming parent-edge mapping for this node."""
         return self.tree_node.parent_nodes
 
+    def parent_nodes_view(self) -> Mapping[Self, set[BranchKey]]:
+        """Return a read-only mapping view over incoming parent edges."""
+        return self.tree_node.parent_nodes_view()
+
+    def iter_parent_items(self) -> Iterator[tuple[Self, set[BranchKey]]]:
+        """Iterate parent-edge items without materializing zero/one-parent dicts."""
+        return self.tree_node.iter_parent_items()
+
+    def parent_count(self) -> int:
+        """Return the number of distinct parent nodes without allocating."""
+        return self.tree_node.parent_count()
+
+    def add_parent_link(self, parent_node: Self, branch: BranchKey) -> None:
+        """Add one incoming parent edge using the tree-node storage helpers."""
+        self.tree_node.add_parent_link(parent_node=parent_node, branch=branch)
+
     @property
     def state(self) -> StateT:
         """Returns the state associated with this tree node.
@@ -190,9 +206,7 @@ class AlgorithmNode[StateT: State = State]:
             new_parent_node (ITreeNode): The new parent node to add.
 
         """
-        self.tree_node.add_parent(
-            branch_key=branch_key, new_parent_node=new_parent_node
-        )
+        self.tree_node.add_parent_link(parent_node=new_parent_node, branch=branch_key)
 
     @property
     def all_branches_generated(self) -> bool:
