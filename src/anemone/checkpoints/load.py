@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from random import Random
 from time import perf_counter
@@ -784,6 +784,12 @@ def _checkpoint_node_state_tag(
 def _checkpoint_summary_tag(state_summary: object | None) -> StateTag | None:
     """Return a checkpoint summary tag when one is stored explicitly."""
     if state_summary is None:
+        return None
+    if isinstance(state_summary, Sequence) and not isinstance(
+        state_summary, str | bytes | bytearray
+    ):
+        if len(state_summary) >= 1:
+            return cast("StateTag", state_summary[0])
         return None
     state_summary_with_attrs: Any = state_summary
     if hasattr(state_summary, "tag"):

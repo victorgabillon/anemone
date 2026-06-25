@@ -59,8 +59,26 @@ class StateCheckpointSummaryCodec[StateT: State = State](Protocol):
         ...
 
 
+@runtime_checkable
+class CheckpointParentBranchPayloadCodec(Protocol):
+    """Optional codec hook controlling checkpoint parent-branch payload shape.
+
+    Generic checkpoint export keeps the current branch serialization when this
+    hook is absent. Domain codecs can opt into a smaller or omitted payload when
+    the branch is redundant for state reconstruction.
+    """
+
+    def dump_state_parent_branch_for_checkpoint(
+        self,
+        branch_from_parent: BranchKey | None,
+    ) -> object | None:
+        """Serialize parent-branch metadata stored alongside one delta payload."""
+        ...
+
+
 __all__ = [
     "CheckpointStateSummary",
+    "CheckpointParentBranchPayloadCodec",
     "IncrementalStateCheckpointCodec",
     "StateCheckpointSummaryCodec",
 ]
