@@ -6,6 +6,7 @@ import gzip
 import io
 import json
 import re
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
@@ -27,6 +28,7 @@ _zstandard_module = _load_optional_module("zstandard")
 
 type CheckpointFileFormat = Literal["json", "json_gz", "json_zst"]
 type CheckpointJsonEncoder = Literal["orjson", "stdlib"]
+type CheckpointReadPhaseLogger = Callable[[str, Mapping[str, object]], None]
 
 _CHECKPOINT_SUFFIX_BY_FORMAT: dict[CheckpointFileFormat, str] = {
     "json": ".json",
@@ -248,6 +250,8 @@ def write_checkpoint_json_payload(
 
 def load_checkpoint_json_payload(
     input_path: str | Path,
+    *,
+    read_phase_logger: CheckpointReadPhaseLogger | None = None,
 ) -> tuple[object, CheckpointReadStats]:
     """Load one JSON checkpoint payload across supported plain/compressed formats."""
     resolved_input = Path(input_path)
@@ -256,9 +260,25 @@ def load_checkpoint_json_payload(
     load_started_at = perf_counter()
     if resolved_format == "json":
         with resolved_input.open(encoding="utf-8") as handle:
+            _log_checkpoint_read_phase(
+                read_phase_logger,
+                "after_checkpoint_file_read_or_stream_open",
+                input_path=resolved_input,
+                file_format=resolved_format,
+                compressed_bytes=compressed_bytes,
+                io_elapsed_s=perf_counter() - load_started_at,
+            )
             payload = json.load(handle)
     elif resolved_format == "json_gz":
         with gzip.open(resolved_input, mode="rt", encoding="utf-8") as handle:
+            _log_checkpoint_read_phase(
+                read_phase_logger,
+                "after_checkpoint_file_read_or_stream_open",
+                input_path=resolved_input,
+                file_format=resolved_format,
+                compressed_bytes=compressed_bytes,
+                io_elapsed_s=perf_counter() - load_started_at,
+            )
             payload = json.load(handle)
     else:
         compressor = _require_zstandard()
@@ -267,13 +287,43 @@ def load_checkpoint_json_payload(
             compressor.ZstdDecompressor().stream_reader(raw_handle) as reader,
             io.TextIOWrapper(reader, encoding="utf-8") as handle,
         ):
+            _log_checkpoint_read_phase(
+                read_phase_logger,
+                "after_checkpoint_file_read_or_stream_open",
+                input_path=resolved_input,
+                file_format=resolved_format,
+                compressed_bytes=compressed_bytes,
+                io_elapsed_s=perf_counter() - load_started_at,
+            )
             payload = json.load(handle)
+    json_load_s = perf_counter() - load_started_at
+    _log_checkpoint_read_phase(
+        read_phase_logger,
+        "after_raw_json_decode",
+        raw_payload=payload,
+        input_path=resolved_input,
+        file_format=resolved_format,
+        compressed_bytes=compressed_bytes,
+        json_load_s=json_load_s,
+        io_elapsed_s=json_load_s,
+    )
     return payload, CheckpointReadStats(
         input_path=resolved_input,
         file_format=resolved_format,
         compressed_bytes=compressed_bytes,
-        json_load_s=perf_counter() - load_started_at,
+        json_load_s=json_load_s,
     )
+
+
+def _log_checkpoint_read_phase(
+    read_phase_logger: CheckpointReadPhaseLogger | None,
+    phase_name: str,
+    **metadata: object,
+) -> None:
+    """Emit one optional checkpoint-read phase marker."""
+    if read_phase_logger is None:
+        return
+    read_phase_logger(phase_name, metadata)
 
 
 def _unsupported_checkpoint_file_suffix_error(path: str | Path) -> ValueError:
@@ -422,6 +472,7 @@ __all__ = [
     "DEFAULT_CHECKPOINT_FILE_FORMAT",
     "CheckpointFileFormat",
     "CheckpointJsonEncoder",
+    "CheckpointReadPhaseLogger",
     "CheckpointReadStats",
     "CheckpointWriteStats",
     "checkpoint_cli_name",
