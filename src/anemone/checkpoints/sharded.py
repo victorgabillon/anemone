@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from importlib import import_module
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Literal, cast
 
-from .payloads import CHECKPOINT_FORMAT_VERSION
+from .io import checkpoint_payload_to_jsonable, write_checkpoint_json_payload
+from .payloads import CHECKPOINT_FORMAT_VERSION, SearchRuntimeCheckpointPayload
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from .io import CheckpointJsonEncoder
 
 SHARDED_CHECKPOINT_FORMAT_VERSION = 1
@@ -17,6 +21,7 @@ SHARDED_CHECKPOINT_FORMAT_VERSION = 1
 type ShardedCheckpointShardKind = Literal[
     "metadata",
     "tree_nodes",
+    "node_records",
     "state_payloads",
     "linked_children",
     "node_evaluations",
@@ -58,6 +63,16 @@ class ShardedCheckpointManifestError(ValueError):
     def non_positive_node_count_per_shard(cls) -> ShardedCheckpointManifestError:
         """Return the error for an invalid node-count shard target."""
         return cls("sharded checkpoint node_count_per_shard must be positive.")
+
+    @classmethod
+    def unsupported_jsonl_encoding(cls) -> ShardedCheckpointManifestError:
+        """Return the error for an unsupported JSONL shard encoding."""
+        return cls("sharded checkpoint node records require jsonl or jsonl_zst encoding.")
+
+    @classmethod
+    def zstandard_required(cls) -> ShardedCheckpointManifestError:
+        """Return the error for unavailable zstandard compression."""
+        return cls("zstandard is required for jsonl_zst sharded checkpoints.")
 
     @classmethod
     def unsupported_checkpoint_format_version(cls) -> ShardedCheckpointManifestError:
@@ -255,11 +270,82 @@ def read_sharded_checkpoint_manifest(
         return sharded_checkpoint_manifest_from_jsonable(json.load(handle))
 
 
-def write_sharded_search_checkpoint(*_args: object, **_kwargs: object) -> None:
-    """Raise until the generic sharded runtime checkpoint writer exists."""
-    raise NotImplementedError(
-        "Generic sharded runtime checkpoint writing is planned but not implemented."
+def write_sharded_search_checkpoint(
+    payload: SearchRuntimeCheckpointPayload,
+    output_dir: str | Path,
+    *,
+    node_count_per_shard: int = 100_000,
+    encoding: ShardedCheckpointShardEncoding = "jsonl_zst",
+    generation: int | None = None,
+    encoder: CheckpointJsonEncoder | None = None,
+) -> ShardedCheckpointManifest:
+    """Write a generic first-stage sharded runtime checkpoint."""
+    if node_count_per_shard <= 0:
+        raise ShardedCheckpointManifestError.non_positive_node_count_per_shard()
+    if encoding not in {"jsonl", "jsonl_zst"}:
+        raise ShardedCheckpointManifestError.unsupported_jsonl_encoding()
+    resolved_output_dir = Path(output_dir)
+    resolved_output_dir.mkdir(parents=True, exist_ok=True)
+    resolved_encoder: CheckpointJsonEncoder = "stdlib" if encoder is None else encoder
+
+    shards: list[ShardedCheckpointShardRef] = []
+    metadata = {
+        "format_version": payload.format_version,
+        "evaluator_version": payload.evaluator_version,
+        "rng_state": payload.rng_state,
+        "root_node_id": payload.tree.root_node_id,
+        "node_count": len(payload.tree.nodes),
+        "branch_count": _checkpoint_branch_count(payload),
+    }
+    shards.append(
+        _write_json_shard(
+            metadata,
+            output_dir=resolved_output_dir,
+            relative_path="metadata.json.zst",
+            kind="metadata",
+        )
     )
+    shards.extend(
+        _write_node_record_shards(
+            payload.tree.nodes,
+            output_dir=resolved_output_dir,
+            node_count_per_shard=node_count_per_shard,
+            encoding=encoding,
+            encoder=resolved_encoder,
+        )
+    )
+    if payload.selector_state is not None:
+        shards.append(
+            _write_json_shard(
+                payload.selector_state,
+                output_dir=resolved_output_dir,
+                relative_path="selector/selector.json.zst",
+                kind="selector",
+            )
+        )
+    if payload.latest_tree_expansions is not None:
+        shards.append(
+            _write_json_shard(
+                payload.latest_tree_expansions,
+                output_dir=resolved_output_dir,
+                relative_path="latest_expansions/latest_expansions.json.zst",
+                kind="latest_expansions",
+            )
+        )
+
+    manifest = ShardedCheckpointManifest(
+        checkpoint_format_version=payload.format_version,
+        sharded_checkpoint_format_version=SHARDED_CHECKPOINT_FORMAT_VERSION,
+        total_node_count=len(payload.tree.nodes),
+        total_branch_count=_checkpoint_branch_count(payload),
+        generation=generation,
+        node_count_per_shard=node_count_per_shard,
+        shards=tuple(shards),
+        encoder=resolved_encoder,
+        notes="C2b first-stage node-record shard layout.",
+    )
+    write_sharded_checkpoint_manifest(manifest, resolved_output_dir / "manifest.json")
+    return manifest
 
 
 def load_sharded_search_checkpoint(*_args: object, **_kwargs: object) -> None:
@@ -267,6 +353,141 @@ def load_sharded_search_checkpoint(*_args: object, **_kwargs: object) -> None:
     raise NotImplementedError(
         "Generic sharded runtime checkpoint loading is planned but not implemented."
     )
+
+
+def _checkpoint_branch_count(payload: SearchRuntimeCheckpointPayload) -> int:
+    """Return the number of linked child edges in one checkpoint payload."""
+    return sum(len(node_payload.linked_children) for node_payload in payload.tree.nodes)
+
+
+def _write_json_shard(
+    payload: object,
+    *,
+    output_dir: Path,
+    relative_path: str,
+    kind: ShardedCheckpointShardKind,
+) -> ShardedCheckpointShardRef:
+    """Write one compressed whole-JSON shard and return its manifest ref."""
+    output_path = output_dir / relative_path
+    write_stats = write_checkpoint_json_payload(payload, output_path)
+    return ShardedCheckpointShardRef(
+        kind=kind,
+        path=relative_path,
+        record_count=1,
+        encoding="json_zst",
+        compressed_bytes=write_stats.compressed_bytes,
+        uncompressed_bytes=write_stats.uncompressed_bytes,
+    )
+
+
+def _write_node_record_shards(
+    node_payloads: Iterable[object],
+    *,
+    output_dir: Path,
+    node_count_per_shard: int,
+    encoding: ShardedCheckpointShardEncoding,
+    encoder: CheckpointJsonEncoder,
+) -> list[ShardedCheckpointShardRef]:
+    """Write node-record JSONL shards and return manifest refs."""
+    shards: list[ShardedCheckpointShardRef] = []
+    current_records: list[object] = []
+    shard_index = 0
+    for node_payload in node_payloads:
+        current_records.append(node_payload)
+        if len(current_records) == node_count_per_shard:
+            shards.append(
+                _write_node_record_shard(
+                    current_records,
+                    output_dir=output_dir,
+                    shard_index=shard_index,
+                    encoding=encoding,
+                    encoder=encoder,
+                )
+            )
+            current_records = []
+            shard_index += 1
+    if current_records or not shards:
+        shards.append(
+            _write_node_record_shard(
+                current_records,
+                output_dir=output_dir,
+                shard_index=shard_index,
+                encoding=encoding,
+                encoder=encoder,
+            )
+        )
+    return shards
+
+
+def _write_node_record_shard(
+    records: list[object],
+    *,
+    output_dir: Path,
+    shard_index: int,
+    encoding: ShardedCheckpointShardEncoding,
+    encoder: CheckpointJsonEncoder,
+) -> ShardedCheckpointShardRef:
+    suffix = "jsonl.zst" if encoding == "jsonl_zst" else "jsonl"
+    relative_path = f"node_records/nodes_{shard_index:06d}.{suffix}"
+    encoded_records = _encode_jsonl_records(records, encoder=encoder)
+    compressed_records = _compress_jsonl_bytes(encoded_records, encoding)
+    output_path = output_dir / relative_path
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(compressed_records)
+    return ShardedCheckpointShardRef(
+        kind="node_records",
+        path=relative_path,
+        record_count=len(records),
+        encoding=encoding,
+        compressed_bytes=len(compressed_records),
+        uncompressed_bytes=len(encoded_records),
+    )
+
+
+def _encode_jsonl_records(
+    records: Iterable[object],
+    *,
+    encoder: CheckpointJsonEncoder,
+) -> bytes:
+    """Encode checkpoint records as newline-delimited JSON bytes."""
+    if encoder == "orjson":
+        orjson_module = import_module("orjson")
+        return b"".join(
+            orjson_module.dumps(checkpoint_payload_to_jsonable(record)) + b"\n"
+            for record in records
+        )
+    return "".join(
+        json.dumps(
+            checkpoint_payload_to_jsonable(record),
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+        for record in records
+    ).encode("utf-8")
+
+
+def _compress_jsonl_bytes(
+    jsonl_bytes: bytes,
+    encoding: ShardedCheckpointShardEncoding,
+) -> bytes:
+    """Compress JSONL bytes according to the requested shard encoding."""
+    if encoding == "jsonl":
+        return jsonl_bytes
+    if encoding != "jsonl_zst":
+        raise ShardedCheckpointManifestError.unsupported_jsonl_encoding()
+    zstandard_module = _load_optional_module("zstandard")
+    if zstandard_module is None:
+        raise ShardedCheckpointManifestError.zstandard_required()
+    return zstandard_module.ZstdCompressor().compress(jsonl_bytes)
+
+
+def _load_optional_module(module_name: str) -> object | None:
+    """Import one optional module when available."""
+    try:
+        return import_module(module_name)
+    except ImportError:
+        return None
 
 
 def _sharded_checkpoint_shard_ref_from_jsonable(

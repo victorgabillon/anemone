@@ -29,18 +29,41 @@ jump during typed payload construction, and high retained RSS after GC.
 - Keep selector state and latest expansion semantics exact.
 - Keep a manifest that is stable, portable, and independent of absolute paths.
 
-## Non-goals for C2a
+## Non-goals for C2a/C2b
 
 - No default behavior change.
 - No migration from existing monolithic checkpoints.
-- No full sharded writer or reader.
+- No sharded reader.
 - No streaming JSON parser dependency.
 - No Morpion-specific optimization in Anemone.
-- No claimed memory savings from the skeleton alone.
+- No claimed memory savings from the writer alone.
 
-## Proposed Layout
+## C2b Writer Layout
 
-One sharded checkpoint is a directory rooted by `manifest.json`:
+C2b writes a first-stage node-record shard layout. Each node record contains
+the same structural, state, linked-child, evaluation, and exploration-index
+payload fields currently stored in one `AlgorithmNodeCheckpointPayload`.
+
+```text
+checkpoint_sharded/
+  manifest.json
+  metadata.json.zst
+  node_records/
+    nodes_000000.jsonl.zst
+    nodes_000001.jsonl.zst
+  selector/
+    selector.json.zst
+  latest_expansions/
+    latest_expansions.json.zst
+```
+
+This layout is intentionally simpler than the long-term split layout. It is
+generic, easy to test, and compatible with a future reader that processes a
+bounded number of nodes per shard before dropping each raw shard.
+
+## Long-Term Layout
+
+Later C2 phases may split node records into independent shard families:
 
 ```text
 checkpoint_sharded/
@@ -78,20 +101,30 @@ The manifest should include:
 - optional checksum fields such as `sha256`,
 - encoder/compression metadata.
 
-The C2a skeleton provides:
+The C2a/C2b implementation provides:
 
 - `ShardedCheckpointManifest`,
 - `ShardedCheckpointShardRef`,
 - manifest JSON conversion,
 - manifest read/write helpers,
 - relative shard path validation.
+- a generic `write_sharded_search_checkpoint(...)` writer from a fully built
+  `SearchRuntimeCheckpointPayload`.
 
-Full runtime checkpoint read/write functions are deliberately placeholders until
-the writer and restore plan have tests.
+The full sharded runtime checkpoint reader remains deliberately unimplemented
+until restore equivalence tests exist.
 
 ## Shard Boundaries
 
-Large per-node data should be sharded:
+C2b shards large per-node data as complete node records:
+
+- node structural payload,
+- node state payload,
+- linked child edges,
+- node evaluation payload,
+- exploration-index payload.
+
+Future C2d work may split those records further:
 
 - node structural payloads,
 - node state payloads,
@@ -154,7 +187,8 @@ restore both, and compare:
 ## Suggested PR Sequence
 
 C2b should implement the generic sharded writer for small checkpoints and a
-manifest-driven directory layout test.
+manifest-driven directory layout test. This is complete in the first-stage
+node-record layout.
 
 C2c should implement a non-streaming sharded reader that loads shards in bounded
 groups but reuses existing restore semantics, then add equivalence tests.
