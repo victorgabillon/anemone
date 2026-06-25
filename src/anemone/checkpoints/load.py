@@ -56,6 +56,7 @@ from .payloads import (
     TreeExpansionsCheckpointPayload,
 )
 from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
+from .state_handles import DenseCheckpointPayloadStore, DictCheckpointPayloadStore
 from .value_serialization import deserialize_checkpoint_atom, deserialize_value
 
 if TYPE_CHECKING:
@@ -355,13 +356,42 @@ def _create_state_resolver[
     state_codec: IncrementalStateCheckpointCodec[StateT],
 ) -> CheckpointStateResolver[StateT]:
     """Create the shared lazy resolver for all checkpoint-backed state handles."""
+    payload_store = _build_checkpoint_payload_store(payload.tree.nodes)
     return CheckpointStateResolver(
         state_codec=state_codec,
-        state_payloads_by_node_id={
-            node_payload.node_id: node_payload.state_payload
-            for node_payload in payload.tree.nodes
-        },
+        state_payloads_by_node_id=payload_store,
     )
+
+
+def _build_checkpoint_payload_store(
+    node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
+) -> DenseCheckpointPayloadStore | DictCheckpointPayloadStore:
+    """Build the cheapest in-memory payload store for one restored checkpoint."""
+    payloads = tuple(node_payloads)
+    if _node_payload_ids_are_dense_zero_based(payloads):
+        dense_payloads: list[CheckpointNodeStatePayload] = [
+            payload.state_payload
+            for payload in sorted(payloads, key=lambda item: item.node_id)
+        ]
+        return DenseCheckpointPayloadStore(dense_payloads)
+    return DictCheckpointPayloadStore(
+        {
+            node_payload.node_id: node_payload.state_payload
+            for node_payload in payloads
+        }
+    )
+
+
+def _node_payload_ids_are_dense_zero_based(
+    node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
+) -> bool:
+    """Return whether checkpoint node ids cover the exact range ``0..N-1``."""
+    payloads = tuple(node_payloads)
+    if not payloads:
+        return False
+    node_ids = [payload.node_id for payload in payloads]
+    expected_ids = set(range(len(payloads)))
+    return set(node_ids) == expected_ids
 
 
 def _create_state_handles[

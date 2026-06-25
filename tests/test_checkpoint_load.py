@@ -26,6 +26,8 @@ from anemone.checkpoints import (
     AlgorithmNodeCheckpointPayload,
     AnchorCheckpointStatePayload,
     DeltaCheckpointStatePayload,
+    SearchRuntimeCheckpointPayload,
+    TreeCheckpointPayload,
     build_search_checkpoint_payload,
     load_search_from_checkpoint_payload,
 )
@@ -33,9 +35,12 @@ from anemone.checkpoints.build import (
     _delta_reuse_matches_parent,
 )
 from anemone.checkpoints.load import _checkpoint_summary_tag
+from anemone.checkpoints.load import _create_state_resolver
 from anemone.checkpoints.state_handles import (
     CheckpointBackedStateHandle,
     CheckpointStateResolver,
+    DenseCheckpointPayloadStore,
+    DictCheckpointPayloadStore,
     checkpoint_payload_for_reuse_or_none,
 )
 from anemone.checkpoints.value_serialization import (
@@ -840,6 +845,111 @@ def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> No
     assert codec.applied_delta_items == [(0, 1, 0), (0, 2, 1)]
 
 
+def test_dense_checkpoint_payload_store_returns_payload_by_node_id() -> None:
+    """Dense stores should expose payloads directly by zero-based node id."""
+    payloads = [
+        AnchorCheckpointStatePayload(anchor_ref={"anchor": 0}),
+        DeltaCheckpointStatePayload(
+            state_parent_node_id=0,
+            state_parent_branch=1,
+            delta_ref={"delta": 1},
+        ),
+    ]
+    store = DenseCheckpointPayloadStore(payloads)
+
+    assert len(store) == 2
+    assert store[0] is payloads[0]
+    assert store[1] is payloads[1]
+    with pytest.raises(KeyError):
+        _ = store[3]
+
+
+def test_create_state_resolver_uses_dense_store_for_dense_zero_based_ids() -> None:
+    """Restore should use a dense list-backed store for zero-based dense ids."""
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = SearchRuntimeCheckpointPayload(
+        evaluator_version=0,
+        tree=TreeCheckpointPayload(
+            root_node_id=0,
+            nodes=[
+                AlgorithmNodeCheckpointPayload(
+                    node_id=0,
+                    parent_node_id=None,
+                    branch_from_parent=None,
+                    depth=0,
+                    state_payload=AnchorCheckpointStatePayload(
+                        anchor_ref={"anchor": 0}
+                    ),
+                    generated_all_branches=False,
+                ),
+                AlgorithmNodeCheckpointPayload(
+                    node_id=1,
+                    parent_node_id=0,
+                    branch_from_parent=0,
+                    depth=1,
+                    state_payload=DeltaCheckpointStatePayload(
+                        state_parent_node_id=0,
+                        state_parent_branch=0,
+                        delta_ref={"delta": 1},
+                    ),
+                    generated_all_branches=False,
+                ),
+            ],
+        ),
+        rng_state=None,
+        latest_tree_expansions=None,
+        selector_state=None,
+    )
+
+    resolver = _create_state_resolver(payload=payload, state_codec=codec)
+
+    assert isinstance(resolver.state_payloads_by_node_id, DenseCheckpointPayloadStore)
+    assert len(resolver.state_payloads_by_node_id) == 2
+
+
+def test_create_state_resolver_falls_back_to_dict_store_for_sparse_ids() -> None:
+    """Sparse checkpoint node ids should keep dict-backed payload lookup."""
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = SearchRuntimeCheckpointPayload(
+        evaluator_version=0,
+        tree=TreeCheckpointPayload(
+            root_node_id=1,
+            nodes=[
+                AlgorithmNodeCheckpointPayload(
+                    node_id=1,
+                    parent_node_id=None,
+                    branch_from_parent=None,
+                    depth=0,
+                    state_payload=AnchorCheckpointStatePayload(
+                        anchor_ref={"anchor": 1}
+                    ),
+                    generated_all_branches=False,
+                ),
+                AlgorithmNodeCheckpointPayload(
+                    node_id=3,
+                    parent_node_id=1,
+                    branch_from_parent=0,
+                    depth=1,
+                    state_payload=DeltaCheckpointStatePayload(
+                        state_parent_node_id=1,
+                        state_parent_branch=0,
+                        delta_ref={"delta": 3},
+                    ),
+                    generated_all_branches=False,
+                ),
+            ],
+        ),
+        rng_state=None,
+        latest_tree_expansions=None,
+        selector_state=None,
+    )
+
+    resolver = _create_state_resolver(payload=payload, state_codec=codec)
+
+    assert isinstance(resolver.state_payloads_by_node_id, DictCheckpointPayloadStore)
+    assert len(resolver.state_payloads_by_node_id) == 2
+
+
 def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
     """Restored runtimes should keep root id, node count, and edge structure."""
     runtime = _build_runtime()
@@ -868,6 +978,10 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
     assert terminal_restored_nodes
     assert all(
         node.tree_node.non_opened_branches_ is None for node in terminal_restored_nodes
+    )
+    assert isinstance(
+        next(iter(restored_nodes.values())).tree_node.state_handle.resolver.state_payloads_by_node_id,
+        DenseCheckpointPayloadStore,
     )
 
 

@@ -53,6 +53,7 @@ from .payloads import (
     TupleAtomPayload,
 )
 from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
+from .state_handles import DenseCheckpointPayloadStore, DictCheckpointPayloadStore
 from .value_serialization import (
     CheckpointAtom,
     CheckpointSerializationError,
@@ -75,6 +76,8 @@ __all__ = [
     "CheckpointAtom",
     "CheckpointAtomPayload",
     "CheckpointBackedStateHandle",
+    "DenseCheckpointPayloadStore",
+    "DictCheckpointPayloadStore",
     "CheckpointFileFormat",
     "CheckpointJsonEncoder",
     "CheckpointNodeStatePayload",
