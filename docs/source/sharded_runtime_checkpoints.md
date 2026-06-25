@@ -29,14 +29,14 @@ jump during typed payload construction, and high retained RSS after GC.
 - Keep selector state and latest expansion semantics exact.
 - Keep a manifest that is stable, portable, and independent of absolute paths.
 
-## Non-goals for C2a/C2b
+## Non-goals for C2a-C2c
 
 - No default behavior change.
 - No migration from existing monolithic checkpoints.
-- No sharded reader.
+- No streaming sharded restore path yet.
 - No streaming JSON parser dependency.
 - No Morpion-specific optimization in Anemone.
-- No claimed memory savings from the writer alone.
+- No claimed memory savings from the writer or non-streaming reader alone.
 
 ## C2b Writer Layout
 
@@ -101,7 +101,7 @@ The manifest should include:
 - optional checksum fields such as `sha256`,
 - encoder/compression metadata.
 
-The C2a/C2b implementation provides:
+The C2a-C2c implementation provides:
 
 - `ShardedCheckpointManifest`,
 - `ShardedCheckpointShardRef`,
@@ -110,9 +110,13 @@ The C2a/C2b implementation provides:
 - relative shard path validation.
 - a generic `write_sharded_search_checkpoint(...)` writer from a fully built
   `SearchRuntimeCheckpointPayload`.
+- a generic `load_sharded_search_checkpoint(...)` reader that reconstructs the
+  typed `SearchRuntimeCheckpointPayload` from the C2b shards.
 
-The full sharded runtime checkpoint reader remains deliberately unimplemented
-until restore equivalence tests exist.
+The C2c reader is an equivalence milestone. It validates the manifest and reads
+the node-record shards in manifest order, but it still materializes the typed
+payload graph before any runtime restore. C2d will replace this with
+incremental restore phases to reduce peak memory.
 
 ## Shard Boundaries
 
@@ -190,8 +194,9 @@ C2b should implement the generic sharded writer for small checkpoints and a
 manifest-driven directory layout test. This is complete in the first-stage
 node-record layout.
 
-C2c should implement a non-streaming sharded reader that loads shards in bounded
-groups but reuses existing restore semantics, then add equivalence tests.
+C2c implements a non-streaming sharded reader that reconstructs the typed
+checkpoint payload for equivalence first. This does not reduce peak memory; it
+proves the C2b layout can round-trip through a manifest-driven reader.
 
 C2d should make the reader truly incremental where useful: state payload store,
 node shells, edges, and evaluation shards should be processed and dropped in

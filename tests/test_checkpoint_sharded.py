@@ -13,6 +13,11 @@ from anemone.checkpoints import (
     AlgorithmNodeCheckpointPayload,
     AnchorCheckpointStatePayload,
     LinkedChildCheckpointPayload,
+    LinooCandidateCheckpointPayload,
+    LinooCandidatesByDepthCheckpointPayload,
+    LinooDepthStatsCheckpointPayload,
+    LinooNodeStateCheckpointPayload,
+    LinooSelectorCheckpointPayload,
     SearchRuntimeCheckpointPayload,
     ShardedCheckpointManifest,
     ShardedCheckpointManifestError,
@@ -21,6 +26,7 @@ from anemone.checkpoints import (
     TreeExpansionCheckpointPayload,
     TreeExpansionsCheckpointPayload,
     load_checkpoint_json_payload,
+    load_sharded_search_checkpoint,
     read_sharded_checkpoint_manifest,
     sharded_checkpoint_manifest_from_jsonable,
     sharded_checkpoint_manifest_to_jsonable,
@@ -174,6 +180,139 @@ def test_write_sharded_search_checkpoint_node_shards_respect_target_size(
     assert decoded_nodes[2]["state_payload"]["anchor_ref"]["node_id"] == 2
 
 
+def test_load_sharded_search_checkpoint_roundtrips_writer_payload(
+    tmp_path: Path,
+) -> None:
+    """The C2c reader should reconstruct the C2b writer payload exactly."""
+    payload = _small_checkpoint_payload()
+    write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=2,
+        encoding="jsonl",
+    )
+
+    restored = load_sharded_search_checkpoint(tmp_path)
+
+    assert restored == payload
+
+
+def test_load_sharded_search_checkpoint_reads_node_shards_in_manifest_order(
+    tmp_path: Path,
+) -> None:
+    """Multiple node-record shards should preserve the writer/manifest order."""
+    payload = _small_checkpoint_payload()
+    write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=1,
+        encoding="jsonl",
+    )
+
+    restored = load_sharded_search_checkpoint(tmp_path)
+
+    assert [node.node_id for node in restored.tree.nodes] == [0, 1, 2]
+
+
+def test_load_sharded_search_checkpoint_rejects_missing_metadata_shard(
+    tmp_path: Path,
+) -> None:
+    """The reader should require exactly one metadata shard."""
+    write_sharded_checkpoint_manifest(
+        ShardedCheckpointManifest(
+            total_node_count=0,
+            shards=(
+                ShardedCheckpointShardRef(
+                    kind="node_records",
+                    path="node_records/nodes_000000.jsonl",
+                    record_count=0,
+                    encoding="jsonl",
+                ),
+            ),
+        ),
+        tmp_path / "manifest.json",
+    )
+
+    with pytest.raises(ShardedCheckpointManifestError, match="metadata"):
+        load_sharded_search_checkpoint(tmp_path)
+
+
+def test_load_sharded_search_checkpoint_rejects_node_count_mismatch(
+    tmp_path: Path,
+) -> None:
+    """Node-record counts should agree with the manifest total."""
+    payload = _small_checkpoint_payload()
+    manifest = write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=2,
+        encoding="jsonl",
+    )
+    write_sharded_checkpoint_manifest(
+        ShardedCheckpointManifest(
+            total_node_count=manifest.total_node_count + 1,
+            total_branch_count=manifest.total_branch_count,
+            shards=manifest.shards,
+        ),
+        tmp_path / "manifest.json",
+    )
+
+    with pytest.raises(ShardedCheckpointManifestError, match="node-record count"):
+        load_sharded_search_checkpoint(tmp_path)
+
+
+def test_load_sharded_search_checkpoint_rejects_unsupported_shard_kind(
+    tmp_path: Path,
+) -> None:
+    """The C2c reader should reject shard kinds outside the C2b layout."""
+    _write_raw_manifest(
+        tmp_path,
+        shards=[
+            {
+                "kind": "metadata",
+                "path": "metadata.json.zst",
+                "record_count": 1,
+                "encoding": "json_zst",
+            },
+            {
+                "kind": "state_payloads",
+                "path": "state_payloads/state_000000.jsonl",
+                "record_count": 0,
+                "encoding": "jsonl",
+            },
+        ],
+    )
+
+    with pytest.raises(ShardedCheckpointManifestError, match="unsupported shard kind"):
+        load_sharded_search_checkpoint(tmp_path)
+
+
+def test_load_sharded_search_checkpoint_rejects_unsupported_shard_encoding(
+    tmp_path: Path,
+) -> None:
+    """Node-record shards should be line-oriented JSON in C2c."""
+    _write_raw_manifest(
+        tmp_path,
+        shards=[
+            {
+                "kind": "metadata",
+                "path": "metadata.json.zst",
+                "record_count": 1,
+                "encoding": "json_zst",
+            },
+            {
+                "kind": "node_records",
+                "path": "node_records/nodes_000000.json",
+                "record_count": 0,
+                "encoding": "json",
+            },
+        ],
+    )
+
+    with pytest.raises(ShardedCheckpointManifestError, match="jsonl"):
+        load_sharded_search_checkpoint(tmp_path)
+
+
 def _small_checkpoint_payload() -> SearchRuntimeCheckpointPayload:
     return SearchRuntimeCheckpointPayload(
         evaluator_version=5,
@@ -226,6 +365,41 @@ def _small_checkpoint_payload() -> SearchRuntimeCheckpointPayload:
                 )
             ]
         ),
+        selector_state=LinooSelectorCheckpointPayload(
+            depth_stats=[
+                LinooDepthStatsCheckpointPayload(
+                    depth=1,
+                    total_nodes=2,
+                    opened_count=0,
+                    frontier_count=2,
+                    terminal_count=0,
+                    exact_count=0,
+                    uncached_terminal_candidates=0,
+                    non_openable_count=0,
+                )
+            ],
+            node_states=[
+                LinooNodeStateCheckpointPayload(
+                    node_id=1,
+                    depth=1,
+                    status="frontier",
+                )
+            ],
+            candidates_by_depth=[
+                LinooCandidatesByDepthCheckpointPayload(
+                    depth=1,
+                    candidates=[
+                        LinooCandidateCheckpointPayload(
+                            node_id=1,
+                            depth=1,
+                            priority=0.5,
+                            version=3,
+                        )
+                    ],
+                )
+            ],
+            last_selected_node_id=1,
+        ),
     )
 
 
@@ -244,3 +418,25 @@ def _read_jsonl_records(path: Path) -> list[dict[str, object]]:
         for line in path.read_text(encoding="utf-8").splitlines()
         if line
     ]
+
+
+def _write_raw_manifest(
+    tmp_path: Path,
+    *,
+    shards: list[dict[str, object]],
+) -> None:
+    payload = {
+        "checkpoint_format_version": CHECKPOINT_FORMAT_VERSION,
+        "sharded_checkpoint_format_version": SHARDED_CHECKPOINT_FORMAT_VERSION,
+        "total_node_count": 0,
+        "total_branch_count": 0,
+        "generation": None,
+        "node_count_per_shard": None,
+        "encoder": "stdlib",
+        "notes": None,
+        "shards": shards,
+    }
+    (tmp_path / "manifest.json").write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
