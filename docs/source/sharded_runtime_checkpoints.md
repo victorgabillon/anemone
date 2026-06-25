@@ -115,8 +115,14 @@ The C2a-C2c implementation provides:
 
 The C2c reader is an equivalence milestone. It validates the manifest and reads
 the node-record shards in manifest order, but it still materializes the typed
-payload graph before any runtime restore. C2d will replace this with
-incremental restore phases to reduce peak memory.
+payload graph before any runtime restore.
+
+C2d1 adds an opt-in experimental `load_search_from_sharded_checkpoint(...)`
+runtime restore path. It reads the same C2b layout, keeps slim per-node shells
+for state handles and tree construction, and restores full node edge/evaluation
+payloads one shard at a time. This avoids constructing a full typed
+`SearchRuntimeCheckpointPayload`, but it is not the default path and should not
+be treated as a measured memory win until profiled on large checkpoints.
 
 ## Shard Boundaries
 
@@ -198,9 +204,13 @@ C2c implements a non-streaming sharded reader that reconstructs the typed
 checkpoint payload for equivalence first. This does not reduce peak memory; it
 proves the C2b layout can round-trip through a manifest-driven reader.
 
-C2d should make the reader truly incremental where useful: state payload store,
-node shells, edges, and evaluation shards should be processed and dropped in
-separate phases.
+C2d1 adds an opt-in incremental runtime restore path for the first-stage C2b
+node-record layout. It may still process node-record shards in multiple passes,
+but it should not build all full typed node payloads at once.
+
+C2d should continue making restore more incremental where useful: state payload
+store, node shells, edges, and evaluation shards should be processed and dropped
+in separate phases.
 
 Only after those pass should Chipiron add an opt-in runtime checkpoint format
 switch for large Morpion runs.

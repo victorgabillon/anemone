@@ -369,18 +369,32 @@ def _latest_expansion_count(payload: SearchRuntimeCheckpointPayload) -> int:
 
 def _validate_payload(payload: SearchRuntimeCheckpointPayload) -> None:
     """Validate the minimal structural facts needed before restoring."""
-    if payload.format_version != CHECKPOINT_FORMAT_VERSION:
-        raise CheckpointRestoreError.unsupported_format_version(payload.format_version)
-    if not payload.tree.nodes:
+    _validate_checkpoint_node_payloads(
+        format_version=payload.format_version,
+        root_node_id=payload.tree.root_node_id,
+        node_payloads=payload.tree.nodes,
+    )
+
+
+def _validate_checkpoint_node_payloads(
+    *,
+    format_version: int,
+    root_node_id: int,
+    node_payloads: Sequence[AlgorithmNodeCheckpointPayload],
+) -> None:
+    """Validate structural facts needed by any checkpoint restore path."""
+    if format_version != CHECKPOINT_FORMAT_VERSION:
+        raise CheckpointRestoreError.unsupported_format_version(format_version)
+    if not node_payloads:
         raise CheckpointRestoreError.empty_tree()
 
-    node_ids = [node_payload.node_id for node_payload in payload.tree.nodes]
+    node_ids = [node_payload.node_id for node_payload in node_payloads]
     node_id_set = set(node_ids)
     if len(node_ids) != len(node_id_set):
         raise CheckpointRestoreError.duplicate_node_ids()
-    if payload.tree.root_node_id not in node_id_set:
-        raise CheckpointRestoreError.missing_root(payload.tree.root_node_id)
-    for node_payload in payload.tree.nodes:
+    if root_node_id not in node_id_set:
+        raise CheckpointRestoreError.missing_root(root_node_id)
+    for node_payload in node_payloads:
         if (
             node_payload.parent_node_id is not None
             and node_payload.parent_node_id not in node_id_set
@@ -404,7 +418,21 @@ def _create_state_resolver[
     state_codec: IncrementalStateCheckpointCodec[StateT],
 ) -> CheckpointStateResolver[StateT]:
     """Create the shared lazy resolver for all checkpoint-backed state handles."""
-    payload_store = _build_checkpoint_payload_store(payload.tree.nodes)
+    return _create_state_resolver_from_node_payloads(
+        node_payloads=payload.tree.nodes,
+        state_codec=state_codec,
+    )
+
+
+def _create_state_resolver_from_node_payloads[
+    StateT: AnyTurnState,
+](
+    *,
+    node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
+    state_codec: IncrementalStateCheckpointCodec[StateT],
+) -> CheckpointStateResolver[StateT]:
+    """Create the shared lazy resolver from checkpoint node payloads."""
+    payload_store = _build_checkpoint_payload_store(node_payloads)
     return CheckpointStateResolver(
         state_codec=state_codec,
         state_payloads_by_node_id=payload_store,
@@ -450,12 +478,26 @@ def _create_state_handles[
     state_resolver: CheckpointStateResolver[StateT],
 ) -> dict[int, StateHandle[StateT]]:
     """Create one lazy checkpoint-backed handle for each restored node."""
+    return _create_state_handles_from_node_payloads(
+        node_payloads=payload.tree.nodes,
+        state_resolver=state_resolver,
+    )
+
+
+def _create_state_handles_from_node_payloads[
+    StateT: AnyTurnState,
+](
+    *,
+    node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
+    state_resolver: CheckpointStateResolver[StateT],
+) -> dict[int, StateHandle[StateT]]:
+    """Create one lazy checkpoint-backed handle for each restored node payload."""
     return {
         node_payload.node_id: CheckpointBackedStateHandle(
             resolver=state_resolver,
             node_id=node_payload.node_id,
         )
-        for node_payload in payload.tree.nodes
+        for node_payload in node_payloads
     }
 
 
@@ -473,8 +515,24 @@ def _create_nodes[
     the checkpoint id here keeps restored ids stable without relying on any
     hidden global counter.
     """
+    return _create_nodes_from_node_payloads(
+        node_factory=node_factory,
+        node_payloads=payload.tree.nodes,
+        state_handles_by_id=state_handles_by_id,
+    )
+
+
+def _create_nodes_from_node_payloads[
+    StateT: AnyTurnState,
+](
+    *,
+    node_factory: Any,
+    node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
+    state_handles_by_id: Mapping[int, StateHandle[StateT]],
+) -> dict[int, AlgorithmNode[StateT]]:
+    """Create every node from payload metadata without linking edges yet."""
     nodes_by_id: dict[int, AlgorithmNode[StateT]] = {}
-    for node_payload in sorted(payload.tree.nodes, key=lambda item: item.depth):
+    for node_payload in sorted(node_payloads, key=lambda item: item.depth):
         node = node_factory.create(
             state_handle=state_handles_by_id[node_payload.node_id],
             tree_depth=node_payload.depth,
@@ -724,20 +782,35 @@ def _build_tree[
     nodes_by_id: Mapping[int, AlgorithmNode[StateT]],
 ) -> trees.Tree[AlgorithmNode[StateT]]:
     """Build the restored Tree and descendant registry from restored nodes."""
-    with _log_restore_phase(
-        "build_tree.root_lookup", root_node_id=payload.tree.root_node_id
-    ):
-        root_node = nodes_by_id[payload.tree.root_node_id]
+    return _build_tree_from_node_payloads(
+        root_node_id=payload.tree.root_node_id,
+        node_payloads=payload.tree.nodes,
+        nodes_by_id=nodes_by_id,
+    )
+
+
+def _build_tree_from_node_payloads[
+    StateT: AnyTurnState,
+](
+    *,
+    root_node_id: int,
+    node_payloads: Sequence[AlgorithmNodeCheckpointPayload],
+    nodes_by_id: Mapping[int, AlgorithmNode[StateT]],
+    branch_count: int | None = None,
+) -> trees.Tree[AlgorithmNode[StateT]]:
+    """Build the restored Tree and descendant registry from node payloads."""
+    with _log_restore_phase("build_tree.root_lookup", root_node_id=root_node_id):
+        root_node = nodes_by_id[root_node_id]
     with _log_restore_phase("build_tree.descendants_init"):
         descendants = RangedDescendants[AlgorithmNode[StateT]]()
     with _log_restore_phase(
-        "build_tree.group_nodes_by_depth", node_count=len(payload.tree.nodes)
+        "build_tree.group_nodes_by_depth", node_count=len(node_payloads)
     ):
-        grouped_payloads = _group_node_payloads_by_depth(payload.tree.nodes)
+        grouped_payloads = _group_node_payloads_by_depth(node_payloads)
     with _log_restore_phase(
         "build_tree.populate_descendants",
         depth_count=len(grouped_payloads),
-        node_count=len(payload.tree.nodes),
+        node_count=len(node_payloads),
     ):
         _populate_descendants_for_restore(
             descendants=descendants,
@@ -747,14 +820,16 @@ def _build_tree[
     with _log_restore_phase("build_tree.tree_construct", node_count=len(nodes_by_id)):
         restored_tree = trees.Tree(root_node=root_node, descendants=descendants)
     restored_tree.nodes_count = len(nodes_by_id)
-    restored_tree.branch_count = sum(
-        len(node_payload.linked_children) for node_payload in payload.tree.nodes
+    restored_tree.branch_count = (
+        branch_count
+        if branch_count is not None
+        else sum(len(node_payload.linked_children) for node_payload in node_payloads)
     )
     return restored_tree
 
 
 def _group_node_payloads_by_depth(
-    node_payloads: list[AlgorithmNodeCheckpointPayload],
+    node_payloads: Sequence[AlgorithmNodeCheckpointPayload],
 ) -> dict[int, list[AlgorithmNodeCheckpointPayload]]:
     """Group checkpoint node payloads by depth in stable payload order."""
     grouped_payloads: dict[int, list[AlgorithmNodeCheckpointPayload]] = {}
@@ -859,13 +934,29 @@ def _restore_runtime_state(
     random_generator: Random,
 ) -> None:
     """Restore runtime-level counters, evaluator version, and RNG state."""
-    runtime.evaluator_version = payload.evaluator_version
+    _restore_runtime_metadata(
+        runtime=runtime,
+        evaluator_version=payload.evaluator_version,
+        rng_state=payload.rng_state,
+        random_generator=random_generator,
+    )
+
+
+def _restore_runtime_metadata(
+    *,
+    runtime: TreeExploration[AlgorithmNode[Any]],
+    evaluator_version: int,
+    rng_state: object | None,
+    random_generator: Random,
+) -> None:
+    """Restore runtime-level counters, evaluator version, and RNG state."""
+    runtime.evaluator_version = evaluator_version
     node_evaluator = runtime.tree_manager.node_evaluator
     if node_evaluator is not None:
-        node_evaluator.current_evaluator_version = payload.evaluator_version
+        node_evaluator.current_evaluator_version = evaluator_version
 
-    if payload.rng_state is not None:
-        random_generator.setstate(cast("tuple[Any, ...]", payload.rng_state))
+    if rng_state is not None:
+        random_generator.setstate(cast("tuple[Any, ...]", rng_state))
 
 
 def _restore_tree_expansions_runtime_state(

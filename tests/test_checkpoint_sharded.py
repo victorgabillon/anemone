@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from random import Random
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -25,13 +26,30 @@ from anemone.checkpoints import (
     TreeCheckpointPayload,
     TreeExpansionCheckpointPayload,
     TreeExpansionsCheckpointPayload,
+    build_search_checkpoint_payload,
     load_checkpoint_json_payload,
+    load_search_from_checkpoint_payload,
+    load_search_from_sharded_checkpoint,
     load_sharded_search_checkpoint,
     read_sharded_checkpoint_manifest,
     sharded_checkpoint_manifest_from_jsonable,
     sharded_checkpoint_manifest_to_jsonable,
     write_sharded_checkpoint_manifest,
     write_sharded_search_checkpoint,
+)
+from tests.fake_yaml_game import FakeYamlDynamics, MasterStateValueEvaluatorFromYaml
+from tests.test_checkpoint_load import (
+    _CHILDREN_BY_ID,
+    _build_args,
+    _build_runtime,
+    _child_signature,
+    _ConcreteFakeYamlState,
+    _FakeIncrementalStateCheckpointCodec,
+    _latest_expansion_signature,
+    _parent_signature,
+    _runtime_nodes_by_id,
+    _serialized_value,
+    _values_for,
 )
 
 if TYPE_CHECKING:
@@ -313,6 +331,67 @@ def test_load_sharded_search_checkpoint_rejects_unsupported_shard_encoding(
         load_sharded_search_checkpoint(tmp_path)
 
 
+def test_load_search_from_sharded_checkpoint_matches_payload_restore(
+    tmp_path: Path,
+) -> None:
+    """C2d1 incremental sharded restore should match monolithic restore semantics."""
+    runtime = _build_runtime()
+    runtime.step()
+    codec_for_build = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec_for_build)
+    write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=2,
+        encoding="jsonl",
+    )
+
+    monolithic = _restore_payload_for_sharded_test(
+        payload,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    c2c_payload = load_sharded_search_checkpoint(tmp_path)
+    c2c = _restore_payload_for_sharded_test(
+        c2c_payload,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    incremental_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    incremental_phases: list[str] = []
+    incremental = load_search_from_sharded_checkpoint(
+        tmp_path,
+        state_codec=incremental_codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+        restore_memory_phase_logger=lambda phase, _metadata: incremental_phases.append(
+            phase
+        ),
+    )
+
+    _assert_runtime_equivalent(c2c, monolithic)
+    _assert_runtime_equivalent(incremental, monolithic)
+    assert incremental_codec.loaded_anchor_node_ids == []
+
+    incremental_nodes = _runtime_nodes_by_id(incremental)
+    monolithic_nodes = _runtime_nodes_by_id(monolithic)
+    for node_id, incremental_node in incremental_nodes.items():
+        assert incremental_node.state.node_id == monolithic_nodes[node_id].state.node_id
+
+    assert incremental_phases == [
+        "after_manifest_load",
+        "after_state_payload_store_built",
+        "after_nodes_created",
+        "after_edges_and_runtime_state_restored",
+        "after_selector_restored",
+        "after_incremental_restore_done",
+    ]
+
+
 def _small_checkpoint_payload() -> SearchRuntimeCheckpointPayload:
     return SearchRuntimeCheckpointPayload(
         evaluator_version=5,
@@ -440,3 +519,47 @@ def _write_raw_manifest(
         json.dumps(payload),
         encoding="utf-8",
     )
+
+
+def _restore_payload_for_sharded_test(
+    payload: SearchRuntimeCheckpointPayload,
+    *,
+    state_codec: _FakeIncrementalStateCheckpointCodec,
+) -> Any:
+    return load_search_from_checkpoint_payload(
+        payload,
+        state_codec=state_codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+
+
+def _assert_runtime_equivalent(actual: Any, expected: Any) -> None:
+    actual_nodes = _runtime_nodes_by_id(actual)
+    expected_nodes = _runtime_nodes_by_id(expected)
+    assert actual.tree.root_node.id == expected.tree.root_node.id
+    assert actual.tree.nodes_count == expected.tree.nodes_count
+    assert actual.tree.branch_count == expected.tree.branch_count
+    assert set(actual_nodes) == set(expected_nodes)
+    assert _latest_expansion_signature(actual) == _latest_expansion_signature(expected)
+
+    for node_id, expected_node in expected_nodes.items():
+        actual_node = actual_nodes[node_id]
+        assert actual_node.tree_depth == expected_node.tree_depth
+        assert _child_signature(actual_node) == _child_signature(expected_node)
+        assert _parent_signature(actual_node) == _parent_signature(expected_node)
+        assert _serialized_value(actual_node.tree_evaluation.direct_value) == (
+            _serialized_value(expected_node.tree_evaluation.direct_value)
+        )
+        assert _serialized_value(actual_node.tree_evaluation.backed_up_value) == (
+            _serialized_value(expected_node.tree_evaluation.backed_up_value)
+        )
+        assert actual_node.tree_evaluation.direct_evaluation_version == (
+            expected_node.tree_evaluation.direct_evaluation_version
+        )

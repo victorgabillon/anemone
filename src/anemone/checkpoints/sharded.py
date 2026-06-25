@@ -6,7 +6,10 @@ import json
 from dataclasses import dataclass, field
 from importlib import import_module
 from pathlib import Path, PurePosixPath
+from random import Random
 from typing import TYPE_CHECKING, Literal, cast
+
+from anemone._valanga_types import AnyTurnState
 
 from .io import (
     checkpoint_payload_to_jsonable,
@@ -42,8 +45,21 @@ from .payloads import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable, Mapping
 
+    from valanga import Dynamics, RepresentationFactory, StateModifications
+    from valanga.evaluator_types import EvaluatorInput
+    from valanga.policy import NotifyProgressCallable
+
+    from anemone.dynamics import SearchDynamics
+    from anemone.factory import SearchArgs
+    from anemone.hooks.search_hooks import SearchHooks
+    from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
+    from anemone.node_evaluation.tree.factory import NodeTreeEvaluationFactory
+    from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+    from anemone.tree_exploration import TreeExploration
+
+    from ._protocols import IncrementalStateCheckpointCodec
     from .io import CheckpointJsonEncoder
 
 SHARDED_CHECKPOINT_FORMAT_VERSION = 1
@@ -509,6 +525,226 @@ def load_sharded_search_checkpoint(
     )
 
 
+def load_search_from_sharded_checkpoint[
+    StateT: AnyTurnState,
+    ActionT,
+](
+    checkpoint_dir: str | Path,
+    *,
+    state_codec: IncrementalStateCheckpointCodec[StateT],
+    dynamics: SearchDynamics[StateT, ActionT] | Dynamics[StateT],
+    args: SearchArgs,
+    state_type: type[StateT],
+    master_state_value_evaluator: MasterStateValueEvaluator,
+    random_generator: Random | None = None,
+    state_representation_factory: RepresentationFactory[
+        StateT, EvaluatorInput, StateModifications
+    ]
+    | None = None,
+    node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT] | None = None,
+    notify_progress: NotifyProgressCallable | None = None,
+    hooks: SearchHooks | None = None,
+    restore_memory_phase_logger: Callable[[str, Mapping[str, object]], None]
+    | None = None,
+) -> TreeExploration[AlgorithmNode[StateT]]:
+    """Experimentally restore runtime directly from C2b shards.
+
+    This C2d1 path is opt-in and intentionally keeps the C2c typed-payload
+    reader unchanged. It builds only slim per-node shells for state handles and
+    tree construction, then restores full node runtime data one shard at a time.
+    """
+    from anemone._runtime_assembly import assemble_search_runtime_dependencies
+    from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
+    from anemone.progress_monitor.progress_monitor import create_stopping_criterion
+    from anemone.tree_exploration import TreeExploration
+    from anemone.tree_exploration_debug import (
+        log_final_best_line,
+        maybe_log_iteration_progress,
+    )
+
+    from .load import (
+        _build_tree_from_node_payloads,
+        _create_nodes_from_node_payloads,
+        _create_state_handles_from_node_payloads,
+        _create_state_resolver_from_node_payloads,
+        _link_nodes,
+        _restore_explicit_selector_state,
+        _restore_inferred_depth_selector_state,
+        _restore_node_runtime_state,
+        _restore_runtime_metadata,
+        _restore_tree_expansions_runtime_state,
+        _validate_checkpoint_node_payloads,
+    )
+
+    resolved_checkpoint_dir = Path(checkpoint_dir)
+    manifest = read_sharded_checkpoint_manifest(
+        resolved_checkpoint_dir / "manifest.json"
+    )
+    grouped_shards = _group_manifest_shards(manifest)
+    metadata = _load_mapping_json_shard(
+        resolved_checkpoint_dir,
+        _only_manifest_shard(grouped_shards, "metadata"),
+    )
+    node_shards = _required_manifest_shards(grouped_shards, "node_records")
+    common_metadata = {
+        "checkpoint_dir": str(resolved_checkpoint_dir),
+        "node_count": manifest.total_node_count,
+        "root_node_id": metadata.get("root_node_id"),
+        "format_version": metadata.get("format_version"),
+    }
+    _log_sharded_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_manifest_load",
+        **common_metadata,
+        shard_count=len(manifest.shards),
+    )
+
+    node_shells, branch_count, anchor_count, delta_count = (
+        _load_incremental_node_shells(
+            resolved_checkpoint_dir,
+            node_shards,
+        )
+    )
+    if len(node_shells) != manifest.total_node_count:
+        raise ShardedCheckpointManifestError.node_count_mismatch()
+    if cast("int | None", metadata.get("node_count")) not in {
+        None,
+        manifest.total_node_count,
+    }:
+        raise ShardedCheckpointManifestError.node_count_mismatch()
+    if manifest.total_branch_count is not None and branch_count != (
+        manifest.total_branch_count
+    ):
+        raise ShardedCheckpointManifestError.branch_count_mismatch()
+
+    _validate_checkpoint_node_payloads(
+        format_version=cast("int", metadata["format_version"]),
+        root_node_id=cast("int", metadata["root_node_id"]),
+        node_payloads=node_shells,
+    )
+    checkpoint_random_generator = random_generator if random_generator else Random()
+    dependencies = assemble_search_runtime_dependencies(
+        dynamics=dynamics,
+        args=args,
+        random_generator=checkpoint_random_generator,
+        master_state_evaluator=master_state_value_evaluator,
+        state_representation_factory=state_representation_factory,
+        node_tree_evaluation_factory=(
+            node_tree_evaluation_factory or NodeTreeMinmaxEvaluationFactory()
+        ),
+        hooks=hooks,
+    )
+
+    state_resolver = _create_state_resolver_from_node_payloads(
+        node_payloads=node_shells,
+        state_codec=state_codec,
+    )
+    _log_sharded_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_state_payload_store_built",
+        **common_metadata,
+        anchor_count=anchor_count,
+        delta_count=delta_count,
+    )
+    state_handles_by_id = _create_state_handles_from_node_payloads(
+        node_payloads=node_shells,
+        state_resolver=state_resolver,
+    )
+    _ = state_type
+    nodes_by_id = _create_nodes_from_node_payloads(
+        node_factory=dependencies.tree_manager.tree_manager.node_factory,
+        node_payloads=node_shells,
+        state_handles_by_id=state_handles_by_id,
+    )
+    restored_tree = _build_tree_from_node_payloads(
+        root_node_id=cast("int", metadata["root_node_id"]),
+        node_payloads=node_shells,
+        nodes_by_id=nodes_by_id,
+        branch_count=manifest.total_branch_count or branch_count,
+    )
+    _log_sharded_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_nodes_created",
+        **common_metadata,
+    )
+
+    for shard in node_shards:
+        node_payloads = [
+            _algorithm_node_payload_from_mapping(record)
+            for record in _read_jsonl_shard_records(resolved_checkpoint_dir, shard)
+        ]
+        _link_nodes(node_payloads, nodes_by_id=nodes_by_id)
+        _restore_node_runtime_state(node_payloads, nodes_by_id=nodes_by_id)
+    _log_sharded_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_edges_and_runtime_state_restored",
+        **common_metadata,
+        branch_count=branch_count,
+    )
+
+    node_selector = dependencies.node_selector_create()
+    runtime = TreeExploration(
+        tree=restored_tree,
+        tree_manager=dependencies.tree_manager,
+        stopping_criterion=create_stopping_criterion(
+            args=args.stopping_criterion,
+            node_selector=node_selector,
+        ),
+        node_selector=node_selector,
+        recommend_branch_after_exploration=args.recommender_rule,
+        notify_percent_function=notify_progress,
+        iteration_progress_reporter=maybe_log_iteration_progress,
+        search_result_reporter=log_final_best_line,
+    )
+    _restore_runtime_metadata(
+        runtime=runtime,
+        evaluator_version=cast("int", metadata["evaluator_version"]),
+        rng_state=metadata.get("rng_state"),
+        random_generator=checkpoint_random_generator,
+    )
+    latest_tree_expansions = _optional_mapping_json_shard(
+        resolved_checkpoint_dir,
+        grouped_shards,
+        "latest_expansions",
+    )
+    latest_tree_expansions_payload = (
+        None
+        if latest_tree_expansions is None
+        else _tree_expansions_payload_from_mapping(latest_tree_expansions)
+    )
+    selector_state = _optional_mapping_json_shard(
+        resolved_checkpoint_dir,
+        grouped_shards,
+        "selector",
+    )
+    selector_payload = (
+        None if selector_state is None else _selector_payload_from_mapping(selector_state)
+    )
+    _restore_tree_expansions_runtime_state(
+        runtime=runtime,
+        payload=latest_tree_expansions_payload,
+        nodes_by_id=nodes_by_id,
+    )
+    _restore_explicit_selector_state(runtime=runtime, payload=selector_payload)
+    _restore_inferred_depth_selector_state(
+        runtime=runtime,
+        payload=latest_tree_expansions_payload,
+        nodes_by_id=nodes_by_id,
+    )
+    _log_sharded_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_selector_restored",
+        **common_metadata,
+    )
+    _log_sharded_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_incremental_restore_done",
+        **common_metadata,
+        branch_count=runtime.tree.branch_count,
+    )
+    return runtime
+
+
 def _group_manifest_shards(
     manifest: ShardedCheckpointManifest,
 ) -> dict[ShardedCheckpointShardKind, list[ShardedCheckpointShardRef]]:
@@ -626,6 +862,57 @@ def _resolve_manifest_shard_path(checkpoint_dir: Path, relative_path: str) -> Pa
     if resolved_path != resolved_root and resolved_root not in resolved_path.parents:
         raise ShardedCheckpointManifestError.shard_path_outside_root()
     return resolved_path
+
+
+def _load_incremental_node_shells(
+    checkpoint_dir: Path,
+    node_shards: list[ShardedCheckpointShardRef],
+) -> tuple[list[AlgorithmNodeCheckpointPayload], int, int, int]:
+    """Load slim node shells needed before full per-shard runtime restoration."""
+    node_shells: list[AlgorithmNodeCheckpointPayload] = []
+    branch_count = 0
+    anchor_count = 0
+    delta_count = 0
+    for shard in node_shards:
+        for record in _read_jsonl_shard_records(checkpoint_dir, shard):
+            node_shell = _algorithm_node_shell_from_mapping(record)
+            node_shells.append(node_shell)
+            branch_count += len(cast("list[object]", record.get("linked_children", [])))
+            if isinstance(node_shell.state_payload, DeltaCheckpointStatePayload):
+                delta_count += 1
+            else:
+                anchor_count += 1
+    return node_shells, branch_count, anchor_count, delta_count
+
+
+def _algorithm_node_shell_from_mapping(
+    payload: dict[str, object],
+) -> AlgorithmNodeCheckpointPayload:
+    """Build slim typed node metadata without edge/evaluation payloads."""
+    return AlgorithmNodeCheckpointPayload(
+        node_id=cast("int", payload["node_id"]),
+        parent_node_id=cast("int | None", payload["parent_node_id"]),
+        branch_from_parent=cast(
+            "CheckpointAtomPayload | None",
+            payload["branch_from_parent"],
+        ),
+        depth=cast("int", payload["depth"]),
+        state_payload=_state_payload_from_mapping(
+            cast("dict[str, object]", payload["state_payload"])
+        ),
+        generated_all_branches=cast("bool", payload["generated_all_branches"]),
+    )
+
+
+def _log_sharded_restore_memory_phase(
+    restore_memory_phase_logger: Callable[[str, Mapping[str, object]], None] | None,
+    phase_name: str,
+    **metadata: object,
+) -> None:
+    """Emit one optional sharded restore-memory phase marker."""
+    if restore_memory_phase_logger is None:
+        return
+    restore_memory_phase_logger(phase_name, metadata)
 
 
 def _algorithm_node_payload_from_mapping(
@@ -1126,6 +1413,7 @@ __all__ = [
     "ShardedCheckpointShardEncoding",
     "ShardedCheckpointShardKind",
     "ShardedCheckpointShardRef",
+    "load_search_from_sharded_checkpoint",
     "load_sharded_search_checkpoint",
     "read_sharded_checkpoint_manifest",
     "sharded_checkpoint_manifest_from_jsonable",
