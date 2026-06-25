@@ -37,6 +37,10 @@ from anemone.checkpoints import (
     write_sharded_checkpoint_manifest,
     write_sharded_search_checkpoint,
 )
+from anemone.checkpoints.sharded import (
+    _load_incremental_node_shells,
+    _ShardedNodeShell,
+)
 from tests.fake_yaml_game import FakeYamlDynamics, MasterStateValueEvaluatorFromYaml
 from tests.test_checkpoint_load import (
     _CHILDREN_BY_ID,
@@ -390,6 +394,42 @@ def test_load_search_from_sharded_checkpoint_matches_payload_restore(
         "after_selector_restored",
         "after_incremental_restore_done",
     ]
+
+
+def test_incremental_node_shells_are_compact_not_full_node_payloads(
+    tmp_path: Path,
+) -> None:
+    """Pass 1 of incremental restore should not retain all-node DTO shells."""
+    payload = _small_checkpoint_payload()
+    manifest = write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=2,
+        encoding="jsonl",
+    )
+    node_shards = [shard for shard in manifest.shards if shard.kind == "node_records"]
+
+    (
+        node_shells,
+        state_payload_store,
+        branch_count,
+        anchor_count,
+        delta_count,
+        delta_parent_node_ids,
+    ) = _load_incremental_node_shells(tmp_path, node_shards)
+
+    assert len(node_shells) == len(payload.tree.nodes)
+    assert all(isinstance(shell, _ShardedNodeShell) for shell in node_shells)
+    assert not any(
+        isinstance(shell, AlgorithmNodeCheckpointPayload) for shell in node_shells
+    )
+    assert not hasattr(node_shells[0], "state_payload")
+    assert len(state_payload_store) == len(payload.tree.nodes)
+    assert state_payload_store[0] == payload.tree.nodes[0].state_payload
+    assert branch_count == manifest.total_branch_count
+    assert anchor_count == len(payload.tree.nodes)
+    assert delta_count == 0
+    assert delta_parent_node_ids == []
 
 
 def _small_checkpoint_payload() -> SearchRuntimeCheckpointPayload:

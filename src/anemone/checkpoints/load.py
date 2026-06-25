@@ -58,6 +58,7 @@ from .payloads import (
 )
 from .state_handles import (
     CheckpointBackedStateHandle,
+    CheckpointPayloadStore,
     CheckpointStateResolver,
     DenseCheckpointPayloadStore,
     DictCheckpointPayloadStore,
@@ -147,6 +148,15 @@ class _DepthCursorSelector(Protocol):
     """Selector component with a restorable depth cursor."""
 
     current_depth_to_expand: int
+
+
+class _CheckpointNodeShell(Protocol):
+    """Compact node metadata needed before full runtime-state restoration."""
+
+    node_id: int
+    parent_node_id: int | None
+    depth: int
+    state_summary: object | None
 
 
 @contextmanager
@@ -383,31 +393,51 @@ def _validate_checkpoint_node_payloads(
     node_payloads: Sequence[AlgorithmNodeCheckpointPayload],
 ) -> None:
     """Validate structural facts needed by any checkpoint restore path."""
+    _validate_checkpoint_node_metadata(
+        format_version=format_version,
+        root_node_id=root_node_id,
+        node_ids=[node_payload.node_id for node_payload in node_payloads],
+        parent_node_ids=[
+            node_payload.parent_node_id for node_payload in node_payloads
+        ],
+        delta_parent_node_ids=[
+            (
+                node_payload.node_id,
+                node_payload.state_payload.state_parent_node_id,
+            )
+            for node_payload in node_payloads
+            if isinstance(node_payload.state_payload, DeltaCheckpointStatePayload)
+        ],
+    )
+
+
+def _validate_checkpoint_node_metadata(
+    *,
+    format_version: int,
+    root_node_id: int,
+    node_ids: Sequence[int],
+    parent_node_ids: Sequence[int | None],
+    delta_parent_node_ids: Sequence[tuple[int, int]],
+) -> None:
+    """Validate structural facts shared by monolithic and sharded restore paths."""
     if format_version != CHECKPOINT_FORMAT_VERSION:
         raise CheckpointRestoreError.unsupported_format_version(format_version)
-    if not node_payloads:
+    if not node_ids:
         raise CheckpointRestoreError.empty_tree()
 
-    node_ids = [node_payload.node_id for node_payload in node_payloads]
     node_id_set = set(node_ids)
     if len(node_ids) != len(node_id_set):
         raise CheckpointRestoreError.duplicate_node_ids()
     if root_node_id not in node_id_set:
         raise CheckpointRestoreError.missing_root(root_node_id)
-    for node_payload in node_payloads:
-        if (
-            node_payload.parent_node_id is not None
-            and node_payload.parent_node_id not in node_id_set
-        ):
-            raise CheckpointRestoreError.unknown_node_id(node_payload.parent_node_id)
-        if isinstance(node_payload.state_payload, DeltaCheckpointStatePayload):
-            state_parent_node_id = node_payload.state_payload.state_parent_node_id
-            if state_parent_node_id == node_payload.node_id:
-                raise CheckpointRestoreError.delta_node_missing_parent(
-                    node_payload.node_id
-                )
-            if state_parent_node_id not in node_id_set:
-                raise CheckpointRestoreError.unknown_node_id(state_parent_node_id)
+    for parent_node_id in parent_node_ids:
+        if parent_node_id is not None and parent_node_id not in node_id_set:
+            raise CheckpointRestoreError.unknown_node_id(parent_node_id)
+    for node_id, state_parent_node_id in delta_parent_node_ids:
+        if state_parent_node_id == node_id:
+            raise CheckpointRestoreError.delta_node_missing_parent(node_id)
+        if state_parent_node_id not in node_id_set:
+            raise CheckpointRestoreError.unknown_node_id(state_parent_node_id)
 
 
 def _create_state_resolver[
@@ -433,6 +463,20 @@ def _create_state_resolver_from_node_payloads[
 ) -> CheckpointStateResolver[StateT]:
     """Create the shared lazy resolver from checkpoint node payloads."""
     payload_store = _build_checkpoint_payload_store(node_payloads)
+    return _create_state_resolver_from_payload_store(
+        payload_store=payload_store,
+        state_codec=state_codec,
+    )
+
+
+def _create_state_resolver_from_payload_store[
+    StateT: AnyTurnState,
+](
+    *,
+    payload_store: CheckpointPayloadStore,
+    state_codec: IncrementalStateCheckpointCodec[StateT],
+) -> CheckpointStateResolver[StateT]:
+    """Create the shared lazy resolver from a prebuilt checkpoint payload store."""
     return CheckpointStateResolver(
         state_codec=state_codec,
         state_payloads_by_node_id=payload_store,
@@ -465,8 +509,15 @@ def _node_payload_ids_are_dense_zero_based(
     payloads = tuple(node_payloads)
     if not payloads:
         return False
-    node_ids = [payload.node_id for payload in payloads]
-    expected_ids = set(range(len(payloads)))
+    return _node_ids_are_dense_zero_based(payload.node_id for payload in payloads)
+
+
+def _node_ids_are_dense_zero_based(node_ids: Iterable[int]) -> bool:
+    """Return whether checkpoint node ids cover the exact range ``0..N-1``."""
+    node_ids = list(node_ids)
+    if not node_ids:
+        return False
+    expected_ids = set(range(len(node_ids)))
     return set(node_ids) == expected_ids
 
 
@@ -498,6 +549,23 @@ def _create_state_handles_from_node_payloads[
             node_id=node_payload.node_id,
         )
         for node_payload in node_payloads
+    }
+
+
+def _create_state_handles_from_node_ids[
+    StateT: AnyTurnState,
+](
+    *,
+    node_ids: Iterable[int],
+    state_resolver: CheckpointStateResolver[StateT],
+) -> dict[int, StateHandle[StateT]]:
+    """Create one lazy checkpoint-backed handle for each restored node id."""
+    return {
+        node_id: CheckpointBackedStateHandle(
+            resolver=state_resolver,
+            node_id=node_id,
+        )
+        for node_id in node_ids
     }
 
 
@@ -548,6 +616,30 @@ def _create_nodes_from_node_payloads[
             build_state_representation=False,
         )
         nodes_by_id[node_payload.node_id] = node
+    return nodes_by_id
+
+
+def _create_nodes_from_node_shells[
+    StateT: AnyTurnState,
+](
+    *,
+    node_factory: Any,
+    node_shells: Iterable[_CheckpointNodeShell],
+    state_handles_by_id: Mapping[int, StateHandle[StateT]],
+) -> dict[int, AlgorithmNode[StateT]]:
+    """Create every node from compact metadata without linking edges yet."""
+    nodes_by_id: dict[int, AlgorithmNode[StateT]] = {}
+    for node_shell in sorted(node_shells, key=lambda item: item.depth):
+        node = node_factory.create(
+            state_handle=state_handles_by_id[node_shell.node_id],
+            tree_depth=node_shell.depth,
+            count=node_shell.node_id,
+            parent_node=None,
+            branch_from_parent=None,
+            modifications=None,
+            build_state_representation=False,
+        )
+        nodes_by_id[node_shell.node_id] = node
     return nodes_by_id
 
 
@@ -828,6 +920,41 @@ def _build_tree_from_node_payloads[
     return restored_tree
 
 
+def _build_tree_from_node_shells[
+    StateT: AnyTurnState,
+](
+    *,
+    root_node_id: int,
+    node_shells: Sequence[_CheckpointNodeShell],
+    nodes_by_id: Mapping[int, AlgorithmNode[StateT]],
+    branch_count: int,
+) -> trees.Tree[AlgorithmNode[StateT]]:
+    """Build the restored Tree and descendant registry from compact node shells."""
+    with _log_restore_phase("build_tree.root_lookup", root_node_id=root_node_id):
+        root_node = nodes_by_id[root_node_id]
+    with _log_restore_phase("build_tree.descendants_init"):
+        descendants = RangedDescendants[AlgorithmNode[StateT]]()
+    with _log_restore_phase(
+        "build_tree.group_nodes_by_depth", node_count=len(node_shells)
+    ):
+        grouped_shells = _group_node_shells_by_depth(node_shells)
+    with _log_restore_phase(
+        "build_tree.populate_descendants",
+        depth_count=len(grouped_shells),
+        node_count=len(node_shells),
+    ):
+        _populate_descendants_from_node_shells_for_restore(
+            descendants=descendants,
+            grouped_shells=grouped_shells,
+            nodes_by_id=nodes_by_id,
+        )
+    with _log_restore_phase("build_tree.tree_construct", node_count=len(nodes_by_id)):
+        restored_tree = trees.Tree(root_node=root_node, descendants=descendants)
+    restored_tree.nodes_count = len(nodes_by_id)
+    restored_tree.branch_count = branch_count
+    return restored_tree
+
+
 def _group_node_payloads_by_depth(
     node_payloads: Sequence[AlgorithmNodeCheckpointPayload],
 ) -> dict[int, list[AlgorithmNodeCheckpointPayload]]:
@@ -836,6 +963,16 @@ def _group_node_payloads_by_depth(
     for node_payload in sorted(node_payloads, key=lambda item: item.depth):
         grouped_payloads.setdefault(node_payload.depth, []).append(node_payload)
     return grouped_payloads
+
+
+def _group_node_shells_by_depth(
+    node_shells: Sequence[_CheckpointNodeShell],
+) -> dict[int, list[_CheckpointNodeShell]]:
+    """Group checkpoint node shells by depth in stable shell order."""
+    grouped_shells: dict[int, list[_CheckpointNodeShell]] = {}
+    for node_shell in sorted(node_shells, key=lambda item: item.depth):
+        grouped_shells.setdefault(node_shell.depth, []).append(node_shell)
+    return grouped_shells
 
 
 def _populate_descendants_for_restore[
@@ -891,6 +1028,59 @@ def _populate_descendants_for_restore[
     )
 
 
+def _populate_descendants_from_node_shells_for_restore[
+    StateT: AnyTurnState,
+](
+    *,
+    descendants: RangedDescendants[AlgorithmNode[StateT]],
+    grouped_shells: Mapping[int, list[_CheckpointNodeShell]],
+    nodes_by_id: Mapping[int, AlgorithmNode[StateT]],
+) -> None:
+    """Populate descendants bookkeeping from compact checkpoint shell metadata."""
+    if not grouped_shells:
+        return
+
+    summary_tag_count = 0
+    fallback_tag_count = 0
+    descendants.descendants_at_tree_depth = {}
+    descendants.number_of_descendants_at_tree_depth = {}
+    descendants.number_of_descendants = 0
+    descendants.min_tree_depth = min(grouped_shells)
+    descendants.max_tree_depth = max(grouped_shells)
+
+    for tree_depth in range(descendants.min_tree_depth, descendants.max_tree_depth + 1):
+        shells_at_depth = grouped_shells.get(tree_depth)
+        if shells_at_depth is None:
+            descendants.descendants_at_tree_depth[tree_depth] = {}
+            descendants.number_of_descendants_at_tree_depth[tree_depth] = 0
+            continue
+
+        descendants_at_depth: dict[StateTag, AlgorithmNode[StateT]] = {}
+        for node_shell in shells_at_depth:
+            node = nodes_by_id[node_shell.node_id]
+            state_tag, used_summary_tag = _checkpoint_node_shell_state_tag(
+                node=node,
+                node_shell=node_shell,
+            )
+            if used_summary_tag:
+                summary_tag_count += 1
+            else:
+                fallback_tag_count += 1
+            assert state_tag not in descendants_at_depth
+            descendants_at_depth[state_tag] = node
+        descendants.descendants_at_tree_depth[tree_depth] = descendants_at_depth
+        descendants.number_of_descendants_at_tree_depth[tree_depth] = len(
+            descendants_at_depth
+        )
+        descendants.number_of_descendants += len(descendants_at_depth)
+    checkpoint_logger.debug(
+        "[checkpoint-restore] phase=build_tree.populate_descendants_tags "
+        "summary_tag_count=%s fallback_tag_count=%s",
+        summary_tag_count,
+        fallback_tag_count,
+    )
+
+
 def _checkpoint_node_state_tag(
     *,
     node: AlgorithmNode[Any],
@@ -899,6 +1089,18 @@ def _checkpoint_node_state_tag(
     """Return the checkpoint node tag, preferring summary metadata when available."""
     state_summary = node_payload.state_payload.state_summary
     summary_tag = _checkpoint_summary_tag(state_summary)
+    if summary_tag is not None:
+        return summary_tag, True
+    return node.tag, False
+
+
+def _checkpoint_node_shell_state_tag(
+    *,
+    node: AlgorithmNode[Any],
+    node_shell: _CheckpointNodeShell,
+) -> tuple[StateTag, bool]:
+    """Return the checkpoint node tag from compact shell summary metadata."""
+    summary_tag = _checkpoint_summary_tag(node_shell.state_summary)
     if summary_tag is not None:
         return summary_tag, True
     return node.tag, False

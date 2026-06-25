@@ -43,6 +43,7 @@ from .payloads import (
     TreeExpansionCheckpointPayload,
     TreeExpansionsCheckpointPayload,
 )
+from .state_handles import DenseCheckpointPayloadStore, DictCheckpointPayloadStore
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -61,6 +62,7 @@ if TYPE_CHECKING:
 
     from ._protocols import IncrementalStateCheckpointCodec
     from .io import CheckpointJsonEncoder
+    from .state_handles import CheckpointPayloadStore
 
 SHARDED_CHECKPOINT_FORMAT_VERSION = 1
 
@@ -232,6 +234,18 @@ class ShardedCheckpointManifestError(ValueError):
         return cls(
             "sharded checkpoint shard paths must be normalized relative paths."
         )
+
+
+@dataclass(frozen=True, slots=True)
+class _ShardedNodeShell:
+    """Compact sharded-restore node metadata retained across restore passes."""
+
+    node_id: int
+    parent_node_id: int | None
+    branch_from_parent: CheckpointAtomPayload | None
+    depth: int
+    generated_all_branches: bool
+    state_summary: object | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -549,9 +563,9 @@ def load_search_from_sharded_checkpoint[
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """Experimentally restore runtime directly from C2b shards.
 
-    This C2d1 path is opt-in and intentionally keeps the C2c typed-payload
-    reader unchanged. It builds only slim per-node shells for state handles and
-    tree construction, then restores full node runtime data one shard at a time.
+    This C2d path is opt-in and intentionally keeps the C2c typed-payload reader
+    unchanged. It retains compact per-node shells and a direct state payload
+    store, then restores full node runtime data one shard at a time.
     """
     from anemone._runtime_assembly import assemble_search_runtime_dependencies
     from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
@@ -563,17 +577,17 @@ def load_search_from_sharded_checkpoint[
     )
 
     from .load import (
-        _build_tree_from_node_payloads,
-        _create_nodes_from_node_payloads,
-        _create_state_handles_from_node_payloads,
-        _create_state_resolver_from_node_payloads,
+        _build_tree_from_node_shells,
+        _create_nodes_from_node_shells,
+        _create_state_handles_from_node_ids,
+        _create_state_resolver_from_payload_store,
         _link_nodes,
         _restore_explicit_selector_state,
         _restore_inferred_depth_selector_state,
         _restore_node_runtime_state,
         _restore_runtime_metadata,
         _restore_tree_expansions_runtime_state,
-        _validate_checkpoint_node_payloads,
+        _validate_checkpoint_node_metadata,
     )
 
     resolved_checkpoint_dir = Path(checkpoint_dir)
@@ -599,7 +613,14 @@ def load_search_from_sharded_checkpoint[
         shard_count=len(manifest.shards),
     )
 
-    node_shells, branch_count, anchor_count, delta_count = (
+    (
+        node_shells,
+        state_payload_store,
+        branch_count,
+        anchor_count,
+        delta_count,
+        delta_parent_node_ids,
+    ) = (
         _load_incremental_node_shells(
             resolved_checkpoint_dir,
             node_shards,
@@ -617,10 +638,12 @@ def load_search_from_sharded_checkpoint[
     ):
         raise ShardedCheckpointManifestError.branch_count_mismatch()
 
-    _validate_checkpoint_node_payloads(
+    _validate_checkpoint_node_metadata(
         format_version=cast("int", metadata["format_version"]),
         root_node_id=cast("int", metadata["root_node_id"]),
-        node_payloads=node_shells,
+        node_ids=[node_shell.node_id for node_shell in node_shells],
+        parent_node_ids=[node_shell.parent_node_id for node_shell in node_shells],
+        delta_parent_node_ids=delta_parent_node_ids,
     )
     checkpoint_random_generator = random_generator if random_generator else Random()
     dependencies = assemble_search_runtime_dependencies(
@@ -635,8 +658,8 @@ def load_search_from_sharded_checkpoint[
         hooks=hooks,
     )
 
-    state_resolver = _create_state_resolver_from_node_payloads(
-        node_payloads=node_shells,
+    state_resolver = _create_state_resolver_from_payload_store(
+        payload_store=state_payload_store,
         state_codec=state_codec,
     )
     _log_sharded_restore_memory_phase(
@@ -645,27 +668,39 @@ def load_search_from_sharded_checkpoint[
         **common_metadata,
         anchor_count=anchor_count,
         delta_count=delta_count,
+        shell_count=len(node_shells),
+        state_payload_count=len(state_payload_store),
+        node_shell_type="compact",
+        retained_full_node_payloads=False,
     )
-    state_handles_by_id = _create_state_handles_from_node_payloads(
-        node_payloads=node_shells,
+    state_handles_by_id = _create_state_handles_from_node_ids(
+        node_ids=[node_shell.node_id for node_shell in node_shells],
         state_resolver=state_resolver,
     )
     _ = state_type
-    nodes_by_id = _create_nodes_from_node_payloads(
+    nodes_by_id = _create_nodes_from_node_shells(
         node_factory=dependencies.tree_manager.tree_manager.node_factory,
-        node_payloads=node_shells,
+        node_shells=node_shells,
         state_handles_by_id=state_handles_by_id,
     )
-    restored_tree = _build_tree_from_node_payloads(
+    restored_tree = _build_tree_from_node_shells(
         root_node_id=cast("int", metadata["root_node_id"]),
-        node_payloads=node_shells,
+        node_shells=node_shells,
         nodes_by_id=nodes_by_id,
-        branch_count=manifest.total_branch_count or branch_count,
+        branch_count=(
+            manifest.total_branch_count
+            if manifest.total_branch_count is not None
+            else branch_count
+        ),
     )
     _log_sharded_restore_memory_phase(
         restore_memory_phase_logger,
         "after_nodes_created",
         **common_metadata,
+        shell_count=len(node_shells),
+        state_payload_count=len(state_payload_store),
+        node_shell_type="compact",
+        retained_full_node_payloads=False,
     )
 
     for shard in node_shards:
@@ -680,6 +715,10 @@ def load_search_from_sharded_checkpoint[
         "after_edges_and_runtime_state_restored",
         **common_metadata,
         branch_count=branch_count,
+        shell_count=len(node_shells),
+        state_payload_count=len(state_payload_store),
+        node_shell_type="compact",
+        retained_full_node_payloads=False,
     )
 
     node_selector = dependencies.node_selector_create()
@@ -867,29 +906,80 @@ def _resolve_manifest_shard_path(checkpoint_dir: Path, relative_path: str) -> Pa
 def _load_incremental_node_shells(
     checkpoint_dir: Path,
     node_shards: list[ShardedCheckpointShardRef],
-) -> tuple[list[AlgorithmNodeCheckpointPayload], int, int, int]:
-    """Load slim node shells needed before full per-shard runtime restoration."""
-    node_shells: list[AlgorithmNodeCheckpointPayload] = []
+) -> tuple[
+    list[_ShardedNodeShell],
+    CheckpointPayloadStore,
+    int,
+    int,
+    int,
+    list[tuple[int, int]],
+]:
+    """Load compact node shells and state payloads for incremental restoration."""
+    node_shells: list[_ShardedNodeShell] = []
+    state_payloads_by_node_id: dict[int, CheckpointNodeStatePayload] = {}
+    delta_parent_node_ids: list[tuple[int, int]] = []
     branch_count = 0
     anchor_count = 0
     delta_count = 0
     for shard in node_shards:
         for record in _read_jsonl_shard_records(checkpoint_dir, shard):
-            node_shell = _algorithm_node_shell_from_mapping(record)
+            node_id = cast("int", record["node_id"])
+            state_payload = _state_payload_from_mapping(
+                cast("dict[str, object]", record["state_payload"])
+            )
+            node_shell = _sharded_node_shell_from_mapping(
+                record,
+                state_summary=state_payload.state_summary,
+            )
             node_shells.append(node_shell)
+            state_payloads_by_node_id[node_id] = state_payload
             branch_count += len(cast("list[object]", record.get("linked_children", [])))
-            if isinstance(node_shell.state_payload, DeltaCheckpointStatePayload):
+            if isinstance(state_payload, DeltaCheckpointStatePayload):
                 delta_count += 1
+                delta_parent_node_ids.append(
+                    (node_id, state_payload.state_parent_node_id)
+                )
             else:
                 anchor_count += 1
-    return node_shells, branch_count, anchor_count, delta_count
+    return (
+        node_shells,
+        _build_sharded_payload_store(state_payloads_by_node_id),
+        branch_count,
+        anchor_count,
+        delta_count,
+        delta_parent_node_ids,
+    )
 
 
-def _algorithm_node_shell_from_mapping(
+def _build_sharded_payload_store(
+    state_payloads_by_node_id: dict[int, CheckpointNodeStatePayload],
+) -> CheckpointPayloadStore:
+    """Build the cheapest payload store for sharded incremental restore."""
+    if _node_ids_are_dense_zero_based(state_payloads_by_node_id):
+        return DenseCheckpointPayloadStore(
+            [
+                state_payloads_by_node_id[node_id]
+                for node_id in range(len(state_payloads_by_node_id))
+            ]
+        )
+    return DictCheckpointPayloadStore(state_payloads_by_node_id)
+
+
+def _node_ids_are_dense_zero_based(node_ids: Iterable[int]) -> bool:
+    """Return whether node ids cover the exact range ``0..N-1``."""
+    node_ids = list(node_ids)
+    if not node_ids:
+        return False
+    return set(node_ids) == set(range(len(node_ids)))
+
+
+def _sharded_node_shell_from_mapping(
     payload: dict[str, object],
-) -> AlgorithmNodeCheckpointPayload:
-    """Build slim typed node metadata without edge/evaluation payloads."""
-    return AlgorithmNodeCheckpointPayload(
+    *,
+    state_summary: object | None,
+) -> _ShardedNodeShell:
+    """Build compact node metadata without retaining full state/runtime payloads."""
+    return _ShardedNodeShell(
         node_id=cast("int", payload["node_id"]),
         parent_node_id=cast("int | None", payload["parent_node_id"]),
         branch_from_parent=cast(
@@ -897,10 +987,8 @@ def _algorithm_node_shell_from_mapping(
             payload["branch_from_parent"],
         ),
         depth=cast("int", payload["depth"]),
-        state_payload=_state_payload_from_mapping(
-            cast("dict[str, object]", payload["state_payload"])
-        ),
         generated_all_branches=cast("bool", payload["generated_all_branches"]),
+        state_summary=state_summary,
     )
 
 
