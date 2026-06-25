@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from random import Random
 from time import perf_counter
@@ -45,6 +45,7 @@ from .payloads import (
     BackupRuntimeCheckpointPayload,
     BranchFrontierCheckpointPayload,
     CheckpointAtomPayload,
+    CheckpointNodeStatePayload,
     DecisionOrderingCheckpointPayload,
     DeltaCheckpointStatePayload,
     ExplorationIndexCheckpointPayload,
@@ -55,8 +56,12 @@ from .payloads import (
     TreeExpansionCheckpointPayload,
     TreeExpansionsCheckpointPayload,
 )
-from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
-from .state_handles import DenseCheckpointPayloadStore, DictCheckpointPayloadStore
+from .state_handles import (
+    CheckpointBackedStateHandle,
+    CheckpointStateResolver,
+    DenseCheckpointPayloadStore,
+    DictCheckpointPayloadStore,
+)
 from .value_serialization import deserialize_checkpoint_atom, deserialize_value
 
 if TYPE_CHECKING:
@@ -78,6 +83,8 @@ if TYPE_CHECKING:
     from anemone.nodes.state_handles import StateHandle
 
     from ._protocols import IncrementalStateCheckpointCodec
+
+type RestoreMemoryPhaseLogger = Callable[[str, Mapping[str, object]], None]
 
 
 class CheckpointRestoreError(ValueError):
@@ -173,6 +180,17 @@ def _log_checkpoint_restore_event(
     checkpoint_logger.debug(message)
 
 
+def _log_restore_memory_phase(
+    restore_memory_phase_logger: RestoreMemoryPhaseLogger | None,
+    phase_name: str,
+    **metadata: object,
+) -> None:
+    """Emit one optional restore-memory phase marker."""
+    if restore_memory_phase_logger is None:
+        return
+    restore_memory_phase_logger(phase_name, metadata)
+
+
 def load_search_from_checkpoint_payload[
     StateT: AnyTurnState,
     ActionT,
@@ -192,6 +210,7 @@ def load_search_from_checkpoint_payload[
     node_tree_evaluation_factory: NodeTreeEvaluationFactory[StateT] | None = None,
     notify_progress: NotifyProgressCallable | None = None,
     hooks: SearchHooks | None = None,
+    restore_memory_phase_logger: RestoreMemoryPhaseLogger | None = None,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """Restore a live search runtime from one in-memory checkpoint payload.
 
@@ -213,6 +232,13 @@ def load_search_from_checkpoint_payload[
         "delta_count": delta_count,
         "latest_expansion_count": _latest_expansion_count(payload),
     }
+    _log_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_runtime_restore_start",
+        **common_metadata,
+        raw_checkpoint_referenced=False,
+        typed_checkpoint_referenced=True,
+    )
     with _log_restore_phase("validate_payload", **common_metadata):
         _validate_payload(payload)
 
@@ -234,6 +260,13 @@ def load_search_from_checkpoint_payload[
             payload=payload,
             state_codec=state_codec,
         )
+    _log_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_checkpoint_state_resolver_created",
+        **common_metadata,
+        raw_checkpoint_referenced=False,
+        typed_checkpoint_referenced=True,
+    )
     with _log_restore_phase("create_state_handles", **common_metadata):
         state_handles_by_id = _create_state_handles(
             payload=payload,
@@ -247,6 +280,13 @@ def load_search_from_checkpoint_payload[
             payload=payload,
             state_handles_by_id=state_handles_by_id,
         )
+    _log_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_runtime_tree_nodes_created",
+        **common_metadata,
+        raw_checkpoint_referenced=False,
+        typed_checkpoint_referenced=True,
+    )
     with _log_restore_phase("link_nodes", **common_metadata):
         _link_nodes(payload.tree.nodes, nodes_by_id=nodes_by_id)
     with _log_restore_phase("restore_node_runtime_state", **common_metadata):
@@ -292,6 +332,14 @@ def load_search_from_checkpoint_payload[
             payload=payload.latest_tree_expansions,
             nodes_by_id=nodes_by_id,
         )
+    _log_restore_memory_phase(
+        restore_memory_phase_logger,
+        "after_runtime_restore_done",
+        **common_metadata,
+        branch_count=runtime.tree.branch_count,
+        raw_checkpoint_referenced=False,
+        typed_checkpoint_referenced=True,
+    )
     return runtime
 
 

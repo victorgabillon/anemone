@@ -21,7 +21,11 @@ from .io import (
     resolve_latest_generation_checkpoint_path,
     write_checkpoint_json_payload,
 )
-from .load import CheckpointRestoreError, load_search_from_checkpoint_payload
+from .load import (
+    CheckpointRestoreError,
+    RestoreMemoryPhaseLogger,
+    load_search_from_checkpoint_payload,
+)
 from .payloads import (
     CHECKPOINT_FORMAT_VERSION,
     AlgorithmNodeCheckpointPayload,
@@ -52,8 +56,12 @@ from .payloads import (
     TreeExpansionsCheckpointPayload,
     TupleAtomPayload,
 )
-from .state_handles import CheckpointBackedStateHandle, CheckpointStateResolver
-from .state_handles import DenseCheckpointPayloadStore, DictCheckpointPayloadStore
+from .state_handles import (
+    CheckpointBackedStateHandle,
+    CheckpointStateResolver,
+    DenseCheckpointPayloadStore,
+    DictCheckpointPayloadStore,
+)
 from .value_serialization import (
     CheckpointAtom,
     CheckpointSerializationError,
@@ -76,8 +84,6 @@ __all__ = [
     "CheckpointAtom",
     "CheckpointAtomPayload",
     "CheckpointBackedStateHandle",
-    "DenseCheckpointPayloadStore",
-    "DictCheckpointPayloadStore",
     "CheckpointFileFormat",
     "CheckpointJsonEncoder",
     "CheckpointNodeStatePayload",
@@ -88,6 +94,8 @@ __all__ = [
     "CheckpointWriteStats",
     "DecisionOrderingCheckpointPayload",
     "DeltaCheckpointStatePayload",
+    "DenseCheckpointPayloadStore",
+    "DictCheckpointPayloadStore",
     "EnumAtomPayload",
     "ExplorationIndexCheckpointPayload",
     "LinkedChildCheckpointPayload",
@@ -98,6 +106,7 @@ __all__ = [
     "LinooSelectorCheckpointPayload",
     "NodeEvaluationCheckpointPayload",
     "PrincipalVariationCheckpointPayload",
+    "RestoreMemoryPhaseLogger",
     "SearchRuntimeCheckpointPayload",
     "SelectorCheckpointPayload",
     "SerializedOverEventPayload",
