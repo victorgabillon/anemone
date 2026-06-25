@@ -120,6 +120,17 @@ class _FakeIncrementalStateCheckpointCodec:
         return _FakeCheckpointStateSummary(tag=state.tag, node_id=state.node_id)
 
 
+class _NoParentBranchCheckpointCodec(_FakeIncrementalStateCheckpointCodec):
+    """Fake codec opting out of duplicated state-parent branch payload storage."""
+
+    def dump_state_parent_branch_for_checkpoint(
+        self,
+        branch_from_parent: object | None,
+    ) -> object | None:
+        del branch_from_parent
+        return None
+
+
 _CHILDREN_BY_ID = {
     0: [1, 2],
     1: [3],
@@ -439,6 +450,34 @@ def test_node_state_payloads_use_anchor_and_delta_codec_outputs() -> None:
     )
     assert len(codec.dumped_delta_items) == len(non_root_payloads)
     assert sorted(codec.dumped_summary_node_ids) == sorted(payload_nodes)
+
+
+def test_codec_hook_can_omit_state_parent_branch_without_generic_domain_logic() -> None:
+    """Generic checkpoint export should honor the optional parent-branch hook."""
+    runtime = _build_runtime()
+    runtime.step()
+    payload = build_search_checkpoint_payload(
+        runtime,
+        state_codec=_NoParentBranchCheckpointCodec(),
+    )
+
+    payload_nodes = _nodes_by_id(payload)
+    non_root_payloads = [
+        payload_nodes[node.id]
+        for tree_depth in runtime.tree.descendants.range()
+        for node in runtime.tree.descendants[tree_depth].values()
+        if node.id != runtime.tree.root_node.id
+    ]
+
+    assert non_root_payloads
+    assert all(
+        isinstance(node_payload.state_payload, DeltaCheckpointStatePayload)
+        for node_payload in non_root_payloads
+    )
+    assert all(
+        node_payload.state_payload.state_parent_branch is None
+        for node_payload in non_root_payloads
+    )
 
 
 def test_root_is_anchor_and_non_root_nodes_use_deltas_under_default_policy() -> None:

@@ -1578,6 +1578,8 @@ def test_checkpoint_restore_logs_are_suppressed_from_normal_info_capture(
         ),
         pytest.param({"tag": 9, "node_id": 9}, 9, id="mapping-tag"),
         pytest.param({"state_tag": 10, "node_id": 10}, 10, id="mapping-state-tag"),
+        pytest.param((11, False), 11, id="tuple-tag"),
+        pytest.param([12, True], 12, id="list-tag"),
     ],
 )
 def test_checkpoint_summary_tag_supports_expected_shapes(
