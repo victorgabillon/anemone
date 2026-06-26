@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+import anemone.checkpoints.load as checkpoint_load_module
 import anemone.checkpoints.sharded as sharded_module
 from anemone.checkpoints import (
     CHECKPOINT_FORMAT_VERSION,
@@ -39,6 +40,7 @@ from anemone.checkpoints import (
     write_sharded_search_checkpoint,
 )
 from anemone.checkpoints.sharded import (
+    _iter_jsonl_shard_record_batches,
     _load_incremental_node_shells,
     _load_split_incremental_node_shells,
     _ShardedNodeShell,
@@ -563,6 +565,74 @@ def test_load_search_from_split_sharded_checkpoint_matches_payload_restore(
     assert split_codec.loaded_anchor_node_ids == []
     assert phase_metadata[1]["sharded_layout"] == "split"
     assert phase_metadata[1]["retained_full_node_payloads"] is False
+    edge_phase_metadata = phase_metadata[3]
+    assert edge_phase_metadata["node_runtime_streaming"] is True
+    assert edge_phase_metadata["node_runtime_record_count"] == len(payload.tree.nodes)
+
+
+def test_split_node_runtime_restore_processes_bounded_batches(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Split node-runtime restore should process bounded batches."""
+    runtime = _build_runtime()
+    runtime.step()
+    codec_for_build = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec_for_build)
+    write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=10,
+        encoding="jsonl",
+        layout="split",
+    )
+    batch_sizes: list[int] = []
+    original_link_nodes = checkpoint_load_module._link_nodes
+
+    def tracking_link_nodes(node_payloads: object, *, nodes_by_id: object) -> None:
+        batch = list(node_payloads)
+        batch_sizes.append(len(batch))
+        original_link_nodes(batch, nodes_by_id=nodes_by_id)
+
+    monkeypatch.setattr(sharded_module, "_DEFAULT_NODE_RUNTIME_RESTORE_BATCH_SIZE", 1)
+    monkeypatch.setattr(checkpoint_load_module, "_link_nodes", tracking_link_nodes)
+
+    load_search_from_sharded_checkpoint(
+        tmp_path,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+    )
+
+    assert len(batch_sizes) > 1
+    assert max(batch_sizes) == 1
+    assert sum(batch_sizes) == len(payload.tree.nodes)
+
+
+def test_jsonl_shard_record_batches_are_bounded(tmp_path: Path) -> None:
+    """JSONL shard batch helper should yield bounded batches."""
+    payload = _small_checkpoint_payload()
+    manifest = write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=10,
+        encoding="jsonl",
+        layout="split",
+    )
+    runtime_shard = _first_shard(manifest, "node_runtime")
+
+    batches = list(
+        _iter_jsonl_shard_record_batches(tmp_path, runtime_shard, batch_size=2)
+    )
+
+    assert [len(batch) for batch in batches] == [2, 1]
+    assert [record["node_id"] for batch in batches for record in batch] == [0, 1, 2]
 
 
 def test_incremental_node_shells_are_compact_not_full_node_payloads(

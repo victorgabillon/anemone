@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 from dataclasses import dataclass, field
 from importlib import import_module
@@ -46,7 +47,7 @@ from .payloads import (
 from .state_handles import DenseCheckpointPayloadStore, DictCheckpointPayloadStore
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping
+    from collections.abc import Callable, Iterable, Iterator, Mapping
 
     from valanga import Dynamics, RepresentationFactory, StateModifications
     from valanga.evaluator_types import EvaluatorInput
@@ -65,6 +66,7 @@ if TYPE_CHECKING:
     from .state_handles import CheckpointPayloadStore
 
 SHARDED_CHECKPOINT_FORMAT_VERSION = 1
+_DEFAULT_NODE_RUNTIME_RESTORE_BATCH_SIZE = 2048
 
 type ShardedCheckpointShardKind = Literal[
     "metadata",
@@ -114,6 +116,11 @@ class ShardedCheckpointManifestError(ValueError):
     def non_positive_node_count_per_shard(cls) -> ShardedCheckpointManifestError:
         """Return the error for an invalid node-count shard target."""
         return cls("sharded checkpoint node_count_per_shard must be positive.")
+
+    @classmethod
+    def non_positive_restore_batch_size(cls) -> ShardedCheckpointManifestError:
+        """Return the error for an invalid restore batch size."""
+        return cls("sharded checkpoint restore batch_size must be positive.")
 
     @classmethod
     def unsupported_jsonl_encoding(cls) -> ShardedCheckpointManifestError:
@@ -783,25 +790,43 @@ def load_search_from_sharded_checkpoint[
     if split_layout:
         shell_by_node_id = {node_shell.node_id: node_shell for node_shell in node_shells}
         restored_branch_count = 0
+        node_runtime_batch_count = 0
+        node_runtime_record_count = 0
+        node_runtime_zstd_streaming = False
         for shard in _required_manifest_shards(grouped_shards, "node_runtime"):
-            node_runtimes = [
-                _sharded_node_runtime_from_mapping(
-                    record,
-                    node_shell=shell_by_node_id[cast("int", record["node_id"])],
+            if shard.encoding == "jsonl_zst":
+                node_runtime_zstd_streaming = True
+            for record_batch in _iter_jsonl_shard_record_batches(
+                resolved_checkpoint_dir,
+                shard,
+                batch_size=_DEFAULT_NODE_RUNTIME_RESTORE_BATCH_SIZE,
+            ):
+                node_runtimes = [
+                    _sharded_node_runtime_from_mapping(
+                        record,
+                        node_shell=shell_by_node_id[cast("int", record["node_id"])],
+                    )
+                    for record in record_batch
+                ]
+                node_runtime_batch_count += 1
+                node_runtime_record_count += len(node_runtimes)
+                restored_branch_count += sum(
+                    len(node_runtime.linked_children)
+                    for node_runtime in node_runtimes
                 )
-                for record in _read_jsonl_shard_records(resolved_checkpoint_dir, shard)
-            ]
-            restored_branch_count += sum(
-                len(node_runtime.linked_children) for node_runtime in node_runtimes
-            )
-            _link_nodes(node_runtimes, nodes_by_id=nodes_by_id)
-            _restore_node_runtime_state(node_runtimes, nodes_by_id=nodes_by_id)
+                _link_nodes(node_runtimes, nodes_by_id=nodes_by_id)
+                _restore_node_runtime_state(node_runtimes, nodes_by_id=nodes_by_id)
+                del node_runtimes
+                del record_batch
         if manifest.total_branch_count is not None and restored_branch_count != (
             manifest.total_branch_count
         ):
             raise ShardedCheckpointManifestError.branch_count_mismatch()
         branch_count = restored_branch_count
     else:
+        node_runtime_batch_count = None
+        node_runtime_record_count = None
+        node_runtime_zstd_streaming = None
         for shard in _required_manifest_shards(grouped_shards, "node_records"):
             node_payloads = [
                 _algorithm_node_payload_from_mapping(record)
@@ -818,6 +843,13 @@ def load_search_from_sharded_checkpoint[
         state_payload_count=len(state_payload_store),
         node_shell_type="compact",
         retained_full_node_payloads=False,
+        node_runtime_batch_size=(
+            _DEFAULT_NODE_RUNTIME_RESTORE_BATCH_SIZE if split_layout else None
+        ),
+        node_runtime_batch_count=node_runtime_batch_count,
+        node_runtime_record_count=node_runtime_record_count,
+        node_runtime_streaming=split_layout,
+        node_runtime_zstd_streaming=node_runtime_zstd_streaming,
     )
 
     node_selector = dependencies.node_selector_create()
@@ -978,30 +1010,68 @@ def _read_jsonl_shard_records(
     shard: ShardedCheckpointShardRef,
 ) -> list[dict[str, object]]:
     """Read one JSONL or JSONL+zstd node-record shard."""
+    return list(_iter_jsonl_shard_records(checkpoint_dir, shard))
+
+
+def _iter_jsonl_shard_record_batches(
+    checkpoint_dir: Path,
+    shard: ShardedCheckpointShardRef,
+    *,
+    batch_size: int,
+) -> Iterator[list[dict[str, object]]]:
+    """Yield bounded JSON object batches from one JSONL shard."""
+    if batch_size <= 0:
+        raise ShardedCheckpointManifestError.non_positive_restore_batch_size()
+    batch: list[dict[str, object]] = []
+    for record in _iter_jsonl_shard_records(checkpoint_dir, shard):
+        batch.append(record)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
+def _iter_jsonl_shard_records(
+    checkpoint_dir: Path,
+    shard: ShardedCheckpointShardRef,
+) -> Iterator[dict[str, object]]:
+    """Iterate JSON objects from one JSONL or JSONL+zstd shard."""
     if shard.encoding == "jsonl":
-        shard_bytes = _resolve_manifest_shard_path(
-            checkpoint_dir,
-            shard.path,
-        ).read_bytes()
-    elif shard.encoding == "jsonl_zst":
+        with _resolve_manifest_shard_path(checkpoint_dir, shard.path).open(
+            encoding="utf-8"
+        ) as text_stream:
+            yield from _iter_jsonl_records_from_lines(text_stream)
+        return
+    if shard.encoding == "jsonl_zst":
         zstandard_module = _load_optional_module("zstandard")
         if zstandard_module is None:
             raise ShardedCheckpointManifestError.zstandard_required()
-        shard_bytes = zstandard_module.ZstdDecompressor().decompress(
-            _resolve_manifest_shard_path(checkpoint_dir, shard.path).read_bytes()
-        )
-    else:
-        raise ShardedCheckpointManifestError.unsupported_jsonl_encoding()
+        with (
+            _resolve_manifest_shard_path(checkpoint_dir, shard.path).open(
+                "rb"
+            ) as compressed_stream,
+            zstandard_module.ZstdDecompressor().stream_reader(
+                compressed_stream
+            ) as binary_stream,
+        ):
+            text_stream = io.TextIOWrapper(binary_stream, encoding="utf-8")
+            yield from _iter_jsonl_records_from_lines(text_stream)
+        return
+    raise ShardedCheckpointManifestError.unsupported_jsonl_encoding()
 
-    records: list[dict[str, object]] = []
-    for line in shard_bytes.decode("utf-8").splitlines():
-        if not line:
+
+def _iter_jsonl_records_from_lines(
+    lines: Iterable[str],
+) -> Iterator[dict[str, object]]:
+    """Yield JSON object records from text lines."""
+    for line in lines:
+        if not line.strip():
             continue
         record = json.loads(line)
         if not isinstance(record, dict):
             raise ShardedCheckpointManifestError.node_record_not_mapping()
-        records.append(cast("dict[str, object]", record))
-    return records
+        yield cast("dict[str, object]", record)
 
 
 def _resolve_manifest_shard_path(checkpoint_dir: Path, relative_path: str) -> Path:
