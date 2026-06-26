@@ -70,13 +70,16 @@ type ShardedCheckpointShardKind = Literal[
     "metadata",
     "tree_nodes",
     "node_records",
+    "node_shells",
     "state_payloads",
+    "node_runtime",
     "linked_children",
     "node_evaluations",
     "selector",
     "latest_expansions",
 ]
 type ShardedCheckpointShardEncoding = Literal["json", "json_zst", "jsonl", "jsonl_zst"]
+type ShardedCheckpointLayout = Literal["node_records", "split"]
 
 
 class ShardedCheckpointManifestError(ValueError):
@@ -128,6 +131,11 @@ class ShardedCheckpointManifestError(ValueError):
         return cls("sharded checkpoint manifest contains an unsupported shard encoding.")
 
     @classmethod
+    def unsupported_layout(cls) -> ShardedCheckpointManifestError:
+        """Return the error for an unsupported sharded writer layout."""
+        return cls("sharded checkpoint layout must be 'node_records' or 'split'.")
+
+    @classmethod
     def missing_metadata_shard(cls) -> ShardedCheckpointManifestError:
         """Return the error for a missing metadata shard."""
         return cls("sharded checkpoint manifest must contain exactly one metadata shard.")
@@ -141,6 +149,25 @@ class ShardedCheckpointManifestError(ValueError):
     def missing_node_records_shard(cls) -> ShardedCheckpointManifestError:
         """Return the error for missing node-record shards."""
         return cls("sharded checkpoint manifest must contain node-record shards.")
+
+    @classmethod
+    def missing_node_shells_shard(cls) -> ShardedCheckpointManifestError:
+        """Return the error for missing split-layout node-shell shards."""
+        return cls("split sharded checkpoint manifest must contain node-shell shards.")
+
+    @classmethod
+    def missing_state_payloads_shard(cls) -> ShardedCheckpointManifestError:
+        """Return the error for missing split-layout state-payload shards."""
+        return cls(
+            "split sharded checkpoint manifest must contain state-payload shards."
+        )
+
+    @classmethod
+    def missing_node_runtime_shard(cls) -> ShardedCheckpointManifestError:
+        """Return the error for missing split-layout node-runtime shards."""
+        return cls(
+            "split sharded checkpoint manifest must contain node-runtime shards."
+        )
 
     @classmethod
     def duplicate_selector_shard(cls) -> ShardedCheckpointManifestError:
@@ -246,6 +273,18 @@ class _ShardedNodeShell:
     depth: int
     generated_all_branches: bool
     state_summary: object | None
+
+
+@dataclass(frozen=True, slots=True)
+class _ShardedNodeRuntime:
+    """Shard-local runtime payload used after compact node creation."""
+
+    node_id: int
+    generated_all_branches: bool
+    unopened_branches: list[CheckpointAtomPayload]
+    linked_children: list[LinkedChildCheckpointPayload]
+    evaluation: NodeEvaluationCheckpointPayload | None
+    exploration_index: ExplorationIndexCheckpointPayload | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -398,14 +437,17 @@ def write_sharded_search_checkpoint(
     *,
     node_count_per_shard: int = 100_000,
     encoding: ShardedCheckpointShardEncoding = "jsonl_zst",
+    layout: ShardedCheckpointLayout = "node_records",
     generation: int | None = None,
     encoder: CheckpointJsonEncoder | None = None,
 ) -> ShardedCheckpointManifest:
-    """Write a generic first-stage sharded runtime checkpoint."""
+    """Write a generic sharded runtime checkpoint."""
     if node_count_per_shard <= 0:
         raise ShardedCheckpointManifestError.non_positive_node_count_per_shard()
     if encoding not in {"jsonl", "jsonl_zst"}:
         raise ShardedCheckpointManifestError.unsupported_jsonl_encoding()
+    if layout not in {"node_records", "split"}:
+        raise ShardedCheckpointManifestError.unsupported_layout()
     resolved_output_dir = Path(output_dir)
     resolved_output_dir.mkdir(parents=True, exist_ok=True)
     resolved_encoder: CheckpointJsonEncoder = "stdlib" if encoder is None else encoder
@@ -427,15 +469,26 @@ def write_sharded_search_checkpoint(
             kind="metadata",
         )
     )
-    shards.extend(
-        _write_node_record_shards(
-            payload.tree.nodes,
-            output_dir=resolved_output_dir,
-            node_count_per_shard=node_count_per_shard,
-            encoding=encoding,
-            encoder=resolved_encoder,
+    if layout == "split":
+        shards.extend(
+            _write_split_node_shards(
+                payload.tree.nodes,
+                output_dir=resolved_output_dir,
+                node_count_per_shard=node_count_per_shard,
+                encoding=encoding,
+                encoder=resolved_encoder,
+            )
         )
-    )
+    else:
+        shards.extend(
+            _write_node_record_shards(
+                payload.tree.nodes,
+                output_dir=resolved_output_dir,
+                node_count_per_shard=node_count_per_shard,
+                encoding=encoding,
+                encoder=resolved_encoder,
+            )
+        )
     if payload.selector_state is not None:
         shards.append(
             _write_json_shard(
@@ -464,7 +517,11 @@ def write_sharded_search_checkpoint(
         node_count_per_shard=node_count_per_shard,
         shards=tuple(shards),
         encoder=resolved_encoder,
-        notes="C2b first-stage node-record shard layout.",
+        notes=(
+            "C2e split state/node/runtime shard layout."
+            if layout == "split"
+            else "C2b first-stage node-record shard layout."
+        ),
     )
     write_sharded_checkpoint_manifest(manifest, resolved_output_dir / "manifest.json")
     return manifest
@@ -599,12 +656,14 @@ def load_search_from_sharded_checkpoint[
         resolved_checkpoint_dir,
         _only_manifest_shard(grouped_shards, "metadata"),
     )
-    node_shards = _required_manifest_shards(grouped_shards, "node_records")
+    node_record_shards = grouped_shards.get("node_records", [])
+    split_layout = not node_record_shards and bool(grouped_shards.get("node_shells"))
     common_metadata = {
         "checkpoint_dir": str(resolved_checkpoint_dir),
         "node_count": manifest.total_node_count,
         "root_node_id": metadata.get("root_node_id"),
         "format_version": metadata.get("format_version"),
+        "sharded_layout": "split" if split_layout else "node_records",
     }
     _log_sharded_restore_memory_phase(
         restore_memory_phase_logger,
@@ -613,19 +672,31 @@ def load_search_from_sharded_checkpoint[
         shard_count=len(manifest.shards),
     )
 
-    (
-        node_shells,
-        state_payload_store,
-        branch_count,
-        anchor_count,
-        delta_count,
-        delta_parent_node_ids,
-    ) = (
-        _load_incremental_node_shells(
+    if split_layout:
+        (
+            node_shells,
+            state_payload_store,
+            branch_count,
+            anchor_count,
+            delta_count,
+            delta_parent_node_ids,
+        ) = _load_split_incremental_node_shells(
             resolved_checkpoint_dir,
-            node_shards,
+            _required_manifest_shards(grouped_shards, "node_shells"),
+            _required_manifest_shards(grouped_shards, "state_payloads"),
         )
-    )
+    else:
+        (
+            node_shells,
+            state_payload_store,
+            branch_count,
+            anchor_count,
+            delta_count,
+            delta_parent_node_ids,
+        ) = _load_incremental_node_shells(
+            resolved_checkpoint_dir,
+            _required_manifest_shards(grouped_shards, "node_records"),
+        )
     if len(node_shells) != manifest.total_node_count:
         raise ShardedCheckpointManifestError.node_count_mismatch()
     if cast("int | None", metadata.get("node_count")) not in {
@@ -633,7 +704,13 @@ def load_search_from_sharded_checkpoint[
         manifest.total_node_count,
     }:
         raise ShardedCheckpointManifestError.node_count_mismatch()
-    if manifest.total_branch_count is not None and branch_count != (
+    if split_layout:
+        branch_count = (
+            manifest.total_branch_count
+            if manifest.total_branch_count is not None
+            else cast("int", metadata.get("branch_count", 0))
+        )
+    if not split_layout and manifest.total_branch_count is not None and branch_count != (
         manifest.total_branch_count
     ):
         raise ShardedCheckpointManifestError.branch_count_mismatch()
@@ -703,13 +780,35 @@ def load_search_from_sharded_checkpoint[
         retained_full_node_payloads=False,
     )
 
-    for shard in node_shards:
-        node_payloads = [
-            _algorithm_node_payload_from_mapping(record)
-            for record in _read_jsonl_shard_records(resolved_checkpoint_dir, shard)
-        ]
-        _link_nodes(node_payloads, nodes_by_id=nodes_by_id)
-        _restore_node_runtime_state(node_payloads, nodes_by_id=nodes_by_id)
+    if split_layout:
+        shell_by_node_id = {node_shell.node_id: node_shell for node_shell in node_shells}
+        restored_branch_count = 0
+        for shard in _required_manifest_shards(grouped_shards, "node_runtime"):
+            node_runtimes = [
+                _sharded_node_runtime_from_mapping(
+                    record,
+                    node_shell=shell_by_node_id[cast("int", record["node_id"])],
+                )
+                for record in _read_jsonl_shard_records(resolved_checkpoint_dir, shard)
+            ]
+            restored_branch_count += sum(
+                len(node_runtime.linked_children) for node_runtime in node_runtimes
+            )
+            _link_nodes(node_runtimes, nodes_by_id=nodes_by_id)
+            _restore_node_runtime_state(node_runtimes, nodes_by_id=nodes_by_id)
+        if manifest.total_branch_count is not None and restored_branch_count != (
+            manifest.total_branch_count
+        ):
+            raise ShardedCheckpointManifestError.branch_count_mismatch()
+        branch_count = restored_branch_count
+    else:
+        for shard in _required_manifest_shards(grouped_shards, "node_records"):
+            node_payloads = [
+                _algorithm_node_payload_from_mapping(record)
+                for record in _read_jsonl_shard_records(resolved_checkpoint_dir, shard)
+            ]
+            _link_nodes(node_payloads, nodes_by_id=nodes_by_id)
+            _restore_node_runtime_state(node_payloads, nodes_by_id=nodes_by_id)
     _log_sharded_restore_memory_phase(
         restore_memory_phase_logger,
         "after_edges_and_runtime_state_restored",
@@ -787,12 +886,15 @@ def load_search_from_sharded_checkpoint[
 def _group_manifest_shards(
     manifest: ShardedCheckpointManifest,
 ) -> dict[ShardedCheckpointShardKind, list[ShardedCheckpointShardRef]]:
-    """Validate and group C2b manifest shards by kind."""
+    """Validate and group manifest shards by kind."""
     grouped: dict[ShardedCheckpointShardKind, list[ShardedCheckpointShardRef]] = {}
     for shard in manifest.shards:
         if shard.kind not in {
             "metadata",
             "node_records",
+            "node_shells",
+            "state_payloads",
+            "node_runtime",
             "selector",
             "latest_expansions",
         }:
@@ -805,7 +907,10 @@ def _group_manifest_shards(
         grouped.setdefault(shard.kind, []).append(shard)
 
     _only_manifest_shard(grouped, "metadata")
-    _required_manifest_shards(grouped, "node_records")
+    if not grouped.get("node_records"):
+        _required_manifest_shards(grouped, "node_shells")
+        _required_manifest_shards(grouped, "state_payloads")
+        _required_manifest_shards(grouped, "node_runtime")
     if len(grouped.get("selector", [])) > 1:
         raise ShardedCheckpointManifestError.duplicate_selector_shard()
     if len(grouped.get("latest_expansions", [])) > 1:
@@ -834,6 +939,12 @@ def _required_manifest_shards(
     shards = grouped_shards.get(kind, [])
     if not shards and kind == "node_records":
         raise ShardedCheckpointManifestError.missing_node_records_shard()
+    if not shards and kind == "node_shells":
+        raise ShardedCheckpointManifestError.missing_node_shells_shard()
+    if not shards and kind == "state_payloads":
+        raise ShardedCheckpointManifestError.missing_state_payloads_shard()
+    if not shards and kind == "node_runtime":
+        raise ShardedCheckpointManifestError.missing_node_runtime_shard()
     return shards
 
 
@@ -951,6 +1062,61 @@ def _load_incremental_node_shells(
     )
 
 
+def _load_split_incremental_node_shells(
+    checkpoint_dir: Path,
+    node_shell_shards: list[ShardedCheckpointShardRef],
+    state_payload_shards: list[ShardedCheckpointShardRef],
+) -> tuple[
+    list[_ShardedNodeShell],
+    CheckpointPayloadStore,
+    int,
+    int,
+    int,
+    list[tuple[int, int]],
+]:
+    """Load split-layout shells and state payloads without reading runtime shards."""
+    state_payloads_by_node_id: dict[int, CheckpointNodeStatePayload] = {}
+    state_summary_by_node_id: dict[int, object | None] = {}
+    delta_parent_node_ids: list[tuple[int, int]] = []
+    anchor_count = 0
+    delta_count = 0
+    for shard in state_payload_shards:
+        for record in _read_jsonl_shard_records(checkpoint_dir, shard):
+            node_id = cast("int", record["node_id"])
+            state_payload = _state_payload_from_mapping(
+                cast("dict[str, object]", record["state_payload"])
+            )
+            state_payloads_by_node_id[node_id] = state_payload
+            state_summary_by_node_id[node_id] = state_payload.state_summary
+            if isinstance(state_payload, DeltaCheckpointStatePayload):
+                delta_count += 1
+                delta_parent_node_ids.append(
+                    (node_id, state_payload.state_parent_node_id)
+                )
+            else:
+                anchor_count += 1
+
+    node_shells: list[_ShardedNodeShell] = []
+    for shard in node_shell_shards:
+        for record in _read_jsonl_shard_records(checkpoint_dir, shard):
+            node_id = cast("int", record["node_id"])
+            node_shells.append(
+                _sharded_node_shell_from_mapping(
+                    record,
+                    state_summary=state_summary_by_node_id.get(node_id),
+                )
+            )
+
+    return (
+        node_shells,
+        _build_sharded_payload_store(state_payloads_by_node_id),
+        0,
+        anchor_count,
+        delta_count,
+        delta_parent_node_ids,
+    )
+
+
 def _build_sharded_payload_store(
     state_payloads_by_node_id: dict[int, CheckpointNodeStatePayload],
 ) -> CheckpointPayloadStore:
@@ -989,6 +1155,40 @@ def _sharded_node_shell_from_mapping(
         depth=cast("int", payload["depth"]),
         generated_all_branches=cast("bool", payload["generated_all_branches"]),
         state_summary=state_summary,
+    )
+
+
+def _sharded_node_runtime_from_mapping(
+    payload: dict[str, object],
+    *,
+    node_shell: _ShardedNodeShell,
+) -> _ShardedNodeRuntime:
+    """Build one shard-local runtime payload from split node-runtime JSON."""
+    return _ShardedNodeRuntime(
+        node_id=cast("int", payload["node_id"]),
+        generated_all_branches=node_shell.generated_all_branches,
+        unopened_branches=cast(
+            "list[CheckpointAtomPayload]",
+            payload.get("unopened_branches", []),
+        ),
+        linked_children=[
+            _linked_child_payload_from_mapping(cast("dict[str, object]", child))
+            for child in cast("list[object]", payload.get("linked_children", []))
+        ],
+        evaluation=(
+            None
+            if payload.get("evaluation") is None
+            else _node_evaluation_payload_from_mapping(
+                cast("dict[str, object]", payload["evaluation"])
+            )
+        ),
+        exploration_index=(
+            None
+            if payload.get("exploration_index") is None
+            else _exploration_index_payload_from_mapping(
+                cast("dict[str, object]", payload["exploration_index"])
+            )
+        ),
     )
 
 
@@ -1363,59 +1563,179 @@ def _write_node_record_shards(
     encoder: CheckpointJsonEncoder,
 ) -> list[ShardedCheckpointShardRef]:
     """Write node-record JSONL shards and return manifest refs."""
+    return _write_jsonl_record_shards(
+        node_payloads,
+        output_dir=output_dir,
+        node_count_per_shard=node_count_per_shard,
+        encoding=encoding,
+        encoder=encoder,
+        kind="node_records",
+        directory_name="node_records",
+        file_stem="nodes",
+    )
+
+
+def _write_split_node_shards(
+    node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
+    *,
+    output_dir: Path,
+    node_count_per_shard: int,
+    encoding: ShardedCheckpointShardEncoding,
+    encoder: CheckpointJsonEncoder,
+) -> list[ShardedCheckpointShardRef]:
+    """Write split node shell, state payload, and runtime JSONL shard families."""
+    payloads = tuple(node_payloads)
+    shards: list[ShardedCheckpointShardRef] = []
+    shards.extend(
+        _write_jsonl_record_shards(
+            (_node_shell_record(node_payload) for node_payload in payloads),
+            output_dir=output_dir,
+            node_count_per_shard=node_count_per_shard,
+            encoding=encoding,
+            encoder=encoder,
+            kind="node_shells",
+            directory_name="node_shells",
+            file_stem="nodes",
+        )
+    )
+    shards.extend(
+        _write_jsonl_record_shards(
+            (_state_payload_record(node_payload) for node_payload in payloads),
+            output_dir=output_dir,
+            node_count_per_shard=node_count_per_shard,
+            encoding=encoding,
+            encoder=encoder,
+            kind="state_payloads",
+            directory_name="state_payloads",
+            file_stem="state_payloads",
+        )
+    )
+    shards.extend(
+        _write_jsonl_record_shards(
+            (_node_runtime_record(node_payload) for node_payload in payloads),
+            output_dir=output_dir,
+            node_count_per_shard=node_count_per_shard,
+            encoding=encoding,
+            encoder=encoder,
+            kind="node_runtime",
+            directory_name="node_runtime",
+            file_stem="node_runtime",
+        )
+    )
+    return shards
+
+
+def _write_jsonl_record_shards(
+    records: Iterable[object],
+    *,
+    output_dir: Path,
+    node_count_per_shard: int,
+    encoding: ShardedCheckpointShardEncoding,
+    encoder: CheckpointJsonEncoder,
+    kind: ShardedCheckpointShardKind,
+    directory_name: str,
+    file_stem: str,
+) -> list[ShardedCheckpointShardRef]:
+    """Write JSONL record shards and return manifest refs."""
     shards: list[ShardedCheckpointShardRef] = []
     current_records: list[object] = []
     shard_index = 0
-    for node_payload in node_payloads:
-        current_records.append(node_payload)
+    for record in records:
+        current_records.append(record)
         if len(current_records) == node_count_per_shard:
             shards.append(
-                _write_node_record_shard(
+                _write_jsonl_record_shard(
                     current_records,
                     output_dir=output_dir,
                     shard_index=shard_index,
                     encoding=encoding,
                     encoder=encoder,
+                    kind=kind,
+                    directory_name=directory_name,
+                    file_stem=file_stem,
                 )
             )
             current_records = []
             shard_index += 1
     if current_records or not shards:
         shards.append(
-            _write_node_record_shard(
+            _write_jsonl_record_shard(
                 current_records,
                 output_dir=output_dir,
                 shard_index=shard_index,
                 encoding=encoding,
                 encoder=encoder,
+                kind=kind,
+                directory_name=directory_name,
+                file_stem=file_stem,
             )
         )
     return shards
 
 
-def _write_node_record_shard(
+def _write_jsonl_record_shard(
     records: list[object],
     *,
     output_dir: Path,
     shard_index: int,
     encoding: ShardedCheckpointShardEncoding,
     encoder: CheckpointJsonEncoder,
+    kind: ShardedCheckpointShardKind,
+    directory_name: str,
+    file_stem: str,
 ) -> ShardedCheckpointShardRef:
     suffix = "jsonl.zst" if encoding == "jsonl_zst" else "jsonl"
-    relative_path = f"node_records/nodes_{shard_index:06d}.{suffix}"
+    relative_path = f"{directory_name}/{file_stem}_{shard_index:06d}.{suffix}"
     encoded_records = _encode_jsonl_records(records, encoder=encoder)
     compressed_records = _compress_jsonl_bytes(encoded_records, encoding)
     output_path = output_dir / relative_path
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(compressed_records)
     return ShardedCheckpointShardRef(
-        kind="node_records",
+        kind=kind,
         path=relative_path,
         record_count=len(records),
         encoding=encoding,
         compressed_bytes=len(compressed_records),
         uncompressed_bytes=len(encoded_records),
     )
+
+
+def _node_shell_record(
+    node_payload: AlgorithmNodeCheckpointPayload,
+) -> dict[str, object]:
+    """Return split-layout compact node metadata for one node."""
+    return {
+        "node_id": node_payload.node_id,
+        "parent_node_id": node_payload.parent_node_id,
+        "branch_from_parent": node_payload.branch_from_parent,
+        "depth": node_payload.depth,
+        "generated_all_branches": node_payload.generated_all_branches,
+        "state_summary": node_payload.state_payload.state_summary,
+    }
+
+
+def _state_payload_record(
+    node_payload: AlgorithmNodeCheckpointPayload,
+) -> dict[str, object]:
+    """Return split-layout state payload record for one node."""
+    return {
+        "node_id": node_payload.node_id,
+        "state_payload": node_payload.state_payload,
+    }
+
+
+def _node_runtime_record(
+    node_payload: AlgorithmNodeCheckpointPayload,
+) -> dict[str, object]:
+    """Return split-layout runtime payload for one node."""
+    return {
+        "node_id": node_payload.node_id,
+        "unopened_branches": node_payload.unopened_branches,
+        "linked_children": node_payload.linked_children,
+        "evaluation": node_payload.evaluation,
+        "exploration_index": node_payload.exploration_index,
+    }
 
 
 def _encode_jsonl_records(

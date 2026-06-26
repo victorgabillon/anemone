@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+import anemone.checkpoints.sharded as sharded_module
 from anemone.checkpoints import (
     CHECKPOINT_FORMAT_VERSION,
     SHARDED_CHECKPOINT_FORMAT_VERSION,
@@ -39,6 +40,7 @@ from anemone.checkpoints import (
 )
 from anemone.checkpoints.sharded import (
     _load_incremental_node_shells,
+    _load_split_incremental_node_shells,
     _ShardedNodeShell,
 )
 from tests.fake_yaml_game import FakeYamlDynamics, MasterStateValueEvaluatorFromYaml
@@ -58,6 +60,11 @@ from tests.test_checkpoint_load import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _split_pass_read_node_runtime_error() -> AssertionError:
+    """Return the assertion used when split pass 1 reads runtime shards."""
+    return AssertionError("split pass 1 must not read node_runtime shards")
 
 
 def test_sharded_checkpoint_manifest_json_roundtrip(tmp_path: Path) -> None:
@@ -202,6 +209,46 @@ def test_write_sharded_search_checkpoint_node_shards_respect_target_size(
     assert decoded_nodes[2]["state_payload"]["anchor_ref"]["node_id"] == 2
 
 
+def test_write_sharded_search_checkpoint_split_layout_creates_split_shards(
+    tmp_path: Path,
+) -> None:
+    """The split writer should separate shells, state payloads, and runtime data."""
+    payload = _small_checkpoint_payload()
+
+    manifest = write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=2,
+        encoding="jsonl",
+        layout="split",
+    )
+
+    assert [shard.kind for shard in manifest.shards].count("node_shells") == 2
+    assert [shard.kind for shard in manifest.shards].count("state_payloads") == 2
+    assert [shard.kind for shard in manifest.shards].count("node_runtime") == 2
+    assert not [shard for shard in manifest.shards if shard.kind == "node_records"]
+    node_shell = _read_jsonl_records(
+        tmp_path / _first_shard(manifest, "node_shells").path
+    )[0]
+    state_record = _read_jsonl_records(
+        tmp_path / _first_shard(manifest, "state_payloads").path
+    )[0]
+    runtime_record = _read_jsonl_records(
+        tmp_path / _first_shard(manifest, "node_runtime").path
+    )[0]
+    assert set(node_shell) == {
+        "branch_from_parent",
+        "depth",
+        "generated_all_branches",
+        "node_id",
+        "parent_node_id",
+        "state_summary",
+    }
+    assert set(state_record) == {"node_id", "state_payload"}
+    assert "state_payload" not in runtime_record
+    assert runtime_record["linked_children"][0]["child_node_id"] == 1
+
+
 def test_load_sharded_search_checkpoint_roundtrips_writer_payload(
     tmp_path: Path,
 ) -> None:
@@ -297,8 +344,8 @@ def test_load_sharded_search_checkpoint_rejects_unsupported_shard_kind(
                 "encoding": "json_zst",
             },
             {
-                "kind": "state_payloads",
-                "path": "state_payloads/state_000000.jsonl",
+                "kind": "tree_nodes",
+                "path": "tree_nodes/tree_nodes_000000.jsonl",
                 "record_count": 0,
                 "encoding": "jsonl",
             },
@@ -333,6 +380,84 @@ def test_load_sharded_search_checkpoint_rejects_unsupported_shard_encoding(
 
     with pytest.raises(ShardedCheckpointManifestError, match="jsonl"):
         load_sharded_search_checkpoint(tmp_path)
+
+
+def test_split_manifest_rejects_missing_state_payloads_shard(tmp_path: Path) -> None:
+    """Split manifests should require state payload shards."""
+    _write_raw_manifest(
+        tmp_path,
+        shards=[
+            {
+                "kind": "metadata",
+                "path": "metadata.json.zst",
+                "record_count": 1,
+                "encoding": "json_zst",
+            },
+            {
+                "kind": "node_shells",
+                "path": "node_shells/nodes_000000.jsonl",
+                "record_count": 1,
+                "encoding": "jsonl",
+            },
+            {
+                "kind": "node_runtime",
+                "path": "node_runtime/node_runtime_000000.jsonl",
+                "record_count": 1,
+                "encoding": "jsonl",
+            },
+        ],
+    )
+
+    with pytest.raises(ShardedCheckpointManifestError, match="state-payload"):
+        load_search_from_sharded_checkpoint(
+            tmp_path,
+            state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+            dynamics=FakeYamlDynamics(),
+            args=_build_args(),
+            state_type=_ConcreteFakeYamlState,
+            master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+                _values_for(_CHILDREN_BY_ID)
+            ),
+        )
+
+
+def test_split_manifest_rejects_missing_node_shells_shard(tmp_path: Path) -> None:
+    """Split manifests should require node shell shards."""
+    _write_raw_manifest(
+        tmp_path,
+        shards=[
+            {
+                "kind": "metadata",
+                "path": "metadata.json.zst",
+                "record_count": 1,
+                "encoding": "json_zst",
+            },
+            {
+                "kind": "state_payloads",
+                "path": "state_payloads/state_payloads_000000.jsonl",
+                "record_count": 1,
+                "encoding": "jsonl",
+            },
+            {
+                "kind": "node_runtime",
+                "path": "node_runtime/node_runtime_000000.jsonl",
+                "record_count": 1,
+                "encoding": "jsonl",
+            },
+        ],
+    )
+
+    with pytest.raises(ShardedCheckpointManifestError, match="node-shell"):
+        load_search_from_sharded_checkpoint(
+            tmp_path,
+            state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+            dynamics=FakeYamlDynamics(),
+            args=_build_args(),
+            state_type=_ConcreteFakeYamlState,
+            master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+                _values_for(_CHILDREN_BY_ID)
+            ),
+        )
 
 
 def test_load_search_from_sharded_checkpoint_matches_payload_restore(
@@ -396,6 +521,50 @@ def test_load_search_from_sharded_checkpoint_matches_payload_restore(
     ]
 
 
+def test_load_search_from_split_sharded_checkpoint_matches_payload_restore(
+    tmp_path: Path,
+) -> None:
+    """Split incremental sharded restore should match monolithic restore semantics."""
+    runtime = _build_runtime()
+    runtime.step()
+    codec_for_build = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = build_search_checkpoint_payload(runtime, state_codec=codec_for_build)
+    write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=2,
+        encoding="jsonl",
+        layout="split",
+    )
+
+    monolithic = _restore_payload_for_sharded_test(
+        payload,
+        state_codec=_FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID),
+    )
+    split_codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    phase_metadata: list[dict[str, object]] = []
+    split_runtime = load_search_from_sharded_checkpoint(
+        tmp_path,
+        state_codec=split_codec,
+        dynamics=FakeYamlDynamics(),
+        args=_build_args(),
+        state_type=_ConcreteFakeYamlState,
+        master_state_value_evaluator=MasterStateValueEvaluatorFromYaml(
+            _values_for(_CHILDREN_BY_ID)
+        ),
+        random_generator=Random(0),
+        state_representation_factory=None,
+        restore_memory_phase_logger=lambda _phase, metadata: phase_metadata.append(
+            dict(metadata)
+        ),
+    )
+
+    _assert_runtime_equivalent(split_runtime, monolithic)
+    assert split_codec.loaded_anchor_node_ids == []
+    assert phase_metadata[1]["sharded_layout"] == "split"
+    assert phase_metadata[1]["retained_full_node_payloads"] is False
+
+
 def test_incremental_node_shells_are_compact_not_full_node_payloads(
     tmp_path: Path,
 ) -> None:
@@ -430,6 +599,54 @@ def test_incremental_node_shells_are_compact_not_full_node_payloads(
     assert anchor_count == len(payload.tree.nodes)
     assert delta_count == 0
     assert delta_parent_node_ids == []
+
+
+def test_split_incremental_shell_pass_does_not_read_node_runtime_shards(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Split pass 1 should read only node-shell and state-payload shards."""
+    payload = _small_checkpoint_payload()
+    manifest = write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=2,
+        encoding="jsonl",
+        layout="split",
+    )
+    node_shell_shards = [
+        shard for shard in manifest.shards if shard.kind == "node_shells"
+    ]
+    state_payload_shards = [
+        shard for shard in manifest.shards if shard.kind == "state_payloads"
+    ]
+    original_reader = sharded_module._read_jsonl_shard_records
+    read_kinds: list[str] = []
+
+    def tracking_reader(
+        checkpoint_dir: Path,
+        shard: ShardedCheckpointShardRef,
+    ) -> list[dict[str, object]]:
+        read_kinds.append(shard.kind)
+        if shard.kind == "node_runtime":
+            raise _split_pass_read_node_runtime_error()
+        return original_reader(checkpoint_dir, shard)
+
+    monkeypatch.setattr(
+        sharded_module,
+        "_read_jsonl_shard_records",
+        tracking_reader,
+    )
+
+    node_shells, state_payload_store, *_rest = _load_split_incremental_node_shells(
+        tmp_path,
+        node_shell_shards,
+        state_payload_shards,
+    )
+
+    assert len(node_shells) == len(payload.tree.nodes)
+    assert len(state_payload_store) == len(payload.tree.nodes)
+    assert "node_runtime" not in read_kinds
 
 
 def _small_checkpoint_payload() -> SearchRuntimeCheckpointPayload:
@@ -528,6 +745,15 @@ def _only_shard(
 ) -> ShardedCheckpointShardRef:
     matches = [shard for shard in manifest.shards if shard.kind == kind]
     assert len(matches) == 1
+    return matches[0]
+
+
+def _first_shard(
+    manifest: ShardedCheckpointManifest,
+    kind: str,
+) -> ShardedCheckpointShardRef:
+    matches = [shard for shard in manifest.shards if shard.kind == kind]
+    assert matches
     return matches[0]
 
 

@@ -61,23 +61,24 @@ This layout is intentionally simpler than the long-term split layout. It is
 generic, easy to test, and compatible with a future reader that processes a
 bounded number of nodes per shard before dropping each raw shard.
 
-## Long-Term Layout
+## Split Layout
 
-Later C2 phases may split node records into independent shard families:
+C2e adds an experimental split layout that separates state payloads from node
+metadata and runtime records. This layout is intended for the incremental
+runtime reader; the C2c typed-payload reader remains a node-record layout
+equivalence tool.
 
 ```text
 checkpoint_sharded/
   manifest.json
   metadata.json.zst
-  tree_nodes/
+  node_shells/
     nodes_000000.jsonl.zst
     nodes_000001.jsonl.zst
   state_payloads/
     state_payloads_000000.jsonl.zst
-  linked_children/
-    linked_children_000000.jsonl.zst
-  node_evaluations/
-    evaluations_000000.jsonl.zst
+  node_runtime/
+    node_runtime_000000.jsonl.zst
   selector/
     selector.json.zst
   latest_expansions/
@@ -109,7 +110,8 @@ The C2a-C2c implementation provides:
 - manifest read/write helpers,
 - relative shard path validation.
 - a generic `write_sharded_search_checkpoint(...)` writer from a fully built
-  `SearchRuntimeCheckpointPayload`.
+  `SearchRuntimeCheckpointPayload`, with `layout="node_records"` for the
+  compatibility layout and `layout="split"` for the memory-oriented layout.
 - a generic `load_sharded_search_checkpoint(...)` reader that reconstructs the
   typed `SearchRuntimeCheckpointPayload` from the C2b shards.
 
@@ -123,6 +125,12 @@ for state handles and tree construction, and restores full node edge/evaluation
 payloads one shard at a time. This avoids constructing a full typed
 `SearchRuntimeCheckpointPayload`, but it is not the default path and should not
 be treated as a measured memory win until profiled on large checkpoints.
+
+C2e extends that incremental runtime reader to prefer the split layout when
+`node_shells`, `state_payloads`, and `node_runtime` shards are present. Pass 1
+reads only `state_payloads` and `node_shells`, builds the state payload store
+and compact node shells, then pass 2 streams `node_runtime` shards for edges,
+evaluation, and exploration-index state.
 
 ## Shard Boundaries
 
@@ -158,15 +166,15 @@ evaluation restoration.
 
 ## Restore Strategy
 
-A future sharded restore should:
+The split incremental restore should:
 
 1. Read and validate `manifest.json`.
 2. Read small metadata and global shards.
 3. Build the state payload store incrementally from `state_payloads` shards.
 4. Create checkpoint-backed state handles.
-5. Stream `tree_nodes` shards to create runtime nodes.
-6. Stream `linked_children` shards after all nodes exist.
-7. Stream `node_evaluations` shards to restore node runtime state.
+5. Stream `node_shells` shards to create runtime nodes.
+6. Stream `node_runtime` shards after all nodes exist to restore edges,
+   evaluation, and exploration-index state.
 8. Restore selector state and latest expansions.
 9. Drop each raw shard immediately after processing.
 10. Run equivalence assertions in tests against the monolithic path.
@@ -212,5 +220,7 @@ C2d should continue making restore more incremental where useful: state payload
 store, node shells, edges, and evaluation shards should be processed and dropped
 in separate phases.
 
-Only after those pass should Chipiron add an opt-in runtime checkpoint format
-switch for large Morpion runs.
+C2e adds the split writer and split incremental restore while preserving the
+node-record writer/reader tests. Chipiron's opt-in sharded runtime checkpoint
+path requests `layout="split"` for measurement; the monolithic default is
+unchanged.
