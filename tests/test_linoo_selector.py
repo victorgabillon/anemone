@@ -1,5 +1,7 @@
 """Tests for the Linoo single-player node selector."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from random import Random
 from types import SimpleNamespace
@@ -327,6 +329,39 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
         "index",
         "selected",
     ]
+
+
+def test_linoo_enters_optional_diagnostic_phase_context() -> None:
+    """Linoo should expose nested diagnostic phase scopes without hard dependencies."""
+    entered_phases: list[str] = []
+
+    @contextmanager
+    def phase_context(phase: str) -> Iterator[None]:
+        entered_phases.append(phase)
+        yield
+
+    selector = _selector()
+    selector._diagnostic_phase_context = phase_context
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=1.0),
+        _node(11, 1, score=2.0),
+    )
+
+    selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    assert "select.collect" in entered_phases
+    assert "select.choose_depth" in entered_phases
+    assert "select.heap_update" in entered_phases
+    assert "select.heap_update.signature" in entered_phases
+    assert "select.heap_update.push" in entered_phases
+    assert "select.choose_node" in entered_phases
+    assert "select.heap_update.pop" in entered_phases
+    assert "select.heap_update.stale_check" in entered_phases
+    assert "select.report" in entered_phases
 
 
 def test_linoo_updates_latest_expansion_incrementally() -> None:

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from heapq import heapify, heappop, heappush
 from time import perf_counter
@@ -21,7 +22,7 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from random import Random
 
     from valanga.evaluations import Value
@@ -384,6 +385,16 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._cache_initialized = False
         self._last_selected_node_id = None
 
+    @contextmanager
+    def _diagnostic_phase(self, phase: str) -> Iterator[None]:
+        """Enter an optional external diagnostic phase context."""
+        phase_context = getattr(self, "_diagnostic_phase_context", None)
+        if callable(phase_context):
+            with phase_context(phase):
+                yield
+            return
+        yield
+
     def invalidate(self) -> None:
         """Discard incremental selector state so the next selection rebuilds."""
         self._clear_runtime_state()
@@ -485,11 +496,12 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         objective = self._require_single_agent_objective(tree)
         collect_started_at = perf_counter()
-        state_rebuilt, nodes_incrementally_updated = self._ensure_runtime_state(
-            tree=tree,
-            objective=objective,
-            latest_tree_expansions=latest_tree_expansions,
-        )
+        with self._diagnostic_phase("select.collect"):
+            state_rebuilt, nodes_incrementally_updated = self._ensure_runtime_state(
+                tree=tree,
+                objective=objective,
+                latest_tree_expansions=latest_tree_expansions,
+            )
         collect_frontier_state_s = perf_counter() - collect_started_at
         total_nodes_scanned = nodes_incrementally_updated
         if state_rebuilt:
@@ -512,74 +524,78 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         nodes_by_id = self._nodes_by_id_from_tree(tree)
 
         choose_depth_started_at = perf_counter()
-        selected_depth = self._choose_depth_from_cache()
+        with self._diagnostic_phase("select.choose_depth"):
+            selected_depth = self._choose_depth_from_cache()
         choose_depth_s = perf_counter() - choose_depth_started_at
         heap_update_started_at = perf_counter()
-        heap_update_diagnostics = _LinooHeapUpdateDiagnostics(
-            depth_count=len(self._candidates_by_depth),
-            total_heap_entries=sum(
-                len(heap) for heap in self._candidates_by_depth.values()
-            ),
-            max_heap_size=max(
-                (len(heap) for heap in self._candidates_by_depth.values()),
-                default=0,
-            ),
-        )
-        selected_depth_frontier_nodes = self._frontier_nodes_at_depth(
-            tree=tree,
-            nodes_by_id=nodes_by_id,
-            depth=selected_depth,
-        )
-        heap_update_diagnostics.frontier_node_count_seen = len(
-            selected_depth_frontier_nodes
-        )
-        heap_candidates_registered = self._register_frontier_candidates(
-            depth=selected_depth,
-            nodes=selected_depth_frontier_nodes,
-            objective=objective,
-            diagnostics=heap_update_diagnostics,
-        )
+        with self._diagnostic_phase("select.heap_update"):
+            heap_update_diagnostics = _LinooHeapUpdateDiagnostics(
+                depth_count=len(self._candidates_by_depth),
+                total_heap_entries=sum(
+                    len(heap) for heap in self._candidates_by_depth.values()
+                ),
+                max_heap_size=max(
+                    (len(heap) for heap in self._candidates_by_depth.values()),
+                    default=0,
+                ),
+            )
+            selected_depth_frontier_nodes = self._frontier_nodes_at_depth(
+                tree=tree,
+                nodes_by_id=nodes_by_id,
+                depth=selected_depth,
+            )
+            heap_update_diagnostics.frontier_node_count_seen = len(
+                selected_depth_frontier_nodes
+            )
+            heap_candidates_registered = self._register_frontier_candidates(
+                depth=selected_depth,
+                nodes=selected_depth_frontier_nodes,
+                objective=objective,
+                diagnostics=heap_update_diagnostics,
+            )
         heap_update_s = perf_counter() - heap_update_started_at
         choose_node_started_at = perf_counter()
-        (
-            selected_node,
-            stale_candidates_skipped,
-            selected_node_rank,
-            ranked_candidate_count,
-            selected_node_priority,
-        ) = self._choose_zipf_node_at_depth(
-            tree=tree,
-            nodes_by_id=nodes_by_id,
-            depth=selected_depth,
-            diagnostics=heap_update_diagnostics,
-        )
+        with self._diagnostic_phase("select.choose_node"):
+            (
+                selected_node,
+                stale_candidates_skipped,
+                selected_node_rank,
+                ranked_candidate_count,
+                selected_node_priority,
+            ) = self._choose_zipf_node_at_depth(
+                tree=tree,
+                nodes_by_id=nodes_by_id,
+                depth=selected_depth,
+                diagnostics=heap_update_diagnostics,
+            )
         choose_node_s = perf_counter() - choose_node_started_at
         selected_depth_frontier_count = self._depth_stats_by_depth[
             selected_depth
         ].frontier_count
         make_report_started_at = perf_counter()
-        self.latest_selection_report = self._make_selection_report(
-            depth_stats_by_depth=self._depth_stats_by_depth,
-            selected_depth=selected_depth,
-            selected_node=selected_node,
-            collect_frontier_state_s=collect_frontier_state_s,
-            choose_depth_s=choose_depth_s,
-            heap_update_s=heap_update_s,
-            choose_node_s=choose_node_s,
-            total_s=perf_counter() - total_started_at,
-            total_nodes_scanned=total_nodes_scanned,
-            frontier_nodes_scanned=frontier_nodes_scanned,
-            uncached_terminal_candidates=uncached_terminal_candidates,
-            selected_depth_frontier_count=selected_depth_frontier_count,
-            stale_candidates_skipped=stale_candidates_skipped,
-            heap_candidates_registered=heap_candidates_registered,
-            heap_update_diagnostics=heap_update_diagnostics,
-            selected_node_priority=selected_node_priority,
-            selected_node_rank=selected_node_rank,
-            ranked_candidate_count=ranked_candidate_count,
-            state_rebuilt=state_rebuilt,
-            nodes_incrementally_updated=nodes_incrementally_updated,
-        )
+        with self._diagnostic_phase("select.report"):
+            self.latest_selection_report = self._make_selection_report(
+                depth_stats_by_depth=self._depth_stats_by_depth,
+                selected_depth=selected_depth,
+                selected_node=selected_node,
+                collect_frontier_state_s=collect_frontier_state_s,
+                choose_depth_s=choose_depth_s,
+                heap_update_s=heap_update_s,
+                choose_node_s=choose_node_s,
+                total_s=perf_counter() - total_started_at,
+                total_nodes_scanned=total_nodes_scanned,
+                frontier_nodes_scanned=frontier_nodes_scanned,
+                uncached_terminal_candidates=uncached_terminal_candidates,
+                selected_depth_frontier_count=selected_depth_frontier_count,
+                stale_candidates_skipped=stale_candidates_skipped,
+                heap_candidates_registered=heap_candidates_registered,
+                heap_update_diagnostics=heap_update_diagnostics,
+                selected_node_priority=selected_node_priority,
+                selected_node_rank=selected_node_rank,
+                ranked_candidate_count=ranked_candidate_count,
+                state_rebuilt=state_rebuilt,
+                nodes_incrementally_updated=nodes_incrementally_updated,
+            )
         self.latest_selection_report = replace(
             self.latest_selection_report,
             make_report_s=perf_counter() - make_report_started_at,
@@ -1251,29 +1267,31 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         node_id = node.id
         diagnostics.signature_check_count += 1
         diagnostics.signature_recompute_count += 1
-        signature = self._candidate_signature(node=node, direct_value=direct_value)
-        previous_signature = self._candidate_signature_by_node_id.get(node_id)
-        heap_entry_present = self._candidate_heap_present_by_node_id.get(
-            node_id,
-            False,
-        )
+        with self._diagnostic_phase("select.heap_update.signature"):
+            signature = self._candidate_signature(node=node, direct_value=direct_value)
+            previous_signature = self._candidate_signature_by_node_id.get(node_id)
+            heap_entry_present = self._candidate_heap_present_by_node_id.get(
+                node_id,
+                False,
+            )
         if previous_signature == signature and heap_entry_present:
             return False
 
-        version = self._candidate_versions_by_node_id.get(node_id, 0) + 1
-        self._candidate_versions_by_node_id[node_id] = version
-        self._candidate_signature_by_node_id[node_id] = signature
-        self._candidate_heap_present_by_node_id[node_id] = True
-        priority = objective.evaluate_value(direct_value, node.state)
-        heappush(
-            self._candidates_by_depth.setdefault(depth, []),
-            (-priority, node_id, version),
-        )
-        diagnostics.push_count += 1
-        diagnostics.max_heap_size = max(
-            diagnostics.max_heap_size,
-            len(self._candidates_by_depth.setdefault(depth, [])),
-        )
+        with self._diagnostic_phase("select.heap_update.push"):
+            version = self._candidate_versions_by_node_id.get(node_id, 0) + 1
+            self._candidate_versions_by_node_id[node_id] = version
+            self._candidate_signature_by_node_id[node_id] = signature
+            self._candidate_heap_present_by_node_id[node_id] = True
+            priority = objective.evaluate_value(direct_value, node.state)
+            heappush(
+                self._candidates_by_depth.setdefault(depth, []),
+                (-priority, node_id, version),
+            )
+            diagnostics.push_count += 1
+            diagnostics.max_heap_size = max(
+                diagnostics.max_heap_size,
+                len(self._candidates_by_depth.setdefault(depth, [])),
+            )
         return True
 
     def _rank_valid_candidates_at_depth(
@@ -1291,28 +1309,30 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         stale_candidates_skipped = 0
         valid_entries_by_node_id: dict[int, _LinooHeapEntry] = {}
         while heap:
-            priority_key, node_id, version = heappop(heap)
+            with self._diagnostic_phase("select.heap_update.pop"):
+                priority_key, node_id, version = heappop(heap)
             if diagnostics is not None:
                 diagnostics.pop_count += 1
-            current_version = self._candidate_versions_by_node_id.get(node_id)
-            if version != current_version:
-                stale_candidates_skipped += 1
-                if diagnostics is not None:
-                    diagnostics.stale_skip_count += 1
-                    diagnostics.version_mismatch_count += 1
-                continue
+            with self._diagnostic_phase("select.heap_update.stale_check"):
+                current_version = self._candidate_versions_by_node_id.get(node_id)
+                if version != current_version:
+                    stale_candidates_skipped += 1
+                    if diagnostics is not None:
+                        diagnostics.stale_skip_count += 1
+                        diagnostics.version_mismatch_count += 1
+                    continue
 
-            if not self._is_current_frontier_candidate(
-                tree=tree,
-                nodes_by_id=nodes_by_id,
-                node_id=node_id,
-                expected_depth=depth,
-            ):
-                self._candidate_heap_present_by_node_id[node_id] = False
-                stale_candidates_skipped += 1
-                if diagnostics is not None:
-                    diagnostics.stale_skip_count += 1
-                continue
+                if not self._is_current_frontier_candidate(
+                    tree=tree,
+                    nodes_by_id=nodes_by_id,
+                    node_id=node_id,
+                    expected_depth=depth,
+                ):
+                    self._candidate_heap_present_by_node_id[node_id] = False
+                    stale_candidates_skipped += 1
+                    if diagnostics is not None:
+                        diagnostics.stale_skip_count += 1
+                    continue
 
             valid_entries_by_node_id[node_id] = (priority_key, node_id, version)
 
