@@ -97,6 +97,17 @@ class LinooSelectionReport:
     selected_depth_frontier_count: int | None = None
     stale_candidates_skipped: int | None = None
     heap_candidates_registered: int | None = None
+    heap_update_candidate_count: int | None = None
+    heap_update_push_count: int | None = None
+    heap_update_pop_count: int | None = None
+    heap_update_stale_skip_count: int | None = None
+    heap_update_signature_check_count: int | None = None
+    heap_update_signature_recompute_count: int | None = None
+    heap_update_version_mismatch_count: int | None = None
+    heap_update_total_heap_entries: int | None = None
+    heap_update_max_heap_size: int | None = None
+    heap_update_depth_count: int | None = None
+    heap_update_frontier_node_count_seen: int | None = None
     state_rebuilt: bool | None = None
     nodes_incrementally_updated: int | None = None
 
@@ -227,6 +238,23 @@ class _LinooNodeState:
 
 type _LinooHeapEntry = tuple[float, int, int]
 type _LinooRankedCandidate = tuple[float, int, int]
+
+
+@dataclass(slots=True)
+class _LinooHeapUpdateDiagnostics:
+    """Cheap counters for attributing Linoo heap update cost."""
+
+    candidate_count: int = 0
+    push_count: int = 0
+    pop_count: int = 0
+    stale_skip_count: int = 0
+    signature_check_count: int = 0
+    signature_recompute_count: int = 0
+    version_mismatch_count: int = 0
+    total_heap_entries: int = 0
+    max_heap_size: int = 0
+    depth_count: int = 0
+    frontier_node_count_seen: int = 0
 
 
 class LinooSelectionError(ValueError):
@@ -487,14 +515,29 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         selected_depth = self._choose_depth_from_cache()
         choose_depth_s = perf_counter() - choose_depth_started_at
         heap_update_started_at = perf_counter()
+        heap_update_diagnostics = _LinooHeapUpdateDiagnostics(
+            depth_count=len(self._candidates_by_depth),
+            total_heap_entries=sum(
+                len(heap) for heap in self._candidates_by_depth.values()
+            ),
+            max_heap_size=max(
+                (len(heap) for heap in self._candidates_by_depth.values()),
+                default=0,
+            ),
+        )
+        selected_depth_frontier_nodes = self._frontier_nodes_at_depth(
+            tree=tree,
+            nodes_by_id=nodes_by_id,
+            depth=selected_depth,
+        )
+        heap_update_diagnostics.frontier_node_count_seen = len(
+            selected_depth_frontier_nodes
+        )
         heap_candidates_registered = self._register_frontier_candidates(
             depth=selected_depth,
-            nodes=self._frontier_nodes_at_depth(
-                tree=tree,
-                nodes_by_id=nodes_by_id,
-                depth=selected_depth,
-            ),
+            nodes=selected_depth_frontier_nodes,
             objective=objective,
+            diagnostics=heap_update_diagnostics,
         )
         heap_update_s = perf_counter() - heap_update_started_at
         choose_node_started_at = perf_counter()
@@ -508,6 +551,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             tree=tree,
             nodes_by_id=nodes_by_id,
             depth=selected_depth,
+            diagnostics=heap_update_diagnostics,
         )
         choose_node_s = perf_counter() - choose_node_started_at
         selected_depth_frontier_count = self._depth_stats_by_depth[
@@ -529,6 +573,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             selected_depth_frontier_count=selected_depth_frontier_count,
             stale_candidates_skipped=stale_candidates_skipped,
             heap_candidates_registered=heap_candidates_registered,
+            heap_update_diagnostics=heap_update_diagnostics,
             selected_node_priority=selected_node_priority,
             selected_node_rank=selected_node_rank,
             ranked_candidate_count=ranked_candidate_count,
@@ -1173,16 +1218,24 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         depth: int,
         nodes: list[NodeT],
         objective: SingleAgentMaxObjective[Any],
+        diagnostics: _LinooHeapUpdateDiagnostics,
     ) -> int:
         """Update cached heap entries for the selected depth only."""
         registered_count = 0
+        diagnostics.candidate_count += len(nodes)
         for node in nodes:
             if self._register_frontier_candidate(
                 depth=depth,
                 node=node,
                 objective=objective,
+                diagnostics=diagnostics,
             ):
                 registered_count += 1
+        heap_size = len(self._candidates_by_depth.setdefault(depth, []))
+        diagnostics.total_heap_entries = sum(
+            len(heap) for heap in self._candidates_by_depth.values()
+        )
+        diagnostics.max_heap_size = max(diagnostics.max_heap_size, heap_size)
         return registered_count
 
     def _register_frontier_candidate(
@@ -1191,10 +1244,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         depth: int,
         node: NodeT,
         objective: SingleAgentMaxObjective[Any],
+        diagnostics: _LinooHeapUpdateDiagnostics,
     ) -> bool:
         """Push a heap entry when one node is new, changed, or reactivated."""
         direct_value = self._require_direct_value(node)
         node_id = node.id
+        diagnostics.signature_check_count += 1
+        diagnostics.signature_recompute_count += 1
         signature = self._candidate_signature(node=node, direct_value=direct_value)
         previous_signature = self._candidate_signature_by_node_id.get(node_id)
         heap_entry_present = self._candidate_heap_present_by_node_id.get(
@@ -1213,6 +1269,11 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self._candidates_by_depth.setdefault(depth, []),
             (-priority, node_id, version),
         )
+        diagnostics.push_count += 1
+        diagnostics.max_heap_size = max(
+            diagnostics.max_heap_size,
+            len(self._candidates_by_depth.setdefault(depth, [])),
+        )
         return True
 
     def _rank_valid_candidates_at_depth(
@@ -1221,16 +1282,24 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         nodes_by_id: dict[int, NodeT],
         depth: int,
+        diagnostics: _LinooHeapUpdateDiagnostics | None = None,
     ) -> tuple[list[_LinooRankedCandidate], int]:
         """Return valid candidates sorted by priority, compacting stale heap entries."""
         heap = self._candidates_by_depth.setdefault(depth, [])
+        if diagnostics is not None:
+            diagnostics.max_heap_size = max(diagnostics.max_heap_size, len(heap))
         stale_candidates_skipped = 0
         valid_entries_by_node_id: dict[int, _LinooHeapEntry] = {}
         while heap:
             priority_key, node_id, version = heappop(heap)
+            if diagnostics is not None:
+                diagnostics.pop_count += 1
             current_version = self._candidate_versions_by_node_id.get(node_id)
             if version != current_version:
                 stale_candidates_skipped += 1
+                if diagnostics is not None:
+                    diagnostics.stale_skip_count += 1
+                    diagnostics.version_mismatch_count += 1
                 continue
 
             if not self._is_current_frontier_candidate(
@@ -1241,6 +1310,8 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             ):
                 self._candidate_heap_present_by_node_id[node_id] = False
                 stale_candidates_skipped += 1
+                if diagnostics is not None:
+                    diagnostics.stale_skip_count += 1
                 continue
 
             valid_entries_by_node_id[node_id] = (priority_key, node_id, version)
@@ -1252,6 +1323,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             )
         self._candidates_by_depth[depth] = compacted_heap
         heapify(self._candidates_by_depth[depth])
+        if diagnostics is not None:
+            diagnostics.total_heap_entries = sum(
+                len(heap_entries) for heap_entries in self._candidates_by_depth.values()
+            )
+            diagnostics.max_heap_size = max(
+                diagnostics.max_heap_size,
+                len(self._candidates_by_depth[depth]),
+            )
 
         ranked_candidates = sorted(
             compacted_heap,
@@ -1265,6 +1344,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         tree: trees.Tree[NodeT],
         nodes_by_id: dict[int, NodeT],
         depth: int,
+        diagnostics: _LinooHeapUpdateDiagnostics,
     ) -> tuple[NodeT, int, int, int, float]:
         """Sample one valid frontier candidate using Zipf rank weights."""
         ranked_candidates, stale_candidates_skipped = (
@@ -1272,6 +1352,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 tree=tree,
                 nodes_by_id=nodes_by_id,
                 depth=depth,
+                diagnostics=diagnostics,
             )
         )
         if not ranked_candidates:
@@ -1335,6 +1416,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         selected_depth_frontier_count: int,
         stale_candidates_skipped: int,
         heap_candidates_registered: int,
+        heap_update_diagnostics: _LinooHeapUpdateDiagnostics,
         selected_node_priority: float,
         selected_node_rank: int,
         ranked_candidate_count: int,
@@ -1405,6 +1487,25 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             selected_depth_frontier_count=selected_depth_frontier_count,
             stale_candidates_skipped=stale_candidates_skipped,
             heap_candidates_registered=heap_candidates_registered,
+            heap_update_candidate_count=heap_update_diagnostics.candidate_count,
+            heap_update_push_count=heap_update_diagnostics.push_count,
+            heap_update_pop_count=heap_update_diagnostics.pop_count,
+            heap_update_stale_skip_count=heap_update_diagnostics.stale_skip_count,
+            heap_update_signature_check_count=(
+                heap_update_diagnostics.signature_check_count
+            ),
+            heap_update_signature_recompute_count=(
+                heap_update_diagnostics.signature_recompute_count
+            ),
+            heap_update_version_mismatch_count=(
+                heap_update_diagnostics.version_mismatch_count
+            ),
+            heap_update_total_heap_entries=(heap_update_diagnostics.total_heap_entries),
+            heap_update_max_heap_size=heap_update_diagnostics.max_heap_size,
+            heap_update_depth_count=heap_update_diagnostics.depth_count,
+            heap_update_frontier_node_count_seen=(
+                heap_update_diagnostics.frontier_node_count_seen
+            ),
             state_rebuilt=state_rebuilt,
             nodes_incrementally_updated=nodes_incrementally_updated,
         )

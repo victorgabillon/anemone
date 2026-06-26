@@ -253,6 +253,17 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.selected_depth_frontier_count == 2
     assert report.stale_candidates_skipped == 0
     assert report.heap_candidates_registered == 2
+    assert report.heap_update_candidate_count == 2
+    assert report.heap_update_push_count == 2
+    assert report.heap_update_pop_count == 2
+    assert report.heap_update_stale_skip_count == 0
+    assert report.heap_update_signature_check_count == 2
+    assert report.heap_update_signature_recompute_count == 2
+    assert report.heap_update_version_mismatch_count == 0
+    assert report.heap_update_total_heap_entries == 2
+    assert report.heap_update_max_heap_size == 2
+    assert report.heap_update_depth_count == 0
+    assert report.heap_update_frontier_node_count_seen == 2
     assert report.collect_frontier_state_s is not None
     assert report.collect_frontier_state_s >= 0.0
     assert report.choose_depth_s is not None
@@ -434,7 +445,9 @@ def test_linoo_candidate_heap_stores_node_ids_only() -> None:
     )
 
 
-def test_linoo_builds_nodes_by_id_once_per_selection(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_linoo_builds_nodes_by_id_once_per_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """One selection should build a node-id lookup once, not scan per candidate."""
     selector = _selector()
     tree = _tree(
@@ -734,6 +747,10 @@ def test_linoo_heap_updates_when_touched_frontier_direct_value_changes() -> None
     assert report.nodes_incrementally_updated == 1
     assert report.stale_candidates_skipped == 1
     assert report.heap_candidates_registered == 1
+    assert report.heap_update_candidate_count == 2
+    assert report.heap_update_push_count == 1
+    assert report.heap_update_stale_skip_count == 1
+    assert report.heap_update_version_mismatch_count == 1
 
 
 def test_linoo_checkpoint_payload_roundtrips_initialized_cache() -> None:
