@@ -25,6 +25,11 @@ class CheckpointStateResolutionError(KeyError):
         """Return the error for a delta node that lacks a parent node id."""
         return cls(f"Delta checkpoint node {node_id} has no parent node id.")
 
+    @classmethod
+    def payload_chain_cycle(cls, node_id: int) -> "CheckpointStateResolutionError":
+        """Return the error for a cyclic checkpoint payload chain."""
+        return cls(f"Cycle in checkpoint state payload chain at node {node_id}.")
+
 
 class CheckpointPayloadStore(Protocol):
     """Mapping-like store used by lazy checkpoint state resolvers."""
@@ -96,6 +101,7 @@ class CheckpointStateResolver[StateT: State = State]:
         default_factory=lambda: cast("dict[int, StateT]", {}),
         init=False,
     )
+    _resolving_node_ids: set[int] = field(default_factory=set, init=False)
 
     def __post_init__(self) -> None:
         """Normalize legacy mappings into an explicit payload-store abstraction."""
@@ -121,14 +127,20 @@ class CheckpointStateResolver[StateT: State = State]:
         if resolved_state is not None:
             return resolved_state
 
-        state_payload = self.payload_for_node_id(node_id)
-        if isinstance(state_payload, AnchorCheckpointStatePayload):
-            resolved_state = self._resolve_anchor(state_payload)
-        else:
-            resolved_state = self._resolve_delta(
-                node_id=node_id,
-                state_payload=state_payload,
-            )
+        if node_id in self._resolving_node_ids:
+            raise CheckpointStateResolutionError.payload_chain_cycle(node_id)
+        self._resolving_node_ids.add(node_id)
+        try:
+            state_payload = self.payload_for_node_id(node_id)
+            if isinstance(state_payload, AnchorCheckpointStatePayload):
+                resolved_state = self._resolve_anchor(state_payload)
+            else:
+                resolved_state = self._resolve_delta(
+                    node_id=node_id,
+                    state_payload=state_payload,
+                )
+        finally:
+            self._resolving_node_ids.discard(node_id)
         self._resolved_states[node_id] = resolved_state
         return resolved_state
 
