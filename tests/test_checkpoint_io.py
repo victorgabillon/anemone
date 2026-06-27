@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 
 def test_load_checkpoint_json_payload_logs_read_phases(tmp_path: Path) -> None:
     """Checkpoint reads should expose stream-open and raw-decode boundaries."""
-    checkpoint_path = checkpoint_output_path(tmp_path / "checkpoint", file_format="json")
+    checkpoint_path = checkpoint_output_path(
+        tmp_path / "checkpoint", file_format="json"
+    )
     write_checkpoint_json_payload({"tree": {"nodes": [1, 2]}}, checkpoint_path)
     phases: list[tuple[str, dict[str, object]]] = []
 

@@ -65,6 +65,7 @@ def create(
             node_branch_opening_selector = Linoo(
                 opening_instructor=opening_instructor,
                 random_generator=random_generator,
+                depth_selection_policy=args.depth_selection_policy,
             )
         case NodeSelectorType.UNIFORM:
             node_branch_opening_selector = Uniform(

@@ -600,20 +600,21 @@ def _try_build_delta_state_payload(
     return None
 
 
-def _dump_state_parent_branch_for_checkpoint[
-    BranchT,
-](
+def _dump_state_parent_branch_for_checkpoint(
     *,
-    branch_from_parent: BranchT,
+    branch_from_parent: object,
     state_codec: IncrementalStateCheckpointCodec[Any],
     context: _CheckpointBuildContext,
-) -> object | None:
+) -> CheckpointAtomPayload | None:
     """Return the payload stored as ``state_parent_branch`` for one delta node."""
     if isinstance(state_codec, CheckpointParentBranchPayloadCodec):
         return cast(
-            "CheckpointParentBranchPayloadCodec",
-            state_codec,
-        ).dump_state_parent_branch_for_checkpoint(cast("Any", branch_from_parent))
+            "CheckpointAtomPayload | None",
+            cast(
+                "CheckpointParentBranchPayloadCodec",
+                state_codec,
+            ).dump_state_parent_branch_for_checkpoint(cast("Any", branch_from_parent)),
+        )
     return _serialize_checkpoint_atom_for_build(branch_from_parent, context=context)
 
 

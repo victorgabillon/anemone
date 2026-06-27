@@ -1006,7 +1006,9 @@ def test_checkpoint_restore_roundtrip_preserves_tree_identity() -> None:
         node.tree_node.non_opened_branches_ is None for node in terminal_restored_nodes
     )
     assert isinstance(
-        next(iter(restored_nodes.values())).tree_node.state_handle.resolver.state_payloads_by_node_id,
+        next(
+            iter(restored_nodes.values())
+        ).tree_node.state_handle.resolver.state_payloads_by_node_id,
         DenseCheckpointPayloadStore,
     )
 

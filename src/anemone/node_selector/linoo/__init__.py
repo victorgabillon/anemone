@@ -3,6 +3,7 @@
 from .linoo import (
     Linoo,
     LinooArgs,
+    LinooDepthSelectionPolicy,
     LinooDepthSelectionRow,
     LinooDirectValueUnavailableError,
     LinooIncompatibleObjectiveError,
@@ -13,6 +14,7 @@ from .linoo import (
 __all__ = [
     "Linoo",
     "LinooArgs",
+    "LinooDepthSelectionPolicy",
     "LinooDepthSelectionRow",
     "LinooDirectValueUnavailableError",
     "LinooIncompatibleObjectiveError",

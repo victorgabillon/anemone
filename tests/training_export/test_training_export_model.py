@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 
@@ -21,6 +21,8 @@ except ModuleNotFoundError:
     _stub_package.__path__ = [str(_SRC_PACKAGE_ROOT)]
     sys.modules["anemone"] = _stub_package
 
+from anemone.checkpoints import AnchorCheckpointStatePayload
+from anemone.checkpoints.state_handles import CheckpointBackedStateHandle
 from anemone.node_evaluation.common import (
     NodeTargetSource,
     ValueCandidate,
@@ -32,6 +34,7 @@ from anemone.training_export import (
     EffectiveValueSourceMissingError,
     build_training_node_snapshot,
     build_training_tree_snapshot,
+    state_ref_payload_without_resolving,
 )
 from anemone.utils.logger import anemone_logger
 
@@ -119,6 +122,208 @@ class _MinimalDummyNode:
     """Dummy node exposing only a stable node id."""
 
     node_id = "solo"
+
+
+@dataclass(slots=True)
+class _PayloadResolver:
+    """Minimal resolver shape for reusable checkpoint payload tests."""
+
+    payloads_by_node_id: dict[int, object]
+
+    def payload_for_node_id_or_none(self, node_id: int) -> object | None:
+        """Return one configured raw payload."""
+        return self.payloads_by_node_id.get(node_id)
+
+
+class _StateTrackingNode:
+    """Node that records state access and can reject unexpected resolution."""
+
+    def __init__(
+        self,
+        *,
+        state_handle: object | None = None,
+        state: object | None = None,
+        allow_state_access: bool = True,
+    ) -> None:
+        """Initialize the node with optional state and lazy handle."""
+        self.state_handle = state_handle
+        self._state = state
+        self.allow_state_access = allow_state_access
+        self.state_access_count = 0
+
+    @property
+    def state(self) -> object | None:
+        """Return configured state or fail when access is forbidden."""
+        self.state_access_count += 1
+        if not self.allow_state_access:
+            raise AssertionError
+        return self._state
+
+
+@dataclass(slots=True)
+class _TreeNodeWrapper:
+    """Wrapper exposing the real state handle under ``tree_node``."""
+
+    state_handle: object
+
+
+@dataclass(slots=True)
+class _StateRefProfile:
+    """Small profiler spy for checkpoint-aware state-ref export."""
+
+    observed_nodes: int = 0
+    state_access_calls: int = 0
+    state_ref_conversions: int = 0
+    state_present_values: list[bool] = field(default_factory=list)
+
+    def observe_state_handle(self, node: object) -> None:
+        """Record one raw-handle observation."""
+        del node
+        self.observed_nodes += 1
+
+    def record_state_access(self, elapsed_s: float, *, state_present: bool) -> None:
+        """Record one materialized state access."""
+        assert elapsed_s >= 0.0
+        self.state_access_calls += 1
+        self.state_present_values.append(state_present)
+
+    def record_state_ref_conversion(self, elapsed_s: float) -> None:
+        """Record one state-ref conversion."""
+        assert elapsed_s >= 0.0
+        self.state_ref_conversions += 1
+
+
+def test_state_ref_payload_without_resolving_uses_checkpoint_payload_fast_path() -> (
+    None
+):
+    """Checkpoint-backed reusable payloads should avoid ``node.state``."""
+    payload = AnchorCheckpointStatePayload(anchor_ref={"anchor": 1})
+    resolver = _PayloadResolver(payloads_by_node_id={7: payload})
+    node = _StateTrackingNode(
+        state_handle=CheckpointBackedStateHandle(
+            resolver=resolver,
+            node_id=7,
+        ),
+        allow_state_access=False,
+    )
+    profile = _StateRefProfile()
+
+    state_ref_payload = state_ref_payload_without_resolving(
+        node,
+        checkpoint_payload_to_state_ref=lambda handle, raw_payload: {
+            "node_id": handle.node_id,
+            "payload": raw_payload,
+        },
+        materialized_state_to_state_ref=lambda state: {"state": state},
+        profile=profile,
+    )
+
+    assert state_ref_payload == {"node_id": 7, "payload": payload}
+    assert node.state_access_count == 0
+    assert profile.observed_nodes == 1
+    assert profile.state_access_calls == 0
+    assert profile.state_ref_conversions == 1
+
+
+def test_state_ref_payload_without_resolving_falls_back_to_materialized_state() -> None:
+    """Missing checkpoint payloads should fall back to one state access."""
+    resolver = _PayloadResolver(payloads_by_node_id={})
+    node = _StateTrackingNode(
+        state_handle=CheckpointBackedStateHandle(
+            resolver=resolver,
+            node_id=7,
+        ),
+        state={"board": [1]},
+    )
+    profile = _StateRefProfile()
+
+    state_ref_payload = state_ref_payload_without_resolving(
+        node,
+        checkpoint_payload_to_state_ref=lambda handle, payload: {
+            "node_id": handle.node_id,
+            "payload": payload,
+        },
+        materialized_state_to_state_ref=lambda state: {"state": state},
+        profile=profile,
+    )
+
+    assert state_ref_payload == {"state": {"board": [1]}}
+    assert node.state_access_count == 1
+    assert profile.observed_nodes == 1
+    assert profile.state_access_calls == 1
+    assert profile.state_present_values == [True]
+    assert profile.state_ref_conversions == 1
+
+
+def test_state_ref_payload_without_resolving_falls_back_when_converter_returns_none() -> (
+    None
+):
+    """Unsupported checkpoint payloads should allow materialized fallback."""
+    payload = AnchorCheckpointStatePayload(anchor_ref={"anchor": 1})
+    resolver = _PayloadResolver(payloads_by_node_id={7: payload})
+    node = _StateTrackingNode(
+        state_handle=CheckpointBackedStateHandle(
+            resolver=resolver,
+            node_id=7,
+        ),
+        state={"board": [2]},
+    )
+
+    state_ref_payload = state_ref_payload_without_resolving(
+        node,
+        checkpoint_payload_to_state_ref=lambda handle, raw_payload: None,
+        materialized_state_to_state_ref=lambda state: {"state": state},
+    )
+
+    assert state_ref_payload == {"state": {"board": [2]}}
+    assert node.state_access_count == 1
+
+
+def test_state_ref_payload_without_resolving_returns_none_for_missing_state() -> None:
+    """Fallback with no materialized state should return ``None``."""
+    resolver = _PayloadResolver(payloads_by_node_id={})
+    node = _StateTrackingNode(
+        state_handle=CheckpointBackedStateHandle(
+            resolver=resolver,
+            node_id=7,
+        ),
+        state=None,
+    )
+    profile = _StateRefProfile()
+
+    state_ref_payload = state_ref_payload_without_resolving(
+        node,
+        checkpoint_payload_to_state_ref=lambda handle, payload: payload,
+        materialized_state_to_state_ref=lambda state: {"state": state},
+        profile=profile,
+    )
+
+    assert state_ref_payload is None
+    assert node.state_access_count == 1
+    assert profile.state_access_calls == 1
+    assert profile.state_present_values == [False]
+    assert profile.state_ref_conversions == 0
+
+
+def test_state_ref_payload_without_resolving_supports_tree_node_handle() -> None:
+    """Wrapped nodes can expose checkpoint handles through ``tree_node``."""
+    payload = AnchorCheckpointStatePayload(anchor_ref={"anchor": 1})
+    resolver = _PayloadResolver(payloads_by_node_id={7: payload})
+    handle = CheckpointBackedStateHandle(resolver=resolver, node_id=7)
+    node = _StateTrackingNode(allow_state_access=False)
+    node.tree_node = _TreeNodeWrapper(state_handle=handle)
+
+    state_ref_payload = state_ref_payload_without_resolving(
+        node,
+        checkpoint_payload_to_state_ref=lambda current_handle, raw_payload: {
+            "node_id": current_handle.node_id,
+            "payload": raw_payload,
+        },
+        materialized_state_to_state_ref=lambda state: {"state": state},
+    )
+
+    assert state_ref_payload == {"node_id": 7, "payload": payload}
+    assert node.state_access_count == 0
 
 
 def test_build_training_tree_snapshot_with_dummy_nodes() -> None:

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping, Sequence
+# pyright: reportUnusedFunction=false
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from random import Random
 from time import perf_counter
@@ -49,6 +50,7 @@ from .payloads import (
     DecisionOrderingCheckpointPayload,
     DeltaCheckpointStatePayload,
     ExplorationIndexCheckpointPayload,
+    LinkedChildCheckpointPayload,
     NodeEvaluationCheckpointPayload,
     PrincipalVariationCheckpointPayload,
     SearchRuntimeCheckpointPayload,
@@ -157,6 +159,17 @@ class _CheckpointNodeShell(Protocol):
     parent_node_id: int | None
     depth: int
     state_summary: object | None
+
+
+class _CheckpointNodeRuntime(Protocol):
+    """Per-node runtime metadata needed after compact node creation."""
+
+    node_id: int
+    generated_all_branches: bool
+    unopened_branches: list[CheckpointAtomPayload]
+    linked_children: list[LinkedChildCheckpointPayload]
+    evaluation: NodeEvaluationCheckpointPayload | None
+    exploration_index: ExplorationIndexCheckpointPayload | None
 
 
 @contextmanager
@@ -397,9 +410,7 @@ def _validate_checkpoint_node_payloads(
         format_version=format_version,
         root_node_id=root_node_id,
         node_ids=[node_payload.node_id for node_payload in node_payloads],
-        parent_node_ids=[
-            node_payload.parent_node_id for node_payload in node_payloads
-        ],
+        parent_node_ids=[node_payload.parent_node_id for node_payload in node_payloads],
         delta_parent_node_ids=[
             (
                 node_payload.node_id,
@@ -495,10 +506,7 @@ def _build_checkpoint_payload_store(
         ]
         return DenseCheckpointPayloadStore(dense_payloads)
     return DictCheckpointPayloadStore(
-        {
-            node_payload.node_id: node_payload.state_payload
-            for node_payload in payloads
-        }
+        {node_payload.node_id: node_payload.state_payload for node_payload in payloads}
     )
 
 
@@ -644,7 +652,7 @@ def _create_nodes_from_node_shells[
 
 
 def _link_nodes(
-    node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
+    node_payloads: Iterable[_CheckpointNodeRuntime],
     *,
     nodes_by_id: Mapping[int, AlgorithmNode[Any]],
 ) -> None:
@@ -659,7 +667,7 @@ def _link_nodes(
 
 
 def _restore_node_runtime_state(
-    node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
+    node_payloads: Iterable[_CheckpointNodeRuntime],
     *,
     nodes_by_id: Mapping[int, AlgorithmNode[Any]],
 ) -> None:
@@ -1113,8 +1121,10 @@ def _checkpoint_summary_tag(state_summary: object | None) -> StateTag | None:
     if isinstance(state_summary, Sequence) and not isinstance(
         state_summary, str | bytes | bytearray
     ):
-        if len(state_summary) >= 1:
-            return cast("StateTag", state_summary[0])
+        state_summary_sequence = cast("Sequence[object]", state_summary)
+        if len(state_summary_sequence) >= 1:
+            summary_tag = state_summary_sequence[0]
+            return summary_tag if isinstance(summary_tag, Hashable) else None
         return None
     state_summary_with_attrs: Any = state_summary
     if hasattr(state_summary, "tag"):

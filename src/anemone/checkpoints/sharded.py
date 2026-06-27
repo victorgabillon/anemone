@@ -1,14 +1,17 @@
 """Manifest primitives for future sharded runtime checkpoints."""
 
+# pylint: disable=duplicate-code,import-outside-toplevel
+
 from __future__ import annotations
 
+# pyright: reportPrivateUsage=false
 import io
 import json
 from dataclasses import dataclass, field
 from importlib import import_module
 from pathlib import Path, PurePosixPath
 from random import Random
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from anemone._valanga_types import AnyTurnState
 
@@ -47,7 +50,7 @@ from .payloads import (
 from .state_handles import DenseCheckpointPayloadStore, DictCheckpointPayloadStore
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator, Mapping
+    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 
     from valanga import Dynamics, RepresentationFactory, StateModifications
     from valanga.evaluator_types import EvaluatorInput
@@ -61,7 +64,7 @@ if TYPE_CHECKING:
     from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
     from anemone.tree_exploration import TreeExploration
 
-    from ._protocols import IncrementalStateCheckpointCodec
+    from ._protocols import CheckpointStateSummary, IncrementalStateCheckpointCodec
     from .io import CheckpointJsonEncoder
     from .state_handles import CheckpointPayloadStore
 
@@ -125,7 +128,9 @@ class ShardedCheckpointManifestError(ValueError):
     @classmethod
     def unsupported_jsonl_encoding(cls) -> ShardedCheckpointManifestError:
         """Return the error for an unsupported JSONL shard encoding."""
-        return cls("sharded checkpoint node records require jsonl or jsonl_zst encoding.")
+        return cls(
+            "sharded checkpoint node records require jsonl or jsonl_zst encoding."
+        )
 
     @classmethod
     def unsupported_shard_kind(cls) -> ShardedCheckpointManifestError:
@@ -135,7 +140,9 @@ class ShardedCheckpointManifestError(ValueError):
     @classmethod
     def unsupported_shard_encoding(cls) -> ShardedCheckpointManifestError:
         """Return the error for an unsupported shard encoding."""
-        return cls("sharded checkpoint manifest contains an unsupported shard encoding.")
+        return cls(
+            "sharded checkpoint manifest contains an unsupported shard encoding."
+        )
 
     @classmethod
     def unsupported_layout(cls) -> ShardedCheckpointManifestError:
@@ -145,7 +152,9 @@ class ShardedCheckpointManifestError(ValueError):
     @classmethod
     def missing_metadata_shard(cls) -> ShardedCheckpointManifestError:
         """Return the error for a missing metadata shard."""
-        return cls("sharded checkpoint manifest must contain exactly one metadata shard.")
+        return cls(
+            "sharded checkpoint manifest must contain exactly one metadata shard."
+        )
 
     @classmethod
     def duplicate_metadata_shard(cls) -> ShardedCheckpointManifestError:
@@ -201,7 +210,9 @@ class ShardedCheckpointManifestError(ValueError):
     @classmethod
     def shard_path_outside_root(cls) -> ShardedCheckpointManifestError:
         """Return the error for a resolved shard path outside the checkpoint root."""
-        return cls("sharded checkpoint shard path resolves outside the checkpoint root.")
+        return cls(
+            "sharded checkpoint shard path resolves outside the checkpoint root."
+        )
 
     @classmethod
     def shard_payload_not_mapping(cls) -> ShardedCheckpointManifestError:
@@ -265,9 +276,7 @@ class ShardedCheckpointManifestError(ValueError):
     @classmethod
     def unnormalized_path(cls) -> ShardedCheckpointManifestError:
         """Return the error for a non-normal shard path."""
-        return cls(
-            "sharded checkpoint shard paths must be normalized relative paths."
-        )
+        return cls("sharded checkpoint shard paths must be normalized relative paths.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -386,6 +395,7 @@ def sharded_checkpoint_manifest_from_jsonable(
     raw_shards = data.get("shards", [])
     if not isinstance(raw_shards, list):
         raise ShardedCheckpointManifestError.shards_not_list()
+    raw_shard_payloads = cast("list[object]", raw_shards)
     return ShardedCheckpointManifest(
         checkpoint_format_version=cast(
             "int",
@@ -406,7 +416,7 @@ def sharded_checkpoint_manifest_from_jsonable(
         notes=cast("str | None", data.get("notes")),
         shards=tuple(
             _sharded_checkpoint_shard_ref_from_jsonable(raw_shard)
-            for raw_shard in raw_shards
+            for raw_shard in raw_shard_payloads
         ),
     )
 
@@ -586,8 +596,7 @@ def load_sharded_search_checkpoint(
         tree=TreeCheckpointPayload(
             root_node_id=cast("int", metadata["root_node_id"]),
             nodes=[
-                _algorithm_node_payload_from_mapping(record)
-                for record in node_records
+                _algorithm_node_payload_from_mapping(record) for record in node_records
             ],
         ),
         latest_tree_expansions=(
@@ -642,6 +651,8 @@ def load_search_from_sharded_checkpoint[
 
     from .load import (
         _build_tree_from_node_shells,
+        _CheckpointNodeRuntime,
+        _CheckpointNodeShell,
         _create_nodes_from_node_shells,
         _create_state_handles_from_node_ids,
         _create_state_resolver_from_payload_store,
@@ -717,8 +728,10 @@ def load_search_from_sharded_checkpoint[
             if manifest.total_branch_count is not None
             else cast("int", metadata.get("branch_count", 0))
         )
-    if not split_layout and manifest.total_branch_count is not None and branch_count != (
-        manifest.total_branch_count
+    if (
+        not split_layout
+        and manifest.total_branch_count is not None
+        and branch_count != (manifest.total_branch_count)
     ):
         raise ShardedCheckpointManifestError.branch_count_mismatch()
 
@@ -762,14 +775,15 @@ def load_search_from_sharded_checkpoint[
         state_resolver=state_resolver,
     )
     _ = state_type
+    typed_node_shells = cast("list[_CheckpointNodeShell]", node_shells)
     nodes_by_id = _create_nodes_from_node_shells(
         node_factory=dependencies.tree_manager.tree_manager.node_factory,
-        node_shells=node_shells,
+        node_shells=typed_node_shells,
         state_handles_by_id=state_handles_by_id,
     )
     restored_tree = _build_tree_from_node_shells(
         root_node_id=cast("int", metadata["root_node_id"]),
-        node_shells=node_shells,
+        node_shells=cast("Sequence[_CheckpointNodeShell]", typed_node_shells),
         nodes_by_id=nodes_by_id,
         branch_count=(
             manifest.total_branch_count
@@ -788,7 +802,9 @@ def load_search_from_sharded_checkpoint[
     )
 
     if split_layout:
-        shell_by_node_id = {node_shell.node_id: node_shell for node_shell in node_shells}
+        shell_by_node_id = {
+            node_shell.node_id: node_shell for node_shell in node_shells
+        }
         restored_branch_count = 0
         node_runtime_batch_count = 0
         node_runtime_record_count = 0
@@ -811,11 +827,17 @@ def load_search_from_sharded_checkpoint[
                 node_runtime_batch_count += 1
                 node_runtime_record_count += len(node_runtimes)
                 restored_branch_count += sum(
-                    len(node_runtime.linked_children)
-                    for node_runtime in node_runtimes
+                    len(node_runtime.linked_children) for node_runtime in node_runtimes
                 )
-                _link_nodes(node_runtimes, nodes_by_id=nodes_by_id)
-                _restore_node_runtime_state(node_runtimes, nodes_by_id=nodes_by_id)
+                typed_node_runtimes = cast(
+                    "list[_CheckpointNodeRuntime]",
+                    node_runtimes,
+                )
+                _link_nodes(typed_node_runtimes, nodes_by_id=nodes_by_id)
+                _restore_node_runtime_state(
+                    typed_node_runtimes,
+                    nodes_by_id=nodes_by_id,
+                )
                 del node_runtimes
                 del record_batch
         if manifest.total_branch_count is not None and restored_branch_count != (
@@ -888,7 +910,9 @@ def load_search_from_sharded_checkpoint[
         "selector",
     )
     selector_payload = (
-        None if selector_state is None else _selector_payload_from_mapping(selector_state)
+        None
+        if selector_state is None
+        else _selector_payload_from_mapping(selector_state)
     )
     _restore_tree_expansions_runtime_state(
         runtime=runtime,
@@ -1321,7 +1345,9 @@ def _state_payload_from_mapping(
     if "anchor_ref" in payload:
         return AnchorCheckpointStatePayload(
             anchor_ref=payload["anchor_ref"],
-            state_summary=payload.get("state_summary"),
+            state_summary=cast(
+                "CheckpointStateSummary | None", payload.get("state_summary")
+            ),
         )
     return DeltaCheckpointStatePayload(
         state_parent_node_id=cast("int", payload["state_parent_node_id"]),
@@ -1330,7 +1356,9 @@ def _state_payload_from_mapping(
             payload["state_parent_branch"],
         ),
         delta_ref=payload["delta_ref"],
-        state_summary=payload.get("state_summary"),
+        state_summary=cast(
+            "CheckpointStateSummary | None", payload.get("state_summary")
+        ),
     )
 
 
@@ -1416,9 +1444,7 @@ def _serialized_value_payload_from_mapping(
                 ),
                 termination=cast(
                     "CheckpointAtomPayload",
-                    cast("dict[str, object]", payload["over_event"]).get(
-                        "termination"
-                    ),
+                    cast("dict[str, object]", payload["over_event"]).get("termination"),
                 ),
                 winner=cast(
                     "CheckpointAtomPayload",
@@ -1843,10 +1869,10 @@ def _compress_jsonl_bytes(
     zstandard_module = _load_optional_module("zstandard")
     if zstandard_module is None:
         raise ShardedCheckpointManifestError.zstandard_required()
-    return zstandard_module.ZstdCompressor().compress(jsonl_bytes)
+    return cast("bytes", zstandard_module.ZstdCompressor().compress(jsonl_bytes))
 
 
-def _load_optional_module(module_name: str) -> object | None:
+def _load_optional_module(module_name: str) -> Any | None:
     """Import one optional module when available."""
     try:
         return import_module(module_name)

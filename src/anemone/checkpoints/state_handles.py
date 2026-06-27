@@ -34,21 +34,17 @@ class CheckpointStateResolutionError(KeyError):
 class CheckpointPayloadStore(Protocol):
     """Mapping-like store used by lazy checkpoint state resolvers."""
 
-    def __getitem__(self, node_id: int) -> CheckpointNodeStatePayload: ...
+    def __getitem__(self, node_id: int) -> CheckpointNodeStatePayload:
+        """Return the payload stored for one node id."""
+        ...
 
-    def __iter__(self) -> Iterator[int]: ...
+    def __iter__(self) -> Iterator[int]:
+        """Iterate stored node ids."""
+        ...
 
-    def __len__(self) -> int: ...
-
-    def get(
-        self,
-        node_id: int,
-        default: CheckpointNodeStatePayload | None = None,
-    ) -> CheckpointNodeStatePayload | None: ...
-
-    def values(self) -> object: ...
-
-    def items(self) -> object: ...
+    def __len__(self) -> int:
+        """Return the number of stored node payloads."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,12 +54,15 @@ class DictCheckpointPayloadStore(Mapping[int, CheckpointNodeStatePayload]):
     payloads_by_node_id: dict[int, CheckpointNodeStatePayload]
 
     def __getitem__(self, node_id: int) -> CheckpointNodeStatePayload:
+        """Return the payload stored for one node id."""
         return self.payloads_by_node_id[node_id]
 
     def __iter__(self) -> Iterator[int]:
+        """Iterate stored node ids."""
         return iter(self.payloads_by_node_id)
 
     def __len__(self) -> int:
+        """Return the number of stored node payloads."""
         return len(self.payloads_by_node_id)
 
 
@@ -74,14 +73,17 @@ class DenseCheckpointPayloadStore(Mapping[int, CheckpointNodeStatePayload]):
     payloads_by_dense_node_id: list[CheckpointNodeStatePayload]
 
     def __getitem__(self, node_id: int) -> CheckpointNodeStatePayload:
+        """Return the payload stored at one dense node id."""
         if node_id < 0 or node_id >= len(self.payloads_by_dense_node_id):
             raise KeyError(node_id)
         return self.payloads_by_dense_node_id[node_id]
 
     def __iter__(self) -> Iterator[int]:
+        """Iterate dense node ids in ascending order."""
         return iter(range(len(self.payloads_by_dense_node_id)))
 
     def __len__(self) -> int:
+        """Return the number of stored node payloads."""
         return len(self.payloads_by_dense_node_id)
 
 
@@ -96,12 +98,17 @@ class CheckpointStateResolver[StateT: State = State]:
     """
 
     state_codec: IncrementalStateCheckpointCodec[StateT]
-    state_payloads_by_node_id: CheckpointPayloadStore | Mapping[int, CheckpointNodeStatePayload]
+    state_payloads_by_node_id: (
+        CheckpointPayloadStore | Mapping[int, CheckpointNodeStatePayload]
+    )
     _resolved_states: dict[int, StateT] = field(
         default_factory=lambda: cast("dict[int, StateT]", {}),
         init=False,
     )
-    _resolving_node_ids: set[int] = field(default_factory=set, init=False)
+    _resolving_node_ids: set[int] = field(
+        default_factory=lambda: cast("set[int]", set()),
+        init=False,
+    )
 
     def __post_init__(self) -> None:
         """Normalize legacy mappings into an explicit payload-store abstraction."""
@@ -114,7 +121,9 @@ class CheckpointStateResolver[StateT: State = State]:
         object.__setattr__(
             self,
             "state_payloads_by_node_id",
-            DictCheckpointPayloadStore(dict(payload_store)),
+            DictCheckpointPayloadStore(
+                {node_id: payload_store[node_id] for node_id in payload_store}
+            ),
         )
 
     def payload_for_node_id(self, node_id: int) -> CheckpointNodeStatePayload:
@@ -225,20 +234,21 @@ def payload_for_node_id_or_none(
     optional_lookup = getattr(resolver, "payload_for_node_id_or_none", None)
     if callable(optional_lookup):
         try:
-            return optional_lookup(node_id)
+            return cast("object | None", optional_lookup(node_id))
         except KeyError:
             return None
 
     strict_lookup = getattr(resolver, "payload_for_node_id", None)
     if callable(strict_lookup):
         try:
-            return strict_lookup(node_id)
+            return cast("object | None", strict_lookup(node_id))
         except KeyError:
             return None
 
     payloads_by_node_id = getattr(resolver, "state_payloads_by_node_id", None)
     if isinstance(payloads_by_node_id, Mapping):
-        return payloads_by_node_id.get(node_id)
+        typed_payloads_by_node_id = cast("Mapping[int, object]", payloads_by_node_id)
+        return typed_payloads_by_node_id.get(node_id)
     return None
 
 

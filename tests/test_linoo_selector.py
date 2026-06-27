@@ -23,6 +23,7 @@ from anemone.node_selector.factory import create, create_composed_node_selector
 from anemone.node_selector.linoo import (
     Linoo,
     LinooArgs,
+    LinooDepthSelectionPolicy,
     LinooDirectValueUnavailableError,
     LinooIncompatibleObjectiveError,
 )
@@ -204,10 +205,15 @@ def _selected_node_id(instructions: OpeningInstructions[_FakeNode]) -> int:
     return next(iter(instructions.values())).node_to_open.id
 
 
-def _selector(*, random_values: list[float] | None = None) -> Linoo[_FakeNode]:
+def _selector(
+    *,
+    random_values: list[float] | None = None,
+    depth_selection_policy: LinooDepthSelectionPolicy = "inverse_depth",
+) -> Linoo[_FakeNode]:
     return Linoo(
         opening_instructor=_FakeOpeningInstructor(),
         random_generator=_StubRandom(random_values),
+        depth_selection_policy=depth_selection_policy,
     )
 
 
@@ -245,7 +251,7 @@ def _scan_selected_depth(tree: SimpleNamespace) -> int:
 
 def test_linoo_chooses_depth_with_minimum_opened_count_index() -> None:
     """Linoo should prefer the depth with the smallest opened-count index."""
-    selector = _selector()
+    selector = _selector(depth_selection_policy="opened_count_depth_index")
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, opened=True),
@@ -265,7 +271,7 @@ def test_linoo_chooses_depth_with_minimum_opened_count_index() -> None:
 
 def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     """The latest report should expose the full diagnostic depth table."""
-    selector = _selector()
+    selector = _selector(depth_selection_policy="opened_count_depth_index")
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, opened=True),
@@ -292,7 +298,10 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.selected_node_rank == 1
     assert report.ranked_candidate_count == 2
     assert report.node_selection_policy == "zipf_rank"
+    assert report.depth_selection_policy == "opened_count_depth_index"
     assert report.selected_depth_selection_index == 3
+    assert report.selected_depth_selection_weight is None
+    assert report.selected_depth_selection_probability is None
     assert report.depth_row_count == 3
     assert report.total_nodes_scanned == 7
     assert report.state_rebuilt is True
@@ -356,6 +365,8 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert rows_by_depth[1].uncached_terminal_candidates == 0
     assert rows_by_depth[1].non_openable_count == 0
     assert rows_by_depth[1].selection_index == 4
+    assert rows_by_depth[1].selection_weight is None
+    assert rows_by_depth[1].selection_probability is None
     assert rows_by_depth[1].active is True
     assert rows_by_depth[1].selected is False
     assert rows_by_depth[2].total_nodes == 3
@@ -366,6 +377,8 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert rows_by_depth[2].uncached_terminal_candidates == 0
     assert rows_by_depth[2].non_openable_count == 0
     assert rows_by_depth[2].selection_index == 3
+    assert rows_by_depth[2].selection_weight is None
+    assert rows_by_depth[2].selection_probability is None
     assert rows_by_depth[2].active is True
     assert rows_by_depth[2].selected is True
     assert report.depth_rows[0].depth == report.selected_depth
@@ -379,8 +392,74 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
         "uncached_terminal",
         "non_openable",
         "index",
+        "weight",
+        "probability",
         "selected",
     ]
+
+
+def test_linoo_defaults_to_inverse_depth_sampling() -> None:
+    """The default depth policy should sample active depths by inverse depth."""
+    selector = _selector(random_values=[0.7])
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, opened=True),
+        _node(11, 1, opened=True),
+        _node(12, 1, score=100.0),
+        _node(20, 2, opened=True),
+        _node(21, 2, score=1.0),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    report = selector.latest_selection_report
+    assert report is not None
+    assert _selected_node_id(instructions) == 21
+    assert report.depth_selection_policy == "inverse_depth"
+    assert report.selected_depth == 2
+    assert report.selected_depth_selection_weight == pytest.approx(1.0 / 3.0)
+    assert report.selected_depth_selection_probability == pytest.approx(0.4)
+    rows_by_depth = {row.depth: row for row in report.depth_rows}
+    assert rows_by_depth[1].selection_weight == pytest.approx(0.5)
+    assert rows_by_depth[1].selection_probability == pytest.approx(0.6)
+    assert rows_by_depth[2].selection_weight == pytest.approx(1.0 / 3.0)
+    assert rows_by_depth[2].selection_probability == pytest.approx(0.4)
+
+
+def test_linoo_inverse_depth_keeps_all_active_depths_possible() -> None:
+    """Inverse-depth sampling should not exclude deeper frontier depths."""
+    shallow_selector = _selector(random_values=[0.0])
+    deep_selector = _selector(random_values=[0.999999])
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=1.0),
+        _node(20, 2, score=2.0),
+    )
+
+    shallow_instructions = shallow_selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+    deep_instructions = deep_selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=SimpleNamespace(),
+    )
+
+    assert _selected_node_id(shallow_instructions) == 10
+    assert _selected_node_id(deep_instructions) == 20
+
+
+def test_linoo_rejects_unknown_depth_selection_policy() -> None:
+    """Invalid depth policies should fail at construction with a clear error."""
+    with pytest.raises(ValueError, match="Invalid Linoo depth-selection policy"):
+        Linoo(
+            opening_instructor=_FakeOpeningInstructor(),
+            random_generator=_StubRandom(),
+            depth_selection_policy="bogus",  # type: ignore[arg-type]
+        )
 
 
 def test_linoo_enters_optional_diagnostic_phase_context() -> None:
@@ -418,7 +497,7 @@ def test_linoo_enters_optional_diagnostic_phase_context() -> None:
 
 def test_linoo_updates_latest_expansion_incrementally() -> None:
     """After the initial rebuild, Linoo should refresh only touched nodes."""
-    selector = _selector()
+    selector = _selector(depth_selection_policy="opened_count_depth_index")
     root = _node(0, 0, opened=True)
     first = _node(10, 1, score=5.0)
     second = _node(11, 1, score=4.0)
@@ -561,7 +640,7 @@ def test_linoo_builds_nodes_by_id_once_per_selection(
 
 def test_linoo_sparse_state_discards_node_that_returns_to_default() -> None:
     """Reclassification should drop materialized state once it becomes opened."""
-    selector = _selector()
+    selector = _selector(depth_selection_policy="opened_count_depth_index")
     root = _node(0, 0, opened=True)
     first = _node(10, 1, score=5.0)
     tree = _tree(root, first)
@@ -766,7 +845,7 @@ def test_linoo_reports_uncached_terminal_candidates() -> None:
 
 def test_linoo_does_not_evaluate_non_selected_depths() -> None:
     """Only selected-depth frontier candidates should enter the objective heap."""
-    selector = _selector()
+    selector = _selector(depth_selection_policy="opened_count_depth_index")
     non_selected_node = _node(20, 2, score=100.0)
     non_selected_node.state = SimpleNamespace(turn="solo", raise_on_eval=True)
     tree = _tree(
@@ -817,7 +896,10 @@ def test_linoo_ranks_candidates_by_effective_value_over_direct_value() -> None:
 
 def test_linoo_depth_selection_matches_scan_based_policy() -> None:
     """Zipf node choice should not change the selected frontier depth."""
-    selector = _selector(random_values=[0.999999])
+    selector = _selector(
+        random_values=[0.999999],
+        depth_selection_policy="opened_count_depth_index",
+    )
     tree = _tree(
         _node(0, 0, opened=True),
         _node(10, 1, opened=True),
@@ -1326,7 +1408,7 @@ def test_linoo_zipf_sampling_respects_rank_intervals() -> None:
 
 def test_linoo_breaks_equal_depth_indices_by_smaller_depth() -> None:
     """Equal depth indices should deterministically prefer the shallower depth."""
-    selector = _selector()
+    selector = _selector(depth_selection_policy="opened_count_depth_index")
     tree = _tree(
         _node(0, 0, score=2.0),
         _node(10, 1, score=9.0),
@@ -1406,7 +1488,10 @@ def test_linoo_selector_factory_supports_direct_and_composed_creation() -> None:
     )
 
     selector = create(
-        args=LinooArgs(type=NodeSelectorType.LINOO),
+        args=LinooArgs(
+            type=NodeSelectorType.LINOO,
+            depth_selection_policy="opened_count_depth_index",
+        ),
         opening_instructor=opening_instructor,
         random_generator=Random(0),
     )
@@ -1422,4 +1507,6 @@ def test_linoo_selector_factory_supports_direct_and_composed_creation() -> None:
     )
 
     assert isinstance(selector, Linoo)
+    assert selector.depth_selection_policy == "opened_count_depth_index"
     assert isinstance(composed_selector.base, Linoo)
+    assert composed_selector.base.depth_selection_policy == "inverse_depth"

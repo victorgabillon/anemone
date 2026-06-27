@@ -29,7 +29,7 @@ class _ParentNodesView[FamilyT: ITreeNode[Any]](Mapping[FamilyT, set[BranchKey]]
         self._node = node
 
     def __getitem__(self, parent_node: FamilyT) -> set[BranchKey]:
-        storage = cast(_ParentNodesStorage[FamilyT], self._node.parent_nodes_)
+        storage = cast("_ParentNodesStorage[FamilyT]", self._node.parent_nodes_)
         if storage is None:
             raise KeyError(parent_node)
         if isinstance(storage, _SingleParentLink):
@@ -352,7 +352,7 @@ class TreeNode[
         Each key is a parent node. Each value is the set of distinct branch keys
         through which that parent reaches this node.
         """
-        storage = cast(_ParentNodesStorage[FamilyT], self.parent_nodes_)
+        storage = cast("_ParentNodesStorage[FamilyT]", self.parent_nodes_)
         if storage is None:
             return {}
         if isinstance(storage, _SingleParentLink):
@@ -365,7 +365,7 @@ class TreeNode[
 
     def iter_parent_items(self) -> Iterator[tuple[FamilyT, set[BranchKey]]]:
         """Iterate parent-edge items without materializing zero/one-parent dicts."""
-        storage = cast(_ParentNodesStorage[FamilyT], self.parent_nodes_)
+        storage = cast("_ParentNodesStorage[FamilyT]", self.parent_nodes_)
         if storage is None:
             return
         if isinstance(storage, _SingleParentLink):
@@ -375,7 +375,7 @@ class TreeNode[
 
     def parent_count(self) -> int:
         """Return the number of distinct parent nodes without allocating."""
-        storage = cast(_ParentNodesStorage[FamilyT], self.parent_nodes_)
+        storage = cast("_ParentNodesStorage[FamilyT]", self.parent_nodes_)
         if storage is None:
             return 0
         if isinstance(storage, _SingleParentLink):
@@ -384,7 +384,7 @@ class TreeNode[
 
     def add_parent_link(self, parent_node: FamilyT, branch: BranchKey) -> None:
         """Add one incoming parent edge using compact zero/one/many storage."""
-        storage = cast(_ParentNodesStorage[FamilyT], self.parent_nodes_)
+        storage = cast("_ParentNodesStorage[FamilyT]", self.parent_nodes_)
         if storage is None:
             self.parent_nodes_ = _SingleParentLink(
                 parent_node=parent_node,

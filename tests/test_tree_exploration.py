@@ -497,6 +497,7 @@ def test_linoo_incremental_cache_updates_through_tree_exploration_step() -> None
     selector = Linoo(
         opening_instructor=_LinooIntegrationOpeningInstructor(),
         random_generator=_IntegrationStubRandom(),
+        depth_selection_policy="opened_count_depth_index",
     )
     exploration = TreeExploration(
         tree=tree,
@@ -533,6 +534,7 @@ def test_reevaluation_invalidates_linoo_incremental_cache_before_next_step() -> 
     selector = Linoo(
         opening_instructor=_LinooIntegrationOpeningInstructor(),
         random_generator=_IntegrationStubRandom(),
+        depth_selection_policy="opened_count_depth_index",
     )
     exploration = TreeExploration(
         tree=tree,

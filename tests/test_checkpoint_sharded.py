@@ -173,7 +173,9 @@ def test_write_sharded_search_checkpoint_creates_manifest_and_shards(
         assert (tmp_path / shard.path).is_file()
 
     metadata_shard = _only_shard(manifest, "metadata")
-    metadata_payload, _stats = load_checkpoint_json_payload(tmp_path / metadata_shard.path)
+    metadata_payload, _stats = load_checkpoint_json_payload(
+        tmp_path / metadata_shard.path
+    )
     assert metadata_payload["root_node_id"] == 0
     assert metadata_payload["node_count"] == 3
     assert metadata_payload["branch_count"] == 2

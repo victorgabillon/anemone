@@ -77,8 +77,8 @@ class CheckpointParentBranchPayloadCodec(Protocol):
 
 
 __all__ = [
-    "CheckpointStateSummary",
     "CheckpointParentBranchPayloadCodec",
+    "CheckpointStateSummary",
     "IncrementalStateCheckpointCodec",
     "StateCheckpointSummaryCodec",
 ]
