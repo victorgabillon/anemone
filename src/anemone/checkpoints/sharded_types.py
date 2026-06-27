@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from .io import CheckpointJsonEncoder
 
 SHARDED_CHECKPOINT_FORMAT_VERSION = 1
-_DEFAULT_NODE_RUNTIME_RESTORE_BATCH_SIZE = 2048
 
 type ShardedCheckpointShardKind = Literal[
     "metadata",

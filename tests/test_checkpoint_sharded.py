@@ -39,6 +39,7 @@ from anemone.checkpoints import (
     write_sharded_checkpoint_manifest,
     write_sharded_search_checkpoint,
 )
+from anemone.checkpoints._json_types import CheckpointJsonTypeError
 from anemone.checkpoints.sharded_io import _iter_jsonl_shard_record_batches
 from anemone.checkpoints.sharded_restore import (
     _load_incremental_node_shells,
@@ -285,6 +286,29 @@ def test_load_sharded_search_checkpoint_reads_node_shards_in_manifest_order(
     restored = load_sharded_search_checkpoint(tmp_path)
 
     assert [node.node_id for node in restored.tree.nodes] == [0, 1, 2]
+
+
+def test_load_sharded_search_checkpoint_rejects_malformed_node_id(
+    tmp_path: Path,
+) -> None:
+    """Node-record scalar fields should be type-checked at the JSON boundary."""
+    payload = _small_checkpoint_payload()
+    manifest = write_sharded_search_checkpoint(
+        payload,
+        tmp_path,
+        node_count_per_shard=2,
+        encoding="jsonl",
+    )
+    first_node_shard = _first_shard(manifest, "node_records")
+    shard_path = tmp_path / first_node_shard.path
+    lines = shard_path.read_text(encoding="utf-8").splitlines()
+    first_record = json.loads(lines[0])
+    first_record["node_id"] = "bad"
+    lines[0] = json.dumps(first_record, separators=(",", ":"))
+    shard_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    with pytest.raises(CheckpointJsonTypeError, match=r"'node_id'.*int"):
+        load_sharded_search_checkpoint(tmp_path)
 
 
 def test_load_sharded_search_checkpoint_rejects_missing_metadata_shard(

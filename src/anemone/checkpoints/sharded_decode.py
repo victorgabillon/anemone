@@ -8,6 +8,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+from ._json_types import (
+    optional_int_field,
+    optional_list_field,
+    optional_mapping_field,
+    optional_str_field,
+    require_bool,
+    require_bool_field,
+    require_float_field,
+    require_int,
+    require_int_field,
+    require_mapping,
+    require_mapping_field,
+    require_str_field,
+)
 from .payloads import (
     AlgorithmNodeCheckpointPayload,
     AnchorCheckpointStatePayload,
@@ -79,7 +93,7 @@ def load_sharded_search_checkpoint(
         raise ShardedCheckpointManifestError.node_count_mismatch()
     if manifest.total_branch_count is not None:
         branch_count = sum(
-            len(cast("list[object]", record.get("linked_children", [])))
+            len(optional_list_field(record, "linked_children"))
             for record in node_records
         )
         if branch_count != manifest.total_branch_count:
@@ -97,11 +111,11 @@ def load_sharded_search_checkpoint(
     )
 
     return SearchRuntimeCheckpointPayload(
-        format_version=cast("int", metadata["format_version"]),
-        evaluator_version=cast("int", metadata["evaluator_version"]),
+        format_version=require_int_field(metadata, "format_version"),
+        evaluator_version=require_int_field(metadata, "evaluator_version"),
         rng_state=metadata.get("rng_state"),
         tree=TreeCheckpointPayload(
-            root_node_id=cast("int", metadata["root_node_id"]),
+            root_node_id=require_int_field(metadata, "root_node_id"),
             nodes=[
                 _algorithm_node_payload_from_mapping(record) for record in node_records
             ],
@@ -124,38 +138,42 @@ def _algorithm_node_payload_from_mapping(
 ) -> AlgorithmNodeCheckpointPayload:
     """Build one typed node payload from a C2b JSON record."""
     return AlgorithmNodeCheckpointPayload(
-        node_id=cast("int", payload["node_id"]),
-        parent_node_id=cast("int | None", payload["parent_node_id"]),
+        node_id=require_int_field(payload, "node_id"),
+        parent_node_id=optional_int_field(payload, "parent_node_id"),
         branch_from_parent=cast(
             "CheckpointAtomPayload | None",
-            payload["branch_from_parent"],
+            payload.get("branch_from_parent"),
         ),
-        depth=cast("int", payload["depth"]),
+        depth=require_int_field(payload, "depth"),
         state_payload=_state_payload_from_mapping(
-            cast("dict[str, object]", payload["state_payload"])
+            require_mapping_field(payload, "state_payload")
         ),
-        generated_all_branches=cast("bool", payload["generated_all_branches"]),
+        generated_all_branches=require_bool_field(payload, "generated_all_branches"),
         unopened_branches=cast(
             "list[CheckpointAtomPayload]",
-            payload.get("unopened_branches", []),
+            optional_list_field(payload, "unopened_branches"),
         ),
         linked_children=[
-            _linked_child_payload_from_mapping(cast("dict[str, object]", child))
-            for child in cast("list[object]", payload.get("linked_children", []))
+            _linked_child_payload_from_mapping(
+                require_mapping(child, field_name="linked_children[]")
+            )
+            for child in optional_list_field(payload, "linked_children")
         ],
         evaluation=(
             None
-            if payload.get("evaluation") is None
-            else _node_evaluation_payload_from_mapping(
-                cast("dict[str, object]", payload["evaluation"])
-            )
+            if (evaluation := optional_mapping_field(payload, "evaluation")) is None
+            else _node_evaluation_payload_from_mapping(evaluation)
         ),
         exploration_index=(
             None
-            if payload.get("exploration_index") is None
-            else _exploration_index_payload_from_mapping(
-                cast("dict[str, object]", payload["exploration_index"])
+            if (
+                exploration_index := optional_mapping_field(
+                    payload,
+                    "exploration_index",
+                )
             )
+            is None
+            else _exploration_index_payload_from_mapping(exploration_index)
         ),
     )
 
@@ -172,10 +190,10 @@ def _state_payload_from_mapping(
             ),
         )
     return DeltaCheckpointStatePayload(
-        state_parent_node_id=cast("int", payload["state_parent_node_id"]),
+        state_parent_node_id=require_int_field(payload, "state_parent_node_id"),
         state_parent_branch=cast(
             "CheckpointAtomPayload | None",
-            payload["state_parent_branch"],
+            payload.get("state_parent_branch"),
         ),
         delta_ref=payload["delta_ref"],
         state_summary=cast(
@@ -190,7 +208,7 @@ def _linked_child_payload_from_mapping(
     """Build one typed linked-child payload from a JSON object."""
     return LinkedChildCheckpointPayload(
         branch_key=cast("CheckpointAtomPayload", payload["branch_key"]),
-        child_node_id=cast("int", payload["child_node_id"]),
+        child_node_id=require_int_field(payload, "child_node_id"),
     )
 
 
@@ -200,44 +218,49 @@ def _node_evaluation_payload_from_mapping(
     """Build one typed node-evaluation payload from a JSON object."""
     return NodeEvaluationCheckpointPayload(
         direct_value=_optional_serialized_value(payload.get("direct_value")),
-        direct_evaluation_version=cast(
-            "int | None",
-            payload.get("direct_evaluation_version"),
+        direct_evaluation_version=optional_int_field(
+            payload,
+            "direct_evaluation_version",
         ),
         backed_up_value=_optional_serialized_value(payload.get("backed_up_value")),
         decision_ordering=(
             None
-            if payload.get("decision_ordering") is None
-            else _decision_ordering_payload_from_mapping(
-                cast("dict[str, object]", payload["decision_ordering"])
+            if (
+                decision_ordering := optional_mapping_field(
+                    payload,
+                    "decision_ordering",
+                )
             )
+            is None
+            else _decision_ordering_payload_from_mapping(decision_ordering)
         ),
         principal_variation=(
             None
-            if payload.get("principal_variation") is None
-            else _principal_variation_payload_from_mapping(
-                cast("dict[str, object]", payload["principal_variation"])
+            if (
+                principal_variation := optional_mapping_field(
+                    payload,
+                    "principal_variation",
+                )
             )
+            is None
+            else _principal_variation_payload_from_mapping(principal_variation)
         ),
         branch_frontier=(
             None
-            if payload.get("branch_frontier") is None
+            if (branch_frontier := optional_mapping_field(payload, "branch_frontier"))
+            is None
             else BranchFrontierCheckpointPayload(
                 frontier_branches=cast(
                     "list[CheckpointAtomPayload]",
-                    cast("dict[str, object]", payload["branch_frontier"]).get(
-                        "frontier_branches",
-                        [],
-                    ),
+                    optional_list_field(branch_frontier, "frontier_branches"),
                 )
             )
         ),
         backup_runtime=(
             None
-            if payload.get("backup_runtime") is None
-            else _backup_runtime_payload_from_mapping(
-                cast("dict[str, object]", payload["backup_runtime"])
-            )
+            if (backup_runtime := optional_mapping_field(payload, "backup_runtime"))
+            is None
+            else _backup_runtime_payload_from_mapping(backup_runtime)
         ),
     )
 
@@ -246,31 +269,31 @@ def _optional_serialized_value(payload: object) -> SerializedValuePayload | None
     """Build an optional typed serialized value from a JSON object."""
     if payload is None:
         return None
-    return _serialized_value_payload_from_mapping(cast("dict[str, object]", payload))
+    return _serialized_value_payload_from_mapping(
+        require_mapping(payload, field_name="serialized_value")
+    )
 
 
 def _serialized_value_payload_from_mapping(
     payload: dict[str, object],
 ) -> SerializedValuePayload:
     """Build one typed serialized value payload from a JSON object."""
+    over_event = optional_mapping_field(payload, "over_event")
     return SerializedValuePayload(
-        score=cast("float", payload["score"]),
-        certainty=cast("str", payload["certainty"]),
+        score=require_float_field(payload, "score"),
+        certainty=require_str_field(payload, "certainty"),
         over_event=(
             None
-            if payload.get("over_event") is None
+            if over_event is None
             else SerializedOverEventPayload(
-                outcome=cast(
-                    "str",
-                    cast("dict[str, object]", payload["over_event"])["outcome"],
-                ),
+                outcome=require_str_field(over_event, "outcome"),
                 termination=cast(
                     "CheckpointAtomPayload",
-                    cast("dict[str, object]", payload["over_event"]).get("termination"),
+                    over_event.get("termination"),
                 ),
                 winner=cast(
                     "CheckpointAtomPayload",
-                    cast("dict[str, object]", payload["over_event"]).get("winner"),
+                    over_event.get("winner"),
                 ),
             )
         ),
@@ -286,14 +309,11 @@ def _decision_ordering_payload_from_mapping(
         branch_ordering=[
             BranchOrderingCheckpointPayload(
                 branch_key=cast("CheckpointAtomPayload", ordering["branch_key"]),
-                primary_score=cast("float", ordering["primary_score"]),
-                tactical_tiebreak=cast("int", ordering["tactical_tiebreak"]),
-                stable_tiebreak_id=cast("int", ordering["stable_tiebreak_id"]),
+                primary_score=require_float_field(ordering, "primary_score"),
+                tactical_tiebreak=require_int_field(ordering, "tactical_tiebreak"),
+                stable_tiebreak_id=require_int_field(ordering, "stable_tiebreak_id"),
             )
-            for ordering in cast(
-                "list[dict[str, object]]",
-                payload.get("branch_ordering", []),
-            )
+            for ordering in _mapping_items(payload, "branch_ordering")
         ]
     )
 
@@ -305,12 +325,12 @@ def _principal_variation_payload_from_mapping(
     return PrincipalVariationCheckpointPayload(
         best_branch_sequence=cast(
             "list[CheckpointAtomPayload]",
-            payload.get("best_branch_sequence", []),
+            optional_list_field(payload, "best_branch_sequence"),
         ),
-        pv_version=cast("int", payload.get("pv_version", 0)),
-        cached_best_child_version=cast(
-            "int | None",
-            payload.get("cached_best_child_version"),
+        pv_version=require_int(payload.get("pv_version", 0), field_name="pv_version"),
+        cached_best_child_version=optional_int_field(
+            payload,
+            "cached_best_child_version",
         ),
     )
 
@@ -325,12 +345,18 @@ def _backup_runtime_payload_from_mapping(
             "CheckpointAtomPayload | None",
             payload.get("second_best_branch"),
         ),
-        exact_child_count=cast("int", payload.get("exact_child_count", 0)),
-        selected_child_pv_version=cast(
-            "int | None",
-            payload.get("selected_child_pv_version"),
+        exact_child_count=require_int(
+            payload.get("exact_child_count", 0),
+            field_name="exact_child_count",
         ),
-        is_initialized=cast("bool", payload.get("is_initialized", False)),
+        selected_child_pv_version=optional_int_field(
+            payload,
+            "selected_child_pv_version",
+        ),
+        is_initialized=require_bool(
+            payload.get("is_initialized", False),
+            field_name="is_initialized",
+        ),
     )
 
 
@@ -339,7 +365,7 @@ def _exploration_index_payload_from_mapping(
 ) -> ExplorationIndexCheckpointPayload:
     """Build one typed exploration-index payload from a JSON object."""
     return ExplorationIndexCheckpointPayload(
-        kind=cast("str | None", payload.get("kind")),
+        kind=optional_str_field(payload, "kind"),
         payload=payload.get("payload"),
     )
 
@@ -350,18 +376,12 @@ def _tree_expansions_payload_from_mapping(
     """Build typed latest-expansions payload from a JSON object."""
     return TreeExpansionsCheckpointPayload(
         expansions_with_node_creation=[
-            _tree_expansion_payload_from_mapping(cast("dict[str, object]", expansion))
-            for expansion in cast(
-                "list[object]",
-                payload.get("expansions_with_node_creation", []),
-            )
+            _tree_expansion_payload_from_mapping(expansion)
+            for expansion in _mapping_items(payload, "expansions_with_node_creation")
         ],
         expansions_without_node_creation=[
-            _tree_expansion_payload_from_mapping(cast("dict[str, object]", expansion))
-            for expansion in cast(
-                "list[object]",
-                payload.get("expansions_without_node_creation", []),
-            )
+            _tree_expansion_payload_from_mapping(expansion)
+            for expansion in _mapping_items(payload, "expansions_without_node_creation")
         ],
     )
 
@@ -371,10 +391,10 @@ def _tree_expansion_payload_from_mapping(
 ) -> TreeExpansionCheckpointPayload:
     """Build one typed tree-expansion payload from a JSON object."""
     return TreeExpansionCheckpointPayload(
-        child_node_id=cast("int", payload["child_node_id"]),
-        parent_node_id=cast("int | None", payload["parent_node_id"]),
-        branch_key=cast("CheckpointAtomPayload | None", payload["branch_key"]),
-        creation_child_node=cast("bool", payload["creation_child_node"]),
+        child_node_id=require_int_field(payload, "child_node_id"),
+        parent_node_id=optional_int_field(payload, "parent_node_id"),
+        branch_key=cast("CheckpointAtomPayload | None", payload.get("branch_key")),
+        creation_child_node=require_bool_field(payload, "creation_child_node"),
     )
 
 
@@ -384,45 +404,43 @@ def _selector_payload_from_mapping(
     """Build the generic selector payload currently supported by Anemone."""
     return LinooSelectorCheckpointPayload(
         type=cast('Literal["linoo"]', payload.get("type", "linoo")),
-        version=cast("int", payload.get("version", 1)),
+        version=require_int(payload.get("version", 1), field_name="version"),
         depth_stats=[
-            LinooDepthStatsCheckpointPayload(
-                depth=cast("int", depth_stats["depth"]),
-                total_nodes=cast("int", depth_stats["total_nodes"]),
-                opened_count=cast("int", depth_stats["opened_count"]),
-                frontier_count=cast("int", depth_stats["frontier_count"]),
-                terminal_count=cast("int", depth_stats["terminal_count"]),
-                exact_count=cast("int", depth_stats["exact_count"]),
-                uncached_terminal_candidates=cast(
-                    "int",
-                    depth_stats["uncached_terminal_candidates"],
-                ),
-                non_openable_count=cast("int", depth_stats["non_openable_count"]),
-            )
-            for depth_stats in cast(
-                "list[dict[str, object]]",
-                payload.get("depth_stats", []),
-            )
+            _linoo_depth_stats_payload_from_mapping(depth_stats)
+            for depth_stats in _mapping_items(payload, "depth_stats")
         ],
         node_states=[
             LinooNodeStateCheckpointPayload(
-                node_id=cast("int", node_state["node_id"]),
-                depth=cast("int", node_state["depth"]),
-                status=cast("str", node_state["status"]),
+                node_id=require_int_field(node_state, "node_id"),
+                depth=require_int_field(node_state, "depth"),
+                status=require_str_field(node_state, "status"),
             )
-            for node_state in cast(
-                "list[dict[str, object]]",
-                payload.get("node_states", []),
-            )
+            for node_state in _mapping_items(payload, "node_states")
         ],
         candidates_by_depth=[
             _linoo_candidates_by_depth_payload_from_mapping(candidates_by_depth)
-            for candidates_by_depth in cast(
-                "list[dict[str, object]]",
-                payload.get("candidates_by_depth", []),
-            )
+            for candidates_by_depth in _mapping_items(payload, "candidates_by_depth")
         ],
-        last_selected_node_id=cast("int | None", payload.get("last_selected_node_id")),
+        last_selected_node_id=optional_int_field(payload, "last_selected_node_id"),
+    )
+
+
+def _linoo_depth_stats_payload_from_mapping(
+    payload: dict[str, object],
+) -> LinooDepthStatsCheckpointPayload:
+    """Build one typed Linoo depth-stats payload from a JSON object."""
+    return LinooDepthStatsCheckpointPayload(
+        depth=require_int_field(payload, "depth"),
+        total_nodes=require_int_field(payload, "total_nodes"),
+        opened_count=require_int_field(payload, "opened_count"),
+        frontier_count=require_int_field(payload, "frontier_count"),
+        terminal_count=require_int_field(payload, "terminal_count"),
+        exact_count=require_int_field(payload, "exact_count"),
+        uncached_terminal_candidates=require_int_field(
+            payload,
+            "uncached_terminal_candidates",
+        ),
+        non_openable_count=require_int_field(payload, "non_openable_count"),
     )
 
 
@@ -431,17 +449,25 @@ def _linoo_candidates_by_depth_payload_from_mapping(
 ) -> LinooCandidatesByDepthCheckpointPayload:
     """Build one typed Linoo candidates-by-depth payload from a JSON object."""
     return LinooCandidatesByDepthCheckpointPayload(
-        depth=cast("int", payload["depth"]),
+        depth=require_int_field(payload, "depth"),
         candidates=[
             LinooCandidateCheckpointPayload(
-                node_id=cast("int", candidate["node_id"]),
-                depth=cast("int", candidate["depth"]),
-                priority=cast("float", candidate["priority"]),
-                version=cast("int", candidate["version"]),
+                node_id=require_int_field(candidate, "node_id"),
+                depth=require_int_field(candidate, "depth"),
+                priority=require_float_field(candidate, "priority"),
+                version=require_int_field(candidate, "version"),
             )
-            for candidate in cast(
-                "list[dict[str, object]]",
-                payload.get("candidates", []),
-            )
+            for candidate in _mapping_items(payload, "candidates")
         ],
     )
+
+
+def _mapping_items(
+    payload: dict[str, object],
+    key: str,
+) -> list[dict[str, object]]:
+    """Return optional list entries as mappings."""
+    return [
+        require_mapping(item, field_name=f"{key}[]")
+        for item in optional_list_field(payload, key)
+    ]

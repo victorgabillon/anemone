@@ -6,6 +6,13 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+from ._json_types import (
+    optional_int_field,
+    optional_str_field,
+    require_int,
+    require_int_field,
+    require_str_field,
+)
 from .payloads import CHECKPOINT_FORMAT_VERSION
 from .sharded_errors import ShardedCheckpointManifestError
 from .sharded_types import (
@@ -64,23 +71,28 @@ def sharded_checkpoint_manifest_from_jsonable(
         raise ShardedCheckpointManifestError.shards_not_list()
     raw_shard_payloads = cast("list[object]", raw_shards)
     return ShardedCheckpointManifest(
-        checkpoint_format_version=cast(
-            "int",
+        checkpoint_format_version=require_int(
             data.get("checkpoint_format_version", CHECKPOINT_FORMAT_VERSION),
+            field_name="checkpoint_format_version",
         ),
-        sharded_checkpoint_format_version=cast(
-            "int",
+        sharded_checkpoint_format_version=require_int(
             data.get(
                 "sharded_checkpoint_format_version",
                 SHARDED_CHECKPOINT_FORMAT_VERSION,
             ),
+            field_name="sharded_checkpoint_format_version",
         ),
-        total_node_count=cast("int", data.get("total_node_count", 0)),
-        total_branch_count=cast("int | None", data.get("total_branch_count")),
-        generation=cast("int | None", data.get("generation")),
-        node_count_per_shard=cast("int | None", data.get("node_count_per_shard")),
-        encoder=cast("CheckpointJsonEncoder | None", data.get("encoder")),
-        notes=cast("str | None", data.get("notes")),
+        total_node_count=require_int(
+            data.get("total_node_count", 0),
+            field_name="total_node_count",
+        ),
+        total_branch_count=optional_int_field(data, "total_branch_count"),
+        generation=optional_int_field(data, "generation"),
+        node_count_per_shard=optional_int_field(data, "node_count_per_shard"),
+        encoder=cast(
+            "CheckpointJsonEncoder | None", optional_str_field(data, "encoder")
+        ),
+        notes=optional_str_field(data, "notes"),
         shards=tuple(
             _sharded_checkpoint_shard_ref_from_jsonable(raw_shard)
             for raw_shard in raw_shard_payloads
@@ -122,11 +134,14 @@ def _sharded_checkpoint_shard_ref_from_jsonable(
         raise ShardedCheckpointManifestError.shard_not_mapping()
     data = cast("dict[str, object]", payload)
     return ShardedCheckpointShardRef(
-        kind=cast("ShardedCheckpointShardKind", data["kind"]),
-        path=cast("str", data["path"]),
-        record_count=cast("int", data["record_count"]),
-        encoding=cast("ShardedCheckpointShardEncoding", data["encoding"]),
-        compressed_bytes=cast("int | None", data.get("compressed_bytes")),
-        uncompressed_bytes=cast("int | None", data.get("uncompressed_bytes")),
-        sha256=cast("str | None", data.get("sha256")),
+        kind=cast("ShardedCheckpointShardKind", require_str_field(data, "kind")),
+        path=require_str_field(data, "path"),
+        record_count=require_int_field(data, "record_count"),
+        encoding=cast(
+            "ShardedCheckpointShardEncoding",
+            require_str_field(data, "encoding"),
+        ),
+        compressed_bytes=optional_int_field(data, "compressed_bytes"),
+        uncompressed_bytes=optional_int_field(data, "uncompressed_bytes"),
+        sha256=optional_str_field(data, "sha256"),
     )
