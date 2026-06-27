@@ -14,6 +14,10 @@ from anemone.checkpoints.payloads import (
     LinooNodeStateCheckpointPayload,
     LinooSelectorCheckpointPayload,
 )
+from anemone.node_evaluation.common.value_candidate import (
+    ValueCandidate,
+    ValueCandidateSource,
+)
 from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
 from anemone.node_selector.factory import create, create_composed_node_selector
 from anemone.node_selector.linoo import (
@@ -36,6 +40,8 @@ from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 @dataclass
 class _FakeEval:
     direct_value: Value | None
+    effective_value: Value | None = None
+    effective_value_source: ValueCandidateSource = ValueCandidateSource.NONE
     exact: bool = False
     terminal: bool = False
     required_objective: object | None = None
@@ -45,6 +51,16 @@ class _FakeEval:
 
     def is_terminal(self) -> bool:
         return self.terminal
+
+    def get_effective_value_candidate(self) -> ValueCandidate:
+        if self.effective_value is not None:
+            return ValueCandidate(
+                value=self.effective_value,
+                source=self.effective_value_source,
+            )
+        if self.direct_value is not None:
+            return ValueCandidate.direct(self.direct_value)
+        return ValueCandidate.none()
 
 
 @dataclass
@@ -69,6 +85,18 @@ class _FakeNode:
     state: object = field(default_factory=lambda: SimpleNamespace(turn="solo"))
 
 
+@dataclass
+class _ExplodingStateNode:
+    id: int
+    tree_depth: int
+    tree_evaluation: object
+    all_branches_generated: bool = False
+
+    @property
+    def state(self) -> object:
+        raise AssertionError
+
+
 class _FakeOpeningInstructor:
     def all_branches_to_open(self, node_to_open: _FakeNode) -> list[int]:
         _ = node_to_open
@@ -82,6 +110,16 @@ class _MarkedStateObjective(SingleAgentMaxObjective[object]):
         if getattr(state, "raise_on_eval", False):
             raise AssertionError
         return super().evaluate_value(value, state)
+
+
+class _StatefulOnlyObjective(SingleAgentMaxObjective[object]):
+    """Objective that forces Linoo through the stateful fallback path."""
+
+    evaluate_value_without_state = None
+
+    def evaluate_value(self, value: Value, state: object) -> float:
+        state.evaluated = True
+        return value.score + state.priority_bonus
 
 
 class _StubRandom(Random):
@@ -107,6 +145,8 @@ def _node(
     depth: int,
     *,
     score: float | None = 0.0,
+    effective_score: float | None = None,
+    effective_source: ValueCandidateSource = ValueCandidateSource.TREE_CHILD,
     opened: bool = False,
     exact: bool = False,
     terminal: bool = False,
@@ -115,6 +155,12 @@ def _node(
     if eval_type is _FakeEval:
         evaluation: object = _FakeEval(
             direct_value=None if score is None else _value(score),
+            effective_value=None
+            if effective_score is None
+            else _value(effective_score),
+            effective_value_source=effective_source
+            if effective_score is not None
+            else ValueCandidateSource.NONE,
             exact=exact,
             terminal=terminal,
         )
@@ -241,6 +287,7 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.selected_depth == 2
     assert report.selected_node_id == 22
     assert report.selected_node_direct_value == 3.0
+    assert report.selected_node_candidate_value == 3.0
     assert report.selected_node_priority == 3.0
     assert report.selected_node_rank == 1
     assert report.ranked_candidate_count == 2
@@ -262,6 +309,11 @@ def test_linoo_selection_report_describes_candidate_depth_table() -> None:
     assert report.heap_update_signature_check_count == 2
     assert report.heap_update_signature_recompute_count == 2
     assert report.heap_update_version_mismatch_count == 0
+    assert report.heap_update_priority_state_free_count == 2
+    assert report.heap_update_priority_stateful_fallback_count == 0
+    assert report.heap_update_candidate_direct_count == 2
+    assert report.heap_update_candidate_tree_count == 0
+    assert report.heap_update_candidate_unknown_count == 0
     assert report.heap_update_total_heap_entries == 2
     assert report.heap_update_max_heap_size == 2
     assert report.heap_update_depth_count == 0
@@ -665,6 +717,29 @@ def test_linoo_does_not_call_state_is_game_over_for_terminality() -> None:
     assert rows_by_depth[2].terminal_count == 1
 
 
+def test_linoo_heap_push_does_not_access_state_for_single_agent_max() -> None:
+    """State-free objectives should keep heap priority projection state-free."""
+    selector = _selector()
+    root = _node(0, 0, opened=True)
+    frontier = _ExplodingStateNode(
+        id=10,
+        tree_depth=1,
+        tree_evaluation=_FakeEval(direct_value=_value(1.0)),
+    )
+    tree = _tree(root, frontier)
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert _selected_node_id(instructions) == 10
+    report = selector.latest_selection_report
+    assert report is not None
+    assert report.heap_update_priority_state_free_count == 1
+    assert report.heap_update_priority_stateful_fallback_count == 0
+
+
 def test_linoo_reports_uncached_terminal_candidates() -> None:
     """Openable-looking nodes without direct values should be counted."""
     selector = _selector()
@@ -714,6 +789,30 @@ def test_linoo_does_not_evaluate_non_selected_depths() -> None:
     rows_by_depth = {row.depth: row for row in report.depth_rows}
     assert rows_by_depth[2].active is True
     assert rows_by_depth[2].selected is False
+
+
+def test_linoo_ranks_candidates_by_effective_value_over_direct_value() -> None:
+    """Partially opened frontier nodes should rank by effective candidate value."""
+    selector = _selector()
+    tree = _tree(
+        _node(0, 0, opened=True),
+        _node(10, 1, score=0.1, effective_score=0.9),
+        _node(11, 1, score=0.8, effective_score=0.2),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert _selected_node_id(instructions) == 10
+    report = selector.latest_selection_report
+    assert report is not None
+    assert report.selected_node_direct_value == 0.1
+    assert report.selected_node_candidate_value == 0.9
+    assert report.selected_node_priority == 0.9
+    assert report.heap_update_candidate_direct_count == 0
+    assert report.heap_update_candidate_tree_count == 2
 
 
 def test_linoo_depth_selection_matches_scan_based_policy() -> None:
@@ -786,6 +885,81 @@ def test_linoo_heap_updates_when_touched_frontier_direct_value_changes() -> None
     assert report.heap_update_push_count == 1
     assert report.heap_update_stale_skip_count == 1
     assert report.heap_update_version_mismatch_count == 1
+
+
+def test_linoo_heap_updates_when_touched_frontier_effective_value_changes() -> None:
+    """Touched effective-value changes should replace heap priorities lazily."""
+    selector = _selector()
+    first = _node(10, 1, score=3.0, effective_score=3.0)
+    second = _node(11, 1, score=2.0, effective_score=2.0)
+    tree = _tree(_node(0, 0, opened=True), first, second)
+
+    assert (
+        _selected_node_id(
+            selector.choose_node_and_branch_to_open(
+                tree=tree,
+                latest_tree_expansions=TreeExpansions(),
+            )
+        )
+        == 10
+    )
+
+    first.tree_evaluation.effective_value = _value(1.0)
+    expansions: TreeExpansions[_FakeNode] = TreeExpansions()
+    expansions.record_connection(
+        TreeExpansion(
+            child_node=first,
+            parent_node=None,
+            state_modifications=None,
+            creation_child_node=False,
+            branch_key=0,
+        )
+    )
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=expansions,
+    )
+
+    assert _selected_node_id(instructions) == 11
+    report = selector.latest_selection_report
+    assert report is not None
+    assert report.state_rebuilt is False
+    assert report.nodes_incrementally_updated == 1
+    assert report.stale_candidates_skipped == 1
+    assert report.heap_candidates_registered == 1
+    assert report.heap_update_push_count == 1
+    assert report.heap_update_stale_skip_count == 1
+    assert report.heap_update_version_mismatch_count == 1
+
+
+def test_linoo_priority_falls_back_to_stateful_objective() -> None:
+    """Objectives without a state-free projector should still receive node state."""
+    selector = _selector()
+    lower_state = SimpleNamespace(turn="solo", priority_bonus=0.0, evaluated=False)
+    higher_state = SimpleNamespace(turn="solo", priority_bonus=2.0, evaluated=False)
+    lower = _node(10, 1, score=1.0)
+    higher = _node(11, 1, score=0.5)
+    lower.state = lower_state
+    higher.state = higher_state
+    tree = _tree(
+        _node(0, 0, opened=True),
+        lower,
+        higher,
+        objective=_StatefulOnlyObjective(),
+    )
+
+    instructions = selector.choose_node_and_branch_to_open(
+        tree=tree,
+        latest_tree_expansions=TreeExpansions(),
+    )
+
+    assert _selected_node_id(instructions) == 11
+    assert lower_state.evaluated is True
+    assert higher_state.evaluated is True
+    report = selector.latest_selection_report
+    assert report is not None
+    assert report.heap_update_priority_state_free_count == 0
+    assert report.heap_update_priority_stateful_fallback_count == 2
 
 
 def test_linoo_checkpoint_payload_roundtrips_initialized_cache() -> None:

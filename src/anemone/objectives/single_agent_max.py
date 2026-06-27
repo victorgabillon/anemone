@@ -24,6 +24,10 @@ class SingleAgentMaxObjective[StateT: State = State]:
         del state
         return value.score
 
+    def evaluate_value_without_state(self, value: Value) -> float:
+        """Project one ``Value`` without materializing node state."""
+        return value.score
+
     def semantic_compare(self, left: Value, right: Value, state: StateT) -> int:
         """Compare child ``Value`` objects for this node's max objective semantics."""
         del state

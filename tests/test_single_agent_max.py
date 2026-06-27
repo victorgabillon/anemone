@@ -99,6 +99,13 @@ def _state() -> Any:
     return SimpleNamespace(turn=_SoloRole.SOLO, phase="single-agent")
 
 
+def test_single_agent_max_evaluates_value_without_state() -> None:
+    objective = SingleAgentMaxObjective()
+    value = Value(score=1.23, certainty=Certainty.ESTIMATE, over_event=None)
+
+    assert objective.evaluate_value_without_state(value) == 1.23
+
+
 def _node(
     *,
     node_id: int,

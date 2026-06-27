@@ -5,10 +5,15 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from heapq import heapify, heappop, heappush
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
+
+from anemone.node_evaluation.common.value_candidate import (
+    ValueCandidate,
+    ValueCandidateSource,
+)
 
 # Runtime import is intentional: parsley/get_type_hints() evaluates LinooArgs
 # annotations when Chipiron builds partial dataclasses.
@@ -79,6 +84,7 @@ class LinooSelectionReport:
     selected_depth: int
     selected_node_id: int
     selected_node_direct_value: float | None
+    selected_node_candidate_value: float | None
     selected_node_priority: float | None
     selected_node_rank: int
     ranked_candidate_count: int
@@ -105,6 +111,11 @@ class LinooSelectionReport:
     heap_update_signature_check_count: int | None = None
     heap_update_signature_recompute_count: int | None = None
     heap_update_version_mismatch_count: int | None = None
+    heap_update_priority_state_free_count: int | None = None
+    heap_update_priority_stateful_fallback_count: int | None = None
+    heap_update_candidate_direct_count: int | None = None
+    heap_update_candidate_tree_count: int | None = None
+    heap_update_candidate_unknown_count: int | None = None
     heap_update_total_heap_entries: int | None = None
     heap_update_max_heap_size: int | None = None
     heap_update_depth_count: int | None = None
@@ -252,6 +263,11 @@ class _LinooHeapUpdateDiagnostics:
     signature_check_count: int = 0
     signature_recompute_count: int = 0
     version_mismatch_count: int = 0
+    priority_state_free_count: int = 0
+    priority_stateful_fallback_count: int = 0
+    candidate_source_counts: dict[ValueCandidateSource, int] = field(
+        default_factory=dict
+    )
     total_heap_entries: int = 0
     max_heap_size: int = 0
     depth_count: int = 0
@@ -1006,12 +1022,15 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 )
                 if candidate.version != current_version:
                     continue
-                direct_value = self._direct_value_or_none(node)
-                if direct_value is None:
+                candidate_value = self._candidate_value_or_none(node)
+                if candidate_value is None:
                     continue
                 self._candidate_versions_by_node_id[node_id] = candidate.version
                 self._candidate_signature_by_node_id[node_id] = (
-                    self._candidate_signature(node=node, direct_value=direct_value)
+                    self._candidate_signature(
+                        node=node,
+                        candidate_value=candidate_value,
+                    )
                 )
                 self._candidate_heap_present_by_node_id[node_id] = True
                 heappush(
@@ -1179,7 +1198,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             return "opened"
         if node.tree_evaluation.has_exact_value():
             return "exact"
-        if self._direct_value_or_none(node) is None:
+        if self._candidate_value_or_none(node) is None:
             return "uncached_terminal_candidate"
         return "frontier"
 
@@ -1263,12 +1282,15 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         diagnostics: _LinooHeapUpdateDiagnostics,
     ) -> bool:
         """Push a heap entry when one node is new, changed, or reactivated."""
-        direct_value = self._require_direct_value(node)
+        candidate = self._require_candidate_value(node)
         node_id = node.id
         diagnostics.signature_check_count += 1
         diagnostics.signature_recompute_count += 1
         with self._diagnostic_phase("select.heap_update.signature"):
-            signature = self._candidate_signature(node=node, direct_value=direct_value)
+            signature = self._candidate_signature(
+                node=node,
+                candidate_value=candidate.value,
+            )
             previous_signature = self._candidate_signature_by_node_id.get(node_id)
             heap_entry_present = self._candidate_heap_present_by_node_id.get(
                 node_id,
@@ -1282,7 +1304,16 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             self._candidate_versions_by_node_id[node_id] = version
             self._candidate_signature_by_node_id[node_id] = signature
             self._candidate_heap_present_by_node_id[node_id] = True
-            priority = objective.evaluate_value(direct_value, node.state)
+            self._record_candidate_source(
+                source=candidate.source,
+                diagnostics=diagnostics,
+            )
+            priority = self._candidate_priority(
+                objective=objective,
+                value=candidate.value,
+                node=node,
+                diagnostics=diagnostics,
+            )
             heappush(
                 self._candidates_by_depth.setdefault(depth, []),
                 (-priority, node_id, version),
@@ -1487,7 +1518,10 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         return LinooSelectionReport(
             selected_depth=selected_depth,
             selected_node_id=selected_node.id,
-            selected_node_direct_value=self._require_direct_value(selected_node).score,
+            selected_node_direct_value=self._direct_value_score_or_none(selected_node),
+            selected_node_candidate_value=(
+                self._require_candidate_value(selected_node).value.score
+            ),
             selected_node_priority=selected_node_priority,
             selected_node_rank=selected_node_rank,
             ranked_candidate_count=ranked_candidate_count,
@@ -1520,6 +1554,30 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             heap_update_version_mismatch_count=(
                 heap_update_diagnostics.version_mismatch_count
             ),
+            heap_update_priority_state_free_count=(
+                heap_update_diagnostics.priority_state_free_count
+            ),
+            heap_update_priority_stateful_fallback_count=(
+                heap_update_diagnostics.priority_stateful_fallback_count
+            ),
+            heap_update_candidate_direct_count=(
+                heap_update_diagnostics.candidate_source_counts.get(
+                    ValueCandidateSource.DIRECT_SELF,
+                    0,
+                )
+            ),
+            heap_update_candidate_tree_count=(
+                heap_update_diagnostics.candidate_source_counts.get(
+                    ValueCandidateSource.TREE_CHILD,
+                    0,
+                )
+            ),
+            heap_update_candidate_unknown_count=(
+                heap_update_diagnostics.candidate_source_counts.get(
+                    ValueCandidateSource.NONE,
+                    0,
+                )
+            ),
             heap_update_total_heap_entries=(heap_update_diagnostics.total_heap_entries),
             heap_update_max_heap_size=heap_update_diagnostics.max_heap_size,
             heap_update_depth_count=heap_update_diagnostics.depth_count,
@@ -1550,11 +1608,82 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             raise _missing_direct_value_error(node.id)
         return direct_value
 
-    def _candidate_signature(self, *, node: NodeT, direct_value: Value) -> object:
+    def _direct_value_score_or_none(self, node: NodeT) -> float | None:
+        """Return direct score for observability without making it required."""
+        direct_value = self._direct_value_or_none(node)
+        return None if direct_value is None else direct_value.score
+
+    def _candidate_value_or_none(self, node: NodeT) -> Value | None:
+        """Return the effective search-facing value for one Linoo candidate."""
+        return self._candidate_value_candidate(node).value
+
+    def _require_candidate_value(self, node: NodeT) -> ValueCandidate:
+        """Return one node's effective candidate value or raise a clear error."""
+        candidate = self._candidate_value_candidate(node)
+        if candidate.value is None:
+            raise _missing_direct_value_error(node.id)
+        return candidate
+
+    def _candidate_value_candidate(self, node: NodeT) -> ValueCandidate:
+        """Return the source-aware effective candidate, falling back to direct."""
+        get_effective_value_candidate = getattr(
+            node.tree_evaluation,
+            "get_effective_value_candidate",
+            None,
+        )
+        if callable(get_effective_value_candidate):
+            candidate = get_effective_value_candidate()
+            if isinstance(candidate, ValueCandidate):
+                return candidate
+            value = getattr(candidate, "value", None)
+            source = getattr(candidate, "source", ValueCandidateSource.NONE)
+            if isinstance(source, str):
+                try:
+                    source = ValueCandidateSource(source)
+                except ValueError:
+                    source = ValueCandidateSource.NONE
+            if value is not None:
+                return ValueCandidate(value=value, source=source)
+            return ValueCandidate.none()
+
+        direct_value = self._direct_value_or_none(node)
+        if direct_value is None:
+            return ValueCandidate.none()
+        return ValueCandidate.direct(direct_value)
+
+    def _candidate_priority(
+        self,
+        *,
+        objective: SingleAgentMaxObjective[Any],
+        value: Value,
+        node: NodeT,
+        diagnostics: _LinooHeapUpdateDiagnostics,
+    ) -> float:
+        """Project candidate value using state-free objective hooks when available."""
+        state_free_evaluator = getattr(objective, "evaluate_value_without_state", None)
+        if callable(state_free_evaluator):
+            diagnostics.priority_state_free_count += 1
+            return state_free_evaluator(value)
+
+        diagnostics.priority_stateful_fallback_count += 1
+        return objective.evaluate_value(value, node.state)
+
+    def _record_candidate_source(
+        self,
+        *,
+        source: ValueCandidateSource,
+        diagnostics: _LinooHeapUpdateDiagnostics,
+    ) -> None:
+        """Count value provenance for heap-push diagnostics."""
+        diagnostics.candidate_source_counts[source] = (
+            diagnostics.candidate_source_counts.get(source, 0) + 1
+        )
+
+    def _candidate_signature(self, *, node: NodeT, candidate_value: Value) -> object:
         """Return the cheap invalidation signature for one heap candidate."""
         return (
             id(node),
-            direct_value,
+            candidate_value,
             node.all_branches_generated,
             node.tree_evaluation.has_exact_value(),
             self._is_terminal_node(node),
