@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 import anemone.checkpoints.load as checkpoint_load_module
-import anemone.checkpoints.sharded as sharded_module
+import anemone.checkpoints.sharded_restore as sharded_restore_module
 from anemone.checkpoints import (
     CHECKPOINT_FORMAT_VERSION,
     SHARDED_CHECKPOINT_FORMAT_VERSION,
@@ -39,8 +39,8 @@ from anemone.checkpoints import (
     write_sharded_checkpoint_manifest,
     write_sharded_search_checkpoint,
 )
-from anemone.checkpoints.sharded import (
-    _iter_jsonl_shard_record_batches,
+from anemone.checkpoints.sharded_io import _iter_jsonl_shard_record_batches
+from anemone.checkpoints.sharded_restore import (
     _load_incremental_node_shells,
     _load_split_incremental_node_shells,
     _ShardedNodeShell,
@@ -596,7 +596,11 @@ def test_split_node_runtime_restore_processes_bounded_batches(
         batch_sizes.append(len(batch))
         original_link_nodes(batch, nodes_by_id=nodes_by_id)
 
-    monkeypatch.setattr(sharded_module, "_DEFAULT_NODE_RUNTIME_RESTORE_BATCH_SIZE", 1)
+    monkeypatch.setattr(
+        sharded_restore_module,
+        "_DEFAULT_NODE_RUNTIME_RESTORE_BATCH_SIZE",
+        1,
+    )
     monkeypatch.setattr(checkpoint_load_module, "_link_nodes", tracking_link_nodes)
 
     load_search_from_sharded_checkpoint(
@@ -692,7 +696,7 @@ def test_split_incremental_shell_pass_does_not_read_node_runtime_shards(
     state_payload_shards = [
         shard for shard in manifest.shards if shard.kind == "state_payloads"
     ]
-    original_reader = sharded_module._read_jsonl_shard_records
+    original_reader = sharded_restore_module._read_jsonl_shard_records
     read_kinds: list[str] = []
 
     def tracking_reader(
@@ -705,7 +709,7 @@ def test_split_incremental_shell_pass_does_not_read_node_runtime_shards(
         return original_reader(checkpoint_dir, shard)
 
     monkeypatch.setattr(
-        sharded_module,
+        sharded_restore_module,
         "_read_jsonl_shard_records",
         tracking_reader,
     )
