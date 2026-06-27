@@ -34,14 +34,14 @@ from anemone.checkpoints import (
 from anemone.checkpoints.build import (
     _delta_reuse_matches_parent,
 )
-from anemone.checkpoints.load import _checkpoint_summary_tag
-from anemone.checkpoints.load import _create_state_resolver
+from anemone.checkpoints.load import _checkpoint_summary_tag, _create_state_resolver
 from anemone.checkpoints.state_handles import (
     CheckpointBackedStateHandle,
     CheckpointStateResolver,
     DenseCheckpointPayloadStore,
     DictCheckpointPayloadStore,
     checkpoint_payload_for_reuse_or_none,
+    payload_for_node_id_or_none,
 )
 from anemone.checkpoints.value_serialization import (
     serialize_checkpoint_atom,
@@ -763,6 +763,32 @@ def _contains_subsequence(
     """Return whether ``expected`` appears in order within ``items``."""
     item_iter = iter(items)
     return all(any(item == candidate for item in item_iter) for candidate in expected)
+
+
+def test_checkpoint_state_resolver_payload_lookup_does_not_resolve_state() -> None:
+    """Payload lookup should read raw payloads without materializing states."""
+    codec = _FakeIncrementalStateCheckpointCodec(_CHILDREN_BY_ID)
+    payload = AnchorCheckpointStatePayload(
+        anchor_ref=codec.dump_anchor_ref(
+            _ConcreteFakeYamlState(
+                node_id=1,
+                children_by_id=_CHILDREN_BY_ID,
+                turn=Color.WHITE,
+            )
+        ),
+        state_summary=_FakeCheckpointStateSummary(tag=1, node_id=1),
+    )
+    resolver = CheckpointStateResolver(
+        state_codec=codec,
+        state_payloads_by_node_id={1: payload},
+    )
+
+    assert resolver.payload_for_node_id_or_none(1) is payload
+    assert resolver.payload_for_node_id_or_none(999) is None
+    assert payload_for_node_id_or_none(resolver, 1) is payload
+    assert payload_for_node_id_or_none(resolver, 999) is None
+    assert codec.loaded_anchor_node_ids == []
+    assert codec.applied_delta_items == []
 
 
 def test_checkpoint_state_resolver_materializes_states_lazily_and_caches() -> None:

@@ -77,6 +77,7 @@ from .state_handles import (
     CheckpointStateResolver,
     DenseCheckpointPayloadStore,
     DictCheckpointPayloadStore,
+    payload_for_node_id_or_none,
 )
 from .value_serialization import (
     CheckpointAtom,
@@ -155,6 +156,7 @@ __all__ = [
     "load_search_from_sharded_checkpoint",
     "load_sharded_search_checkpoint",
     "parse_generation_checkpoint_name",
+    "payload_for_node_id_or_none",
     "read_sharded_checkpoint_manifest",
     "resolve_latest_generation_checkpoint_path",
     "serialize_checkpoint_atom",

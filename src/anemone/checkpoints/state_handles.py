@@ -121,6 +121,15 @@ class CheckpointStateResolver[StateT: State = State]:
         """Return the raw checkpoint payload for one restored node id."""
         return self.state_payloads_by_node_id[node_id]
 
+    def payload_for_node_id_or_none(
+        self, node_id: int
+    ) -> CheckpointNodeStatePayload | None:
+        """Return the raw checkpoint payload for one node id, if present."""
+        try:
+            return self.payload_for_node_id(node_id)
+        except KeyError:
+            return None
+
     def resolve(self, node_id: int) -> StateT:
         """Return one checkpointed state, decoding it only once."""
         resolved_state = self._resolved_states.get(node_id)
@@ -190,7 +199,13 @@ class CheckpointBackedStateHandle[StateT: State = State]:
         self,
     ) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload | None:
         """Return the original checkpoint payload when this handle still owns one."""
-        return self.resolver.state_payloads_by_node_id.get(self.node_id)
+        payload = payload_for_node_id_or_none(self.resolver, self.node_id)
+        if isinstance(
+            payload,
+            AnchorCheckpointStatePayload | DeltaCheckpointStatePayload,
+        ):
+            return payload
+        return None
 
 
 def checkpoint_payload_for_reuse_or_none(
@@ -202,6 +217,31 @@ def checkpoint_payload_for_reuse_or_none(
     return handle.checkpoint_payload_for_reuse_or_none()
 
 
+def payload_for_node_id_or_none(
+    resolver: object,
+    node_id: int,
+) -> object | None:
+    """Return a raw checkpoint payload without resolving concrete state."""
+    optional_lookup = getattr(resolver, "payload_for_node_id_or_none", None)
+    if callable(optional_lookup):
+        try:
+            return optional_lookup(node_id)
+        except KeyError:
+            return None
+
+    strict_lookup = getattr(resolver, "payload_for_node_id", None)
+    if callable(strict_lookup):
+        try:
+            return strict_lookup(node_id)
+        except KeyError:
+            return None
+
+    payloads_by_node_id = getattr(resolver, "state_payloads_by_node_id", None)
+    if isinstance(payloads_by_node_id, Mapping):
+        return payloads_by_node_id.get(node_id)
+    return None
+
+
 __all__ = [
     "CheckpointBackedStateHandle",
     "CheckpointPayloadStore",
@@ -210,4 +250,5 @@ __all__ = [
     "DenseCheckpointPayloadStore",
     "DictCheckpointPayloadStore",
     "checkpoint_payload_for_reuse_or_none",
+    "payload_for_node_id_or_none",
 ]
