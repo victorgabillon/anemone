@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import replace
-from heapq import heapify, heappop, heappush
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
 
@@ -23,6 +22,9 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
 
 from .candidate_heap import (
+    LinooCandidateHeap as _LinooCandidateHeap,
+)
+from .candidate_heap import (
     LinooHeapEntry as _LinooHeapEntry,
 )
 from .candidate_heap import (
@@ -30,6 +32,17 @@ from .candidate_heap import (
 )
 from .candidate_heap import (
     LinooRankedCandidate as _LinooRankedCandidate,
+)
+from .checkpoint_state import (
+    candidate_payloads_from_cache,
+    depth_stats_from_tree_and_node_states,
+    depth_stats_match_payload,
+    depth_stats_payload_from_cache,
+    frontier_ids_from_node_states,
+    node_states_payload_from_cache,
+    payload_last_selected_node_id,
+    restore_candidate_payloads,
+    restore_node_states_from_payload,
 )
 from .depth_policy import (
     choose_depth,
@@ -73,9 +86,6 @@ from .types import (
     LINOO_DEFAULT_NODE_STATUS as _LINOO_DEFAULT_NODE_STATUS,
 )
 from .types import (
-    LINOO_NODE_STATUSES as _LINOO_NODE_STATUSES,
-)
-from .types import (
     LinooArgs,
     LinooDepthSelectionPolicy,
 )
@@ -103,12 +113,7 @@ if TYPE_CHECKING:
 
     from anemone import tree_manager as tree_man
     from anemone import trees
-    from anemone.checkpoints.payloads import (
-        LinooCandidatesByDepthCheckpointPayload,
-        LinooDepthStatsCheckpointPayload,
-        LinooNodeStateCheckpointPayload,
-        LinooSelectorCheckpointPayload,
-    )
+    from anemone.checkpoints.payloads import LinooSelectorCheckpointPayload
 
 
 class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
@@ -134,6 +139,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     _candidate_versions_by_node_id: dict[int, int]
     _candidate_signature_by_node_id: dict[int, object]
     _candidate_heap_present_by_node_id: dict[int, bool]
+    _candidate_heap: _LinooCandidateHeap
     _cache_tree_identity: int | None
     _cache_objective_identity: int | None
     _cache_initialized: bool
@@ -159,10 +165,17 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._depth_stats_by_depth = {}
         self._frontier_node_ids_by_depth = {}
         self._node_state_by_id = {}
-        self._candidates_by_depth = {}
-        self._candidate_versions_by_node_id = {}
-        self._candidate_signature_by_node_id = {}
-        self._candidate_heap_present_by_node_id = {}
+        self._candidate_heap = _LinooCandidateHeap()
+        self._candidates_by_depth = self._candidate_heap.candidates_by_depth
+        self._candidate_versions_by_node_id = (
+            self._candidate_heap.candidate_versions_by_node_id
+        )
+        self._candidate_signature_by_node_id = (
+            self._candidate_heap.candidate_signature_by_node_id
+        )
+        self._candidate_heap_present_by_node_id = (
+            self._candidate_heap.candidate_heap_present_by_node_id
+        )
         self._cache_tree_identity = None
         self._cache_objective_identity = None
         self._cache_initialized = False
@@ -214,9 +227,13 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         if not self._cache_initialized:
             return None
         return LinooSelectorCheckpointPayload(
-            depth_stats=self._depth_stats_payload_from_cache(),
-            node_states=self._node_states_payload_from_cache(),
-            candidates_by_depth=self._candidate_payloads_from_cache(),
+            depth_stats=depth_stats_payload_from_cache(self._depth_stats_by_depth),
+            node_states=node_states_payload_from_cache(self._node_state_by_id),
+            candidates_by_depth=candidate_payloads_from_cache(
+                candidates_by_depth=self._candidates_by_depth,
+                node_state_by_id=self._node_state_by_id,
+                candidate_versions_by_node_id=self._candidate_versions_by_node_id,
+            ),
             last_selected_node_id=self._last_selected_node_id,
         )
 
@@ -236,20 +253,21 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             return False
         nodes_by_id = self._nodes_by_id_from_tree(tree)
         try:
-            node_states = self._restore_node_states_from_payload(
+            node_states = restore_node_states_from_payload(
                 tree=tree,
                 nodes_by_id=nodes_by_id,
                 payload=payload,
+                classify_node=self._classify_node,
             )
-            depth_stats = self._depth_stats_from_tree_and_node_states(
+            depth_stats = depth_stats_from_tree_and_node_states(
                 tree=tree,
                 nodes_by_id=nodes_by_id,
                 node_states=node_states,
             )
-            if not self._depth_stats_match_payload(depth_stats, payload.depth_stats):
+            if not depth_stats_match_payload(depth_stats, payload.depth_stats):
                 raise _invalid_linoo_checkpoint_payload_error()
-            frontier_node_ids = self._frontier_ids_from_node_states(node_states)
-            last_selected_node_id = self._payload_last_selected_node_id(payload)
+            frontier_node_ids = frontier_ids_from_node_states(node_states)
+            last_selected_node_id = payload_last_selected_node_id(payload)
             if (
                 last_selected_node_id is not None
                 and last_selected_node_id not in nodes_by_id
@@ -267,10 +285,17 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._cache_objective_identity = id(objective)
         self._cache_initialized = True
         self._last_selected_node_id = last_selected_node_id
-        self._restore_candidate_payloads(
+        restore_candidate_payloads(
             tree=tree,
             payload=payload,
             nodes_by_id=nodes_by_id,
+            node_state_by_id=self._node_state_by_id,
+            candidate_heap=self._candidate_heap,
+            candidate_value_or_none=self._candidate_value_or_none,
+            candidate_signature=lambda node, value: self._candidate_signature(
+                node=node,
+                candidate_value=value,
+            ),
         )
         return True
 
@@ -318,16 +343,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         choose_depth_s = perf_counter() - choose_depth_started_at
         heap_update_started_at = perf_counter()
         with self._diagnostic_phase("select.heap_update"):
-            heap_update_diagnostics = _LinooHeapUpdateDiagnostics(
-                depth_count=len(self._candidates_by_depth),
-                total_heap_entries=sum(
-                    len(heap) for heap in self._candidates_by_depth.values()
-                ),
-                max_heap_size=max(
-                    (len(heap) for heap in self._candidates_by_depth.values()),
-                    default=0,
-                ),
-            )
+            heap_update_diagnostics = self._candidate_heap.make_update_diagnostics()
             selected_depth_frontier_nodes = self._frontier_nodes_at_depth(
                 tree=tree,
                 nodes_by_id=nodes_by_id,
@@ -468,10 +484,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._depth_stats_by_depth.clear()
         self._frontier_node_ids_by_depth.clear()
         self._node_state_by_id.clear()
-        self._candidates_by_depth.clear()
-        self._candidate_versions_by_node_id.clear()
-        self._candidate_signature_by_node_id.clear()
-        self._candidate_heap_present_by_node_id.clear()
+        self._candidate_heap.clear()
         self._cache_initialized = False
         self._cache_tree_identity = None
         self._cache_objective_identity = None
@@ -525,291 +538,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             for absolute_tree_depth in tree.descendants
             for node in tree.descendants[absolute_tree_depth].values()
         }
-
-    def _depth_stats_payload_from_cache(
-        self,
-    ) -> list[LinooDepthStatsCheckpointPayload]:
-        """Serialize cached depth stats in stable depth order."""
-        from anemone.checkpoints.payloads import (  # pylint: disable=import-outside-toplevel
-            LinooDepthStatsCheckpointPayload,
-        )
-
-        return [
-            LinooDepthStatsCheckpointPayload(
-                depth=depth,
-                total_nodes=stats.total_nodes,
-                opened_count=stats.opened_count,
-                frontier_count=stats.frontier_count,
-                terminal_count=stats.terminal_count,
-                exact_count=stats.exact_count,
-                uncached_terminal_candidates=stats.uncached_terminal_candidates,
-                non_openable_count=stats.non_openable_count,
-            )
-            for depth, stats in sorted(self._depth_stats_by_depth.items())
-        ]
-
-    def _node_states_payload_from_cache(
-        self,
-    ) -> list[LinooNodeStateCheckpointPayload]:
-        """Serialize cached node classifications without live node objects."""
-        from anemone.checkpoints.payloads import (  # pylint: disable=import-outside-toplevel
-            LinooNodeStateCheckpointPayload,
-        )
-
-        return [
-            LinooNodeStateCheckpointPayload(
-                node_id=node_id,
-                depth=node_state.depth,
-                status=node_state.status,
-            )
-            for node_id, node_state in sorted(self._node_state_by_id.items())
-        ]
-
-    def _candidate_payloads_from_cache(
-        self,
-    ) -> list[LinooCandidatesByDepthCheckpointPayload]:
-        """Serialize non-stale candidate heap entries without mutating heaps."""
-        from anemone.checkpoints.payloads import (  # pylint: disable=import-outside-toplevel
-            LinooCandidateCheckpointPayload,
-            LinooCandidatesByDepthCheckpointPayload,
-        )
-
-        payloads: list[LinooCandidatesByDepthCheckpointPayload] = []
-        for depth, heap in sorted(self._candidates_by_depth.items()):
-            candidates = [
-                LinooCandidateCheckpointPayload(
-                    node_id=node_id,
-                    depth=depth,
-                    priority=-priority_key,
-                    version=version,
-                )
-                for priority_key, node_id, version in heap
-                if self._should_serialize_candidate(
-                    depth=depth,
-                    node_id=node_id,
-                    version=version,
-                )
-            ]
-            if candidates:
-                payloads.append(
-                    LinooCandidatesByDepthCheckpointPayload(
-                        depth=depth,
-                        candidates=sorted(
-                            candidates,
-                            key=lambda candidate: (
-                                -candidate.priority,
-                                candidate.node_id,
-                                candidate.version,
-                            ),
-                        ),
-                    )
-                )
-        return payloads
-
-    def _should_serialize_candidate(
-        self,
-        *,
-        depth: int,
-        node_id: int,
-        version: int,
-    ) -> bool:
-        """Return whether one heap entry is current enough to checkpoint."""
-        node_state = self._node_state_or_none(node_id)
-        return (
-            node_state is not None
-            and node_state.status == "frontier"
-            and node_state.depth == depth
-            and version == self._candidate_versions_by_node_id.get(node_id, 0)
-        )
-
-    def _coerce_node_id(self, node_or_id: object) -> int:
-        """Return one node id from an int or a legacy node-bearing field."""
-        if isinstance(node_or_id, int):
-            return node_or_id
-        node_id = getattr(node_or_id, "id", None)
-        if isinstance(node_id, int):
-            return node_id
-        raise _invalid_linoo_checkpoint_payload_error()
-
-    def _payload_node_id(self, payload: object) -> int:
-        """Return one payload node id, accepting legacy node-bearing schemas."""
-        node_id = getattr(payload, "node_id", None)
-        if isinstance(node_id, int):
-            return node_id
-        legacy_node = getattr(payload, "node", None)
-        if legacy_node is not None:
-            return self._coerce_node_id(legacy_node)
-        raise _invalid_linoo_checkpoint_payload_error()
-
-    def _payload_last_selected_node_id(
-        self,
-        payload: LinooSelectorCheckpointPayload,
-    ) -> int | None:
-        """Return the last-selected id, accepting legacy node-bearing payloads."""
-        last_selected_node_id = getattr(payload, "last_selected_node_id", None)
-        if last_selected_node_id is None:
-            legacy_last_selected = getattr(payload, "last_selected_node", None)
-            if legacy_last_selected is None:
-                return None
-            return self._coerce_node_id(legacy_last_selected)
-        return self._coerce_node_id(last_selected_node_id)
-
-    def _restore_node_states_from_payload(
-        self,
-        *,
-        tree: trees.Tree[NodeT],
-        nodes_by_id: dict[int, NodeT],
-        payload: LinooSelectorCheckpointPayload,
-    ) -> dict[int, _LinooNodeState]:
-        """Restore and validate cached node states from payload."""
-        node_states: dict[int, _LinooNodeState] = {}
-        seen_node_ids: set[int] = set()
-        for node_payload in payload.node_states:
-            node_id = self._payload_node_id(node_payload)
-            if node_id in seen_node_ids:
-                raise _invalid_linoo_checkpoint_payload_error()
-            seen_node_ids.add(node_id)
-            if node_payload.status not in _LINOO_NODE_STATUSES:
-                raise _invalid_linoo_checkpoint_payload_error()
-            node = nodes_by_id[node_id]
-            depth = tree.node_depth(node)
-            if node_payload.depth != depth:
-                raise _invalid_linoo_checkpoint_payload_error()
-            status = self._classify_node(node)
-            if node_payload.status != status:
-                raise _invalid_linoo_checkpoint_payload_error()
-            self._set_restored_node_state_if_non_default(
-                node_states=node_states,
-                node_id=node_id,
-                state=_LinooNodeState(
-                    node_id=node_id,
-                    depth=depth,
-                    status=status,
-                ),
-            )
-        for node_id, node in nodes_by_id.items():
-            if node_id in seen_node_ids:
-                continue
-            status = self._classify_node(node)
-            if status != _LINOO_DEFAULT_NODE_STATUS:
-                raise _invalid_linoo_checkpoint_payload_error()
-        return node_states
-
-    def _set_restored_node_state_if_non_default(
-        self,
-        *,
-        node_states: dict[int, _LinooNodeState],
-        node_id: int,
-        state: _LinooNodeState,
-    ) -> None:
-        """Store one restored state only when absence cannot represent it."""
-        if state.is_default():
-            node_states.pop(node_id, None)
-            return
-        node_states[node_id] = state
-
-    def _depth_stats_from_tree_and_node_states(
-        self,
-        *,
-        tree: trees.Tree[NodeT],
-        nodes_by_id: dict[int, NodeT],
-        node_states: dict[int, _LinooNodeState],
-    ) -> dict[int, _LinooDepthStats]:
-        """Rebuild depth accounting, treating missing node states as opened."""
-        depth_stats_by_depth: dict[int, _LinooDepthStats] = {}
-        for node_id, node in nodes_by_id.items():
-            node_state = node_states.get(node_id)
-            if node_state is None:
-                node_state = _LinooNodeState(
-                    node_id=node_id,
-                    depth=tree.node_depth(node),
-                    status=_LINOO_DEFAULT_NODE_STATUS,
-                )
-            stats = depth_stats_by_depth.setdefault(
-                node_state.depth,
-                _LinooDepthStats(),
-            )
-            stats.total_nodes += 1
-            stats.increment(node_state.status)
-        return depth_stats_by_depth
-
-    def _depth_stats_match_payload(
-        self,
-        depth_stats_by_depth: dict[int, _LinooDepthStats],
-        payloads: list[LinooDepthStatsCheckpointPayload],
-    ) -> bool:
-        """Return whether restored depth stats exactly match payload stats."""
-        payload_by_depth = {payload.depth: payload for payload in payloads}
-        if set(payload_by_depth) != set(depth_stats_by_depth):
-            return False
-        return all(
-            stats.total_nodes == payload_by_depth[depth].total_nodes
-            and stats.opened_count == payload_by_depth[depth].opened_count
-            and stats.frontier_count == payload_by_depth[depth].frontier_count
-            and stats.terminal_count == payload_by_depth[depth].terminal_count
-            and stats.exact_count == payload_by_depth[depth].exact_count
-            and stats.uncached_terminal_candidates
-            == payload_by_depth[depth].uncached_terminal_candidates
-            and stats.non_openable_count == payload_by_depth[depth].non_openable_count
-            for depth, stats in depth_stats_by_depth.items()
-        )
-
-    def _frontier_ids_from_node_states(
-        self,
-        node_states: dict[int, _LinooNodeState],
-    ) -> dict[int, set[int]]:
-        """Rebuild frontier id buckets from restored node states."""
-        frontier_ids_by_depth: dict[int, set[int]] = {}
-        for node_id, node_state in node_states.items():
-            if node_state.status == "frontier":
-                frontier_ids_by_depth.setdefault(node_state.depth, set()).add(node_id)
-        return frontier_ids_by_depth
-
-    def _restore_candidate_payloads(
-        self,
-        *,
-        tree: trees.Tree[NodeT],
-        payload: LinooSelectorCheckpointPayload,
-        nodes_by_id: dict[int, NodeT],
-    ) -> None:
-        """Restore valid candidate heap entries and discard stale ones."""
-        for depth_payload in payload.candidates_by_depth:
-            for candidate in depth_payload.candidates:
-                node_id = self._payload_node_id(candidate)
-                if candidate.depth != depth_payload.depth:
-                    continue
-                node = nodes_by_id.get(node_id)
-                if node is None:
-                    continue
-                node_state = self._node_state_by_id.get(node_id)
-                if (
-                    node_state is None
-                    or node_state.status != "frontier"
-                    or node_state.depth != candidate.depth
-                    or tree.node_depth(node) != candidate.depth
-                ):
-                    continue
-                current_version = self._candidate_versions_by_node_id.get(
-                    node_id,
-                    candidate.version,
-                )
-                if candidate.version != current_version:
-                    continue
-                candidate_value = self._candidate_value_or_none(node)
-                if candidate_value is None:
-                    continue
-                self._candidate_versions_by_node_id[node_id] = candidate.version
-                self._candidate_signature_by_node_id[node_id] = (
-                    self._candidate_signature(
-                        node=node,
-                        candidate_value=candidate_value,
-                    )
-                )
-                self._candidate_heap_present_by_node_id[node_id] = True
-                heappush(
-                    self._candidates_by_depth.setdefault(candidate.depth, []),
-                    (-candidate.priority, node_id, candidate.version),
-                )
 
     def _rebuild_runtime_state(
         self,
@@ -977,10 +705,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def _mark_candidate_stale(self, node_id: int) -> None:
         """Invalidate existing heap entries for one node lazily."""
-        self._candidate_versions_by_node_id[node_id] = (
-            self._candidate_versions_by_node_id.get(node_id, 0) + 1
-        )
-        self._candidate_heap_present_by_node_id[node_id] = False
+        self._candidate_heap.mark_stale(node_id)
 
     def _tree_node_count(self, tree: trees.Tree[NodeT]) -> int | None:
         """Return the tree's known node count, when exposed by the tree object."""
@@ -1030,22 +755,32 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         diagnostics: _LinooHeapUpdateDiagnostics,
     ) -> int:
         """Update cached heap entries for the selected depth only."""
-        registered_count = 0
-        diagnostics.candidate_count += len(nodes)
-        for node in nodes:
-            if self._register_frontier_candidate(
-                depth=depth,
+        return self._candidate_heap.register_frontier_candidates(
+            depth=depth,
+            nodes=nodes,
+            objective=objective,
+            diagnostics=diagnostics,
+            require_candidate_value=self._require_candidate_value,
+            candidate_signature=lambda node, value: self._candidate_signature(
                 node=node,
-                objective=objective,
-                diagnostics=diagnostics,
-            ):
-                registered_count += 1
-        heap_size = len(self._candidates_by_depth.setdefault(depth, []))
-        diagnostics.total_heap_entries = sum(
-            len(heap) for heap in self._candidates_by_depth.values()
+                candidate_value=value,
+            ),
+            candidate_priority=lambda objective_, value, node, diagnostics_: (
+                self._candidate_priority(
+                    objective=objective_,
+                    value=value,
+                    node=node,
+                    diagnostics=diagnostics_,
+                )
+            ),
+            record_candidate_source=lambda source, diagnostics_: (
+                self._record_candidate_source(
+                    source=source,
+                    diagnostics=diagnostics_,
+                )
+            ),
+            diagnostic_phase=self._diagnostic_phase,
         )
-        diagnostics.max_heap_size = max(diagnostics.max_heap_size, heap_size)
-        return registered_count
 
     def _register_frontier_candidate(
         self,
@@ -1056,49 +791,32 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         diagnostics: _LinooHeapUpdateDiagnostics,
     ) -> bool:
         """Push a heap entry when one node is new, changed, or reactivated."""
-        candidate = self._require_candidate_value(node)
-        candidate_value = cast("Value", candidate.value)
-        node_id = node.id
-        diagnostics.signature_check_count += 1
-        diagnostics.signature_recompute_count += 1
-        with self._diagnostic_phase("select.heap_update.signature"):
-            signature = self._candidate_signature(
+        return self._candidate_heap.register_frontier_candidate(
+            depth=depth,
+            node=node,
+            objective=objective,
+            diagnostics=diagnostics,
+            require_candidate_value=self._require_candidate_value,
+            candidate_signature=lambda node, value: self._candidate_signature(
                 node=node,
-                candidate_value=candidate_value,
-            )
-            previous_signature = self._candidate_signature_by_node_id.get(node_id)
-            heap_entry_present = self._candidate_heap_present_by_node_id.get(
-                node_id,
-                False,
-            )
-        if previous_signature == signature and heap_entry_present:
-            return False
-
-        with self._diagnostic_phase("select.heap_update.push"):
-            version = self._candidate_versions_by_node_id.get(node_id, 0) + 1
-            self._candidate_versions_by_node_id[node_id] = version
-            self._candidate_signature_by_node_id[node_id] = signature
-            self._candidate_heap_present_by_node_id[node_id] = True
-            self._record_candidate_source(
-                source=candidate.source,
-                diagnostics=diagnostics,
-            )
-            priority = self._candidate_priority(
-                objective=objective,
-                value=candidate_value,
-                node=node,
-                diagnostics=diagnostics,
-            )
-            heappush(
-                self._candidates_by_depth.setdefault(depth, []),
-                (-priority, node_id, version),
-            )
-            diagnostics.push_count += 1
-            diagnostics.max_heap_size = max(
-                diagnostics.max_heap_size,
-                len(self._candidates_by_depth.setdefault(depth, [])),
-            )
-        return True
+                candidate_value=value,
+            ),
+            candidate_priority=lambda objective_, value, node, diagnostics_: (
+                self._candidate_priority(
+                    objective=objective_,
+                    value=value,
+                    node=node,
+                    diagnostics=diagnostics_,
+                )
+            ),
+            record_candidate_source=lambda source, diagnostics_: (
+                self._record_candidate_source(
+                    source=source,
+                    diagnostics=diagnostics_,
+                )
+            ),
+            diagnostic_phase=self._diagnostic_phase,
+        )
 
     def _rank_valid_candidates_at_depth(
         self,
@@ -1109,60 +827,20 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         diagnostics: _LinooHeapUpdateDiagnostics | None = None,
     ) -> tuple[list[_LinooRankedCandidate], int]:
         """Return valid candidates sorted by priority, compacting stale heap entries."""
-        heap = self._candidates_by_depth.setdefault(depth, [])
-        if diagnostics is not None:
-            diagnostics.max_heap_size = max(diagnostics.max_heap_size, len(heap))
-        stale_candidates_skipped = 0
-        valid_entries_by_node_id: dict[int, _LinooHeapEntry] = {}
-        while heap:
-            with self._diagnostic_phase("select.heap_update.pop"):
-                priority_key, node_id, version = heappop(heap)
-            if diagnostics is not None:
-                diagnostics.pop_count += 1
-            with self._diagnostic_phase("select.heap_update.stale_check"):
-                current_version = self._candidate_versions_by_node_id.get(node_id)
-                if version != current_version:
-                    stale_candidates_skipped += 1
-                    if diagnostics is not None:
-                        diagnostics.stale_skip_count += 1
-                        diagnostics.version_mismatch_count += 1
-                    continue
-
-                if not self._is_current_frontier_candidate(
+        return self._candidate_heap.rank_valid_candidates_at_depth(
+            depth=depth,
+            frontier_node_ids=self._frontier_node_ids_by_depth.get(depth, set()),
+            is_current_frontier_candidate=lambda node_id, expected_depth: (
+                self._is_current_frontier_candidate(
                     tree=tree,
                     nodes_by_id=nodes_by_id,
                     node_id=node_id,
-                    expected_depth=depth,
-                ):
-                    self._candidate_heap_present_by_node_id[node_id] = False
-                    stale_candidates_skipped += 1
-                    if diagnostics is not None:
-                        diagnostics.stale_skip_count += 1
-                    continue
-
-            valid_entries_by_node_id[node_id] = (priority_key, node_id, version)
-
-        compacted_heap = list(valid_entries_by_node_id.values())
-        for node_id in tuple(self._frontier_node_ids_by_depth.get(depth, set())):
-            self._candidate_heap_present_by_node_id[node_id] = (
-                node_id in valid_entries_by_node_id
-            )
-        self._candidates_by_depth[depth] = compacted_heap
-        heapify(self._candidates_by_depth[depth])
-        if diagnostics is not None:
-            diagnostics.total_heap_entries = sum(
-                len(heap_entries) for heap_entries in self._candidates_by_depth.values()
-            )
-            diagnostics.max_heap_size = max(
-                diagnostics.max_heap_size,
-                len(self._candidates_by_depth[depth]),
-            )
-
-        ranked_candidates = sorted(
-            compacted_heap,
-            key=lambda entry: (entry[0], entry[1]),
+                    expected_depth=expected_depth,
+                )
+            ),
+            diagnostic_phase=self._diagnostic_phase,
+            diagnostics=diagnostics,
         )
-        return ranked_candidates, stale_candidates_skipped
 
     def _choose_zipf_node_at_depth(
         self,

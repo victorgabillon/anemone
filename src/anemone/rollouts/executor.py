@@ -17,6 +17,16 @@ from anemone.tree_manager.opening_expansion_budget import reserve_branch_opening
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
 from .action_selector import RolloutDecisionContext
+from .node_status import (
+    exact_value_status,
+    inverse_optional_bool,
+    no_legal_actions_but_not_terminal,
+    non_opened_branch_count,
+    report_terminal_status,
+    rollout_node_depth,
+    rollout_node_id,
+    rollout_stop_terminal_status,
+)
 from .report import (
     RolloutExpansionReport,
     RolloutExpansionReportBuilder,
@@ -343,7 +353,7 @@ class RolloutOpeningExpansionExecutor[
 
 def _is_terminal_node(node_to_check: node.ITreeNode[Any]) -> bool:
     """Return whether the pre-existing rollout stop API marks the node terminal."""
-    terminal = _rollout_stop_terminal_status(node_to_check)
+    terminal = rollout_stop_terminal_status(node_to_check)
     return bool(terminal) if terminal is not None else False
 
 
@@ -374,138 +384,30 @@ def _rollout_path_report(
     """Build a stable public report for one rollout path."""
     initial_edge_count = 1
     total_edge_count = initial_edge_count + extra_edge_count
-    end_is_terminal = _terminal_status(end_node)
+    end_is_terminal = report_terminal_status(end_node)
     return RolloutPathReport(
-        start_node_id=_node_id(start_node),
-        start_depth=_node_depth(tree=tree, node_to_check=start_node),
-        end_node_id=_node_id(end_node),
-        end_depth=_node_depth(tree=tree, node_to_check=end_node),
+        start_node_id=rollout_node_id(start_node),
+        start_depth=rollout_node_depth(tree=tree, node_to_check=start_node),
+        end_node_id=rollout_node_id(end_node),
+        end_depth=rollout_node_depth(tree=tree, node_to_check=end_node),
         initial_edge_count=initial_edge_count,
         extra_edge_count=extra_edge_count,
         traversal_count=traversal_count,
         total_edge_count=total_edge_count,
         stop_reason=stop_reason.value,
         end_is_terminal=end_is_terminal,
-        end_is_exact=_exact_status(end_node),
+        end_is_exact=exact_value_status(end_node),
         end_legal_action_count=end_legal_action_count,
         end_openable_action_count=end_openable_action_count,
         end_opened_action_count=end_opened_action_count,
-        end_non_opened_branch_count=_non_opened_branch_count(end_node),
-        end_was_existing_node=_inverse_optional_bool(end_created_node),
+        end_non_opened_branch_count=non_opened_branch_count(end_node),
+        end_was_existing_node=inverse_optional_bool(end_created_node),
         end_was_created_node=end_created_node,
-        no_legal_actions_but_not_terminal=_no_legal_actions_but_not_terminal(
+        no_legal_actions_but_not_terminal=no_legal_actions_but_not_terminal(
             stop_reason=stop_reason,
             end_is_terminal=end_is_terminal,
         ),
     )
-
-
-def _node_id(node_to_check: node.ITreeNode[Any]) -> str | None:
-    """Return a stable string node id when exposed by the node."""
-    node_id = getattr(node_to_check, "id", None)
-    return None if node_id is None else str(node_id)
-
-
-def _node_depth(
-    *,
-    tree: trees.Tree[node.ITreeNode[Any]],
-    node_to_check: node.ITreeNode[Any],
-) -> int | None:
-    """Return the node depth through the tree API when available."""
-    node_depth = getattr(tree, "node_depth", None)
-    if callable(node_depth):
-        depth = node_depth(node_to_check)
-        return depth if isinstance(depth, int) else None
-    depth = getattr(node_to_check, "tree_depth", None)
-    return depth if isinstance(depth, int) else None
-
-
-def _terminal_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
-    """Return report terminal status from cheap node, state, or evaluation APIs."""
-    known_false = False
-
-    is_over = getattr(node_to_check, "is_over", None)
-    if callable(is_over):
-        if bool(is_over()):
-            return True
-        known_false = True
-
-    state = getattr(node_to_check, "state", None)
-    is_game_over = getattr(state, "is_game_over", None)
-    if callable(is_game_over):
-        if bool(is_game_over()):
-            return True
-        known_false = True
-
-    state_is_terminal = getattr(state, "is_terminal", None)
-    if isinstance(state_is_terminal, bool):
-        if state_is_terminal:
-            return True
-        known_false = True
-
-    tree_evaluation = getattr(node_to_check, "tree_evaluation", None)
-    is_terminal = getattr(tree_evaluation, "is_terminal", None)
-    if callable(is_terminal):
-        if bool(is_terminal()):
-            return True
-        known_false = True
-
-    return False if known_false else None
-
-
-def _rollout_stop_terminal_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
-    """Return terminal status using only the original rollout stop surfaces."""
-    is_over = getattr(node_to_check, "is_over", None)
-    if callable(is_over):
-        return bool(is_over())
-
-    tree_evaluation = getattr(node_to_check, "tree_evaluation", None)
-    is_terminal = getattr(tree_evaluation, "is_terminal", None)
-    if callable(is_terminal):
-        return bool(is_terminal())
-
-    return None
-
-
-def _exact_status(node_to_check: node.ITreeNode[Any]) -> bool | None:
-    """Return exact-value status when the node exposes it cheaply."""
-    tree_evaluation = getattr(node_to_check, "tree_evaluation", None)
-    has_exact_value = getattr(tree_evaluation, "has_exact_value", None)
-    if callable(has_exact_value):
-        return bool(has_exact_value())
-
-    node_has_exact_value = getattr(node_to_check, "has_exact_value", None)
-    if callable(node_has_exact_value):
-        return bool(node_has_exact_value())
-
-    exact = getattr(node_to_check, "exact", None)
-    if isinstance(exact, bool):
-        return exact
-
-    return None
-
-
-def _non_opened_branch_count(node_to_check: node.ITreeNode[Any]) -> int | None:
-    """Return the node's stored non-opened branch count when available."""
-    return node_to_check.unopened_branch_count()
-
-
-def _inverse_optional_bool(value: bool | None) -> bool | None:
-    """Return the inverse of an optional boolean."""
-    return None if value is None else not value
-
-
-def _no_legal_actions_but_not_terminal(
-    *,
-    stop_reason: RolloutStopReason,
-    end_is_terminal: bool | None,
-) -> bool | None:
-    """Return whether a no-legal-actions stop was not tagged terminal."""
-    if stop_reason is not RolloutStopReason.NO_LEGAL_ACTIONS:
-        return False
-    if end_is_terminal is None:
-        return None
-    return not end_is_terminal
 
 
 __all__ = [
