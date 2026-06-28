@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-import anemone.checkpoints.load as checkpoint_load_module
+import anemone.checkpoints.node_restore as checkpoint_node_restore_module
 import anemone.checkpoints.sharded_restore as sharded_restore_module
 from anemone.checkpoints import (
     CHECKPOINT_FORMAT_VERSION,
@@ -613,7 +613,7 @@ def test_split_node_runtime_restore_processes_bounded_batches(
         layout="split",
     )
     batch_sizes: list[int] = []
-    original_link_nodes = checkpoint_load_module._link_nodes
+    original_link_nodes = checkpoint_node_restore_module._link_nodes
 
     def tracking_link_nodes(node_payloads: object, *, nodes_by_id: object) -> None:
         batch = list(node_payloads)
@@ -625,7 +625,11 @@ def test_split_node_runtime_restore_processes_bounded_batches(
         "_DEFAULT_NODE_RUNTIME_RESTORE_BATCH_SIZE",
         1,
     )
-    monkeypatch.setattr(checkpoint_load_module, "_link_nodes", tracking_link_nodes)
+    monkeypatch.setattr(
+        checkpoint_node_restore_module,
+        "_link_nodes",
+        tracking_link_nodes,
+    )
 
     load_search_from_sharded_checkpoint(
         tmp_path,

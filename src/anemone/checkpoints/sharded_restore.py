@@ -128,20 +128,28 @@ def load_search_from_sharded_checkpoint[
         maybe_log_iteration_progress,
     )
 
-    from .load import (
+    from .metadata import (
+        _restore_runtime_metadata,
+        _validate_checkpoint_node_metadata,
+    )
+    from .node_restore import (
         _build_tree_from_node_shells,
         _CheckpointNodeRuntime,
         _CheckpointNodeShell,
         _create_nodes_from_node_shells,
-        _create_state_handles_from_node_ids,
-        _create_state_resolver_from_payload_store,
         _link_nodes,
+        _restore_node_runtime_state,
+    )
+    from .selector_payloads import (
         _restore_explicit_selector_state,
         _restore_inferred_depth_selector_state,
-        _restore_node_runtime_state,
-        _restore_runtime_metadata,
+    )
+    from .state_handles_restore import (
+        _create_state_handles_from_node_ids,
+        _create_state_resolver_from_payload_store,
+    )
+    from .tree_expansions_payloads import (
         _restore_tree_expansions_runtime_state,
-        _validate_checkpoint_node_metadata,
     )
 
     resolved_checkpoint_dir = Path(checkpoint_dir)
