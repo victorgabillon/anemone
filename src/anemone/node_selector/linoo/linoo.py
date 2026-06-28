@@ -5,19 +5,15 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from heapq import heapify, heappop, heappush
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from anemone.node_evaluation.common.value_candidate import (
     ValueCandidate,
     ValueCandidateSource,
 )
-
-# Runtime import is intentional: parsley/get_type_hints() evaluates LinooArgs
-# annotations when Chipiron builds partial dataclasses.
-from anemone.node_selector.node_selector_types import NodeSelectorType  # noqa: TC001
 from anemone.node_selector.opening_instructions import (
     OpeningInstructions,
     OpeningInstructor,
@@ -26,13 +22,80 @@ from anemone.node_selector.opening_instructions import (
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
 
-type LinooDepthSelectionPolicy = Literal[
-    "inverse_depth",
-    "opened_count_depth_index",
+from .candidate_heap import (
+    LinooHeapEntry as _LinooHeapEntry,
+)
+from .candidate_heap import (
+    LinooHeapUpdateDiagnostics as _LinooHeapUpdateDiagnostics,
+)
+from .candidate_heap import (
+    LinooRankedCandidate as _LinooRankedCandidate,
+)
+from .depth_policy import (
+    choose_depth,
+    depth_selection_row_sort_key,
+    inverse_depth_weight,
+)
+from .errors import (
+    LinooDirectValueUnavailableError,
+    LinooIncompatibleObjectiveError,
+    LinooSelectionError,
+)
+from .errors import (
+    incompatible_objective_error as _incompatible_objective_error,
+)
+from .errors import (
+    invalid_linoo_checkpoint_payload_error as _invalid_linoo_checkpoint_payload_error,
+)
+from .errors import (
+    invalid_linoo_depth_selection_policy_error as _invalid_linoo_depth_selection_policy_error,
+)
+from .errors import (
+    missing_direct_value_attribute_error as _missing_direct_value_attribute_error,
+)
+from .errors import (
+    missing_direct_value_error as _missing_direct_value_error,
+)
+from .errors import (
+    missing_root_objective_error as _missing_root_objective_error,
+)
+from .errors import (
+    no_frontier_nodes_error as _no_frontier_nodes_error,
+)
+from .report import LinooDepthSelectionRow, LinooSelectionReport
+from .runtime_state import (
+    LinooDepthStats as _LinooDepthStats,
+)
+from .runtime_state import (
+    LinooNodeState as _LinooNodeState,
+)
+from .types import (
+    LINOO_DEFAULT_NODE_STATUS as _LINOO_DEFAULT_NODE_STATUS,
+)
+from .types import (
+    LINOO_NODE_STATUSES as _LINOO_NODE_STATUSES,
+)
+from .types import (
+    LinooArgs,
+    LinooDepthSelectionPolicy,
+)
+from .types import (
+    LinooNodeStatus as _LinooNodeStatus,
+)
+
+__all__ = [
+    "Linoo",
+    "LinooArgs",
+    "LinooDepthSelectionPolicy",
+    "LinooDepthSelectionRow",
+    "LinooDirectValueUnavailableError",
+    "LinooIncompatibleObjectiveError",
+    "LinooSelectionError",
+    "LinooSelectionReport",
 ]
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Sequence
+    from collections.abc import Callable, Generator
     from contextlib import AbstractContextManager
     from random import Random
 
@@ -48,337 +111,6 @@ if TYPE_CHECKING:
     )
 
 
-@dataclass
-class LinooArgs:
-    """Arguments for the Linoo node selector."""
-
-    type: Literal[NodeSelectorType.LINOO]
-    depth_selection_policy: LinooDepthSelectionPolicy = "inverse_depth"
-
-
-@dataclass(frozen=True, slots=True)
-class LinooDepthSelectionRow:
-    """Selector-observable summary for one depth in the live tree."""
-
-    depth: int
-    total_nodes: int
-    opened_count: int
-    frontier_count: int
-    terminal_count: int
-    exact_count: int
-    uncached_terminal_candidates: int
-    non_openable_count: int
-    selection_index: int | None
-    active: bool
-    selected: bool
-    selection_weight: float | None = None
-    selection_probability: float | None = None
-
-    def __post_init__(self) -> None:
-        """Keep the diagnostic accounting honest in debug runs."""
-        assert self.total_nodes == (
-            self.opened_count
-            + self.frontier_count
-            + self.terminal_count
-            + self.exact_count
-            + self.uncached_terminal_candidates
-            + self.non_openable_count
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class LinooSelectionReport:
-    """Structured observability payload for the latest Linoo selection."""
-
-    selected_depth: int
-    selected_node_id: int
-    selected_node_direct_value: float | None
-    selected_node_candidate_value: float | None
-    selected_node_priority: float | None
-    selected_node_rank: int
-    ranked_candidate_count: int
-    node_selection_policy: Literal["zipf_rank"]
-    depth_selection_policy: LinooDepthSelectionPolicy
-    selected_depth_selection_index: int
-    depth_rows: tuple[LinooDepthSelectionRow, ...]
-    selected_depth_selection_weight: float | None = None
-    selected_depth_selection_probability: float | None = None
-    collect_frontier_state_s: float | None = None
-    choose_depth_s: float | None = None
-    heap_update_s: float | None = None
-    choose_node_s: float | None = None
-    make_report_s: float | None = None
-    total_s: float | None = None
-    depth_row_count: int | None = None
-    total_nodes_scanned: int | None = None
-    frontier_nodes_scanned: int | None = None
-    uncached_terminal_candidates: int | None = None
-    selected_depth_frontier_count: int | None = None
-    stale_candidates_skipped: int | None = None
-    heap_candidates_registered: int | None = None
-    heap_update_candidate_count: int | None = None
-    heap_update_push_count: int | None = None
-    heap_update_pop_count: int | None = None
-    heap_update_stale_skip_count: int | None = None
-    heap_update_signature_check_count: int | None = None
-    heap_update_signature_recompute_count: int | None = None
-    heap_update_version_mismatch_count: int | None = None
-    heap_update_priority_state_free_count: int | None = None
-    heap_update_priority_stateful_fallback_count: int | None = None
-    heap_update_candidate_direct_count: int | None = None
-    heap_update_candidate_tree_count: int | None = None
-    heap_update_candidate_unknown_count: int | None = None
-    heap_update_total_heap_entries: int | None = None
-    heap_update_max_heap_size: int | None = None
-    heap_update_depth_count: int | None = None
-    heap_update_frontier_node_count_seen: int | None = None
-    state_rebuilt: bool | None = None
-    nodes_incrementally_updated: int | None = None
-
-    def format_depth_table(self) -> str:
-        """Return an aligned text table for Linoo depth diagnostics."""
-        headers = (
-            "depth",
-            "total",
-            "opened",
-            "frontier",
-            "terminal",
-            "exact",
-            "uncached_terminal",
-            "non_openable",
-            "index",
-            "weight",
-            "probability",
-            "selected",
-        )
-        rows: tuple[tuple[str, ...], ...] = tuple(
-            (
-                str(row.depth),
-                str(row.total_nodes),
-                str(row.opened_count),
-                str(row.frontier_count),
-                str(row.terminal_count),
-                str(row.exact_count),
-                str(row.uncached_terminal_candidates),
-                str(row.non_openable_count),
-                _format_optional_int(row.selection_index),
-                _format_optional_float(row.selection_weight),
-                _format_optional_float(row.selection_probability),
-                "yes" if row.selected else "no",
-            )
-            for row in self.depth_rows
-        )
-        return _format_table(headers, rows)
-
-
-type _LinooNodeStatus = Literal[
-    "opened",
-    "frontier",
-    "terminal",
-    "exact",
-    "uncached_terminal_candidate",
-    "non_openable",
-]
-
-
-@dataclass(init=False, slots=True)
-class _LinooDepthStats:
-    """Mutable accounting bucket for one depth in the cached tree view."""
-
-    total_nodes: int
-    opened_count: int
-    frontier_count: int
-    terminal_count: int
-    exact_count: int
-    uncached_terminal_candidates: int
-    non_openable_count: int
-
-    def __init__(self) -> None:
-        """Initialize empty accounting for one depth."""
-        self.total_nodes = 0
-        self.opened_count = 0
-        self.frontier_count = 0
-        self.terminal_count = 0
-        self.exact_count = 0
-        self.uncached_terminal_candidates = 0
-        self.non_openable_count = 0
-
-    def count_for(self, status: _LinooNodeStatus) -> int:
-        """Return the counter value for one cached node status."""
-        count = getattr(self, _LINOO_NODE_STATUS_COUNTERS[status])
-        assert isinstance(count, int)
-        return count
-
-    def increment(self, status: _LinooNodeStatus) -> None:
-        """Add one node with ``status`` to this depth."""
-        setattr(
-            self,
-            _LINOO_NODE_STATUS_COUNTERS[status],
-            self.count_for(status) + 1,
-        )
-
-    def decrement(self, status: _LinooNodeStatus) -> None:
-        """Remove one node with ``status`` from this depth."""
-        next_count = self.count_for(status) - 1
-        assert next_count >= 0
-        setattr(self, _LINOO_NODE_STATUS_COUNTERS[status], next_count)
-
-    def empty(self) -> bool:
-        """Return whether this depth no longer tracks any nodes."""
-        return self.total_nodes == 0
-
-
-_LINOO_NODE_STATUS_COUNTERS: dict[_LinooNodeStatus, str] = {
-    "opened": "opened_count",
-    "frontier": "frontier_count",
-    "terminal": "terminal_count",
-    "exact": "exact_count",
-    "uncached_terminal_candidate": "uncached_terminal_candidates",
-    "non_openable": "non_openable_count",
-}
-_LINOO_NODE_STATUSES = frozenset(_LINOO_NODE_STATUS_COUNTERS)
-_LINOO_DEFAULT_NODE_STATUS: _LinooNodeStatus = "opened"
-
-
-@dataclass(frozen=True, slots=True)
-class _LinooNodeState:
-    """Cached non-default Linoo classification for one tree node.
-
-    Linoo classifies each live node by ``node_id``, relative ``depth``, and
-    ``status``. The sparse runtime treats absence from ``_node_state_by_id`` as
-    the default state: the current live node at its current depth with status
-    ``"opened"``. That state contributes only aggregate depth accounting, so it
-    does not need a per-node object for reads, checkpoint build, or restore.
-    Non-default states are statuses that affect frontier lookup, candidate heaps,
-    or diagnostic buckets. They are created by rebuild/restore/reclassification,
-    removed by reclassification when a node becomes opened, and read by
-    checkpoint serialization plus frontier/candidate validation helpers.
-    """
-
-    node_id: int
-    depth: int
-    status: _LinooNodeStatus
-
-    def is_default(self) -> bool:
-        """Return whether this state is equivalent to absent sparse state."""
-        return self.status == _LINOO_DEFAULT_NODE_STATUS
-
-
-type _LinooHeapEntry = tuple[float, int, int]
-type _LinooRankedCandidate = tuple[float, int, int]
-
-
-@dataclass(slots=True)
-class _LinooHeapUpdateDiagnostics:
-    """Cheap counters for attributing Linoo heap update cost."""
-
-    candidate_count: int = 0
-    push_count: int = 0
-    pop_count: int = 0
-    stale_skip_count: int = 0
-    signature_check_count: int = 0
-    signature_recompute_count: int = 0
-    version_mismatch_count: int = 0
-    priority_state_free_count: int = 0
-    priority_stateful_fallback_count: int = 0
-    candidate_source_counts: dict[ValueCandidateSource, int] = field(
-        default_factory=lambda: cast("dict[ValueCandidateSource, int]", {})
-    )
-    total_heap_entries: int = 0
-    max_heap_size: int = 0
-    depth_count: int = 0
-    frontier_node_count_seen: int = 0
-
-
-class LinooSelectionError(ValueError):
-    """Base error for invalid Linoo selection contexts."""
-
-
-class LinooDirectValueUnavailableError(LinooSelectionError):
-    """Raised when a frontier node does not expose a direct single-player value."""
-
-
-class LinooIncompatibleObjectiveError(LinooSelectionError):
-    """Raised when Linoo is used outside the single-player max setting."""
-
-
-def _no_frontier_nodes_error() -> LinooSelectionError:
-    return LinooSelectionError(
-        "Linoo could not find any unopened unresolved nodes in the current tree."
-    )
-
-
-def _missing_root_objective_error() -> LinooIncompatibleObjectiveError:
-    return LinooIncompatibleObjectiveError(
-        "Linoo requires a configured SingleAgentMaxObjective on the tree root."
-    )
-
-
-def _incompatible_objective_error(objective: object) -> LinooIncompatibleObjectiveError:
-    return LinooIncompatibleObjectiveError(
-        f"Linoo requires a SingleAgentMaxObjective; got {type(objective).__name__}."
-    )
-
-
-def _missing_direct_value_attribute_error(
-    node_id: int,
-) -> LinooDirectValueUnavailableError:
-    return LinooDirectValueUnavailableError(
-        "Linoo requires a direct single-player value on every frontier node; "
-        f"node {node_id} does not expose tree_evaluation.direct_value."
-    )
-
-
-def _missing_direct_value_error(node_id: int) -> LinooDirectValueUnavailableError:
-    return LinooDirectValueUnavailableError(
-        "Linoo requires a direct single-player value on every frontier node; "
-        f"node {node_id} has no direct_value."
-    )
-
-
-def _invalid_linoo_checkpoint_payload_error() -> ValueError:
-    """Return the generic error for rejected optional selector state."""
-    return ValueError("Invalid Linoo selector checkpoint payload.")
-
-
-def _invalid_linoo_depth_selection_policy_error(policy: object) -> ValueError:
-    """Return the error for an unsupported Linoo depth-selection policy."""
-    return ValueError(f"Invalid Linoo depth-selection policy: {policy!r}.")
-
-
-def _format_optional_int(value: int | None) -> str:
-    """Format an optional integer for compact table display."""
-    return "-" if value is None else str(value)
-
-
-def _format_optional_float(value: float | None) -> str:
-    """Format an optional float for compact table display."""
-    return "-" if value is None else f"{value:.6g}"
-
-
-def _format_table(
-    headers: tuple[str, ...],
-    rows: Sequence[Sequence[str]],
-) -> str:
-    """Format string rows as a simple aligned whitespace table."""
-    widths = [
-        max([len(headers[column]), *(len(row[column]) for row in rows)])
-        for column in range(len(headers))
-    ]
-    formatted_rows = [
-        " ".join(value.rjust(widths[column]) for column, value in enumerate(row))
-        for row in rows
-    ]
-    return "\n".join(
-        [
-            " ".join(
-                header.rjust(widths[column]) for column, header in enumerate(headers)
-            ),
-            *formatted_rows,
-        ]
-    )
-
-
 class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """Depth-aware single-player selector using frontier direct values.
 
@@ -386,9 +118,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     samples an unopened node at that depth using Zipf rank weights over direct
     priorities.
 
-    PR1 incremental runtime cache assumption: direct values of existing frontier
-    nodes do not change between selections unless the selector cache is
-    explicitly invalidated or the node is part of the latest expansion wave.
+    Cache invariant: direct values of existing frontier nodes are assumed stable
+    between selections unless the selector cache is invalidated or the node is
+    part of the latest expansion wave.
     """
 
     opening_instructor: OpeningInstructor
@@ -1267,45 +999,12 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def _choose_depth_from_cache(self) -> int:
         """Choose the active depth using the configured Linoo depth policy."""
-        active_depths = self._active_frontier_depths()
-        if not active_depths:
-            raise _no_frontier_nodes_error()
-        if self.depth_selection_policy == "opened_count_depth_index":
-            return self._choose_depth_by_opened_count_depth_index(active_depths)
-        if self.depth_selection_policy == "inverse_depth":
-            return self._sample_depth_by_inverse_depth(active_depths)
-        raise _invalid_linoo_depth_selection_policy_error(self.depth_selection_policy)
-
-    def _choose_depth_by_opened_count_depth_index(
-        self,
-        active_depths: tuple[int, ...],
-    ) -> int:
-        """Choose the depth with the old opened-count depth index."""
-        return min(
-            active_depths,
-            key=lambda depth: (
-                self._depth_stats_by_depth[depth].opened_count * (depth + 1),
-                depth,
-            ),
+        return choose_depth(
+            depth_selection_policy=self.depth_selection_policy,
+            depth_stats_by_depth=self._depth_stats_by_depth,
+            active_depths=self._active_frontier_depths(),
+            random_generator=self.random_generator,
         )
-
-    def _sample_depth_by_inverse_depth(self, active_depths: tuple[int, ...]) -> int:
-        """Sample one active depth with inverse-depth weighting."""
-        if len(active_depths) == 1:
-            return active_depths[0]
-        total_weight = sum(self._inverse_depth_weight(depth) for depth in active_depths)
-        threshold = self.random_generator.random() * total_weight
-        cumulative_weight = 0.0
-        for depth in active_depths:
-            cumulative_weight += self._inverse_depth_weight(depth)
-            if threshold < cumulative_weight:
-                return depth
-        return active_depths[-1]
-
-    @staticmethod
-    def _inverse_depth_weight(depth: int) -> float:
-        """Return the inverse-depth sampling weight for one depth."""
-        return 1.0 / float(depth + 1)
 
     def _frontier_nodes_at_depth(
         self,
@@ -1561,7 +1260,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             if depth_state.frontier_count > 0
         )
         total_inverse_depth_weight = sum(
-            self._inverse_depth_weight(depth) for depth in active_depths
+            inverse_depth_weight(depth) for depth in active_depths
         )
 
         for depth, depth_state in depth_stats_by_depth.items():
@@ -1576,7 +1275,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 and self.depth_selection_policy == "inverse_depth"
                 and total_inverse_depth_weight > 0.0
             ):
-                selection_weight = self._inverse_depth_weight(depth)
+                selection_weight = inverse_depth_weight(depth)
                 selection_probability = selection_weight / total_inverse_depth_weight
             row = LinooDepthSelectionRow(
                 depth=depth,
@@ -1602,7 +1301,10 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         sorted_rows = tuple(
             sorted(
                 rows,
-                key=self._depth_selection_row_sort_key,
+                key=lambda row: depth_selection_row_sort_key(
+                    depth_selection_policy=self.depth_selection_policy,
+                    row=row,
+                ),
             )
         )
         if selected_depth_selection_index is None:
@@ -1685,23 +1387,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             state_rebuilt=state_rebuilt,
             nodes_incrementally_updated=nodes_incrementally_updated,
         )
-
-    def _depth_selection_row_sort_key(
-        self,
-        row: LinooDepthSelectionRow,
-    ) -> tuple[bool, float, int]:
-        """Return the report-table ordering key for one depth row."""
-        if self.depth_selection_policy == "inverse_depth":
-            probability = (
-                -row.selection_probability
-                if row.selection_probability is not None
-                else 0.0
-            )
-            return (row.selection_probability is None, probability, row.depth)
-        selection_index = (
-            float(row.selection_index) if row.selection_index is not None else 0.0
-        )
-        return (row.selection_index is None, selection_index, row.depth)
 
     def _is_terminal_node(self, node: NodeT) -> bool:
         """Return cached terminality only; Linoo must not recompute game-over."""

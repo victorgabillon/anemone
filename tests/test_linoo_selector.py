@@ -38,6 +38,27 @@ from anemone.objectives import AdversarialZeroSumObjective, SingleAgentMaxObject
 from anemone.tree_manager.tree_expander import TreeExpansion, TreeExpansions
 
 
+def test_linoo_public_imports_remain_compatible() -> None:
+    """Public Linoo names should remain available from both historical paths."""
+    from anemone.node_selector import linoo as package_module
+    from anemone.node_selector.linoo import linoo as implementation_module
+
+    assert implementation_module.Linoo is package_module.Linoo
+    assert implementation_module.LinooArgs is package_module.LinooArgs
+    assert (
+        implementation_module.LinooSelectionReport
+        is package_module.LinooSelectionReport
+    )
+    assert (
+        implementation_module.LinooDepthSelectionRow
+        is package_module.LinooDepthSelectionRow
+    )
+    assert (
+        implementation_module.LinooDepthSelectionPolicy
+        is package_module.LinooDepthSelectionPolicy
+    )
+
+
 @dataclass
 class _FakeEval:
     direct_value: Value | None
