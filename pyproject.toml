@@ -44,19 +44,19 @@ test = [
 ]
 
 lint = [
-  "ruff>=0.15.10",
-  "pylint>=4.0.5",
+  "ruff>=0.15.20",
+  "pylint>=4.0.6",
 ]
 
 typecheck = [
-  "mypy>=1.19.1",
-  "pyright[nodejs]>=1.1.409",
-  "types-PyYAML>=6.0.12.12",
+  "mypy>=2.1.0",
+  "pyright[nodejs]>=1.1.411",
+  "types-PyYAML>=6.0.12.20260518",
 ]
 
 dev = [
-  "tox>=4.32.0",
-  "black>=25.1.0",
+  "tox>=4.56.1",
+  "black>=26.5.1",
   "build",
   "twine",
   "sphinx",
@@ -303,8 +303,8 @@ deps = [
   "graphviz",
 
   # tools
-  "ruff>=0.15.10",
-  "pylint>=4.0.5",
+  "ruff>=0.15.20",
+  "pylint>=4.0.6",
 ]
 set_env = { PYTHONPATH = "{toxinidir}/src" }
 commands = [
@@ -327,9 +327,9 @@ deps = [
   "graphviz",
 
   # tools
-  "mypy>=1.19.1",
-  "pyright[nodejs]>=1.1.409",
-  "types-PyYAML>=6.0.12.12",
+  "mypy>=2.1.0",
+  "pyright[nodejs]>=1.1.411",
+  "types-PyYAML>=6.0.12.20260518",
 ]
 set_env = { MYPYPATH = "{toxinidir}/src" }
 commands = [
