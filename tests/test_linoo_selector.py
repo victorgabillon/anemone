@@ -479,7 +479,7 @@ def test_linoo_rejects_unknown_depth_selection_policy() -> None:
         Linoo(
             opening_instructor=_FakeOpeningInstructor(),
             random_generator=_StubRandom(),
-            depth_selection_policy="bogus",  # type: ignore[arg-type]
+            depth_selection_policy="bogus",
         )
 
 

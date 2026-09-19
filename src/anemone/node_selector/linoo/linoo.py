@@ -150,7 +150,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         opening_instructor: OpeningInstructor,
         random_generator: Random,
         *,
-        depth_selection_policy: LinooDepthSelectionPolicy = "inverse_depth",
+        depth_selection_policy: str = "inverse_depth",
     ) -> None:
         """Store the opening instructor used to materialize branch openings."""
         if depth_selection_policy not in (
@@ -160,7 +160,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             raise _invalid_linoo_depth_selection_policy_error(depth_selection_policy)
         self.opening_instructor = opening_instructor
         self.random_generator = random_generator
-        self.depth_selection_policy = depth_selection_policy
+        self.depth_selection_policy = cast(
+            "LinooDepthSelectionPolicy", depth_selection_policy
+        )
         self.latest_selection_report = None
         self._depth_stats_by_depth = {}
         self._frontier_node_ids_by_depth = {}
