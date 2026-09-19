@@ -108,12 +108,18 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Generator
     from contextlib import AbstractContextManager
     from random import Random
+    from typing import TypeIs
 
     from valanga.evaluations import Value
 
     from anemone import tree_manager as tree_man
     from anemone import trees
     from anemone.checkpoints.payloads import LinooSelectorCheckpointPayload
+
+
+def _is_depth_selection_policy(value: str) -> TypeIs[LinooDepthSelectionPolicy]:
+    """Validate the existing policy vocabulary and narrow parsed strings."""
+    return value in ("inverse_depth", "opened_count_depth_index")
 
 
 class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
@@ -153,16 +159,11 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         depth_selection_policy: str = "inverse_depth",
     ) -> None:
         """Store the opening instructor used to materialize branch openings."""
-        if depth_selection_policy not in (
-            "inverse_depth",
-            "opened_count_depth_index",
-        ):
+        if not _is_depth_selection_policy(depth_selection_policy):
             raise _invalid_linoo_depth_selection_policy_error(depth_selection_policy)
         self.opening_instructor = opening_instructor
         self.random_generator = random_generator
-        self.depth_selection_policy = cast(
-            "LinooDepthSelectionPolicy", depth_selection_policy
-        )
+        self.depth_selection_policy = depth_selection_policy
         self.latest_selection_report = None
         self._depth_stats_by_depth = {}
         self._frontier_node_ids_by_depth = {}
