@@ -20,7 +20,8 @@ class LinooArgs:
     """Arguments for the Linoo node selector."""
 
     type: Literal[NodeSelectorType.LINOO]
-    depth_selection_policy: LinooDepthSelectionPolicy = "inverse_depth"
+    # Public argument parsers need a callable converter; Linoo validates the value.
+    depth_selection_policy: str = "inverse_depth"
 
 
 type LinooNodeStatus = Literal[
