@@ -237,4 +237,9 @@ def _restore_runtime_metadata(
         node_evaluator.current_evaluator_version = evaluator_version
 
     if rng_state is not None:
-        random_generator.setstate(cast("tuple[Any, ...]", rng_state))
+        # JSON converts both the outer state and its state vector into lists.
+        # Random.setstate requires the internal vector to be a tuple.
+        version, state_vector, gaussian = cast(
+            "tuple[int, tuple[int, ...], float | None]", rng_state
+        )
+        random_generator.setstate((version, tuple(state_vector), gaussian))

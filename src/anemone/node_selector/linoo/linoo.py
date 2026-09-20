@@ -47,7 +47,9 @@ from .checkpoint_state import (
 from .depth_policy import (
     choose_depth,
     depth_selection_row_sort_key,
+    effective_depth_selection_policy,
     inverse_depth_weight,
+    step_parity,
 )
 from .errors import (
     LinooDirectValueUnavailableError,
@@ -119,7 +121,7 @@ if TYPE_CHECKING:
 
 def _is_depth_selection_policy(value: str) -> TypeIs[LinooDepthSelectionPolicy]:
     """Validate the existing policy vocabulary and narrow parsed strings."""
-    return value in ("inverse_depth", "opened_count_depth_index")
+    return value in ("inverse_depth", "opened_count_depth_index", "alternating_by_step")
 
 
 class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
@@ -150,6 +152,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     _cache_objective_identity: int | None
     _cache_initialized: bool
     _last_selected_node_id: int | None
+    _selection_step_count: int
 
     def __init__(
         self,
@@ -183,6 +186,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         self._cache_objective_identity = None
         self._cache_initialized = False
         self._last_selected_node_id = None
+        # This is selector lifetime state, independent of the runtime cache.
+        # New independent searches must construct a new selector instance.
+        self._selection_step_count = 0
 
     @contextmanager
     def _diagnostic_phase(self, phase: str) -> Generator[None]:
@@ -198,7 +204,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         yield
 
     def invalidate(self) -> None:
-        """Discard incremental selector state so the next selection rebuilds."""
+        """Discard the incremental cache while preserving selection parity."""
         self._clear_runtime_state()
 
     def refresh_state_for_checkpoint(
@@ -209,7 +215,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> None:
         """Refresh initialized runtime cache before checkpoint serialization."""
-        if not self._cache_initialized:
+        if not self._cache_initialized and self._selection_step_count == 0:
             return
         self._ensure_runtime_state(
             tree=tree,
@@ -228,6 +234,10 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
         del objective
         if not self._cache_initialized:
+            if self._selection_step_count:
+                return LinooSelectorCheckpointPayload(
+                    selection_step_count=self._selection_step_count
+                )
             return None
         return LinooSelectorCheckpointPayload(
             depth_stats=depth_stats_payload_from_cache(self._depth_stats_by_depth),
@@ -238,6 +248,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 candidate_versions_by_node_id=self._candidate_versions_by_node_id,
             ),
             last_selected_node_id=self._last_selected_node_id,
+            selection_step_count=self._selection_step_count,
         )
 
     def restore_from_checkpoint_payload(
@@ -254,6 +265,15 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         """
         if payload.type != "linoo" or payload.version != 1:
             return False
+        # The count is durable state even if the optional cache needs rebuilding.
+        selection_step_count = getattr(payload, "selection_step_count", 0)
+        if (
+            isinstance(selection_step_count, bool)
+            or not isinstance(selection_step_count, int)
+            or selection_step_count < 0
+        ):
+            raise _invalid_linoo_checkpoint_payload_error()
+        self._selection_step_count = selection_step_count
         nodes_by_id = self._nodes_by_id_from_tree(tree)
         try:
             node_states = restore_node_states_from_payload(
@@ -339,10 +359,12 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             raise _no_frontier_nodes_error()
 
         nodes_by_id = self._nodes_by_id_from_tree(tree)
+        selection_step = self._selection_step_count + 1
 
         choose_depth_started_at = perf_counter()
         with self._diagnostic_phase("select.choose_depth"):
-            selected_depth = self._choose_depth_from_cache()
+            selected_depth = self._choose_depth_from_cache(step=selection_step)
+        self._selection_step_count = selection_step
         choose_depth_s = perf_counter() - choose_depth_started_at
         heap_update_started_at = perf_counter()
         with self._diagnostic_phase("select.heap_update"):
@@ -403,6 +425,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 ranked_candidate_count=ranked_candidate_count,
                 state_rebuilt=state_rebuilt,
                 nodes_incrementally_updated=nodes_incrementally_updated,
+                selection_step=selection_step,
             )
         self.latest_selection_report = replace(
             self.latest_selection_report,
@@ -725,13 +748,14 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             )
         )
 
-    def _choose_depth_from_cache(self) -> int:
+    def _choose_depth_from_cache(self, *, step: int) -> int:
         """Choose the active depth using the configured Linoo depth policy."""
         return choose_depth(
             depth_selection_policy=self.depth_selection_policy,
             depth_stats_by_depth=self._depth_stats_by_depth,
             active_depths=self._active_frontier_depths(),
             random_generator=self.random_generator,
+            step=step,
         )
 
     def _frontier_nodes_at_depth(
@@ -929,12 +953,16 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         ranked_candidate_count: int,
         state_rebuilt: bool,
         nodes_incrementally_updated: int,
+        selection_step: int,
     ) -> LinooSelectionReport:
         """Build the structured latest-selection table without affecting policy."""
         rows: list[LinooDepthSelectionRow] = []
         selected_depth_selection_index: int | None = None
         selected_depth_selection_weight: float | None = None
         selected_depth_selection_probability: float | None = None
+        depth_selection_subpolicy = effective_depth_selection_policy(
+            depth_selection_policy=self.depth_selection_policy, step=selection_step
+        )
         active_depths = tuple(
             depth
             for depth, depth_state in depth_stats_by_depth.items()
@@ -953,7 +981,8 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             selection_probability: float | None = None
             if (
                 active
-                and self.depth_selection_policy == "inverse_depth"
+                and self.depth_selection_policy
+                in ("inverse_depth", "alternating_by_step")
                 and total_inverse_depth_weight > 0.0
             ):
                 selection_weight = inverse_depth_weight(depth)
@@ -983,7 +1012,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             sorted(
                 rows,
                 key=lambda row: depth_selection_row_sort_key(
-                    depth_selection_policy=self.depth_selection_policy,
+                    depth_selection_policy=depth_selection_subpolicy,
                     row=row,
                 ),
             )
@@ -1007,6 +1036,9 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             depth_selection_policy=self.depth_selection_policy,
             selected_depth_selection_index=selected_depth_selection_index,
             depth_rows=sorted_rows,
+            depth_selection_subpolicy=depth_selection_subpolicy,
+            depth_selection_step=selection_step,
+            depth_selection_step_parity=step_parity(selection_step),
             selected_depth_selection_weight=selected_depth_selection_weight,
             selected_depth_selection_probability=(selected_depth_selection_probability),
             collect_frontier_state_s=collect_frontier_state_s,

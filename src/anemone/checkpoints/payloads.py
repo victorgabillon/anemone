@@ -305,7 +305,11 @@ class LinooCandidatesByDepthCheckpointPayload:
 
 @dataclass(slots=True)
 class LinooSelectorCheckpointPayload:
-    """Serialized optional runtime cache for the Linoo selector."""
+    """Linoo runtime cache and persistent depth-selection count.
+
+    Legacy payloads omit the additive counter and resume from zero. Their
+    unpublished alternating parity cannot be reconstructed from other fields.
+    """
 
     type: Literal["linoo"] = "linoo"
     version: int = 1
@@ -319,6 +323,18 @@ class LinooSelectorCheckpointPayload:
         default_factory=_empty_linoo_candidates_by_depth_payloads
     )
     last_selected_node_id: int | None = None
+    selection_step_count: int = 0
+
+    def __post_init__(self) -> None:
+        """Reject counters that cannot represent completed depth selections."""
+        _validate_linoo_selection_step_count(self.selection_step_count)
+
+
+def _validate_linoo_selection_step_count(value: object) -> None:
+    """Validate an optional field supplied by untyped checkpoint decoders."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        message = "selection_step_count must be a nonnegative integer"
+        raise ValueError(message)
 
 
 type SelectorCheckpointPayload = LinooSelectorCheckpointPayload
