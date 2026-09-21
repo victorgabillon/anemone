@@ -10,6 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release source and version
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          python -c 'import os, tomllib; version = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]; assert os.environ["GITHUB_REF_NAME"] == "v" + version'
 
       - uses: actions/setup-python@v5
         with:
