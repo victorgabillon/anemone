@@ -12,6 +12,7 @@ from anemone.node_selector.node_selector_types import NodeSelectorType  # noqa: 
 type LinooDepthSelectionPolicy = Literal[
     "inverse_depth",
     "opened_count_depth_index",
+    "alternating_by_step",
 ]
 
 

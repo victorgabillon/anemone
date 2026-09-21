@@ -422,6 +422,9 @@ def _selector_payload_from_mapping(
             for candidates_by_depth in _mapping_items(payload, "candidates_by_depth")
         ],
         last_selected_node_id=optional_int_field(payload, "last_selected_node_id"),
+        selection_step_count=require_int(
+            payload.get("selection_step_count", 0), field_name="selection_step_count"
+        ),
     )
 
 

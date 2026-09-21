@@ -20,11 +20,13 @@ class _SearchConfig:
     )
 
 
-@pytest.mark.parametrize("policy", ["inverse_depth", "opened_count_depth_index"])
+@pytest.mark.parametrize(
+    "policy", ["inverse_depth", "opened_count_depth_index", "alternating_by_step"]
+)
 def test_linoo_policies_parse_from_command_line(
     policy: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Both existing policies parse without treating a type alias as a converter."""
+    """Supported policies parse without treating a type alias as a converter."""
     monkeypatch.setattr(
         sys, "argv", ["anemone", "--selector.depth_selection_policy", policy]
     )
@@ -34,13 +36,14 @@ def test_linoo_policies_parse_from_command_line(
     assert result.selector.type is NodeSelectorType.LINOO
 
 
-def test_linoo_default_and_supported_policies_remain_unchanged() -> None:
-    """The parser compatibility fix adds no policy and preserves the old default."""
+def test_linoo_default_remains_unchanged_with_optional_alternating_policy() -> None:
+    """The optional policy extends the vocabulary without changing defaults."""
     args = LinooArgs(type=NodeSelectorType.LINOO)
     assert args.depth_selection_policy == "inverse_depth"
     assert get_args(LinooDepthSelectionPolicy.__value__) == (
         "inverse_depth",
         "opened_count_depth_index",
+        "alternating_by_step",
     )
     parser = create_parsley(_SearchConfig, should_parse_command_line_arguments=False)
     assert parser.parse_arguments().selector == args

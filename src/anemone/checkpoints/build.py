@@ -63,7 +63,7 @@ from .build_values import (
     _serialize_value_uncached_for_build,
 )
 from .payloads import SearchRuntimeCheckpointPayload
-from .selector_payloads import _build_selector_state_payload
+from .selector_payloads import _build_selector_state_payload, _iter_selector_components
 from .tree_expansions_payloads import _build_latest_tree_expansions_payload
 
 if TYPE_CHECKING:
@@ -117,13 +117,11 @@ def build_search_checkpoint_payload(
 
 
 def _maybe_dump_rng_state(search: TreeExploration[Any]) -> object | None:
-    """Return directly exposed selector RNG state when available."""
-    random_generator = getattr(search.node_selector, "random_generator", None)
-    if isinstance(random_generator, Random):
-        return random_generator.getstate()
-
-    # TreeExploration does not retain the explore() RNG. Selector-specific RNG
-    # restoration can be made more complete with selector checkpoint payloads.
+    """Save the shared search RNG, including selectors behind a wrapper."""
+    for selector in _iter_selector_components(search.node_selector):
+        random_generator = getattr(selector, "random_generator", None)
+        if isinstance(random_generator, Random):
+            return random_generator.getstate()
     return None
 
 

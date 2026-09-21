@@ -91,6 +91,9 @@ class LinooSelectionReport:
     heap_update_frontier_node_count_seen: int | None = None
     state_rebuilt: bool | None = None
     nodes_incrementally_updated: int | None = None
+    depth_selection_subpolicy: LinooDepthSelectionPolicy | None = None
+    depth_selection_step: int | None = None
+    depth_selection_step_parity: Literal["odd", "even"] | None = None
 
     def format_depth_table(self) -> str:
         """Return an aligned text table for Linoo depth diagnostics."""

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from .errors import (
     invalid_linoo_depth_selection_policy_error,
@@ -23,21 +23,41 @@ def choose_depth(
     depth_stats_by_depth: dict[int, LinooDepthStats],
     active_depths: tuple[int, ...],
     random_generator: Random,
+    step: int | None = None,
 ) -> int:
     """Choose one active depth using the configured Linoo policy."""
     if not active_depths:
         raise no_frontier_nodes_error()
-    if depth_selection_policy == "opened_count_depth_index":
+    effective_policy = effective_depth_selection_policy(
+        depth_selection_policy=depth_selection_policy, step=step
+    )
+    if effective_policy == "opened_count_depth_index":
         return choose_depth_by_opened_count_depth_index(
             depth_stats_by_depth=depth_stats_by_depth,
             active_depths=active_depths,
         )
-    if depth_selection_policy == "inverse_depth":
+    if effective_policy == "inverse_depth":
         return sample_depth_by_inverse_depth(
             active_depths=active_depths,
             random_generator=random_generator,
         )
     raise invalid_linoo_depth_selection_policy_error(depth_selection_policy)
+
+
+def effective_depth_selection_policy(
+    *, depth_selection_policy: LinooDepthSelectionPolicy, step: int | None
+) -> LinooDepthSelectionPolicy:
+    """Resolve the policy for a one-based selector depth-selection count."""
+    if depth_selection_policy != "alternating_by_step":
+        return depth_selection_policy
+    if step is None or step < 1:
+        raise invalid_linoo_depth_selection_policy_error(depth_selection_policy)
+    return "inverse_depth" if step % 2 else "opened_count_depth_index"
+
+
+def step_parity(step: int) -> Literal["odd", "even"]:
+    """Describe one selector depth-selection count, not a global growth step."""
+    return "odd" if step % 2 else "even"
 
 
 def choose_depth_by_opened_count_depth_index(
