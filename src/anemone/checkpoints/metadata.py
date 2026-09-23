@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
 from random import Random
 from time import perf_counter
-from typing import Any, cast
+from typing import Any
 
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.tree_exploration import TreeExploration
@@ -22,12 +22,18 @@ from .payloads import (
     DeltaCheckpointStatePayload,
     SearchRuntimeCheckpointPayload,
 )
+from .rng_state import restore_random_state, rollout_random_generator
 
 type RestoreMemoryPhaseLogger = Callable[[str, Mapping[str, object]], None]
 
 
 class CheckpointRestoreError(ValueError):
     """Raised when a checkpoint payload cannot be restored safely."""
+
+    @classmethod
+    def missing_rollout_rng(cls) -> CheckpointRestoreError:
+        """Reject saved rollout state when the restored executor has no RNG."""
+        return cls("Checkpoint has rollout RNG state but the live selector has no RNG.")
 
     @classmethod
     def unsupported_format_version(cls, actual: int) -> CheckpointRestoreError:
@@ -219,6 +225,7 @@ def _restore_runtime_state(
         runtime=runtime,
         evaluator_version=payload.evaluator_version,
         rng_state=payload.rng_state,
+        rollout_rng_state=payload.rollout_rng_state,
         random_generator=random_generator,
     )
 
@@ -229,6 +236,7 @@ def _restore_runtime_metadata(
     evaluator_version: int,
     rng_state: object | None,
     random_generator: Random,
+    rollout_rng_state: object | None = None,
 ) -> None:
     """Restore runtime-level counters, evaluator version, and RNG state."""
     runtime.evaluator_version = evaluator_version
@@ -237,9 +245,11 @@ def _restore_runtime_metadata(
         node_evaluator.current_evaluator_version = evaluator_version
 
     if rng_state is not None:
-        # JSON converts both the outer state and its state vector into lists.
-        # Random.setstate requires the internal vector to be a tuple.
-        version, state_vector, gaussian = cast(
-            "tuple[int, tuple[int, ...], float | None]", rng_state
-        )
-        random_generator.setstate((version, tuple(state_vector), gaussian))
+        restore_random_state(random_generator, rng_state)
+
+    # Legacy checkpoints leave the independent rollout RNG at its configured seed.
+    if rollout_rng_state is not None:
+        rollout_rng = rollout_random_generator(runtime)
+        if rollout_rng is None:
+            raise CheckpointRestoreError.missing_rollout_rng()
+        restore_random_state(rollout_rng, rollout_rng_state)

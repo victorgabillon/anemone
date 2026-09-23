@@ -379,6 +379,7 @@ def load_search_from_sharded_checkpoint[
         runtime=runtime,
         evaluator_version=cast("int", metadata["evaluator_version"]),
         rng_state=metadata.get("rng_state"),
+        rollout_rng_state=metadata.get("rollout_rng_state"),
         random_generator=checkpoint_random_generator,
     )
     latest_tree_expansions = _optional_mapping_json_shard(

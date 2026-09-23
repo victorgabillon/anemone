@@ -350,6 +350,7 @@ class SearchRuntimeCheckpointPayload:
     rng_state: object | None = None
     latest_tree_expansions: TreeExpansionsCheckpointPayload | None = None
     selector_state: SelectorCheckpointPayload | None = None
+    rollout_rng_state: object | None = None
 
 
 __all__ = [
