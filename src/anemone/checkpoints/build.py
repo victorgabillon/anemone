@@ -63,6 +63,7 @@ from .build_values import (
     _serialize_value_uncached_for_build,
 )
 from .payloads import SearchRuntimeCheckpointPayload
+from .rng_state import rollout_random_generator
 from .selector_payloads import _build_selector_state_payload, _iter_selector_components
 from .tree_expansions_payloads import _build_latest_tree_expansions_payload
 
@@ -95,6 +96,8 @@ def build_search_checkpoint_payload(
     metrics.tree_payload_s += perf_counter() - tree_payload_started_at
     rng_state_started_at = perf_counter()
     rng_state = _maybe_dump_rng_state(search)
+    rollout_rng = rollout_random_generator(search)
+    rollout_rng_state = None if rollout_rng is None else rollout_rng.getstate()
     metrics.rng_state_total_s += perf_counter() - rng_state_started_at
     latest_tree_expansions_started_at = perf_counter()
     latest_tree_expansions = _build_latest_tree_expansions_payload(search)
@@ -113,6 +116,7 @@ def build_search_checkpoint_payload(
         rng_state=rng_state,
         latest_tree_expansions=latest_tree_expansions,
         selector_state=selector_state,
+        rollout_rng_state=rollout_rng_state,
     )
 
 

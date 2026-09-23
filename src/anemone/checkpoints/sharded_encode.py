@@ -50,6 +50,7 @@ def write_sharded_search_checkpoint(
         "format_version": payload.format_version,
         "evaluator_version": payload.evaluator_version,
         "rng_state": payload.rng_state,
+        "rollout_rng_state": payload.rollout_rng_state,
         "root_node_id": payload.tree.root_node_id,
         "node_count": len(payload.tree.nodes),
         "branch_count": _checkpoint_branch_count(payload),

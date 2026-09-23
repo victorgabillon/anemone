@@ -114,6 +114,7 @@ def load_sharded_search_checkpoint(
         format_version=require_int_field(metadata, "format_version"),
         evaluator_version=require_int_field(metadata, "evaluator_version"),
         rng_state=metadata.get("rng_state"),
+        rollout_rng_state=metadata.get("rollout_rng_state"),
         tree=TreeCheckpointPayload(
             root_node_id=require_int_field(metadata, "root_node_id"),
             nodes=[
