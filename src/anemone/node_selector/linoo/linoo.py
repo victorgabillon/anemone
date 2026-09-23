@@ -315,10 +315,6 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             node_state_by_id=self._node_state_by_id,
             candidate_heap=self._candidate_heap,
             candidate_value_or_none=self._candidate_value_or_none,
-            candidate_signature=lambda node, value: self._candidate_signature(
-                node=node,
-                candidate_value=value,
-            ),
         )
         return True
 

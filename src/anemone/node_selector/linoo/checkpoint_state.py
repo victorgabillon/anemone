@@ -288,9 +288,8 @@ def restore_candidate_payloads[NodeT: ITreeNode[Any]](
     node_state_by_id: Mapping[int, LinooNodeState],
     candidate_heap: LinooCandidateHeap,
     candidate_value_or_none: Callable[[NodeT], Value | None],
-    candidate_signature: Callable[[NodeT, Value], object],
 ) -> None:
-    """Restore valid candidate heap entries and discard stale ones."""
+    """Restore eligible heap entries with unvalidated priority signatures."""
     for depth_payload in payload.candidates_by_depth:
         for candidate in depth_payload.candidates:
             node_id = payload_node_id(candidate)
@@ -321,5 +320,9 @@ def restore_candidate_payloads[NodeT: ITreeNode[Any]](
                 node_id=node_id,
                 priority=candidate.priority,
                 version=candidate.version,
-                signature=candidate_signature(node, candidate_value),
+                # Checkpoints contain the cached priority, not its original
+                # validity signature. The node value may have changed since
+                # that priority was computed. Let the existing selected-depth
+                # registration refresh it before ranking, without RNG draws.
+                signature=None,
             )

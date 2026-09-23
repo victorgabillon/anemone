@@ -38,3 +38,27 @@ node/branch counts, full tree payloads, rollout reports and both RNG states.
 Legacy absence, deterministic configurations and saves during uninterrupted
 execution are checked separately. Chipiron's real JSON adapter and production
 sharded/streaming continuation are additionally verified in release integration.
+
+## Linoo cached priorities after restore
+
+Anemone 0.2.26 also fixes a separate checkpoint-only Linoo cache defect. A
+frontier value can change after its priority was cached. The checkpoint stores
+that old priority but does not store the signature of the value that produced
+it. Earlier readers incorrectly attached a newly computed current signature to
+the old priority, preventing the normal refresh and potentially changing the
+selected node even when both RNG streams were restored correctly.
+
+Restored entries now have an unvalidated signature (`None`). The existing
+selected-depth registration recomputes their priorities before ranking. This
+adds a cache refresh after restore, without changing the priority formula,
+depth policies, tie ordering, RNG streams or uninterrupted execution. Cache
+maintenance counters can differ from a live run; semantic decisions must match.
+Checkpoint fields and schema versions remain unchanged, and the same fix
+applies to older readable checkpoints. The legacy missing-rollout-state
+limitation above still applies.
+
+The cache regression exercises direct and backed-up frontier value changes,
+all three depth policies, typed and JSON-mapped selector payloads, and four
+subsequent selections against an uninterrupted control. Real Chipiron adapter
+tests cover plain/gzip/zstd JSON and split-sharded streaming continuation with
+both random rollout selectors.
