@@ -216,3 +216,5 @@ runs/
 
 # Local profiling outputs (do not commit)
 profiling_runs/
+# Per-run CI validation evidence
+.ci-reports/

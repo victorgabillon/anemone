@@ -288,7 +288,7 @@ base_python = ["python3.13"]
 [tool.tox.env.py313]
 description = "Run tests"
 extras = ["test", "debug"]
-commands = [["pytest", "{posargs}"]]
+commands = [["python", "scripts/ci_test_metrics.py", "--durations=100", "--durations-min=0", "--cov-branch", "--cov-report=term", "--cov-report=json:.ci-reports/coverage.json", "--junitxml=.ci-reports/pytest.xml", "{posargs}"]]
 
 # ----------------
 # Lint (fast)
