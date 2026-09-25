@@ -33,7 +33,7 @@ jobs:
           python -m pip install tox==4.56.1
 
       - name: Run tox (tests + lint + typecheck)
-        run: tox
+        run: tox -p 2 -o --parallel-no-spinner
 
       - name: Record CI environment and disk usage
         if: always()
