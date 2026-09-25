@@ -222,7 +222,13 @@ class _BrowserServerContext:
             browser_session_root=str(self._root_directory / "sessions"),
         )
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-        self._thread = Thread(target=self._server.serve_forever, daemon=True)
+        # Keep real HTTP requests and shutdown, but avoid the standard server's
+        # half-second idle polling delay on every fixture teardown.
+        self._thread = Thread(
+            target=self._server.serve_forever,
+            kwargs={"poll_interval": 0.01},
+            daemon=True,
+        )
         self._thread.start()
         return self._server.server_address
 
@@ -233,6 +239,7 @@ class _BrowserServerContext:
         self._server.shutdown()
         self._server.server_close()
         self._thread.join(timeout=5)
+        assert not self._thread.is_alive()
 
 
 def _running_browser_server(root_directory: Path) -> _BrowserServerContext:

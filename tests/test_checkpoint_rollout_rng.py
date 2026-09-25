@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 from random import Random
 from typing import TYPE_CHECKING, Any
@@ -34,6 +35,7 @@ from anemone.tree_manager.opening_expansion_config import (
     RolloutActionSelectorKind,
     RolloutExpansionConfig,
 )
+from anemone.utils.logger import anemone_logger
 from tests.fake_yaml_game import FakeYamlDynamics, MasterStateValueEvaluatorFromYaml
 from tests.test_checkpoint_load import (
     _build_linoo_args,
@@ -64,6 +66,17 @@ _PATHS = [
     "streaming",
     "streaming_split",
 ]
+
+
+@pytest.fixture(autouse=True)
+def _plain_checkpoint_logs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Capture all log messages without repeatedly rendering Rich tables.
+
+    These tests compare checkpoints, actions, trees and RNG streams, not console
+    styling. Keep logging enabled and every message available on failure; only
+    replace the presentation handler, restoring it after each individual case.
+    """
+    monkeypatch.setattr(anemone_logger, "handlers", [logging.StreamHandler()])
 
 
 def _args(kind: RolloutActionSelectorKind, extra_steps: int | None = 1) -> Any:

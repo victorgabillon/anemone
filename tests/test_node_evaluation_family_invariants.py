@@ -9,7 +9,10 @@ from valanga import Color
 from valanga.evaluations import Certainty, Value
 
 from anemone.backup_policies import ExplicitMaxBackupPolicy, ExplicitMinimaxBackupPolicy
-from anemone.node_evaluation.common.branch_ordering import DecisionOrderedEvaluation
+from anemone.node_evaluation.common.branch_ordering import (
+    DecisionOrderedEvaluation,
+    compare_branch_candidates,
+)
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -385,3 +388,21 @@ def test_decision_ordered_capability_aligns_across_families() -> None:
     assert isinstance(single_agent, DecisionOrderedEvaluation)
     assert adversarial.decision_ordered_branches() == []
     assert single_agent.decision_ordered_branches() == []
+
+
+def test_branch_candidate_fallback_is_antisymmetric_and_reflexive() -> None:
+    """Equal semantic values and tie-breaks use a stable, complete branch order."""
+    value = Value(score=0.5, certainty=Certainty.ESTIMATE)
+    for left, right, expected in ((1, 2, 1), (2, 1, -1), (1, 1, 0)):
+        assert (
+            compare_branch_candidates(
+                left_branch=left,
+                left_value=value,
+                left_tiebreak=0,
+                right_branch=right,
+                right_value=value,
+                right_tiebreak=0,
+                semantic_compare=lambda _left, _right: 0,
+            )
+            == expected
+        )

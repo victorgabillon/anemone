@@ -33,4 +33,23 @@ jobs:
           python -m pip install tox==4.56.1
 
       - name: Run tox (tests + lint + typecheck)
-        run: tox
+        run: tox -p 2 -o --parallel-no-spinner
+
+      - name: Record CI environment and disk usage
+        if: always()
+        run: |
+          mkdir -p .ci-reports
+          python -m pip cache info
+          du -sh ~/.cache/pip .tox || true
+          df -h .
+          .tox/py313/bin/python -m pip list --format=json > .ci-reports/dependencies.json
+
+      - name: Retain validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-validation-evidence
+          path: |
+            .ci-reports/
+            .tox/static/tmp/static-analysis/
+          include-hidden-files: true
