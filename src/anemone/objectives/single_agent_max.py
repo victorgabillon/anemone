@@ -31,6 +31,14 @@ class SingleAgentMaxObjective[StateT: State = State]:
     def semantic_compare(self, left: Value, right: Value, state: StateT) -> int:
         """Compare child ``Value`` objects for this node's max objective semantics."""
         del state
+        return self._semantic_compare(left, right)
+
+    def semantic_compare_without_state(self, left: Value, right: Value) -> int:
+        """Compare values identically to ``semantic_compare`` without loading state."""
+        return self._semantic_compare(left, right)
+
+    def _semantic_compare(self, left: Value, right: Value) -> int:
+        """Apply the shared state-independent score and exactness ordering."""
         if left.score > right.score:
             return 1
         if left.score < right.score:
