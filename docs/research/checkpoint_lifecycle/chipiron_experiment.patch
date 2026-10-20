@@ -1,0 +1,29 @@
+diff --git a/src/chipiron/environments/morpion/bootstrap/runtime/runner.py b/src/chipiron/environments/morpion/bootstrap/runtime/runner.py
+index d2eaf21a..534d7157 100644
+--- a/src/chipiron/environments/morpion/bootstrap/runtime/runner.py
++++ b/src/chipiron/environments/morpion/bootstrap/runtime/runner.py
+@@ -477,21 +477,9 @@ class AnemoneMorpionSearchRunner(MorpionSearchRunner):
+             and not self._warm_reuse_is_validated()
+         ):
+             reason = "warm_reuse_not_validated"
+-        if reason == "compatible_committed_checkpoint" and (
+-            _effective_growth_state_eviction_policy(
+-                self._args.growth_state_eviction_policy
+-            )
+-            != "none"
+-        ):
+-            # Cold restore replaces compact/materialized handles with checkpoint-backed
+-            # handles. Their stored parent/anchor references affect future exports.
+-            # Retaining those handles under eviction has not passed exact parity.
+-            reason = "state_eviction_requires_cold_restore"
+-        if reason == "compatible_committed_checkpoint" and (
+-            _opening_expansion_kind_name(self._args.search_args) != "one_ply"
+-        ):
+-            # Rollout-created incoming-edge order also failed exact checkpoint parity.
+-            reason = "rollout_requires_cold_restore"
++        # Isolated lifecycle experiment only: the benchmark subclass must explicitly
++        # opt in above and adopt committed Anemone checkpoint state. Production's
++        # _warm_reuse_is_validated() remains False. Never push this adapter to PR74.
+         if reason == "compatible_committed_checkpoint" and not isinstance(
+             self._require_runtime().node_selector, StatefulNodeSelector
+         ):

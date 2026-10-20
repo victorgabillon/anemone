@@ -1,0 +1,13 @@
+{
+  "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:09:02) [GCC 11.2.0]",
+  "executable": "/tmp/anemone-lifecycle-integration-venv/bin/python",
+  "packages": {
+    "algorhino-anemone": "0.2.26",
+    "torch": "2.14.0+cpu",
+    "chipiron": "0.2.4",
+    "valanga": "0.2.5",
+    "zstandard": "0.25.0",
+    "PyYAML": "6.0.3",
+    "numpy": "2.2.6"
+  }
+}
