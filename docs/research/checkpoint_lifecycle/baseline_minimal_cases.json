@@ -1,0 +1,95 @@
+[
+  {
+    "E_changed_insertion_order": [
+      {
+        "field": "/tree/nodes/4/parent_node_id",
+        "live": 3,
+        "restored": 2
+      }
+    ],
+    "kind": "anchor",
+    "node_count": 6,
+    "live_parent_order": [
+      3,
+      2
+    ],
+    "cold_parent_order": [
+      2,
+      3
+    ],
+    "live_handle": "MaterializedStateHandle",
+    "cold_handle": "CheckpointBackedStateHandle",
+    "A_live_save_twice": [],
+    "B_save_restore_save": [
+      {
+        "field": "/tree/nodes/4/parent_node_id",
+        "live": 3,
+        "restored": 2
+      }
+    ],
+    "F_same_parent_order_different_handle": [],
+    "C_D_continuation": [
+      {
+        "field": "/tree/nodes/4/parent_node_id",
+        "live": 3,
+        "restored": 2
+      }
+    ]
+  },
+  {
+    "E_changed_insertion_order": [],
+    "kind": "delta",
+    "node_count": 6,
+    "live_parent_order": [
+      3,
+      2
+    ],
+    "cold_parent_order": [
+      2,
+      3
+    ],
+    "live_handle": "MaterializedStateHandle",
+    "cold_handle": "CheckpointBackedStateHandle",
+    "A_live_save_twice": [],
+    "B_save_restore_save": [],
+    "F_same_parent_order_different_handle": [],
+    "C_D_continuation": []
+  },
+  {
+    "E_changed_insertion_order": [],
+    "kind": "alternate_delta",
+    "node_count": 6,
+    "live_parent_order": [
+      3,
+      2
+    ],
+    "cold_parent_order": [
+      2,
+      3
+    ],
+    "live_handle": "MaterializedStateHandle",
+    "cold_handle": "CheckpointBackedStateHandle",
+    "A_live_save_twice": [],
+    "B_save_restore_save": [
+      {
+        "field": "/tree/nodes/4/parent_node_id",
+        "live": 3,
+        "restored": 2
+      }
+    ],
+    "F_same_parent_order_different_handle": [
+      {
+        "field": "/tree/nodes/4/parent_node_id",
+        "live": 3,
+        "restored": 2
+      }
+    ],
+    "C_D_continuation": [
+      {
+        "field": "/tree/nodes/4/parent_node_id",
+        "live": 3,
+        "restored": 2
+      }
+    ]
+  }
+]

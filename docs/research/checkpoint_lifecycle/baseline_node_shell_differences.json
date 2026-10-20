@@ -1,0 +1,397 @@
+{
+  "anemone_import": "/home/pompote/oldata/victor/anemone-state-free-compare/src/anemone/__init__.py",
+  "anemone_sha": "ec9fec7e47ca661eb1dd9330d115d010d9e5e64d",
+  "chipiron_sha": "aeece2c1694a90bb79880db1733966d22c36c6a1",
+  "comparisons": [
+    {
+      "generation": "generation_000003.sharded",
+      "different_node_count": 1,
+      "component_equal": {
+        "metadata": true,
+        "node_shells": false,
+        "state_payloads": true,
+        "node_runtime": true,
+        "selector": true,
+        "latest_expansions": true
+      },
+      "differences": [
+        {
+          "node_id": 7952,
+          "fields": {
+            "branch_from_parent": {
+              "cold": {
+                "items": [
+                  1,
+                  -2,
+                  1,
+                  4
+                ],
+                "type": "tuple"
+              },
+              "warm": {
+                "items": [
+                  1,
+                  4,
+                  -2,
+                  4
+                ],
+                "type": "tuple"
+              }
+            },
+            "parent_node_id": {
+              "cold": 412,
+              "warm": 417
+            }
+          },
+          "cold_context": {
+            "node_id": 7952,
+            "depth": 4,
+            "parent_count": 2,
+            "incoming_links_in_storage_order": [
+              {
+                "parent_id": 412,
+                "branches": [
+                  {
+                    "type": "tuple",
+                    "items": [
+                      1,
+                      -2,
+                      1,
+                      4
+                    ]
+                  }
+                ]
+              },
+              {
+                "parent_id": 417,
+                "branches": [
+                  {
+                    "type": "tuple",
+                    "items": [
+                      1,
+                      4,
+                      -2,
+                      4
+                    ]
+                  }
+                ]
+              }
+            ],
+            "shell": {
+              "branch_from_parent": {
+                "items": [
+                  1,
+                  -2,
+                  1,
+                  4
+                ],
+                "type": "tuple"
+              },
+              "depth": 4,
+              "generated_all_branches": false,
+              "node_id": 7952,
+              "parent_node_id": 412,
+              "state_summary": {
+                "is_terminal": false,
+                "tag": 4402156646146418305
+              }
+            },
+            "saved_state_payload": {
+              "anchor_ref": [
+                0,
+                [
+                  9222668330085744635,
+                  9222949830832062469,
+                  9223794225697619966,
+                  9224638667807817730
+                ]
+              ],
+              "state_summary": {
+                "is_terminal": false,
+                "tag": 4402156646146418305
+              }
+            },
+            "saved_state_payload_type": "anchor",
+            "persisted_state_parent_id": null,
+            "persisted_state_parent_branch": null,
+            "state_handle_type": "CheckpointBackedStateHandle",
+            "live_reusable_payload_type": "AnchorCheckpointStatePayload",
+            "live_reusable_state_parent_id": null,
+            "live_reusable_state_parent_branch": null
+          },
+          "warm_context": {
+            "node_id": 7952,
+            "depth": 4,
+            "parent_count": 2,
+            "incoming_links_in_storage_order": [
+              {
+                "parent_id": 417,
+                "branches": [
+                  {
+                    "type": "tuple",
+                    "items": [
+                      1,
+                      4,
+                      -2,
+                      4
+                    ]
+                  }
+                ]
+              },
+              {
+                "parent_id": 412,
+                "branches": [
+                  {
+                    "type": "tuple",
+                    "items": [
+                      1,
+                      -2,
+                      1,
+                      4
+                    ]
+                  }
+                ]
+              }
+            ],
+            "shell": {
+              "branch_from_parent": {
+                "items": [
+                  1,
+                  4,
+                  -2,
+                  4
+                ],
+                "type": "tuple"
+              },
+              "depth": 4,
+              "generated_all_branches": false,
+              "node_id": 7952,
+              "parent_node_id": 417,
+              "state_summary": {
+                "is_terminal": false,
+                "tag": 4402156646146418305
+              }
+            },
+            "saved_state_payload": {
+              "anchor_ref": [
+                0,
+                [
+                  9222668330085744635,
+                  9222949830832062469,
+                  9223794225697619966,
+                  9224638667807817730
+                ]
+              ],
+              "state_summary": {
+                "is_terminal": false,
+                "tag": 4402156646146418305
+              }
+            },
+            "saved_state_payload_type": "anchor",
+            "persisted_state_parent_id": null,
+            "persisted_state_parent_branch": null,
+            "state_handle_type": "CheckpointBackedStateHandle",
+            "live_reusable_payload_type": "AnchorCheckpointStatePayload",
+            "live_reusable_state_parent_id": null,
+            "live_reusable_state_parent_branch": null
+          }
+        }
+      ]
+    },
+    {
+      "generation": "generation_000004.sharded",
+      "different_node_count": 1,
+      "component_equal": {
+        "metadata": true,
+        "node_shells": false,
+        "state_payloads": true,
+        "node_runtime": true,
+        "selector": true,
+        "latest_expansions": true
+      },
+      "differences": [
+        {
+          "node_id": 7952,
+          "fields": {
+            "branch_from_parent": {
+              "cold": {
+                "items": [
+                  1,
+                  -2,
+                  1,
+                  4
+                ],
+                "type": "tuple"
+              },
+              "warm": {
+                "items": [
+                  1,
+                  4,
+                  -2,
+                  4
+                ],
+                "type": "tuple"
+              }
+            },
+            "parent_node_id": {
+              "cold": 412,
+              "warm": 417
+            }
+          },
+          "cold_context": {
+            "node_id": 7952,
+            "depth": 4,
+            "parent_count": 2,
+            "incoming_links_in_storage_order": [
+              {
+                "parent_id": 412,
+                "branches": [
+                  {
+                    "type": "tuple",
+                    "items": [
+                      1,
+                      -2,
+                      1,
+                      4
+                    ]
+                  }
+                ]
+              },
+              {
+                "parent_id": 417,
+                "branches": [
+                  {
+                    "type": "tuple",
+                    "items": [
+                      1,
+                      4,
+                      -2,
+                      4
+                    ]
+                  }
+                ]
+              }
+            ],
+            "shell": {
+              "branch_from_parent": {
+                "items": [
+                  1,
+                  -2,
+                  1,
+                  4
+                ],
+                "type": "tuple"
+              },
+              "depth": 4,
+              "generated_all_branches": false,
+              "node_id": 7952,
+              "parent_node_id": 412,
+              "state_summary": {
+                "is_terminal": false,
+                "tag": 4402156646146418305
+              }
+            },
+            "saved_state_payload": {
+              "anchor_ref": [
+                0,
+                [
+                  9222668330085744635,
+                  9222949830832062469,
+                  9223794225697619966,
+                  9224638667807817730
+                ]
+              ],
+              "state_summary": {
+                "is_terminal": false,
+                "tag": 4402156646146418305
+              }
+            },
+            "saved_state_payload_type": "anchor",
+            "persisted_state_parent_id": null,
+            "persisted_state_parent_branch": null,
+            "state_handle_type": "CheckpointBackedStateHandle",
+            "live_reusable_payload_type": "AnchorCheckpointStatePayload",
+            "live_reusable_state_parent_id": null,
+            "live_reusable_state_parent_branch": null
+          },
+          "warm_context": {
+            "node_id": 7952,
+            "depth": 4,
+            "parent_count": 2,
+            "incoming_links_in_storage_order": [
+              {
+                "parent_id": 417,
+                "branches": [
+                  {
+                    "type": "tuple",
+                    "items": [
+                      1,
+                      4,
+                      -2,
+                      4
+                    ]
+                  }
+                ]
+              },
+              {
+                "parent_id": 412,
+                "branches": [
+                  {
+                    "type": "tuple",
+                    "items": [
+                      1,
+                      -2,
+                      1,
+                      4
+                    ]
+                  }
+                ]
+              }
+            ],
+            "shell": {
+              "branch_from_parent": {
+                "items": [
+                  1,
+                  4,
+                  -2,
+                  4
+                ],
+                "type": "tuple"
+              },
+              "depth": 4,
+              "generated_all_branches": false,
+              "node_id": 7952,
+              "parent_node_id": 417,
+              "state_summary": {
+                "is_terminal": false,
+                "tag": 4402156646146418305
+              }
+            },
+            "saved_state_payload": {
+              "anchor_ref": [
+                0,
+                [
+                  9222668330085744635,
+                  9222949830832062469,
+                  9223794225697619966,
+                  9224638667807817730
+                ]
+              ],
+              "state_summary": {
+                "is_terminal": false,
+                "tag": 4402156646146418305
+              }
+            },
+            "saved_state_payload_type": "anchor",
+            "persisted_state_parent_id": null,
+            "persisted_state_parent_branch": null,
+            "state_handle_type": "CheckpointBackedStateHandle",
+            "live_reusable_payload_type": "AnchorCheckpointStatePayload",
+            "live_reusable_state_parent_id": null,
+            "live_reusable_state_parent_branch": null
+          }
+        }
+      ]
+    }
+  ]
+}
