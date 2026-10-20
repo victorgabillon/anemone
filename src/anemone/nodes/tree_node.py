@@ -373,6 +373,21 @@ class TreeNode[
             return
         yield from storage.items()
 
+    def reorder_parent_links(self, parent_order: Iterable[FamilyT]) -> None:
+        """Reorder existing incoming parents without replacing edge sets or owners.
+
+        Membership must be identical. Preserve the compatibility dictionary and
+        branch-set objects so existing views/references remain attached.
+        """
+        order = tuple(parent_order)
+        storage = self.parent_nodes
+        if len(order) != len(storage) or set(order) != storage.keys():
+            raise ValueError("invalid_parent_order")
+        items = [(parent, storage[parent]) for parent in order]
+        if isinstance(self.parent_nodes_, dict):
+            self.parent_nodes_.clear()
+            self.parent_nodes_.update(items)
+
     def parent_count(self) -> int:
         """Return the number of distinct parent nodes without allocating."""
         storage = cast("_ParentNodesStorage[FamilyT]", self.parent_nodes_)

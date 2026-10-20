@@ -1,6 +1,12 @@
 """Public checkpoint schema and serialization entrypoints."""
 # pylint: disable=duplicate-code
 
+from .adoption import (
+    CheckpointAdoption,
+    CheckpointAdoptionError,
+    CheckpointAdoptionStats,
+    prepare_checkpoint_adoption,
+)
 from .build import build_search_checkpoint_payload
 from .io import (
     DEFAULT_CHECKPOINT_FILE_FORMAT,
@@ -99,6 +105,9 @@ __all__ = [
     "BackupRuntimeCheckpointPayload",
     "BranchFrontierCheckpointPayload",
     "BranchOrderingCheckpointPayload",
+    "CheckpointAdoption",
+    "CheckpointAdoptionError",
+    "CheckpointAdoptionStats",
     "CheckpointAtom",
     "CheckpointAtomPayload",
     "CheckpointBackedStateHandle",
@@ -157,6 +166,7 @@ __all__ = [
     "load_sharded_search_checkpoint",
     "parse_generation_checkpoint_name",
     "payload_for_node_id_or_none",
+    "prepare_checkpoint_adoption",
     "read_sharded_checkpoint_manifest",
     "resolve_latest_generation_checkpoint_path",
     "serialize_checkpoint_atom",
