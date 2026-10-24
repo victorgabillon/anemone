@@ -13,6 +13,7 @@ from .node_direct_evaluator import (
     NodeEvaluatorTypes,
 )
 from .protocols import MasterStateValueEvaluator, OverEventDetector
+from .score import scale_nonterminal_score
 
 __all__ = [
     "DirectEvaluationOutcome",
@@ -23,4 +24,5 @@ __all__ = [
     "NodeEvaluatorTypes",
     "OverEventDetector",
     "create_node_evaluator",
+    "scale_nonterminal_score",
 ]

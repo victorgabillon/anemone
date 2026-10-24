@@ -12,6 +12,7 @@ from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.node_evaluation.common import canonical_value
 from anemone.nodes.algorithm_node import AlgorithmNode
 
+from . import score as _score
 from .protocols import MasterStateValueEvaluator
 
 if TYPE_CHECKING:
@@ -19,7 +20,8 @@ if TYPE_CHECKING:
         NodeMinmaxEvaluation,
     )
 
-DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
+
+DISCOUNT = _score.DISCOUNT
 
 
 class DirectValueInvariantError(AssertionError):
@@ -315,4 +317,4 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
         self, evaluation: float, node: AlgorithmNode[StateT]
     ) -> float:
         """Process the evaluation for a node that is not over."""
-        return (1 / DISCOUNT) ** node.tree_depth * evaluation
+        return _score.scale_nonterminal_score(evaluation, node.tree_depth)
