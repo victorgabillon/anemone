@@ -41,6 +41,7 @@ from .sharded_io import (
 )
 from .sharded_manifest import read_sharded_checkpoint_manifest
 from .state_handles import (
+    DEFAULT_STATE_CACHE_CAPACITY,
     CheckpointPayloadStore,
     DenseCheckpointPayloadStore,
     DictCheckpointPayloadStore,
@@ -112,12 +113,14 @@ def load_search_from_sharded_checkpoint[
     hooks: SearchHooks | None = None,
     restore_memory_phase_logger: Callable[[str, Mapping[str, object]], None]
     | None = None,
+    state_cache_capacity: int = DEFAULT_STATE_CACHE_CAPACITY,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """Experimentally restore runtime directly from C2b shards.
 
     This C2d path is opt-in and intentionally keeps the C2c typed-payload reader
     unchanged. It retains compact per-node shells and a direct state payload
     store, then restores full node runtime data one shard at a time.
+    ``state_cache_capacity`` bounds decoded-state retention; zero disables it.
     """
     from anemone._runtime_assembly import assemble_search_runtime_dependencies
     from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
@@ -245,6 +248,7 @@ def load_search_from_sharded_checkpoint[
     state_resolver = _create_state_resolver_from_payload_store(
         payload_store=state_payload_store,
         state_codec=state_codec,
+        state_cache_capacity=state_cache_capacity,
     )
     _log_sharded_restore_memory_phase(
         restore_memory_phase_logger,

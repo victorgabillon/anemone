@@ -1,5 +1,6 @@
 """Checkpoint-backed lazy state handles used during restore."""
 
+from collections import OrderedDict
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Protocol, cast
@@ -13,6 +14,12 @@ from .payloads import (
     DeltaCheckpointStatePayload,
 )
 from .value_serialization import deserialize_checkpoint_atom
+
+DEFAULT_STATE_CACHE_CAPACITY = 256
+
+
+def _invalid_cache_capacity_error() -> ValueError:
+    return ValueError("state_cache_capacity must be non-negative")
 
 
 class CheckpointStateResolutionError(KeyError):
@@ -91,18 +98,21 @@ class DenseCheckpointPayloadStore(Mapping[int, CheckpointNodeStatePayload]):
 class CheckpointStateResolver[StateT: State = State]:
     """Shared lazy state resolver used during one checkpoint restore session.
 
-    The resolver owns the restore-session decode cache. Multiple thin
-    checkpoint-backed handles for the same node id intentionally share this
-    resolver so the underlying checkpoint anchor/delta chain is decoded only
-    once per node.
+    Thin handles share a bounded LRU of decoded states. Evicted states are
+    reconstructed from the original payload store; capacity zero retains none.
+    Active parent states stay alive on the decode call stack, independently of
+    cache eviction. External state references remain valid after eviction.
+    The immutable payload index and active reconstruction chain are not bounded
+    by this cache capacity.
     """
 
     state_codec: IncrementalStateCheckpointCodec[StateT]
     state_payloads_by_node_id: (
         CheckpointPayloadStore | Mapping[int, CheckpointNodeStatePayload]
     )
-    _resolved_states: dict[int, StateT] = field(
-        default_factory=lambda: cast("dict[int, StateT]", {}),
+    state_cache_capacity: int = DEFAULT_STATE_CACHE_CAPACITY
+    _resolved_states: OrderedDict[int, StateT] = field(
+        default_factory=OrderedDict[int, StateT],
         init=False,
     )
     _resolving_node_ids: set[int] = field(
@@ -112,6 +122,8 @@ class CheckpointStateResolver[StateT: State = State]:
 
     def __post_init__(self) -> None:
         """Normalize legacy mappings into an explicit payload-store abstraction."""
+        if self.state_cache_capacity < 0:
+            raise _invalid_cache_capacity_error()
         payload_store = self.state_payloads_by_node_id
         if isinstance(
             payload_store,
@@ -140,9 +152,10 @@ class CheckpointStateResolver[StateT: State = State]:
             return None
 
     def resolve(self, node_id: int) -> StateT:
-        """Return one checkpointed state, decoding it only once."""
+        """Return a cached state or decode it, retaining at most the capacity."""
         resolved_state = self._resolved_states.get(node_id)
         if resolved_state is not None:
+            self._resolved_states.move_to_end(node_id)
             return resolved_state
 
         if node_id in self._resolving_node_ids:
@@ -159,7 +172,10 @@ class CheckpointStateResolver[StateT: State = State]:
                 )
         finally:
             self._resolving_node_ids.discard(node_id)
-        self._resolved_states[node_id] = resolved_state
+        if self.state_cache_capacity:
+            self._resolved_states[node_id] = resolved_state
+            if len(self._resolved_states) > self.state_cache_capacity:
+                self._resolved_states.popitem(last=False)
         return resolved_state
 
     def summary(self, node_id: int) -> CheckpointStateSummary | None:
@@ -253,6 +269,7 @@ def payload_for_node_id_or_none(
 
 
 __all__ = [
+    "DEFAULT_STATE_CACHE_CAPACITY",
     "CheckpointBackedStateHandle",
     "CheckpointPayloadStore",
     "CheckpointStateResolutionError",
