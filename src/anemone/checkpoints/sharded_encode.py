@@ -204,6 +204,7 @@ def _node_shell_record(
     return {
         "node_id": node_payload.node_id,
         "parent_node_id": node_payload.parent_node_id,
+        "parent_node_order": node_payload.parent_node_order,
         "branch_from_parent": node_payload.branch_from_parent,
         "depth": node_payload.depth,
         "generated_all_branches": node_payload.generated_all_branches,

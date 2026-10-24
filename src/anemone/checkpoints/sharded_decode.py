@@ -145,6 +145,7 @@ def _algorithm_node_payload_from_mapping(
             "CheckpointAtomPayload | None",
             payload.get("branch_from_parent"),
         ),
+        parent_node_order=cast("list[int] | None", payload.get("parent_node_order")),
         depth=require_int_field(payload, "depth"),
         state_payload=_state_payload_from_mapping(
             require_mapping_field(payload, "state_payload")

@@ -50,6 +50,7 @@ from .node_restore import (
     _populate_descendants_for_restore,
     _populate_descendants_from_node_shells_for_restore,
     _restore_node_runtime_state,
+    _restore_parent_order,
 )
 from .payloads import SearchRuntimeCheckpointPayload
 from .restore_atoms import (
@@ -197,6 +198,10 @@ def load_search_from_checkpoint_payload[
     )
     with _log_restore_phase("link_nodes", **common_metadata):
         _link_nodes(payload.tree.nodes, nodes_by_id=nodes_by_id)
+        _restore_parent_order(
+            ((node.node_id, node.parent_node_order) for node in payload.tree.nodes),
+            nodes_by_id=nodes_by_id,
+        )
     with _log_restore_phase("restore_node_runtime_state", **common_metadata):
         _restore_node_runtime_state(payload.tree.nodes, nodes_by_id=nodes_by_id)
 

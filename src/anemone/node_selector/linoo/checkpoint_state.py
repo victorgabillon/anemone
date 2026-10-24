@@ -75,7 +75,12 @@ def candidate_payloads_from_cache(
     node_state_by_id: Mapping[int, LinooNodeState],
     candidate_versions_by_node_id: Mapping[int, int],
 ) -> list[LinooCandidatesByDepthCheckpointPayload]:
-    """Serialize non-stale candidate heap entries without mutating heaps."""
+    """Serialize current entries with canonical local version labels.
+
+    Only valid entries cross the checkpoint boundary. Historical stale-entry
+    counters carry no priority information; start their restored epoch at one.
+    Runtime heaps and their counters remain untouched.
+    """
     from anemone.checkpoints.payloads import (  # pylint: disable=import-outside-toplevel
         LinooCandidateCheckpointPayload,
         LinooCandidatesByDepthCheckpointPayload,
@@ -88,7 +93,7 @@ def candidate_payloads_from_cache(
                 node_id=node_id,
                 depth=depth,
                 priority=-priority_key,
-                version=version,
+                version=1,
             )
             for priority_key, node_id, version in heap
             if should_serialize_candidate(

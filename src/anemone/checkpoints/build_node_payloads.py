@@ -109,7 +109,6 @@ def _build_node_payload(
         _branch_from_parent,
         branch_from_parent_payload,
     ) = _representative_parent_link(
-        node,
         node_cache=node_cache,
         context=context,
     )
@@ -153,6 +152,11 @@ def _build_node_payload(
         linked_children=linked_children,
         evaluation=evaluation,
         exploration_index=exploration_index,
+        parent_node_order=(
+            [entry.parent_node.id for entry in node_cache.parent_branch_entries]
+            if len(node_cache.parent_branch_entries) > 1
+            else None
+        ),
     )
 
 
@@ -179,22 +183,23 @@ def _serialize_linked_children(
     *,
     context: _CheckpointBuildContext,
 ) -> list[LinkedChildCheckpointPayload]:
-    """Serialize linked children in stable checkpoint-atom order."""
+    """Preserve concrete child-link iteration order exactly."""
     metrics = context.metrics
     metrics.linked_children_calls += 1
-    linked_children = [
-        LinkedChildCheckpointPayload(
-            branch_key=_serialize_checkpoint_atom_for_build(
-                branch,
-                context=context,
-            ),
-            child_node_id=child.id,
+    linked_children: list[LinkedChildCheckpointPayload] = []
+    for branch, child in child_links:
+        if child is None:
+            raise _null_child_link_error()
+        linked_children.append(
+            LinkedChildCheckpointPayload(
+                branch_key=_serialize_checkpoint_atom_for_build(
+                    branch, context=context
+                ),
+                child_node_id=child.id,
+            )
         )
-        for branch, child in child_links
-        if child is not None
-    ]
-    sort_started_at = perf_counter()
-    linked_children.sort(key=lambda item: (repr(item.branch_key), item.child_node_id))
-    metrics.linked_children_sort_calls += 1
-    metrics.linked_children_sort_s += perf_counter() - sort_started_at
     return linked_children
+
+
+def _null_child_link_error() -> ValueError:
+    return ValueError("Cannot checkpoint a null child-link slot.")

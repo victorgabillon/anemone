@@ -78,6 +78,7 @@ class _ShardedNodeShell:
     depth: int
     generated_all_branches: bool
     state_summary: object | None
+    parent_node_order: list[int] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +143,7 @@ def load_search_from_sharded_checkpoint[
         _create_nodes_from_node_shells,
         _link_nodes,
         _restore_node_runtime_state,
+        _restore_parent_order,
     )
     from .selector_payloads import (
         _restore_explicit_selector_state,
@@ -347,6 +349,10 @@ def load_search_from_sharded_checkpoint[
             ]
             _link_nodes(node_payloads, nodes_by_id=nodes_by_id)
             _restore_node_runtime_state(node_payloads, nodes_by_id=nodes_by_id)
+    _restore_parent_order(
+        ((shell.node_id, shell.parent_node_order) for shell in node_shells),
+        nodes_by_id=nodes_by_id,
+    )
     _log_sharded_restore_memory_phase(
         restore_memory_phase_logger,
         "after_edges_and_runtime_state_restored",
@@ -572,6 +578,7 @@ def _sharded_node_shell_from_mapping(
         depth=cast("int", payload["depth"]),
         generated_all_branches=cast("bool", payload["generated_all_branches"]),
         state_summary=state_summary,
+        parent_node_order=cast("list[int] | None", payload.get("parent_node_order")),
     )
 
 

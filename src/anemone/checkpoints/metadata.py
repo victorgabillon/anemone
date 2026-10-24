@@ -82,6 +82,11 @@ class CheckpointRestoreError(ValueError):
         return cls(f"Checkpoint references unknown node id {node_id}.")
 
     @classmethod
+    def invalid_parent_order(cls, node_id: int) -> CheckpointRestoreError:
+        """Refuse missing, duplicated or inconsistent incoming-parent order."""
+        return cls(f"Invalid checkpoint parent order at node {node_id}.")
+
+    @classmethod
     def delta_node_missing_parent(cls, node_id: int) -> CheckpointRestoreError:
         """Return the error for a delta payload that lacks a parent node id."""
         return cls(f"Delta checkpoint node {node_id} must reference a parent node id.")
