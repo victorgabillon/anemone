@@ -1,0 +1,171 @@
+{
+  "base": "a07fb2fdd75e2020d9795d34ec1cf896eb86f3a0",
+  "research_commit": "60fdf85bb26e34f7d502122f34f3208ae2fc19d9",
+  "python": "3.13.5",
+  "baseline_red": {
+    "tests": 3,
+    "failures": 3,
+    "expected": true
+  },
+  "full_suite": {
+    "tests": 932,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 16.877
+  },
+  "scientific_regressions": 32,
+  "tests_by_module": {
+    "tests.checkpoints.test_json_types": 8,
+    "tests.checkpoints.test_release_contract": 1,
+    "tests.checkpoints.test_value_serialization": 9,
+    "tests.integration.test_atomheart_integer_reduction_uniform_search": 8,
+    "tests.integration.test_atomheart_nim_uniform_search": 15,
+    "tests.profiling.test_artifacts": 2,
+    "tests.profiling.test_collectors": 3,
+    "tests.profiling.test_component_summary": 1,
+    "tests.profiling.test_external_profilers": 2,
+    "tests.profiling.test_gui_data_loading": 3,
+    "tests.profiling.test_runner": 8,
+    "tests.profiling.test_scenarios": 7,
+    "tests.profiling.test_storage": 3,
+    "tests.profiling.test_suite_artifacts": 1,
+    "tests.profiling.test_suites": 7,
+    "tests.rollouts.test_node_status": 10,
+    "tests.test_algorithm_node_tree_manager_value_path": 5,
+    "tests.test_backup_policy_common": 6,
+    "tests.test_backup_policy_defaults": 5,
+    "tests.test_backup_policy_injection": 1,
+    "tests.test_branch_frontier": 6,
+    "tests.test_checkpoint_build": 17,
+    "tests.test_checkpoint_io": 1,
+    "tests.test_checkpoint_load": 42,
+    "tests.test_checkpoint_rollout_rng": 149,
+    "tests.test_checkpoint_sharded": 25,
+    "tests.test_checkpoints": 5,
+    "tests.test_composed_node_selector": 9,
+    "tests.test_debug_breakpoints": 6,
+    "tests.test_debug_browser_bundle": 5,
+    "tests.test_debug_browser_launcher": 8,
+    "tests.test_debug_events": 13,
+    "tests.test_debug_export": 3,
+    "tests.test_debug_integration_end_to_end": 3,
+    "tests.test_debug_live_control": 16,
+    "tests.test_debug_live_session": 6,
+    "tests.test_debug_module": 18,
+    "tests.test_debug_recording": 6,
+    "tests.test_debug_replay": 5,
+    "tests.test_debug_snapshot_serialization": 3,
+    "tests.test_debug_toy_scenarios": 12,
+    "tests.test_depth_index_propagator": 5,
+    "tests.test_dynamics_normalization": 2,
+    "tests.test_evaluation_ordering": 8,
+    "tests.test_evaluator_hot_swap": 5,
+    "tests.test_evaluator_refresh_contract": 25,
+    "tests.test_factory_runtime_creation": 2,
+    "tests.test_fake_child_evaluation_protocol": 4,
+    "tests.test_forced_terminal_backup_semantics": 5,
+    "tests.test_indices": 2,
+    "tests.test_linoo_alternating": 46,
+    "tests.test_linoo_argument_contract": 4,
+    "tests.test_linoo_checkpoint_cache": 24,
+    "tests.test_linoo_selector": 37,
+    "tests.test_node_evaluation_family_invariants": 12,
+    "tests.test_node_reevaluation": 8,
+    "tests.test_node_value_updates": 10,
+    "tests.test_objectives": 7,
+    "tests.test_opening_expansion_executor": 5,
+    "tests.test_opening_expansion_factory": 17,
+    "tests.test_opening_instructor": 2,
+    "tests.test_opening_status": 5,
+    "tests.test_principal_variation_state": 6,
+    "tests.test_priority_registered": 3,
+    "tests.test_pv_versioning": 11,
+    "tests.test_recommender_rule_value_api": 1,
+    "tests.test_refresh_scopes": 13,
+    "tests.test_representative_path_utils": 3,
+    "tests.test_rollout_action_selectors": 10,
+    "tests.test_rollout_opening_expansion_executor": 23,
+    "tests.test_scientific_refresh": 7,
+    "tests.test_single_agent_max": 35,
+    "tests.test_top2_exactness_pv_runtime": 11,
+    "tests.test_tree_evaluation_debug_printing": 2,
+    "tests.test_tree_exploration": 5,
+    "tests.test_tree_manager": 3,
+    "tests.test_tree_node_lazy_containers": 7,
+    "tests.test_tree_node_parent_multiedge": 7,
+    "tests.test_uniform_selector_value_api": 3,
+    "tests.test_value_backup_edge_cases": 3,
+    "tests.test_value_backup_invariants": 6,
+    "tests.test_value_certainty_semantics": 4,
+    "tests.test_value_minimax_backup": 28,
+    "tests.test_value_objects_flow": 18,
+    "tests.test_value_propagator": 6,
+    "tests.training_export.test_training_export_model": 16,
+    "tests.training_export.test_training_export_serialization": 3
+  },
+  "checks": [
+    "Ruff source and new tests/research Python: passed",
+    "Ruff format src/tests/new research: passed",
+    "mypy: passed (288 source files)",
+    "pyright: passed (0 errors, 0 warnings)",
+    "pylint: passed (10.00/10)",
+    "sdist and wheel build: passed",
+    "Twine both distributions: passed"
+  ],
+  "raw_evidence": {
+    "baseline-red.log": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/baseline-red.log",
+      "sha256": "3b617e85fb7fd8100a6008a8ac0c21b2592fc210b2683485461c5d06a695684b"
+    },
+    "baseline-red.xml": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/baseline-red.xml",
+      "sha256": "ee7b108f50ecac36ad995ce242058548291e03b0f692800968e8abb5516ff82c"
+    },
+    "full-suite.log": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/full-suite.log",
+      "sha256": "b1d3d1e28ccba393112a072d1f794e703407acfd09518beb135263cbea62f55a"
+    },
+    "full-suite.xml": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/full-suite.xml",
+      "sha256": "a9c3732f542d53668b7f6e4f4d7d5571976a02d0e1bf229bb8fcd525634bdf5c"
+    },
+    "mypy.log": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/mypy.log",
+      "sha256": "5b260b0bf25597d244adc59c9b74bba45ec9929b5d934ee5f9b6dd5911713307"
+    },
+    "pyright.log": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/pyright.log",
+      "sha256": "f552d237ad0bd249c05f97eb62dbc65d2d0e4a5fe2346608e10fb7838dba9ed1"
+    },
+    "pylint.log": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/pylint.log",
+      "sha256": "8cbfc8cd0b04a4858b0b78b74c6df9631a1695e105e6911d4b57fbcc43b218b5"
+    },
+    "build.log": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/build.log",
+      "sha256": "50454ab92ecc758358edd1487017198178dcf4f935bf0dce256d7bdbc0fb5a23"
+    },
+    "ruff.log": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/ruff.log",
+      "sha256": "feb7c1c08bd7987f5667e9b0a7946d44255b331b4e3c078d49ad175165f61cef"
+    },
+    "protected-before.json": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/protected-before.json",
+      "sha256": "940ad810f4814e1554f187cc79cb02f40d86fb84c550dd467ed68fad46eff771"
+    },
+    "protected-after.json": {
+      "path": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/protected-after.json",
+      "sha256": "940ad810f4814e1554f187cc79cb02f40d86fb84c550dd467ed68fad46eff771"
+    }
+  },
+  "protected_existing_worktrees_unchanged": true,
+  "production_source_sha256": {
+    "src/anemone/node_evaluation/evaluator_refresh.py": "538113de59bf12b8e8c84c50d1b7a23f6722035ea38e6528466b330c58e24349",
+    "src/anemone/node_evaluation/direct/node_direct_evaluator.py": "a28ce7e7b4046797d50f469e33c0fe2056eef6116a90d2922229698f1dfee78b",
+    "src/anemone/tree_exploration.py": "b6d5ee9c7dea47dce3fee3c17fddc0809676c18625d83f397a0c40bd1fc48d7f",
+    "src/anemone/updates/value_propagator.py": "2852f528c499c625d16c8d7d6478ebe021c48f83aaae242d9bc8c8fc93632887",
+    "src/anemone/tree_manager/algorithm_node_tree_manager.py": "36ac21f334f8a47e7da74d98bfb63e47564955a2e4c4e8be89473f7ac6c6064a",
+    "src/anemone/debug/observable/observable_direct_evaluator.py": "84cd436f08667d18375016726d44e86c00bf122adeda737d30e1ac3ff18d04a1"
+  }
+}

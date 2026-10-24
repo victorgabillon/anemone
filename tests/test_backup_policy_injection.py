@@ -4,6 +4,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, cast
 
+from valanga.evaluations import Value
+
 from anemone.backup_policies.types import BackupResult
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.updates.value_propagator import ValuePropagator
@@ -44,6 +46,7 @@ class _FakeTreeEvaluation:
     """Minimal evaluation object delegating backup work to an injected policy."""
 
     backup_policy: _FakePolicy
+    tree_value: Value | None = None
 
     def backup_from_children(
         self,

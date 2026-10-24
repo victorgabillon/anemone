@@ -157,8 +157,9 @@ class _FakeDirectEvaluator:
         evaluation_queries: Any,
         clear_existing_direct_values: bool,
         skip_terminal_nodes: bool,
+        preserve_certified_values: bool = False,
     ) -> None:
-        del evaluation_queries, skip_terminal_nodes
+        del evaluation_queries, skip_terminal_nodes, preserve_certified_values
         for node in nodes:
             if clear_existing_direct_values:
                 node.tree_evaluation.direct_value = None

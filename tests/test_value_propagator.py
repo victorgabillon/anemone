@@ -22,6 +22,7 @@ from tests.structural_node_helpers import make_structural_tree_node
 class _FakeEvaluation:
     """Minimal backup surface for testing propagation orchestration."""
 
+    tree_value: Value | None = None
     results: list[BackupResult[int]] = field(default_factory=list)
     calls: list[tuple[set[int], set[int]]] = field(default_factory=list)
 

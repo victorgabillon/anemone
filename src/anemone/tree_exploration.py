@@ -1,7 +1,8 @@
 """Runnable tree-search runtime centered on ``TreeExploration``."""
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
+from itertools import batched
 from random import Random
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
@@ -18,8 +19,12 @@ from anemone.node_evaluation.common.branch_frontier import (
     require_branch_frontier_aware,
 )
 from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
+from anemone.node_evaluation.evaluator_refresh import (
+    validate_refresh_node,
+)
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.nodes.utils import best_node_sequence_from_node
+from anemone.objectives import SingleAgentMaxObjective
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,
     ProgressMonitor,
@@ -65,6 +70,16 @@ def _unsupported_refresh_scope_error(scope: str) -> ValueError:
     )
 
 
+def _invalid_refresh_batch_size_error() -> ValueError:
+    """Return the public error for invalid refresh window sizes."""
+    return ValueError("batch_size must be positive")
+
+
+def _changed_tree_certificate_error(node_id: int) -> ValueError:
+    """Return the error for a certificate violated during refresh."""
+    return ValueError(f"Tree certificate changed at node {node_id}")
+
+
 def _missing_node_value_update_error(node_ids: tuple[str, ...]) -> ValueError:
     """Return the public error for disallowed missing node ids."""
     formatted_node_ids = ", ".join(repr(node_id) for node_id in node_ids)
@@ -95,6 +110,7 @@ class ReevaluationReport:
     reevaluated_count: int
     changed_count: int
     skipped_terminal_count: int = 0
+    skipped_certified_count: int = 0
 
 
 @dataclass(slots=True)
@@ -266,6 +282,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             reevaluated_count=outcome.reevaluated_count,
             changed_count=outcome.changed_count,
             skipped_terminal_count=outcome.skipped_terminal_count,
+            skipped_certified_count=outcome.skipped_certified_count,
         )
 
     def apply_node_value_updates(
@@ -430,12 +447,14 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
 
     def _all_nodes_in_tree_order(self) -> list[NodeT]:
         """Return all currently known nodes in stable depth/insertion order."""
+        return list(self._iter_nodes_by_depth())
+
+    def _iter_nodes_by_depth(self, *, reverse: bool = False) -> Iterator[NodeT]:
+        """Traverse the resident registry without retaining a second node list."""
         descendants = self.tree.descendants
-        return [
-            node
-            for tree_depth in descendants.range()
-            for node in descendants[tree_depth].values()
-        ]
+        depths = descendants.range()
+        for depth in reversed(depths) if reverse else depths:
+            yield from descendants[depth].values()
 
     def _linked_child_nodes_in_tree_order(self, node: NodeT) -> list[NodeT]:
         """Return linked children in stable structural child-link order.
@@ -574,12 +593,77 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         *,
         scope: str = "frontier",
         k: int | None = None,
+        batch_size: int = 64,
+        validate_direct_certificate: Callable[[NodeT], bool] | None = None,
     ) -> ReevaluationReport:
-        """Swap evaluator, then reevaluate one selected tree region."""
+        """Refresh predictions while preserving validated certificates.
+
+        ``all`` evaluates bounded windows, backs up every opened node deepest
+        first, then refreshes selection once. Direct FORCED origins require the
+        caller's validator; unsupported tree proofs/policies refuse before the
+        evaluator changes. Validators must be read-only. A failure after inference
+        starts leaves a partial refresh: discard/reload this quiescent runtime.
+        """
         self._validate_refresh_scope_inputs(scope=scope, k=k)
+        if batch_size <= 0:
+            raise _invalid_refresh_batch_size_error()
+        for node in self._iter_nodes_by_depth(reverse=True):
+            validate_refresh_node(node, validate_direct_certificate)
+
         self.set_evaluator(new_evaluator)
-        nodes = self._collect_nodes_for_refresh_scope(scope=scope, k=k)
-        return self.reevaluate_nodes(nodes)
+        if scope != "all":
+            report = self.reevaluate_nodes(
+                self._collect_nodes_for_refresh_scope(scope=scope, k=k)
+            )
+            for node in self._iter_nodes_by_depth(reverse=True):
+                validate_refresh_node(node, validate_direct_certificate)
+            return report
+
+        report = ReevaluationReport(self.evaluator_version, 0, 0, 0)
+        evaluator = self.tree_manager.node_evaluator
+        assert evaluator is not None
+        for batch in batched(self._iter_nodes_by_depth(), batch_size, strict=False):
+            outcome = evaluator.evaluate_nodes(
+                batch,
+                evaluation_queries=self.tree_manager.evaluation_queries,
+                clear_existing_direct_values=True,
+                skip_terminal_nodes=True,
+                preserve_certified_values=True,
+            )
+            report.requested_count += len(batch)
+            report.reevaluated_count += outcome.reevaluated_count
+            report.changed_count += outcome.changed_count
+            report.skipped_terminal_count += outcome.skipped_terminal_count
+            report.skipped_certified_count += outcome.skipped_certified_count
+
+        for node in self._iter_nodes_by_depth(reverse=True):
+            evaluation = node.tree_evaluation
+            branches = {b for b, child in node.iter_child_links() if child is not None}
+            if branches:
+                certificate = evaluation.tree_value
+                evaluation.backup_from_children(branches, branches)
+                if canonical_value.is_exact_value(certificate):
+                    if evaluation.tree_value != certificate:
+                        evaluation.tree_value = certificate
+                        raise _changed_tree_certificate_error(node.id)
+                    evaluation.tree_value = certificate
+            validate_refresh_node(node, validate_direct_certificate)
+
+        self.tree_manager.refresh_exploration_indices(tree=self.tree)
+        self._invalidate_selector_cache_if_supported()
+        objective = self.tree.root_node.tree_evaluation.required_objective
+        if isinstance(self.node_selector, node_sel.StatefulNodeSelector) and isinstance(
+            objective, SingleAgentMaxObjective
+        ):
+            stateful_selector: node_sel.StatefulNodeSelector[NodeT] = cast(
+                "node_sel.StatefulNodeSelector[NodeT]", self.node_selector
+            )
+            stateful_selector.refresh_state_for_checkpoint(  # pylint: disable=no-member
+                tree=self.tree,
+                objective=objective,
+                latest_tree_expansions=self.latest_tree_expansions,
+            )
+        return report
 
     def _select_node_for_expansion(self) -> node_sel.OpeningInstructions[NodeT]:
         """Ask the selector for the next branches to open."""

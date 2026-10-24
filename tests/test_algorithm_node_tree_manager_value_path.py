@@ -81,7 +81,7 @@ class _SpyNodeEvaluator:
 
     def __init__(self) -> None:
         self.evaluate_nodes_calls: list[
-            tuple[list[AlgorithmNode[Any]], bool, bool]
+            tuple[list[AlgorithmNode[Any]], bool, bool, bool]
         ] = []
         self.next_outcome = DirectEvaluationOutcome[Any]()
 
@@ -92,6 +92,7 @@ class _SpyNodeEvaluator:
         evaluation_queries: EvaluationQueries[Any],
         clear_existing_direct_values: bool,
         skip_terminal_nodes: bool,
+        preserve_certified_values: bool = False,
     ) -> DirectEvaluationOutcome[Any]:
         """Record one direct-evaluation batch request."""
         self.evaluate_nodes_calls.append(
@@ -99,6 +100,7 @@ class _SpyNodeEvaluator:
                 list(nodes),
                 clear_existing_direct_values,
                 skip_terminal_nodes,
+                preserve_certified_values,
             )
         )
         evaluation_queries.clear_queries()
@@ -214,7 +216,9 @@ def test_evaluate_expansions_only_stages_newly_created_nodes() -> None:
 
     manager.evaluate_expansions(tree_expansions=tree_expansions)
 
-    assert node_evaluator.evaluate_nodes_calls == [([created_child], False, False)]
+    assert node_evaluator.evaluate_nodes_calls == [
+        ([created_child], False, False, False)
+    ]
 
 
 def test_propagate_depth_index_routes_expansion_children_through_depth_propagator() -> (
@@ -312,7 +316,7 @@ def test_reevaluate_nodes_routes_changed_nodes_through_local_propagation_and_ref
     )
 
     assert node_evaluator.evaluate_nodes_calls == [
-        ([changed_child, unchanged_child], True, True)
+        ([changed_child, unchanged_child], True, True, True)
     ]
     assert outcome is node_evaluator.next_outcome
     assert value_propagator.local_change_calls == [[changed_child]]

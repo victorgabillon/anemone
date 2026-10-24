@@ -67,6 +67,7 @@ class _DirectNodeEvaluation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         *,
         clear_existing_direct_values: bool,
         skip_terminal_nodes: bool,
+        preserve_certified_values: bool = False,
     ) -> DirectEvaluationOutcome[Any]:
         """Evaluate an arbitrary node batch through the shared direct-evaluator."""
         node_evaluator = self.get_node_evaluator()
@@ -76,6 +77,7 @@ class _DirectNodeEvaluation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             evaluation_queries=self.evaluation_queries,
             clear_existing_direct_values=clear_existing_direct_values,
             skip_terminal_nodes=skip_terminal_nodes,
+            preserve_certified_values=preserve_certified_values,
         )
 
     def _created_nodes_for_direct_evaluation(
@@ -212,6 +214,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             nodes,
             clear_existing_direct_values=True,
             skip_terminal_nodes=True,
+            preserve_certified_values=True,
         )
         if not outcome.changed_nodes:
             return outcome

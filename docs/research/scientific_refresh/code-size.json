@@ -1,0 +1,42 @@
+{
+  "git_numstat": [
+    {
+      "path": "src/anemone/debug/observable/observable_direct_evaluator.py",
+      "added": 2,
+      "removed": 0
+    },
+    {
+      "path": "src/anemone/node_evaluation/direct/node_direct_evaluator.py",
+      "added": 20,
+      "removed": 2
+    },
+    {
+      "path": "src/anemone/node_evaluation/evaluator_refresh.py",
+      "added": 102,
+      "removed": 0
+    },
+    {
+      "path": "src/anemone/tree_exploration.py",
+      "added": 93,
+      "removed": 9
+    },
+    {
+      "path": "src/anemone/tree_manager/algorithm_node_tree_manager.py",
+      "added": 3,
+      "removed": 0
+    },
+    {
+      "path": "src/anemone/updates/value_propagator.py",
+      "added": 17,
+      "removed": 33
+    }
+  ],
+  "added": 237,
+  "removed": 44,
+  "line_edit_classification": {
+    "inserted_lines": 154,
+    "deleted_lines": 0,
+    "replaced_old_lines": 44,
+    "replaced_new_lines": 83
+  }
+}

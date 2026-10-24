@@ -29,6 +29,8 @@ from typing import Any
 
 from valanga import BranchKey
 
+from anemone.node_evaluation.common import canonical_value
+from anemone.node_evaluation.evaluator_refresh import validate_tree_certificate
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.updates.ancestor_wave import propagate_dirty_ancestors
 
@@ -75,40 +77,18 @@ class ValuePropagator:
         self,
         changed_nodes: Iterable[AlgorithmNode[Any]],
     ) -> set[AlgorithmNode[Any]]:
-        """Settle changed nodes locally, then propagate any parent-relevant deltas."""
-        parent_relevant_nodes = self._parent_relevant_nodes_after_local_value_changes(
-            changed_nodes
-        )
-        if not parent_relevant_nodes:
-            return set()
-        return self.propagate_from_changed_nodes(parent_relevant_nodes)
+        """Settle local changes and conservatively schedule every incoming parent.
 
-    def _parent_relevant_nodes_after_local_value_changes(
-        self,
-        changed_nodes: Iterable[AlgorithmNode[Any]],
-    ) -> list[AlgorithmNode[Any]]:
-        """Return nodes whose local value change can affect their parents."""
-        parent_relevant_nodes: list[AlgorithmNode[Any]] = []
-        seen_node_ids: set[int] = set()
-        for node in changed_nodes:
-            node_identity = id(node)
-            if node_identity in seen_node_ids:
-                continue
-            seen_node_ids.add(node_identity)
-
-            if self._is_parent_relevant_after_local_value_change(node):
-                parent_relevant_nodes.append(node)
-
-        return parent_relevant_nodes
-
-    def _is_parent_relevant_after_local_value_change(
-        self,
-        node: AlgorithmNode[Any],
-    ) -> bool:
-        """Return whether one local node change should schedule ancestor updates."""
-        if not self._current_child_branches(node):
-            return True
-        return self._recompute_node_value_impl(node)
+        The direct value has already changed when this method is called. A local
+        backup observes only the new direct/effective value, so its tree/PV delta
+        cannot tell whether parents saw a different effective value previously.
+        """
+        seeds = list(dict.fromkeys(changed_nodes))
+        for node in sorted(seeds, key=lambda node: node.tree_depth, reverse=True):
+            # A direct update does not revoke an existing tree certificate.
+            if not canonical_value.is_exact_value(node.tree_evaluation.tree_value):
+                self._recompute_node_value_impl(node)
+        return self.propagate_from_changed_nodes(seeds)
 
     def _recompute_node_value_from_full_child_snapshot(
         self,
@@ -127,6 +107,10 @@ class ValuePropagator:
         current_child_branches = self._current_child_branches(node)
         if not current_child_branches:
             return False
+
+        if canonical_value.is_exact_value(node.tree_evaluation.tree_value):
+            # Direct changes cannot silently revoke an ancestor's certificate.
+            validate_tree_certificate(node)
 
         backup_result = node.tree_evaluation.backup_from_children(
             branches_with_updated_value=current_child_branches,
