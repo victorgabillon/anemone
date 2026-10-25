@@ -71,6 +71,7 @@ from .sharded import (
     sharded_checkpoint_manifest_to_jsonable,
     write_sharded_checkpoint_manifest,
     write_sharded_search_checkpoint,
+    write_sharded_search_checkpoint_from_search,
 )
 from .state_handles import (
     DEFAULT_STATE_CACHE_CAPACITY,
@@ -169,4 +170,5 @@ __all__ = [
     "write_checkpoint_json_payload",
     "write_sharded_checkpoint_manifest",
     "write_sharded_search_checkpoint",
+    "write_sharded_search_checkpoint_from_search",
 ]

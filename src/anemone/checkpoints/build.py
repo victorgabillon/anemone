@@ -69,6 +69,7 @@ if TYPE_CHECKING:
     from anemone.tree_exploration import TreeExploration
 
     from ._protocols import IncrementalStateCheckpointCodec
+    from .payloads import TreeCheckpointPayload
 
 
 def build_search_checkpoint_payload(
@@ -92,6 +93,19 @@ def build_search_checkpoint_payload(
         context=context,
     )
     metrics.tree_payload_s += perf_counter() - tree_payload_started_at
+    return _build_runtime_checkpoint_payload(
+        search, tree_payload=tree_payload, metrics=metrics, state_codec=state_codec
+    )
+
+
+def _build_runtime_checkpoint_payload(
+    search: TreeExploration[Any],
+    *,
+    tree_payload: TreeCheckpointPayload,
+    metrics: _CheckpointBuildMetrics,
+    state_codec: IncrementalStateCheckpointCodec[Any],
+) -> SearchRuntimeCheckpointPayload:
+    """Build the shared runtime metadata after node serialization has completed."""
     rng_state_started_at = perf_counter()
     rng_state = _maybe_dump_rng_state(search)
     rollout_rng = rollout_random_generator(search)

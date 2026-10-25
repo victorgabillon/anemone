@@ -36,7 +36,7 @@ from .payloads import (
 from .state_handles import checkpoint_payload_for_reuse_or_none
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
 
     from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
     from anemone.tree_exploration import TreeExploration
@@ -50,38 +50,49 @@ def _build_tree_payload(
     context: _CheckpointBuildContext,
 ) -> TreeCheckpointPayload:
     """Build the tree payload in stable depth/insertion descendant order."""
-    iter_nodes_started_at = perf_counter()
-    nodes = _iter_nodes_in_checkpoint_order(search)
-    metrics.iter_nodes_s += perf_counter() - iter_nodes_started_at
-    metrics.node_count = len(nodes)
-    payload_nodes: list[AlgorithmNodeCheckpointPayload] = []
-    for node in nodes:
-        node_payload_started_at = perf_counter()
-        payload_nodes.append(
-            _build_node_payload(
-                node=node,
-                state_codec=state_codec,
-                metrics=metrics,
-                context=context,
-            )
-        )
-        metrics.node_payload_total_s += perf_counter() - node_payload_started_at
     return TreeCheckpointPayload(
         root_node_id=search.tree.root_node.id,
-        nodes=payload_nodes,
+        nodes=list(
+            _iter_node_payloads(
+                search=search, state_codec=state_codec, metrics=metrics, context=context
+            )
+        ),
     )
+
+
+def _iter_node_payloads(
+    *,
+    search: TreeExploration[Any],
+    state_codec: IncrementalStateCheckpointCodec[Any],
+    metrics: _CheckpointBuildMetrics,
+    context: _CheckpointBuildContext,
+    cache_batch_size: int | None = None,
+) -> Iterator[AlgorithmNodeCheckpointPayload]:
+    """Serialize resident order once, optionally limiting memoization to a batch."""
+    for node in _iter_nodes_in_checkpoint_order(search):
+        if cache_batch_size is not None and metrics.node_count % cache_batch_size == 0:
+            context.atom_serialization_cache.clear()
+            context.value_identity_serialization_cache.clear()
+        started_at = perf_counter()
+        payload = _build_node_payload(
+            node=node, state_codec=state_codec, metrics=metrics, context=context
+        )
+        metrics.node_count += 1
+        metrics.node_payload_total_s += perf_counter() - started_at
+        yield payload
+        del payload
+    if cache_batch_size is not None:
+        context.atom_serialization_cache.clear()
+        context.value_identity_serialization_cache.clear()
 
 
 def _iter_nodes_in_checkpoint_order(
     search: TreeExploration[Any],
-) -> list[AlgorithmNode[Any]]:
-    """Return live nodes in stable depth order, then descendant insertion order."""
+) -> Iterator[AlgorithmNode[Any]]:
+    """Iterate resident depth/insertion order without copying node references."""
     descendants = search.tree.descendants
-    return [
-        node
-        for tree_depth in descendants.range()
-        for node in descendants[tree_depth].values()
-    ]
+    for tree_depth in descendants.range():
+        yield from descendants[tree_depth].values()
 
 
 def _build_node_payload(
