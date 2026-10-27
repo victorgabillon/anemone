@@ -24,9 +24,14 @@ class _OutputValueConverter(Protocol):
 
 
 class _TorchStateEvaluator(Protocol):
-    net: Module
-    content_to_input_convert: Callable[[State], Tensor]
-    output_and_value_converter: _OutputValueConverter
+    @property
+    def net(self) -> Module: ...
+
+    @property
+    def content_to_input_convert(self) -> Callable[[State], Tensor]: ...
+
+    @property
+    def output_and_value_converter(self) -> _OutputValueConverter: ...
 
 
 class TorchDependencyError(ModuleNotFoundError):

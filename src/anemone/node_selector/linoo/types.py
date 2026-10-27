@@ -5,7 +5,7 @@ from typing import Literal
 
 # Runtime import is intentional: parsley/get_type_hints() evaluates LinooArgs
 # annotations when Chipiron builds partial dataclasses.
-from anemone.node_selector.node_selector_types import NodeSelectorType  # noqa: TC001
+from anemone.node_selector.node_selector_types import NodeSelectorType
 
 type LinooDepthSelectionPolicy = Literal[
     "inverse_depth",

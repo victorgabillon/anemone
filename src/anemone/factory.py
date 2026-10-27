@@ -9,20 +9,42 @@ Preferred entrypoints:
 Internal collaborator wiring lives in ``anemone._runtime_assembly``. Legacy
 ``TreeAndValue...`` names remain available here for compatibility.
 """
-# pylint: disable=duplicate-code
 
+# pylint: disable=duplicate-code
 from collections.abc import Hashable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from random import Random
+from typing import Literal
 
+from valanga import Dynamics, RepresentationFactory, StateModifications
+from valanga.evaluator_types import EvaluatorInput
+from valanga.policy import NotifyProgressCallable
+
+from anemone import node_selector as node_selector_m
+from anemone import recommender_rule
 from anemone._runtime_assembly import (
     SearchRuntimeDependencies,
     assemble_search_runtime_dependencies,
 )
 from anemone._valanga_types import AnyTurnState
+from anemone.dynamics import SearchDynamics
+from anemone.hooks.search_hooks import SearchHooks
+from anemone.indices.node_indices.index_types import (
+    IndexComputationType,
+)
+from anemone.node_evaluation.direct.protocols import (
+    MasterStateValueEvaluator,
+)
 from anemone.node_evaluation.tree.factory import (
     NodeTreeEvaluationFactory,
     NodeTreeMinmaxEvaluationFactory,
+)
+from anemone.node_selector.composed.args import (
+    ComposedNodeSelectorArgs,
+)
+from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+from anemone.progress_monitor.progress_monitor import (
+    AllStoppingCriterionArgs,
 )
 from anemone.tree_and_value_branch_selector import (
     SearchRecommender,
@@ -38,27 +60,6 @@ from anemone.tree_exploration_debug import (
     maybe_log_iteration_progress,
 )
 from anemone.tree_manager import OpeningExpansionConfig
-
-if TYPE_CHECKING:
-    from random import Random
-
-    from valanga import Dynamics, RepresentationFactory, StateModifications
-    from valanga.evaluator_types import EvaluatorInput
-    from valanga.policy import NotifyProgressCallable
-
-    from anemone import node_selector as node_selector_m
-    from anemone import recommender_rule
-    from anemone.dynamics import SearchDynamics
-    from anemone.hooks.search_hooks import SearchHooks
-    from anemone.indices.node_indices.index_types import IndexComputationType
-    from anemone.node_evaluation.direct.protocols import (
-        MasterStateValueEvaluator,
-    )
-    from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
-    from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
-    from anemone.progress_monitor.progress_monitor import (
-        AllStoppingCriterionArgs,
-    )
 
 TREE_AND_VALUE_LITERAL_STRING: Literal["TreeAndValue"] = "TreeAndValue"
 

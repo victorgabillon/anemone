@@ -1,8 +1,7 @@
 """Provide the single-agent max factory built on shared tree-evaluation wiring."""
 
-from typing import TYPE_CHECKING
-
 from anemone._valanga_types import AnyTurnState
+from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.tree.factory import (
     ConfiguredNodeTreeEvaluationFactory,
     resolve_factory_dependency,
@@ -12,10 +11,7 @@ from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     make_default_backup_policy,
     make_default_objective,
 )
-
-if TYPE_CHECKING:
-    from anemone.backup_policies.protocols import BackupPolicy
-    from anemone.objectives import Objective
+from anemone.objectives import Objective
 
 
 class NodeMaxEvaluationFactory[StateT: AnyTurnState = AnyTurnState](

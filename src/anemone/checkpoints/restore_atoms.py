@@ -2,7 +2,7 @@
 
 # pyright: reportUnusedFunction=false
 
-# ruff: noqa: TC001,TC003
+# ruff: noqa: TC001
 
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any

@@ -186,6 +186,32 @@ lint.ignore = [ "E501",
 [tool.ruff.lint.per-file-ignores]
 # If needed, can add file-specific ignores
 
+# Public annotation consumers resolve these imports at runtime.
+[tool.ruff.lint.flake8-type-checking]
+exempt-modules = [
+  ".trees.factory",
+  "anemone.backup_policies.protocols",
+  "anemone.dynamics",
+  "anemone.hooks.search_hooks",
+  "anemone.indices.node_indices.index_types",
+  "anemone.node_evaluation.direct.protocols",
+  "anemone.node_selector",
+  "anemone.node_selector.composed.args",
+  "anemone.nodes.algorithm_node.algorithm_node",
+  "anemone.nodes.tree_node",
+  "anemone.objectives",
+  "anemone.progress_monitor.progress_monitor",
+  "anemone.recommender_rule",
+  "anemone.search_factory",
+  "collections.abc",
+  "random",
+  "typing",
+  "valanga",
+  "valanga.evaluator_types",
+  "valanga.game",
+  "valanga.policy",
+]
+
 [tool.black]
 line-length = 88
 target-version = ['py314']
@@ -277,7 +303,7 @@ deps = [
 ]
 set_env = { PYTHONPATH = "{toxinidir}/src", PYTHON_JIT = "0" }
 commands = [
-  ["python", "-m", "ruff", "check", "src", "scripts", "tests/typing"],
+  ["python", "-m", "ruff", "check", "src", "scripts", "tests/typing", "tests/test_public_runtime_annotations.py"],
   ["python", "-m", "ruff", "format", "--check", "src", "tests", "scripts"],
   ["python", "-m", "pylint", "src/anemone"],
 ]

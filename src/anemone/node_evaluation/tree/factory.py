@@ -1,10 +1,12 @@
 """Provide factories for tree-evaluation families built on shared wiring."""
 
-from typing import TYPE_CHECKING, Any, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 from valanga import State
 
 from anemone._valanga_types import AnyTurnState
+from anemone.backup_policies.protocols import BackupPolicy
 from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     NodeMinmaxEvaluation,
 )
@@ -15,13 +17,8 @@ from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
     make_default_objective as make_default_minmax_objective,
 )
 from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from anemone.backup_policies.protocols import BackupPolicy
-    from anemone.nodes.tree_node import TreeNode
-    from anemone.objectives import Objective
+from anemone.nodes.tree_node import TreeNode
+from anemone.objectives import Objective
 
 
 class NodeTreeEvaluationFactory[StateT: State](Protocol):
