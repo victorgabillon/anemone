@@ -1,11 +1,13 @@
 """Provide branch-level decision-ordering helpers and protocols."""
 
-from collections.abc import Callable, Iterable
 from functools import cmp_to_key
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from valanga import BranchKey
-from valanga.evaluations import Value
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from valanga import BranchKey
+    from valanga.evaluations import Value
 
 
 class _Orderable(Protocol):

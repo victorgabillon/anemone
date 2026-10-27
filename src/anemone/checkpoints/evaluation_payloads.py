@@ -4,8 +4,6 @@
 
 # ruff: noqa: TC001
 
-from __future__ import annotations
-
 from typing import Any, cast
 
 from anemone.indices.node_indices.factory import (

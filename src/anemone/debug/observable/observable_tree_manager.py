@@ -1,7 +1,5 @@
 """Tree-manager wrappers emitting debug events without touching core code."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Any
 

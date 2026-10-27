@@ -1,7 +1,5 @@
 """Adapt runtime tree nodes into immutable debug snapshots."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, cast
 
 from .formatting import safe_getattr

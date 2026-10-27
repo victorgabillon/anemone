@@ -2,14 +2,12 @@
 
 # pylint: disable=duplicate-code
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Literal, TypedDict
 
 from ._protocols import CheckpointStateSummary
 
-CHECKPOINT_FORMAT_VERSION = 2
+CHECKPOINT_FORMAT_VERSION = 3
 
 
 def _empty_linoo_candidate_payloads() -> list[LinooCandidateCheckpointPayload]:
@@ -51,7 +49,7 @@ class TupleAtomPayload(TypedDict):
 
 
 type CheckpointAtomPayload = (
-    None | bool | int | float | str | EnumAtomPayload | TupleAtomPayload
+    bool | int | float | str | EnumAtomPayload | TupleAtomPayload | None
 )
 
 
@@ -198,8 +196,10 @@ class AlgorithmNodeCheckpointPayload:
     ``state_payload`` is opaque checkpoint data supplied by the domain-side
     incremental checkpoint codec. Anemone records whether the node is an
     anchor snapshot or a delta from a codec-valid state parent edge, while the
-    representative graph parent fields remain topology/debug metadata. The
-    actual anchor/delta payload contents remain domain-defined.
+    representative graph parent fields describe the first runtime parent and
+    its stable first branch, independently of the codec parent. Outgoing links
+    retain runtime iteration order; ``parent_node_order`` stores incoming order
+    only for multi-parent nodes. The actual state payload remains domain-defined.
     """
 
     node_id: int
@@ -216,6 +216,7 @@ class AlgorithmNodeCheckpointPayload:
     )
     evaluation: NodeEvaluationCheckpointPayload | None = None
     exploration_index: ExplorationIndexCheckpointPayload | None = None
+    parent_node_order: list[int] | None = None
 
 
 def _empty_algorithm_node_payloads() -> list[AlgorithmNodeCheckpointPayload]:

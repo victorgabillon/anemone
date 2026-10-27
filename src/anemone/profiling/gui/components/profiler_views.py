@@ -1,7 +1,5 @@
 """Profiler-tool integrations for run detail pages."""
 
-from __future__ import annotations
-
 import shlex
 from typing import TYPE_CHECKING
 

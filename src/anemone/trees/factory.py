@@ -1,6 +1,7 @@
 """ValueTreeFactory."""
 
-from anemone import node_factory as nod_fac
+from typing import TYPE_CHECKING
+
 from anemone._valanga_types import AnyTurnState
 from anemone.node_evaluation.direct.node_direct_evaluator import (
     EvaluationQueries,
@@ -11,6 +12,9 @@ from anemone.nodes.state_handles import MaterializedStateHandle
 from anemone.trees.tree import Tree
 
 from .descendants import RangedDescendants
+
+if TYPE_CHECKING:
+    from anemone import node_factory as nod_fac
 
 
 class ValueTreeFactory[StateT: AnyTurnState = AnyTurnState]:

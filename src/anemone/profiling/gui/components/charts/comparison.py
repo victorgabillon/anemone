@@ -1,7 +1,5 @@
 """Comparison chart helpers."""
 
-from __future__ import annotations
-
 from typing import TypedDict
 
 from anemone.profiling.gui.components.chart_utils import build_chart

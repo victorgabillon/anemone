@@ -1,20 +1,23 @@
 """Provide classes and functions related to opening instructions in a game tree."""
 
-from collections.abc import ItemsView, Iterator, Sequence, ValuesView
 from dataclasses import dataclass
 from enum import Enum
-from random import Random
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from valanga import BranchKey
 
 from anemone import nodes
-from anemone.dynamics import SearchDynamics
 from anemone.nodes.opening_status import openable_branch_keys
 from anemone.nodes.utils import (
     a_branch_key_sequence_from_root,
     a_branch_str_sequence_from_root,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import ItemsView, Iterator, Sequence, ValuesView
+    from random import Random
+
+    from anemone.dynamics import SearchDynamics
 
 type OpeningInstructionKey = tuple[int, BranchKey]
 

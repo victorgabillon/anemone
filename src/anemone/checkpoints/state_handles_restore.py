@@ -2,9 +2,7 @@
 
 # pyright: reportUnusedFunction=false
 
-# ruff: noqa: TC001,TC003
-
-from __future__ import annotations
+# ruff: noqa: TC001
 
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
@@ -17,6 +15,7 @@ from .payloads import (
     SearchRuntimeCheckpointPayload,
 )
 from .state_handles import (
+    DEFAULT_STATE_CACHE_CAPACITY,
     CheckpointBackedStateHandle,
     CheckpointPayloadStore,
     CheckpointStateResolver,
@@ -36,11 +35,13 @@ def _create_state_resolver[
     *,
     payload: SearchRuntimeCheckpointPayload,
     state_codec: IncrementalStateCheckpointCodec[StateT],
+    state_cache_capacity: int = DEFAULT_STATE_CACHE_CAPACITY,
 ) -> CheckpointStateResolver[StateT]:
     """Create the shared lazy resolver for all checkpoint-backed state handles."""
     return _create_state_resolver_from_node_payloads(
         node_payloads=payload.tree.nodes,
         state_codec=state_codec,
+        state_cache_capacity=state_cache_capacity,
     )
 
 
@@ -50,12 +51,14 @@ def _create_state_resolver_from_node_payloads[
     *,
     node_payloads: Iterable[AlgorithmNodeCheckpointPayload],
     state_codec: IncrementalStateCheckpointCodec[StateT],
+    state_cache_capacity: int = DEFAULT_STATE_CACHE_CAPACITY,
 ) -> CheckpointStateResolver[StateT]:
     """Create the shared lazy resolver from checkpoint node payloads."""
     payload_store = _build_checkpoint_payload_store(node_payloads)
     return _create_state_resolver_from_payload_store(
         payload_store=payload_store,
         state_codec=state_codec,
+        state_cache_capacity=state_cache_capacity,
     )
 
 
@@ -65,10 +68,12 @@ def _create_state_resolver_from_payload_store[
     *,
     payload_store: CheckpointPayloadStore,
     state_codec: IncrementalStateCheckpointCodec[StateT],
+    state_cache_capacity: int = DEFAULT_STATE_CACHE_CAPACITY,
 ) -> CheckpointStateResolver[StateT]:
     """Create the shared lazy resolver from a prebuilt checkpoint payload store."""
     return CheckpointStateResolver(
         state_codec=state_codec,
+        state_cache_capacity=state_cache_capacity,
         state_payloads_by_node_id=payload_store,
     )
 

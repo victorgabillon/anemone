@@ -1,7 +1,5 @@
 """Registry and launcher helpers for built-in toy debug scenarios."""
 
-from __future__ import annotations
-
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass

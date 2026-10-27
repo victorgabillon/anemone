@@ -8,8 +8,10 @@ Example usage:
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from .node_selector_types import NodeSelectorType
+if TYPE_CHECKING:
+    from .node_selector_types import NodeSelectorType
 
 
 @dataclass

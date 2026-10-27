@@ -1,7 +1,5 @@
 """Breakpoint models and matchers for live debug sessions."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, cast
 
@@ -217,14 +215,19 @@ def breakpoint_from_json(data: dict[str, object]) -> DebugBreakpoint:
         )
 
     if kind == "backup_flag":
-        flag_name = data.get("flag_name")
-        if flag_name not in {"value_changed", "pv_changed", "over_changed"}:
-            raise InvalidBreakpointPayloadError.invalid_backup_flag()
-        return BackupFlagBreakpoint(
-            id=breakpoint_id,
-            enabled=enabled,
-            flag_name=cast("BackupFlagName", flag_name),
+        valid_flags: tuple[BackupFlagName, ...] = (
+            "value_changed",
+            "pv_changed",
+            "over_changed",
         )
+        for flag_name in valid_flags:
+            if flag_name == data.get("flag_name"):
+                return BackupFlagBreakpoint(
+                    id=breakpoint_id,
+                    enabled=enabled,
+                    flag_name=flag_name,
+                )
+        raise InvalidBreakpointPayloadError.invalid_backup_flag()
 
     if kind == "iteration":
         iteration_index = data.get("iteration_index")

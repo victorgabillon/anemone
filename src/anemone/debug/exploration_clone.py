@@ -1,7 +1,5 @@
 """Shared shallow-clone helpers for debug exploration facades."""
 
-from __future__ import annotations
-
 from copy import copy
 from dataclasses import is_dataclass, replace
 from typing import Any

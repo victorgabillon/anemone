@@ -1,7 +1,5 @@
 """Provide the generic tree-evaluation engine plus its shared public protocol."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from enum import StrEnum
@@ -560,7 +558,14 @@ class NodeTreeEvaluationState[
         )
 
     def _decision_semantic_compare(self, left: Value, right: Value) -> int:
-        """Compare child values using the node's current objective semantics."""
+        """Compare values, preferring an optional state-independent objective hook."""
+        state_free_compare = getattr(
+            self.required_objective, "semantic_compare_without_state", None
+        )
+        if callable(state_free_compare):
+            # The required protocol intentionally omits this optional capability.
+            return cast("int", state_free_compare(left, right))  # pylint: disable=not-callable
+
         return self.required_objective.semantic_compare(
             left, right, self.tree_node.state
         )

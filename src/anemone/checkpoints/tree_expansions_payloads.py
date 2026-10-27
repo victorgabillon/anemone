@@ -2,9 +2,7 @@
 
 # pyright: reportPrivateUsage=false, reportUnusedFunction=false
 
-# ruff: noqa: TC001,TC003
-
-from __future__ import annotations
+# ruff: noqa: TC001
 
 from collections.abc import Mapping
 from typing import Any

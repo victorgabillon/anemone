@@ -12,16 +12,18 @@ It also includes helper classes and functions for creating and managing stopping
 """
 
 from abc import abstractmethod
-from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from anemone import node_selector as node_sel
 from anemone import trees
 from anemone.node_selector.composed.composed_node_selector import ComposedNodeSelector
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.tree_manager.opening_expansion_budget import OpeningExpansionBudget
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @runtime_checkable

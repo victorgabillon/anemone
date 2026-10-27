@@ -218,3 +218,5 @@ runs/
 profiling_runs/
 # Per-run CI validation evidence
 .ci-reports/
+
+.ci-foundations/

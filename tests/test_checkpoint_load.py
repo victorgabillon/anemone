@@ -1418,7 +1418,6 @@ def test_representative_parent_prefers_reusable_delta_parent_after_restore() -> 
 
     representative_parent, parent_node_id, _branch, branch_payload = (
         checkpoint_build_module._representative_parent_link(
-            shared_node,
             node_cache=node_cache,
             context=context,
         )
@@ -1429,8 +1428,8 @@ def test_representative_parent_prefers_reusable_delta_parent_after_restore() -> 
     assert branch_payload == payload_for_reuse.state_parent_branch
 
 
-def test_delta_payload_reuse_is_rejected_for_mismatched_representative_parent() -> None:
-    """Delta reuse must reject a representative parent that differs from the stored one."""
+def test_delta_payload_reuse_uses_live_codec_parent_independently() -> None:
+    """A stored codec parent may differ from the graph representative, but must exist."""
     runtime = _build_runtime(children_by_id=_DAG_CHILDREN_BY_ID)
     runtime.step()
     runtime.step()
@@ -1463,13 +1462,25 @@ def test_delta_payload_reuse_is_rejected_for_mismatched_representative_parent() 
         if parent.id != payload_for_reuse.state_parent_node_id
     )
 
-    assert _delta_reuse_matches_parent(
-        representative_parent=matching_parent,
-        payload=payload_for_reuse,
+    context = checkpoint_build_module._CheckpointBuildContext(
+        metrics=checkpoint_build_module._CheckpointBuildMetrics()
     )
+    node_cache = checkpoint_build_module._build_node_checkpoint_cache(
+        shared_node, context=context
+    )
+    node_cache.parent_branch_entries.sort(
+        key=lambda entry: entry.parent_node.id != mismatched_parent.id
+    )
+    assert node_cache.parent_branch_entries[0].parent_node is mismatched_parent
+    assert matching_parent.id == payload_for_reuse.state_parent_node_id
+    assert _delta_reuse_matches_parent(node_cache=node_cache, payload=payload_for_reuse)
+    node_cache.parent_branch_entries = [
+        entry
+        for entry in node_cache.parent_branch_entries
+        if entry.parent_node is mismatched_parent
+    ]
     assert not _delta_reuse_matches_parent(
-        representative_parent=mismatched_parent,
-        payload=payload_for_reuse,
+        node_cache=node_cache, payload=payload_for_reuse
     )
 
 

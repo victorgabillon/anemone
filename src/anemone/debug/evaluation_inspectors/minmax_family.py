@@ -1,7 +1,5 @@
 """Compatibility inspector for minmax-style evaluation objects."""
 
-from __future__ import annotations
-
 from typing import Any
 
 from anemone.debug.formatting import (

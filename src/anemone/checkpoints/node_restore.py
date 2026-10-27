@@ -2,10 +2,6 @@
 
 # pyright: reportPrivateUsage=false, reportUnusedFunction=false
 
-# ruff: noqa: TC001
-
-from __future__ import annotations
-
 from collections.abc import Hashable, Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
@@ -16,21 +12,22 @@ from anemone.trees.descendants import RangedDescendants
 from anemone.utils.logger import checkpoint_logger
 
 from .evaluation_payloads import _restore_evaluation, _restore_exploration_index
-from .metadata import _log_restore_phase
-from .payloads import (
-    AlgorithmNodeCheckpointPayload,
-    CheckpointAtomPayload,
-    ExplorationIndexCheckpointPayload,
-    LinkedChildCheckpointPayload,
-    NodeEvaluationCheckpointPayload,
-    SearchRuntimeCheckpointPayload,
-)
+from .metadata import CheckpointRestoreError, _log_restore_phase
 from .restore_atoms import _deserialize_branch, _require_node
 
 if TYPE_CHECKING:
     from valanga import StateTag
 
     from anemone.nodes.state_handles import StateHandle
+
+    from .payloads import (
+        AlgorithmNodeCheckpointPayload,
+        CheckpointAtomPayload,
+        ExplorationIndexCheckpointPayload,
+        LinkedChildCheckpointPayload,
+        NodeEvaluationCheckpointPayload,
+        SearchRuntimeCheckpointPayload,
+    )
 
 
 class _CheckpointNodeShell(Protocol):
@@ -140,6 +137,33 @@ def _link_nodes(
             branch = _deserialize_branch(linked_child.branch_key)
             parent_node.set_child_for_branch(branch, child_node)
             child_node.add_parent(branch_key=branch, new_parent_node=parent_node)
+
+
+def _restore_parent_order(
+    parent_orders: Iterable[tuple[int, list[int] | None]],
+    *,
+    nodes_by_id: Mapping[int, AlgorithmNode[Any]],
+) -> None:
+    """Restore incoming map order after every outgoing edge has been linked.
+
+    Only multi-parent nodes need ordering metadata. Work on one existing parent
+    dictionary at a time, preserving its branch sets and avoiding a second graph.
+    """
+    for node_id, order in parent_orders:
+        node = nodes_by_id[node_id]
+        if order is None:
+            if node.parent_count() > 1:
+                raise CheckpointRestoreError.invalid_parent_order(node_id)
+            continue
+        parents = node.parent_nodes
+        by_id = {parent.id: parent for parent in parents}
+        if len(order) < 2 or len(order) != len(parents) or set(order) != by_id.keys():
+            raise CheckpointRestoreError.invalid_parent_order(node_id)
+        ordered_items = [
+            (by_id[parent_id], parents[by_id[parent_id]]) for parent_id in order
+        ]
+        parents.clear()
+        parents.update(ordered_items)
 
 
 def _restore_node_runtime_state(

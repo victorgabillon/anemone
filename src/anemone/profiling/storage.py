@@ -1,8 +1,6 @@
 """Filesystem helpers for profiling run directories and JSON artifacts."""
 # pylint: disable=duplicate-code
 
-from __future__ import annotations
-
 import json
 import re
 from datetime import UTC, datetime

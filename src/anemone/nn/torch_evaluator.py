@@ -1,9 +1,7 @@
 """Torch-based value evaluator for efficient batch evaluations."""
-# pyright: reportMissingImports=false
 
-from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Protocol, cast
 
 from valanga import State
 from valanga.evaluations import Certainty, EvalItem, Value
@@ -14,8 +12,30 @@ from anemone.node_evaluation.direct.protocols import (
 )
 
 if TYPE_CHECKING:
-    from coral.neural_networks.nn_content_evaluator import NNContentEvaluator
+    from collections.abc import Callable, Sequence
+    from types import ModuleType
+
     from torch import Tensor
+    from torch.nn import Module
+
+
+class _ModuleCompiler(Protocol):
+    def script(self, obj: Module, /) -> Module: ...
+
+
+class _OutputValueConverter(Protocol):
+    def to_content_evaluation(self, output_nn: Tensor, state: State) -> Value: ...
+
+
+class _TorchStateEvaluator(Protocol):
+    @property
+    def net(self) -> Module: ...
+
+    @property
+    def content_to_input_convert(self) -> Callable[[State], Tensor]: ...
+
+    @property
+    def output_and_value_converter(self) -> _OutputValueConverter: ...
 
 
 class TorchDependencyError(ModuleNotFoundError):
@@ -37,21 +57,25 @@ class TorchMasterNNStateEvaluator(MasterStateValueEvaluator):
     """
 
     over: OverEventDetector
-    state_evaluator: "NNContentEvaluator"
+    state_evaluator: _TorchStateEvaluator
     device: str = "cpu"
     script: bool = True
+    _torch: ModuleType = field(init=False, repr=False)
+    _model: Module = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize the torch model and validate dependencies."""
         try:
             import torch  # pylint: disable=import-outside-toplevel
+
         except ModuleNotFoundError as e:
             raise TorchDependencyError from e
 
         self._torch = torch
 
         model = self.state_evaluator.net
-        self._model = torch.jit.script(model) if self.script else model
+        compiler = cast("_ModuleCompiler", torch.jit)
+        self._model = compiler.script(model) if self.script else model
         self._model.eval()
 
     def value_white(self, state: State) -> float:
@@ -98,9 +122,7 @@ class TorchMasterNNStateEvaluator(MasterStateValueEvaluator):
         values: list[float] = []
         for i, st in enumerate(states):
             state_eval = converter.to_content_evaluation(output_nn=out[i], state=st)
-            vw = state_eval.value_white
-            assert vw is not None
-            values.append(float(vw))
+            values.append(float(state_eval.score))
 
         return values
 

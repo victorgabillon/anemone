@@ -1,7 +1,5 @@
 """Branch-ordering helpers extracted from the generic tree-evaluation engine."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Protocol, cast
 

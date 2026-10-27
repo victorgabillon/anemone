@@ -1,7 +1,5 @@
 """Thin max wrapper that installs single-agent defaults on the shared engine."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from anemone.backup_policies.aggregation import (

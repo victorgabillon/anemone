@@ -6,8 +6,6 @@ distinct from an offline replay bundle: the session JSON stays mutable until
 """
 
 # pylint: disable=duplicate-code
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 

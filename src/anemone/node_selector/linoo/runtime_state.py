@@ -2,8 +2,6 @@
 
 # pylint: disable=duplicate-code
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from .types import (

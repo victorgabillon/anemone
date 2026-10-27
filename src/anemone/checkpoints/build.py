@@ -2,8 +2,6 @@
 
 # pyright: reportPrivateUsage=false
 
-from __future__ import annotations
-
 from random import Random
 from time import perf_counter
 from typing import TYPE_CHECKING, Any
@@ -50,9 +48,7 @@ from .build_state_payloads import (
     _first_branch_in_stable_order,
     _is_anchor_node,
     _iter_candidate_state_parent_links,
-    _preferred_parent_link_from_reusable_state_payload,
     _representative_parent_link,
-    _stored_or_first_branch_in_stable_order,
     _try_build_delta_state_payload,
     _try_reuse_checkpoint_state_payload,
 )
@@ -71,6 +67,7 @@ if TYPE_CHECKING:
     from anemone.tree_exploration import TreeExploration
 
     from ._protocols import IncrementalStateCheckpointCodec
+    from .payloads import TreeCheckpointPayload
 
 
 def build_search_checkpoint_payload(
@@ -94,6 +91,19 @@ def build_search_checkpoint_payload(
         context=context,
     )
     metrics.tree_payload_s += perf_counter() - tree_payload_started_at
+    return _build_runtime_checkpoint_payload(
+        search, tree_payload=tree_payload, metrics=metrics, state_codec=state_codec
+    )
+
+
+def _build_runtime_checkpoint_payload(
+    search: TreeExploration[Any],
+    *,
+    tree_payload: TreeCheckpointPayload,
+    metrics: _CheckpointBuildMetrics,
+    state_codec: IncrementalStateCheckpointCodec[Any],
+) -> SearchRuntimeCheckpointPayload:
+    """Build the shared runtime metadata after node serialization has completed."""
     rng_state_started_at = perf_counter()
     rng_state = _maybe_dump_rng_state(search)
     rollout_rng = rollout_random_generator(search)
@@ -153,7 +163,6 @@ __all__ = [
     "_iter_candidate_state_parent_links",
     "_iter_nodes_in_checkpoint_order",
     "_maybe_dump_rng_state",
-    "_preferred_parent_link_from_reusable_state_payload",
     "_representative_parent_link",
     "_serialize_branch_collection",
     "_serialize_checkpoint_atom_for_build",
@@ -167,7 +176,6 @@ __all__ = [
     "_serialize_parent_branches",
     "_serialize_value_for_build",
     "_serialize_value_uncached_for_build",
-    "_stored_or_first_branch_in_stable_order",
     "_try_build_delta_state_payload",
     "_try_reuse_checkpoint_state_payload",
     "build_search_checkpoint_payload",

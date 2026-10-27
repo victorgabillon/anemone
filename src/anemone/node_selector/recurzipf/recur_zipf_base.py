@@ -8,15 +8,12 @@ Classes:
 """
 
 from dataclasses import dataclass
-from random import Random
 from typing import TYPE_CHECKING, Any, Literal
 
-from anemone import trees
 from anemone.node_evaluation.common.branch_frontier import (
     require_branch_frontier_aware,
 )
 from anemone.node_selector.branch_explorer import SamplingPriorities, ZipfBranchExplorer
-from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import (
     OpeningInstructions,
     OpeningInstructor,
@@ -25,7 +22,11 @@ from anemone.node_selector.opening_instructions import (
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 if TYPE_CHECKING:
+    from random import Random
+
     from anemone import tree_manager as tree_man
+    from anemone import trees
+    from anemone.node_selector.node_selector_types import NodeSelectorType
 
 
 @dataclass
@@ -69,7 +70,7 @@ class RecurZipfBase[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def choose_node_and_branch_to_open(
         self,
         tree: trees.Tree[NodeT],
-        latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
+        latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> OpeningInstructions[NodeT]:
         """Choose the next node to explore and the branch to open.
 

@@ -1,11 +1,13 @@
 """Small utility helpers used across the project."""
 
-from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import islice
 from math import exp
 from os import PathLike
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 MyPath = Annotated[str | PathLike[str], "path"]
 

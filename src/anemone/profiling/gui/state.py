@@ -1,7 +1,5 @@
 """Small Streamlit session-state helpers for the profiling dashboard."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from anemone.profiling.gui import get_streamlit

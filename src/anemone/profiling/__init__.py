@@ -1,8 +1,6 @@
 """Standalone profiling foundation for Anemone search runs."""
 # pylint: disable=import-outside-toplevel
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from .artifacts import (

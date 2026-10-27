@@ -1,20 +1,24 @@
 """Factory to build node selectors."""
 
-from random import Random
+from typing import TYPE_CHECKING
 
-from anemone.hooks.search_hooks import SearchHooks
-
-from .all_node_selector_args import AllNodeSelectorArgs
-from .composed.args import ComposedNodeSelectorArgs
 from .composed.composed_node_selector import ComposedNodeSelector
 from .linoo import Linoo, LinooArgs
-from .node_selector import NodeSelector
 from .node_selector_types import NodeSelectorType
-from .opening_instructions import OpeningInstructor
 from .priority_check.factory import create_priority_check
 from .recurzipf.recur_zipf_base import RecurZipfBase, RecurZipfBaseArgs
 from .sequool import SequoolArgs, create_sequool
 from .uniform import Uniform
+
+if TYPE_CHECKING:
+    from random import Random
+
+    from anemone.hooks.search_hooks import SearchHooks
+
+    from .all_node_selector_args import AllNodeSelectorArgs
+    from .composed.args import ComposedNodeSelectorArgs
+    from .node_selector import NodeSelector
+    from .opening_instructions import OpeningInstructor
 
 
 class UnknownNodeSelectorError(ValueError):

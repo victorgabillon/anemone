@@ -1,16 +1,17 @@
 """Utility functions for tree nodes."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from valanga import BranchKey, Color, State
 
-from anemone.dynamics import SearchDynamics
-from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
-from anemone.nodes.algorithm_node.algorithm_node import (
-    AlgorithmNode,
-)
+if TYPE_CHECKING:
+    from anemone.dynamics import SearchDynamics
+    from anemone.node_evaluation.common.node_value_evaluation import NodeValueEvaluation
+    from anemone.nodes.algorithm_node.algorithm_node import (
+        AlgorithmNode,
+    )
 
-from .itree_node import ITreeNode
+    from .itree_node import ITreeNode
 
 
 def _representative_parent[StateT: State](

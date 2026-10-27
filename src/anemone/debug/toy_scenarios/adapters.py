@@ -13,8 +13,6 @@ All tree growth, node selection, backup propagation, and stopping behavior come
 from the real Anemone engine.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from random import Random
 from typing import TYPE_CHECKING, Any, cast

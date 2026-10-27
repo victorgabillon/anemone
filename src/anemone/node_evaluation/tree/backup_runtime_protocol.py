@@ -4,8 +4,6 @@ These protocols are intentionally internal and deliberately shaped around the
 current runtime-backed backup design. They are not a generic reducer/plugin API.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga import BranchKey

@@ -1,7 +1,5 @@
 """Derived metrics used by the profiling dashboard."""
 
-from __future__ import annotations
-
 from statistics import stdev
 from typing import TYPE_CHECKING, TypedDict
 

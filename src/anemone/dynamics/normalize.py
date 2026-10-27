@@ -1,7 +1,5 @@
 """Utilities to normalize search dynamics inputs."""
 
-from __future__ import annotations
-
 from collections.abc import Hashable
 from typing import Any, cast, overload
 

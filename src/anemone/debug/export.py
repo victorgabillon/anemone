@@ -1,7 +1,5 @@
 """Export helpers for replaying debug traces and snapshots."""
 
-from __future__ import annotations
-
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast

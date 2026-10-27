@@ -748,17 +748,13 @@ def test_structural_parent_and_child_relationships_are_exported() -> None:
 
     assert root_payload.parent_node_id is None
     assert root_payload.branch_from_parent is None
-    assert root_payload.linked_children == sorted(
-        [
-            LinkedChildCheckpointPayload(
-                branch_key=serialize_checkpoint_atom(branch),
-                child_node_id=child.id,
-            )
-            for branch, child in root.iter_child_links()
-            if child is not None
-        ],
-        key=lambda item: (repr(item.branch_key), item.child_node_id),
-    )
+    assert root_payload.linked_children == [
+        LinkedChildCheckpointPayload(
+            branch_key=serialize_checkpoint_atom(branch), child_node_id=child.id
+        )
+        for branch, child in root.iter_child_links()
+        if child is not None
+    ]
 
     for branch, child in root.iter_child_links():
         assert child is not None

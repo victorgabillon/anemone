@@ -1,7 +1,5 @@
 """Updater wrapper emitting best-effort backup events."""
 
-from __future__ import annotations
-
 import inspect
 from typing import Any
 
@@ -50,7 +48,7 @@ class ObservableUpdater:
 
         try:
             signature = inspect.signature(perform_updates)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return perform_updates(node_to_update, update_instructions)
 
         parameter_names = signature.parameters

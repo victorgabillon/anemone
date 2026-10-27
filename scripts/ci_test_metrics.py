@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -48,8 +49,8 @@ def main() -> int:
     recorder = TestMetrics()
     started = time.monotonic()
     code = pytest.main(sys.argv[1:], plugins=[recorder])
-    output = Path(".ci-reports")
-    output.mkdir(exist_ok=True)
+    output = Path(os.environ.get("CI_REPORT_DIR", ".ci-reports"))
+    output.mkdir(parents=True, exist_ok=True)
     (output / "tests.json").write_text(
         json.dumps(
             {

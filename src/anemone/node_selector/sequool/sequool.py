@@ -2,10 +2,8 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from random import Random
 from typing import TYPE_CHECKING, Any, Protocol
 
-from anemone import trees
 from anemone.basics import TreeDepth
 from anemone.indices.node_indices.index_data import (
     MaxDepthDescendants,
@@ -23,10 +21,13 @@ from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.nodes.tree_traversal import (
     get_descendants_candidate_unresolved,
 )
-from anemone.trees.descendants import Descendants
 
 if TYPE_CHECKING:
+    from random import Random
+
     from anemone import tree_manager as tree_man
+    from anemone import trees
+    from anemone.trees.descendants import Descendants
 
 
 class SequoolMissingIndexDataError(TypeError):
@@ -37,7 +38,7 @@ class TreeDepthSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]](Protocol
     """Protocol defining the interface for a tree-depth selector."""
 
     def update_from_expansions(
-        self, latest_tree_expansions: "tree_man.TreeExpansions[NodeT]"
+        self, latest_tree_expansions: tree_man.TreeExpansions[NodeT]
     ) -> None:
         """Update the tree-depth selector with the latest tree expansions.
 
@@ -80,7 +81,7 @@ class StaticNotOpenedSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     count_visits: dict[TreeDepth, int] = field(default_factory=_make_count_visits)
 
     def update_from_expansions(
-        self, latest_tree_expansions: "tree_man.TreeExpansions[NodeT]"
+        self, latest_tree_expansions: tree_man.TreeExpansions[NodeT]
     ) -> None:
         """Update the node selector with the latest tree expansions.
 
@@ -216,7 +217,7 @@ class RandomAllSelector[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     """A node selector that selects depths randomly."""
 
     def update_from_expansions(
-        self, latest_tree_expansions: "tree_man.TreeExpansions[NodeT]"
+        self, latest_tree_expansions: tree_man.TreeExpansions[NodeT]
     ) -> None:
         """Update the node selector with the latest tree expansions.
 
@@ -305,7 +306,7 @@ class Sequool[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def choose_node_and_branch_to_open(
         self,
         tree: trees.Tree[NodeT],
-        latest_tree_expansions: "tree_man.TreeExpansions[NodeT]",
+        latest_tree_expansions: tree_man.TreeExpansions[NodeT],
     ) -> OpeningInstructions[NodeT]:
         """Choose the best node to open in the branch tree and return the opening instructions.
 

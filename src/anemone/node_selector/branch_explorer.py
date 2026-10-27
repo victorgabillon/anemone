@@ -4,10 +4,7 @@ BranchExplorer is responsible for exploring branches in a game tree.
 """
 
 from enum import StrEnum
-from random import Random
-from typing import Any
-
-from valanga import BranchKey
+from typing import TYPE_CHECKING, Any
 
 from anemone.node_evaluation.common.branch_frontier import (
     require_branch_frontier_aware,
@@ -15,7 +12,13 @@ from anemone.node_evaluation.common.branch_frontier import (
 from anemone.node_selector.notations_and_statics import (
     zipf_picks_random,
 )
-from anemone.nodes.algorithm_node import AlgorithmNode
+
+if TYPE_CHECKING:
+    from random import Random
+
+    from valanga import BranchKey
+
+    from anemone.nodes.algorithm_node import AlgorithmNode
 
 
 class SamplingPriorities(StrEnum):

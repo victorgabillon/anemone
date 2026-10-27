@@ -3,8 +3,6 @@
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
-from __future__ import annotations
-
 import sys
 from pickle import dump
 from typing import TYPE_CHECKING, Any

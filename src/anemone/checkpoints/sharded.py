@@ -1,9 +1,10 @@
 """Compatibility façade for sharded checkpoint APIs."""
 
-from __future__ import annotations
-
 from .sharded_decode import load_sharded_search_checkpoint
-from .sharded_encode import write_sharded_search_checkpoint
+from .sharded_encode import (
+    write_sharded_search_checkpoint,
+    write_sharded_search_checkpoint_from_search,
+)
 from .sharded_errors import ShardedCheckpointManifestError
 from .sharded_manifest import (
     read_sharded_checkpoint_manifest,
@@ -34,4 +35,5 @@ __all__ = [
     "sharded_checkpoint_manifest_to_jsonable",
     "write_sharded_checkpoint_manifest",
     "write_sharded_search_checkpoint",
+    "write_sharded_search_checkpoint_from_search",
 ]

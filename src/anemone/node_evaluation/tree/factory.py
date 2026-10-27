@@ -1,7 +1,7 @@
 """Provide factories for tree-evaluation families built on shared wiring."""
 
 from collections.abc import Callable
-from typing import Any, Generic, Protocol, TypeVar
+from typing import Any, Protocol
 
 from valanga import State
 
@@ -20,13 +20,8 @@ from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
 from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import Objective
 
-StateT = TypeVar("StateT", bound=State)
-TurnStateT = TypeVar("TurnStateT", bound=AnyTurnState)
-EvalT_co = TypeVar("EvalT_co", bound=NodeTreeEvaluation[Any], covariant=True)
-EvalT = TypeVar("EvalT", bound=NodeTreeEvaluation[Any])
 
-
-class NodeTreeEvaluationFactory(Protocol[StateT]):
+class NodeTreeEvaluationFactory[StateT: State](Protocol):
     """Factory protocol for generic tree-search node evaluations."""
 
     def create(
@@ -37,16 +32,18 @@ class NodeTreeEvaluationFactory(Protocol[StateT]):
         ...
 
 
-class TreeEvaluationConstructor(Protocol[StateT, EvalT_co]):
+class TreeEvaluationConstructor[StateT: State, EvalT: NodeTreeEvaluation[Any]](
+    Protocol
+):
     """Callable constructor shape shared by thin family evaluation wrappers."""
 
     def __call__(
         self,
         *,
         tree_node: TreeNode[Any, StateT],
-        backup_policy: BackupPolicy[EvalT_co],
+        backup_policy: BackupPolicy[EvalT],
         objective: Objective[StateT],
-    ) -> EvalT_co:
+    ) -> EvalT:
         """Create one concrete tree evaluation from shared assembled dependencies."""
         ...
 
@@ -62,10 +59,10 @@ def resolve_factory_dependency[DependencyT](
     return default_factory()
 
 
-class ConfiguredNodeTreeEvaluationFactory(
-    NodeTreeEvaluationFactory[StateT],
-    Generic[StateT, EvalT],  # noqa: UP046
-):
+class ConfiguredNodeTreeEvaluationFactory[
+    StateT: State,
+    EvalT: NodeTreeEvaluation[Any],
+](NodeTreeEvaluationFactory[StateT]):
     """Assemble one tree-evaluation family from shared backup/objective wiring."""
 
     backup_policy: BackupPolicy[EvalT]
@@ -95,7 +92,7 @@ class ConfiguredNodeTreeEvaluationFactory(
         )
 
 
-class NodeTreeMinmaxEvaluationFactory(
+class NodeTreeMinmaxEvaluationFactory[TurnStateT: AnyTurnState](
     ConfiguredNodeTreeEvaluationFactory[
         TurnStateT, NodeMinmaxEvaluation[Any, TurnStateT]
     ]

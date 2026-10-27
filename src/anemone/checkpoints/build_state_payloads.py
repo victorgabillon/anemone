@@ -2,8 +2,6 @@
 
 # pyright: reportPrivateUsage=false, reportUnusedFunction=false
 
-from __future__ import annotations
-
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast
 
@@ -39,7 +37,6 @@ if TYPE_CHECKING:
 
 
 def _representative_parent_link(
-    node: AlgorithmNode[Any],
     *,
     node_cache: _NodeCheckpointBuildCache,
     context: _CheckpointBuildContext,
@@ -53,16 +50,9 @@ def _representative_parent_link(
 
     Full incoming edge information is recoverable from every parent's
     ``linked_children`` edge list. The node-local parent fields keep the
-    legacy one-parent shape by storing the first runtime parent edge.
+    one-parent shape by storing the first runtime parent edge, independently
+    of the codec's state reconstruction parent.
     """
-    preferred_parent_link = _preferred_parent_link_from_reusable_state_payload(
-        node,
-        node_cache=node_cache,
-        context=context,
-    )
-    if preferred_parent_link is not None:
-        return preferred_parent_link
-
     for parent_branch_entry in node_cache.parent_branch_entries:
         branch = _first_branch_in_stable_order(
             parent_branch_entry,
@@ -75,47 +65,6 @@ def _representative_parent_link(
             _serialize_checkpoint_atom_for_build(branch, context=context),
         )
     return None, None, None, None
-
-
-def _preferred_parent_link_from_reusable_state_payload(
-    node: AlgorithmNode[Any],
-    *,
-    node_cache: _NodeCheckpointBuildCache,
-    context: _CheckpointBuildContext,
-) -> (
-    tuple[
-        AlgorithmNode[Any] | None,
-        int | None,
-        BranchKey | None,
-        CheckpointAtomPayload | None,
-    ]
-    | None
-):
-    """Return the stored delta parent/link when it is still a live incoming edge."""
-    payload = checkpoint_payload_for_reuse_or_none(node.state_handle)
-    if not isinstance(payload, DeltaCheckpointStatePayload):
-        return None
-
-    scan_started_at = perf_counter()
-    try:
-        for parent_branch_entry in node_cache.parent_branch_entries:
-            if parent_branch_entry.parent_node.id != payload.state_parent_node_id:
-                continue
-            branch = _stored_or_first_branch_in_stable_order(
-                parent_branch_entry,
-                preferred_branch_payload=payload.state_parent_branch,
-                context=context,
-            )
-            return (
-                parent_branch_entry.parent_node,
-                parent_branch_entry.parent_node.id,
-                branch,
-                _serialize_checkpoint_atom_for_build(branch, context=context),
-            )
-        return None
-    finally:
-        context.metrics.reusable_parent_scan_calls += 1
-        context.metrics.reusable_parent_scan_s += perf_counter() - scan_started_at
 
 
 def _build_checkpoint_state_payload(
@@ -133,7 +82,7 @@ def _build_checkpoint_state_payload(
         reuse_started_at = perf_counter()
         reused_payload = _try_reuse_checkpoint_state_payload(
             node=node,
-            representative_parent=representative_parent,
+            node_cache=node_cache,
             metrics=metrics,
         )
         metrics.state_payload_reuse_s += perf_counter() - reuse_started_at
@@ -180,7 +129,7 @@ def _build_checkpoint_state_payload(
 def _try_reuse_checkpoint_state_payload(
     *,
     node: AlgorithmNode[Any],
-    representative_parent: AlgorithmNode[Any] | None,
+    node_cache: _NodeCheckpointBuildCache,
     metrics: _CheckpointBuildMetrics,
 ) -> AnchorCheckpointStatePayload | DeltaCheckpointStatePayload | None:
     """Return a reusable checkpoint state payload without materializing state."""
@@ -195,7 +144,7 @@ def _try_reuse_checkpoint_state_payload(
         return payload
 
     if _delta_reuse_matches_parent(
-        representative_parent=representative_parent,
+        node_cache=node_cache,
         payload=payload,
     ):
         metrics.delta_payloads_reused += 1
@@ -208,18 +157,16 @@ def _try_reuse_checkpoint_state_payload(
 
 def _delta_reuse_matches_parent(
     *,
-    representative_parent: AlgorithmNode[Any] | None,
+    node_cache: _NodeCheckpointBuildCache,
     payload: DeltaCheckpointStatePayload,
 ) -> bool:
-    """Return whether a stored delta still matches the chosen representative parent."""
-    if representative_parent is None:
-        return False
-    parent_handle_payload = checkpoint_payload_for_reuse_or_none(
-        representative_parent.state_handle
+    """Keep a valid codec parent independent of the graph representative."""
+    return any(
+        entry.parent_node.id == payload.state_parent_node_id
+        and checkpoint_payload_for_reuse_or_none(entry.parent_node.state_handle)
+        is not None
+        for entry in node_cache.parent_branch_entries
     )
-    if parent_handle_payload is None:
-        return False
-    return payload.state_parent_node_id == representative_parent.id
 
 
 def _try_build_delta_state_payload(
@@ -330,25 +277,3 @@ def _first_branch_in_stable_order(
         return parent_branch_entry.ordered_branches[0]
     finally:
         context.metrics.first_branch_total_s += perf_counter() - started_at
-
-
-def _stored_or_first_branch_in_stable_order(
-    parent_branch_entry: _ParentBranchSerialization,
-    *,
-    preferred_branch_payload: CheckpointAtomPayload | None,
-    context: _CheckpointBuildContext,
-) -> Any:
-    """Return the stored branch when present, otherwise the stable first branch."""
-    context.metrics.stored_or_first_branch_calls += 1
-    started_at = perf_counter()
-    try:
-        for branch, serialized_branch in zip(
-            parent_branch_entry.ordered_branches,
-            parent_branch_entry.serialized_branches,
-            strict=False,
-        ):
-            if serialized_branch == preferred_branch_payload:
-                return branch
-        return parent_branch_entry.ordered_branches[0]
-    finally:
-        context.metrics.stored_or_first_branch_total_s += perf_counter() - started_at

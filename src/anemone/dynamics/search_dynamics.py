@@ -1,15 +1,12 @@
 """Search-time dynamics interfaces for tree exploration."""
 
 from collections.abc import Hashable
-from typing import Literal, Protocol, TypeVar
+from typing import Literal, Protocol
 
 import valanga
 
-StateT = TypeVar("StateT")
-ActionT = TypeVar("ActionT", bound=Hashable)
 
-
-class SearchDynamics(Protocol[StateT, ActionT]):
+class SearchDynamics[StateT: valanga.State, ActionT: Hashable](Protocol):
     """Protocol for search-time rules and transitions."""
 
     __anemone_search_dynamics__: Literal[True]

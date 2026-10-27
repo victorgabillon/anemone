@@ -1,7 +1,5 @@
 """Direct-evaluator wrapper emitting best-effort value-assignment events."""
 
-from __future__ import annotations
-
 from itertools import chain
 from typing import TYPE_CHECKING, Any
 
@@ -69,6 +67,7 @@ class ObservableDirectEvaluator:
         evaluation_queries: Any,
         clear_existing_direct_values: bool,
         skip_terminal_nodes: bool,
+        preserve_certified_values: bool = False,
     ) -> Any:
         """Observe direct-value assignment for the shared node-batch path."""
         observed_nodes = tuple(nodes)
@@ -79,6 +78,7 @@ class ObservableDirectEvaluator:
                 evaluation_queries=evaluation_queries,
                 clear_existing_direct_values=clear_existing_direct_values,
                 skip_terminal_nodes=skip_terminal_nodes,
+                preserve_certified_values=preserve_certified_values,
             ),
         )
 

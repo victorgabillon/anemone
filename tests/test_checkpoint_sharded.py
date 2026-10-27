@@ -247,6 +247,7 @@ def test_write_sharded_search_checkpoint_split_layout_creates_split_shards(
         "generated_all_branches",
         "node_id",
         "parent_node_id",
+        "parent_node_order",
         "state_summary",
     }
     assert set(state_record) == {"node_id", "state_payload"}

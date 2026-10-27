@@ -1,16 +1,20 @@
 """Factory for constructing priority checks."""
 
-from random import Random
+from typing import TYPE_CHECKING
 
-from anemone.hooks.search_hooks import SearchHooks
 from anemone.node_selector.node_selector_types import NodeSelectorType
-from anemone.node_selector.opening_instructions import OpeningInstructor
-from anemone.node_selector.priority_check.args_union import PriorityCheckArgs
 from anemone.node_selector.priority_check.no_priority_check import NoPriorityCheck
-from anemone.node_selector.priority_check.priority_check import PriorityCheck
 from anemone.node_selector.priority_check.registered_args import (
     RegisteredPriorityCheckArgs,
 )
+
+if TYPE_CHECKING:
+    from random import Random
+
+    from anemone.hooks.search_hooks import SearchHooks
+    from anemone.node_selector.opening_instructions import OpeningInstructor
+    from anemone.node_selector.priority_check.args_union import PriorityCheckArgs
+    from anemone.node_selector.priority_check.priority_check import PriorityCheck
 
 
 class UnknownPriorityCheckError(ValueError):

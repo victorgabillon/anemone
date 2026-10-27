@@ -1,0 +1,59 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_____________________ test_valid_forced_nine_is_preserved ______________________
+
+    def test_valid_forced_nine_is_preserved() -> None:
+        search = fixture_runtime({0: [1], 1: []}, {0: 0.0, 1: 9.0})
+        root = search.tree.root_node
+        certificate = Value(score=9.0, certainty=Certainty.FORCED)
+        root.tree_evaluation.direct_value = certificate
+        assert certifies(root, {1: 9.0})  # Unique legal continuation ends at nine.
+        search.refresh_with_evaluator(FixtureEvaluator({0: 42.0, 1: 42.0}), scope="all")
+>       assert root.tree_evaluation.direct_value is certificate
+E       assert Value(score=42.0, certainty=<Certainty.ESTIMATE: 1>, over_event=None, line=None) is Value(score=9.0, certainty=<Certainty.FORCED: 3>, over_event=None, line=None)
+E        +  where Value(score=42.0, certainty=<Certainty.ESTIMATE: 1>, over_event=None, line=None) = NodeMaxEvaluation(tree_node=TreeNode(id_=0, tree_depth_=0, state_handle_=MaterializedStateHandle(state_=_ConcreteFakeY...version=1, _backed_up_value=None, decision_ordering_=None, pv_state_=None, branch_frontier_=None, backup_runtime_=None).direct_value
+E        +    where NodeMaxEvaluation(tree_node=TreeNode(id_=0, tree_depth_=0, state_handle_=MaterializedStateHandle(state_=_ConcreteFakeY...version=1, _backed_up_value=None, decision_ordering_=None, pv_state_=None, branch_frontier_=None, backup_runtime_=None) = <anemone.nodes.algorithm_node.algorithm_node.AlgorithmNode object at 0x742021748980>.tree_evaluation
+
+docs/research/scientific_refresh/baseline_red_tests.py:20: AssertionError
+__________________ test_seven_node_full_refresh_reaches_root ___________________
+
+    def test_seven_node_full_refresh_reaches_root() -> None:
+        search = runtime()
+        assert search.tree.nodes_count == 7
+        search.refresh_with_evaluator(Evaluator({2: 100.0}), scope="all")
+>       assert (
+            search.tree.root_node.tree_evaluation.effective_value.score
+            == 100.00000100000001
+        )
+E       assert 2.2600000452000004 == 100.00000100000001
+E        +  where 2.2600000452000004 = Value(score=2.2600000452000004, certainty=<Certainty.ESTIMATE: 1>, over_event=None, line=None).score
+E        +    where Value(score=2.2600000452000004, certainty=<Certainty.ESTIMATE: 1>, over_event=None, line=None) = NodeMaxEvaluation(tree_node=TreeNode(id_=0, tree_depth_=0, state_handle_=MaterializedStateHandle(state_=State(board=Mo... -6, -2, 0), second_best_branch=(0, -5, -2, 4), exact_child_count=0, selected_child_pv_version=1, is_initialized=True)).effective_value
+E        +      where NodeMaxEvaluation(tree_node=TreeNode(id_=0, tree_depth_=0, state_handle_=MaterializedStateHandle(state_=State(board=Mo... -6, -2, 0), second_best_branch=(0, -5, -2, 4), exact_child_count=0, selected_child_pv_version=1, is_initialized=True)) = <anemone.nodes.algorithm_node.algorithm_node.AlgorithmNode object at 0x742021774050>.tree_evaluation
+E        +        where <anemone.nodes.algorithm_node.algorithm_node.AlgorithmNode object at 0x742021774050> = <anemone.trees.tree.Tree object at 0x742021774190>.root_node
+E        +          where <anemone.trees.tree.Tree object at 0x742021774190> = TreeExploration(tree=<anemone.trees.tree.Tree object at 0x742021774190>, tree_manager=AlgorithmNodeTreeManager(tree_ma...gress at 0x742021a0e660>, search_result_reporter=<function log_final_best_line at 0x742021a0e7a0>, evaluator_version=1).tree
+
+docs/research/scientific_refresh/baseline_red_tests.py:27: AssertionError
+_______________ test_seven_node_incremental_update_reaches_root ________________
+
+    def test_seven_node_incremental_update_reaches_root() -> None:
+        search = runtime()
+        search.apply_node_value_updates(
+            [NodeValueUpdate(node_id="2", direct_value=100.00000100000001)]
+        )
+>       assert (
+            search.tree.root_node.tree_evaluation.effective_value.score
+            == 100.00000100000001
+        )
+E       assert 2.2600000452000004 == 100.00000100000001
+E        +  where 2.2600000452000004 = Value(score=2.2600000452000004, certainty=<Certainty.ESTIMATE: 1>, over_event=None, line=None).score
+E        +    where Value(score=2.2600000452000004, certainty=<Certainty.ESTIMATE: 1>, over_event=None, line=None) = NodeMaxEvaluation(tree_node=TreeNode(id_=0, tree_depth_=0, state_handle_=MaterializedStateHandle(state_=State(board=Mo... -6, -2, 0), second_best_branch=(0, -5, -2, 4), exact_child_count=0, selected_child_pv_version=1, is_initialized=True)).effective_value
+E        +      where NodeMaxEvaluation(tree_node=TreeNode(id_=0, tree_depth_=0, state_handle_=MaterializedStateHandle(state_=State(board=Mo... -6, -2, 0), second_best_branch=(0, -5, -2, 4), exact_child_count=0, selected_child_pv_version=1, is_initialized=True)) = <anemone.nodes.algorithm_node.algorithm_node.AlgorithmNode object at 0x742021738f50>.tree_evaluation
+E        +        where <anemone.nodes.algorithm_node.algorithm_node.AlgorithmNode object at 0x742021738f50> = <anemone.trees.tree.Tree object at 0x742021776c10>.root_node
+E        +          where <anemone.trees.tree.Tree object at 0x742021776c10> = TreeExploration(tree=<anemone.trees.tree.Tree object at 0x742021776c10>, tree_manager=AlgorithmNodeTreeManager(tree_ma...gress at 0x742021a0e660>, search_result_reporter=<function log_final_best_line at 0x742021a0e7a0>, evaluator_version=0).tree
+
+docs/research/scientific_refresh/baseline_red_tests.py:38: AssertionError
+=========================== short test summary info ============================
+FAILED docs/research/scientific_refresh/baseline_red_tests.py::test_valid_forced_nine_is_preserved
+FAILED docs/research/scientific_refresh/baseline_red_tests.py::test_seven_node_full_refresh_reaches_root
+FAILED docs/research/scientific_refresh/baseline_red_tests.py::test_seven_node_incremental_update_reaches_root
+3 failed in 0.27s

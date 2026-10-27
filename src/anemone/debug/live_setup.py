@@ -12,8 +12,6 @@ Instead, ``build_live_debug_environment(...)`` assembles those pieces into one
 explicit ``LiveDebugEnvironment`` value with a small lifecycle surface.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any

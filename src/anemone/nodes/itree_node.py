@@ -6,10 +6,12 @@ runtime details such as evaluations, exploration indices, and PV bookkeeping
 belong on higher-level wrappers like `AlgorithmNode`, not on this protocol.
 """
 
-from collections.abc import Iterable, Iterator, Mapping, MutableMapping
-from typing import Protocol, Self
+from typing import TYPE_CHECKING, Protocol, Self
 
 from valanga import BranchKey, State, StateTag
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator, Mapping, MutableMapping
 
 
 class ITreeNode[StateT: State = State](Protocol):

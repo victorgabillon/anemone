@@ -1,7 +1,5 @@
 """Small layout helpers for profiling GUI pages."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING
 

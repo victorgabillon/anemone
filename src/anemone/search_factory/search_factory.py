@@ -8,16 +8,12 @@ from :mod:`anemone.factory`, which builds the full search runtime.
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
-from random import Random
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga import State
 
 from anemone import node_selector as node_selectors
 from anemone import nodes
-from anemone.dynamics import SearchDynamics
-from anemone.hooks.search_hooks import SearchHooks
-from anemone.indices import node_indices
 from anemone.indices.node_indices.factory import (
     create_exploration_index_data,
 )
@@ -30,7 +26,14 @@ from anemone.node_selector.opening_instructions import (
 from anemone.node_selector.sequool.factory import (
     SequoolArgs,
 )
-from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+
+if TYPE_CHECKING:
+    from random import Random
+
+    from anemone.dynamics import SearchDynamics
+    from anemone.hooks.search_hooks import SearchHooks
+    from anemone.indices import node_indices
+    from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 NodeSelectorFactory = Callable[[], node_selectors.NodeSelector]
 

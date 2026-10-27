@@ -4,8 +4,6 @@ The saved payload is JSON, so snapshot contents, especially
 ``state_ref_payload``, must already be JSON-serializable.
 """
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, cast

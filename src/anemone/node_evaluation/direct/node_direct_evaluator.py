@@ -1,6 +1,5 @@
 """Module for evaluating algorithm nodes directly using a master state evaluator."""
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from itertools import chain
@@ -10,16 +9,21 @@ from valanga.evaluations import Certainty, Value
 
 from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.node_evaluation.common import canonical_value
-from anemone.nodes.algorithm_node import AlgorithmNode
 
-from .protocols import MasterStateValueEvaluator
+from . import score as _score
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
+    from anemone.nodes.algorithm_node import AlgorithmNode
 
-DISCOUNT = 0.99999999  # lokks like at the moment the use is to break ties in the evaluation (not sure if needed or helpful now)
+    from .protocols import MasterStateValueEvaluator
+
+
+DISCOUNT = _score.DISCOUNT
 
 
 class DirectValueInvariantError(AssertionError):
@@ -80,6 +84,7 @@ class DirectEvaluationOutcome[StateT: AnyTurnState = AnyTurnState]:
         default_factory=lambda: cast("list[AlgorithmNode[StateT]]", [])
     )
     skipped_terminal_count: int = 0
+    skipped_certified_count: int = 0
 
     @property
     def reevaluated_count(self) -> int:
@@ -212,13 +217,19 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
         evaluation_queries: EvaluationQueries[StateT],
         clear_existing_direct_values: bool,
         skip_terminal_nodes: bool,
+        preserve_certified_values: bool = False,
     ) -> DirectEvaluationOutcome[StateT]:
-        """Directly evaluate arbitrary nodes through the shared batch flow."""
+        """Directly evaluate arbitrary nodes through the shared batch flow.
+
+        Model refresh callers validate certificate origins before requesting
+        preservation. Explicit replacement remains available with the default.
+        """
         evaluation_queries.clear_queries()
 
         old_direct_values: dict[int, Value | None] = {}
         evaluated_nodes: list[AlgorithmNode[StateT]] = []
         skipped_terminal_count = 0
+        skipped_certified_count = 0
         seen_node_ids: set[int] = set()
 
         for node in nodes:
@@ -231,6 +242,15 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
                 skipped_terminal_count += 1
                 continue
 
+            if preserve_certified_values and canonical_value.is_exact_value(
+                node.tree_evaluation.direct_value
+            ):
+                if canonical_value.is_terminal_value(node.tree_evaluation.direct_value):
+                    skipped_terminal_count += 1
+                else:
+                    skipped_certified_count += 1
+                continue
+
             old_direct_values[node_identity] = node.tree_evaluation.direct_value
             if clear_existing_direct_values:
                 node.tree_evaluation.clear_direct_evaluation()
@@ -240,7 +260,8 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
 
         if not evaluated_nodes:
             return DirectEvaluationOutcome(
-                skipped_terminal_count=skipped_terminal_count
+                skipped_terminal_count=skipped_terminal_count,
+                skipped_certified_count=skipped_certified_count,
             )
 
         self.evaluate_all_queried_nodes(evaluation_queries=evaluation_queries)
@@ -254,6 +275,7 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
             evaluated_nodes=evaluated_nodes,
             changed_nodes=changed_nodes,
             skipped_terminal_count=skipped_terminal_count,
+            skipped_certified_count=skipped_certified_count,
         )
 
     def evaluate_all_not_over(
@@ -297,4 +319,4 @@ class NodeDirectEvaluator[StateT: AnyTurnState = AnyTurnState]:
         self, evaluation: float, node: AlgorithmNode[StateT]
     ) -> float:
         """Process the evaluation for a node that is not over."""
-        return (1 / DISCOUNT) ** node.tree_depth * evaluation
+        return _score.scale_nonterminal_score(evaluation, node.tree_depth)

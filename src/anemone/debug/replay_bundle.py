@@ -5,8 +5,6 @@ differs from a live session, whose JSON payload remains mutable while search is
 running.
 """
 
-from __future__ import annotations
-
 import json
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any

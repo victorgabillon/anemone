@@ -2,9 +2,7 @@
 
 # pyright: reportUnusedFunction=false
 
-# ruff: noqa: TC001,TC003
-
-from __future__ import annotations
+# ruff: noqa: TC001
 
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
@@ -80,6 +78,11 @@ class CheckpointRestoreError(ValueError):
     def unknown_node_id(cls, node_id: int) -> CheckpointRestoreError:
         """Return the error for a node reference that cannot be resolved."""
         return cls(f"Checkpoint references unknown node id {node_id}.")
+
+    @classmethod
+    def invalid_parent_order(cls, node_id: int) -> CheckpointRestoreError:
+        """Refuse missing, duplicated or inconsistent incoming-parent order."""
+        return cls(f"Invalid checkpoint parent order at node {node_id}.")
 
     @classmethod
     def delta_node_missing_parent(cls, node_id: int) -> CheckpointRestoreError:

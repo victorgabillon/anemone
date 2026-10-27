@@ -2,8 +2,6 @@
 
 # ruff: noqa: TC001
 
-from __future__ import annotations
-
 # pyright: reportPrivateUsage=false, reportUnusedFunction=false
 from random import Random
 from typing import TYPE_CHECKING
@@ -50,6 +48,7 @@ from .node_restore import (
     _populate_descendants_for_restore,
     _populate_descendants_from_node_shells_for_restore,
     _restore_node_runtime_state,
+    _restore_parent_order,
 )
 from .payloads import SearchRuntimeCheckpointPayload
 from .restore_atoms import (
@@ -63,6 +62,7 @@ from .selector_payloads import (
     _restore_explicit_selector_state,
     _restore_inferred_depth_selector_state,
 )
+from .state_handles import DEFAULT_STATE_CACHE_CAPACITY
 from .state_handles_restore import (
     _build_checkpoint_payload_store,
     _create_state_handles,
@@ -114,6 +114,7 @@ def load_search_from_checkpoint_payload[
     notify_progress: NotifyProgressCallable | None = None,
     hooks: SearchHooks | None = None,
     restore_memory_phase_logger: RestoreMemoryPhaseLogger | None = None,
+    state_cache_capacity: int = DEFAULT_STATE_CACHE_CAPACITY,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """Restore a live search runtime from one in-memory checkpoint payload.
 
@@ -124,7 +125,9 @@ def load_search_from_checkpoint_payload[
     only restored where this module has an explicit, narrow runtime contract;
     currently that means inferring Uniform's depth cursor from the latest
     expansion depth. The supplied evaluator is kept for future expansions and
-    explicit reevaluations after the runtime resumes.
+    explicit reevaluations after the runtime resumes. ``state_cache_capacity``
+    bounds shared decoded-state retention; zero disables retention. Eviction
+    preserves handle validity and the original checkpoint payloads.
     """
     anchor_count, delta_count = _checkpoint_state_payload_counts(payload)
     common_metadata = {
@@ -162,6 +165,7 @@ def load_search_from_checkpoint_payload[
         state_resolver = _create_state_resolver(
             payload=payload,
             state_codec=state_codec,
+            state_cache_capacity=state_cache_capacity,
         )
     _log_restore_memory_phase(
         restore_memory_phase_logger,
@@ -192,6 +196,10 @@ def load_search_from_checkpoint_payload[
     )
     with _log_restore_phase("link_nodes", **common_metadata):
         _link_nodes(payload.tree.nodes, nodes_by_id=nodes_by_id)
+        _restore_parent_order(
+            ((node.node_id, node.parent_node_order) for node in payload.tree.nodes),
+            nodes_by_id=nodes_by_id,
+        )
     with _log_restore_phase("restore_node_runtime_state", **common_metadata):
         _restore_node_runtime_state(payload.tree.nodes, nodes_by_id=nodes_by_id)
 

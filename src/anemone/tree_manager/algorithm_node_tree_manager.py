@@ -1,11 +1,8 @@
 """Algorithm-aware tree-side phases used by ``TreeExploration``."""
 
-from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from anemone import trees
-from anemone.dynamics import SearchDynamics
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
     update_all_indices,
@@ -13,29 +10,34 @@ from anemone.indices.index_manager import (
 from anemone.node_evaluation.common.branch_frontier import (
     require_branch_frontier_aware,
 )
-from anemone.node_evaluation.direct import (
-    DirectEvaluationOutcome,
-    EvaluationQueries,
-    NodeDirectEvaluator,
-)
-from anemone.node_selector.opening_instructions import OpeningInstructions
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-from anemone.updates.depth_index_propagator import DepthIndexPropagator
 from anemone.updates.value_propagator import ValuePropagator
 
-from .opening_expansion_budget import OpeningExpansionBudget
 from .opening_expansion_config import OpeningExpansionConfig
-from .opening_expansion_executor import (
-    OpeningExpansionExecutor,
-)
 from .opening_expansion_factory import create_opening_expansion_executor
-from .tree_expander import TreeExpansions
-from .tree_manager import TreeManager
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from anemone import trees
+    from anemone.dynamics import SearchDynamics
+    from anemone.node_evaluation.direct import (
+        DirectEvaluationOutcome,
+        EvaluationQueries,
+        NodeDirectEvaluator,
+    )
+    from anemone.node_selector.opening_instructions import OpeningInstructions
     from anemone.rollouts import RolloutActionSelector
+    from anemone.updates.depth_index_propagator import DepthIndexPropagator
+
+    from .opening_expansion_budget import OpeningExpansionBudget
+    from .opening_expansion_executor import (
+        OpeningExpansionExecutor,
+    )
+    from .tree_expander import TreeExpansions
+    from .tree_manager import TreeManager
 
 
 class BestLinePrintable(Protocol):
@@ -67,6 +69,7 @@ class _DirectNodeEvaluation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         *,
         clear_existing_direct_values: bool,
         skip_terminal_nodes: bool,
+        preserve_certified_values: bool = False,
     ) -> DirectEvaluationOutcome[Any]:
         """Evaluate an arbitrary node batch through the shared direct-evaluator."""
         node_evaluator = self.get_node_evaluator()
@@ -76,6 +79,7 @@ class _DirectNodeEvaluation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             evaluation_queries=self.evaluation_queries,
             clear_existing_direct_values=clear_existing_direct_values,
             skip_terminal_nodes=skip_terminal_nodes,
+            preserve_certified_values=preserve_certified_values,
         )
 
     def _created_nodes_for_direct_evaluation(
@@ -147,7 +151,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     opening_expansion_config: OpeningExpansionConfig = field(
         default_factory=OpeningExpansionConfig
     )
-    rollout_action_selector: "RolloutActionSelector[NodeT] | None" = None
+    rollout_action_selector: RolloutActionSelector[NodeT] | None = None
     opening_expansion_executor: OpeningExpansionExecutor[NodeT] | None = None
     _direct_evaluation: _DirectNodeEvaluation[NodeT] = field(
         init=False,
@@ -212,6 +216,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
             nodes,
             clear_existing_direct_values=True,
             skip_terminal_nodes=True,
+            preserve_certified_values=True,
         )
         if not outcome.changed_nodes:
             return outcome

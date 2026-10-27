@@ -1,7 +1,5 @@
 """Shared JSON serialization and file I/O helpers for checkpoints."""
 
-from __future__ import annotations
-
 import gzip
 import io
 import json

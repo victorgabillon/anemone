@@ -1,7 +1,5 @@
 """Zipf/factored-probability exploration-index strategy."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from anemone.indices.index_manager.exploration_math import (

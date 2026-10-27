@@ -2,8 +2,6 @@
 
 # pylint: disable=duplicate-code,import-outside-toplevel
 
-from __future__ import annotations
-
 # pyright: reportPrivateUsage=false
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,6 +39,7 @@ from .sharded_io import (
 )
 from .sharded_manifest import read_sharded_checkpoint_manifest
 from .state_handles import (
+    DEFAULT_STATE_CACHE_CAPACITY,
     CheckpointPayloadStore,
     DenseCheckpointPayloadStore,
     DictCheckpointPayloadStore,
@@ -77,6 +76,7 @@ class _ShardedNodeShell:
     depth: int
     generated_all_branches: bool
     state_summary: object | None
+    parent_node_order: list[int] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,12 +112,14 @@ def load_search_from_sharded_checkpoint[
     hooks: SearchHooks | None = None,
     restore_memory_phase_logger: Callable[[str, Mapping[str, object]], None]
     | None = None,
+    state_cache_capacity: int = DEFAULT_STATE_CACHE_CAPACITY,
 ) -> TreeExploration[AlgorithmNode[StateT]]:
     """Experimentally restore runtime directly from C2b shards.
 
     This C2d path is opt-in and intentionally keeps the C2c typed-payload reader
     unchanged. It retains compact per-node shells and a direct state payload
     store, then restores full node runtime data one shard at a time.
+    ``state_cache_capacity`` bounds decoded-state retention; zero disables it.
     """
     from anemone._runtime_assembly import assemble_search_runtime_dependencies
     from anemone.node_evaluation.tree.factory import NodeTreeMinmaxEvaluationFactory
@@ -139,6 +141,7 @@ def load_search_from_sharded_checkpoint[
         _create_nodes_from_node_shells,
         _link_nodes,
         _restore_node_runtime_state,
+        _restore_parent_order,
     )
     from .selector_payloads import (
         _restore_explicit_selector_state,
@@ -245,6 +248,7 @@ def load_search_from_sharded_checkpoint[
     state_resolver = _create_state_resolver_from_payload_store(
         payload_store=state_payload_store,
         state_codec=state_codec,
+        state_cache_capacity=state_cache_capacity,
     )
     _log_sharded_restore_memory_phase(
         restore_memory_phase_logger,
@@ -343,6 +347,10 @@ def load_search_from_sharded_checkpoint[
             ]
             _link_nodes(node_payloads, nodes_by_id=nodes_by_id)
             _restore_node_runtime_state(node_payloads, nodes_by_id=nodes_by_id)
+    _restore_parent_order(
+        ((shell.node_id, shell.parent_node_order) for shell in node_shells),
+        nodes_by_id=nodes_by_id,
+    )
     _log_sharded_restore_memory_phase(
         restore_memory_phase_logger,
         "after_edges_and_runtime_state_restored",
@@ -568,6 +576,7 @@ def _sharded_node_shell_from_mapping(
         depth=cast("int", payload["depth"]),
         generated_all_branches=cast("bool", payload["generated_all_branches"]),
         state_summary=state_summary,
+        parent_node_order=cast("list[int] | None", payload.get("parent_node_order")),
     )
 
 

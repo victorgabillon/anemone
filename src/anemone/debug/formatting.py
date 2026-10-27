@@ -1,7 +1,5 @@
 """Shared low-level formatting helpers for debug output."""
 
-from __future__ import annotations
-
 import re
 from typing import Any
 
@@ -18,7 +16,7 @@ def safe_hasattr(obj: Any, attribute_name: str) -> bool:
     """Return whether ``obj`` exposes ``attribute_name`` for debug purposes."""
     try:
         getattr(obj, attribute_name)
-    except (AttributeError, TypeError):
+    except AttributeError, TypeError:
         return False
     return True
 

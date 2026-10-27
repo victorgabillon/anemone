@@ -1,10 +1,12 @@
 """Provide a generic branch-frontier capability and state helper."""
 
-from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from valanga import BranchKey
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from valanga import BranchKey
 
 
 def make_frontier_branches_factory() -> set[BranchKey]:

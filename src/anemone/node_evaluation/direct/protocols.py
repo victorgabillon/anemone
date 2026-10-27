@@ -1,12 +1,15 @@
 """Shared protocols for direct node evaluation."""
 
-from collections.abc import Sequence
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from valanga import State
-from valanga.evaluations import EvalItem, Value
 
-from anemone._valanga_types import AnyOverEvent
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from valanga.evaluations import EvalItem, Value
+
+    from anemone._valanga_types import AnyOverEvent
 
 
 class OverEventDetector(Protocol):

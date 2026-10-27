@@ -1,7 +1,5 @@
 """Public value-update payloads for live search-tree nodes."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from math import isfinite
 from typing import TYPE_CHECKING

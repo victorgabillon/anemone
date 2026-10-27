@@ -1,7 +1,5 @@
 """Immutable data models for training-oriented tree export."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Any
 

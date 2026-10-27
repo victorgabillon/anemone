@@ -1,24 +1,29 @@
 """Convenience wrapper for callers that only need ``recommend(...)``."""
 
 from dataclasses import dataclass
-from random import Random
-
-from valanga.policy import NotifyProgressCallable, Recommendation
+from typing import TYPE_CHECKING
 
 from anemone._valanga_types import AnyTurnState
-from anemone.basics import Seed
-from anemone.progress_monitor.progress_monitor import (
-    AllStoppingCriterionArgs,
-)
-from anemone.search_factory import NodeSelectorFactory
 
-from . import recommender_rule
-from . import tree_manager as tree_man
 from .tree_exploration import (
     TreeExploration,
     create_tree_exploration,
 )
-from .trees.factory import ValueTreeFactory
+
+if TYPE_CHECKING:
+    from random import Random
+
+    from valanga.policy import NotifyProgressCallable, Recommendation
+
+    from anemone.basics import Seed
+    from anemone.progress_monitor.progress_monitor import (
+        AllStoppingCriterionArgs,
+    )
+    from anemone.search_factory import NodeSelectorFactory
+
+    from . import recommender_rule
+    from . import tree_manager as tree_man
+    from .trees.factory import ValueTreeFactory
 
 
 @dataclass

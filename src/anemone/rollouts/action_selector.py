@@ -1,10 +1,7 @@
 """Deterministic rollout action selectors."""
-# ruff: noqa: TC003
+
 # ``Random`` remains importable at runtime so ``get_type_hints`` can resolve the
 # dataclass annotation.
-
-from __future__ import annotations
-
 from dataclasses import dataclass
 from random import Random
 from typing import TYPE_CHECKING, Any, Protocol

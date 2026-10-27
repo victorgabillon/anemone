@@ -1,7 +1,5 @@
 """Build human-readable labels for debug snapshots."""
 
-from __future__ import annotations
-
 from typing import Any
 
 from .formatting import compact_value_display, safe_getattr

@@ -1,13 +1,15 @@
 """Tree expansion representations for managing game trees."""
 
-from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any
-
-from valanga import BranchKey, StateModifications
+from typing import TYPE_CHECKING, Any
 
 from anemone import nodes as node
 from anemone import trees
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from valanga import BranchKey, StateModifications
 
 
 @dataclass(slots=True)
@@ -41,7 +43,7 @@ class TreeExpansion[NodeT: node.ITreeNode[Any] = node.ITreeNode[Any]]:
 def record_tree_expansion[NodeT: node.ITreeNode[Any]](
     *,
     tree: trees.Tree[NodeT],
-    tree_expansions: "TreeExpansions[NodeT]",
+    tree_expansions: TreeExpansions[NodeT],
     tree_expansion: TreeExpansion[NodeT],
 ) -> None:
     """Apply one TreeExpansion's bookkeeping to a tree + its log."""

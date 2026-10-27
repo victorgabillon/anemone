@@ -2,22 +2,18 @@
 
 # pyright: reportUnusedClass=false, reportUnusedFunction=false
 
-# ruff: noqa: TC001
-
-from __future__ import annotations
-
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
 from anemone.utils.logger import anemone_logger
 
-from .payloads import CheckpointAtomPayload, SerializedValuePayload
-
 if TYPE_CHECKING:
     from valanga import BranchKey
 
     from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+
+    from .payloads import CheckpointAtomPayload, SerializedValuePayload
 
 CHECKPOINT_ANCHOR_DEPTH_STRIDE = 4
 CHECKPOINT_ANCHOR_FALLBACK_WARNING_FRACTION = 0.10

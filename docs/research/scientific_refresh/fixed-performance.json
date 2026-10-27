@@ -1,0 +1,29 @@
+{
+  "module": "/home/pompote/oldata/victor/morpion-scratch/anemone-scientific-refresh-20261024/worktree/src/anemone/__init__.py",
+  "measurements": [
+    {
+      "nodes": 40,
+      "levels": 3,
+      "refresh_median_seconds": 0.006524714997794945,
+      "refresh_peak_allocated_bytes": 65614,
+      "ordinary_update_median_seconds": 0.0004084316700027557,
+      "samples": 5
+    },
+    {
+      "nodes": 364,
+      "levels": 5,
+      "refresh_median_seconds": 0.060082834999775514,
+      "refresh_peak_allocated_bytes": 95444,
+      "ordinary_update_median_seconds": 0.0006967120400076965,
+      "samples": 5
+    },
+    {
+      "nodes": 1093,
+      "levels": 6,
+      "refresh_median_seconds": 0.18298231899825623,
+      "refresh_peak_allocated_bytes": 276596,
+      "ordinary_update_median_seconds": 0.0009063618700020015,
+      "samples": 5
+    }
+  ]
+}

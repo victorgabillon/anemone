@@ -2,20 +2,10 @@
 
 from typing import TYPE_CHECKING, Any
 
-from valanga import BranchKey, State, StateModifications, StateTag
-
 from anemone import nodes as node
 from anemone import trees
-from anemone.dynamics import SearchDynamics
-from anemone.node_factory.base import (
-    NodeFactory,
-)
-from anemone.node_selector.opening_instructions import (
-    OpeningInstructions,
-)
 from anemone.nodes.state_handles import MaterializedStateHandle
 from anemone.tree_manager.branch_opening_service import BranchOpeningService
-from anemone.tree_manager.opening_expansion_budget import OpeningExpansionBudget
 from anemone.tree_manager.opening_expansion_executor import (
     OnePlyOpeningExpansionExecutor,
 )
@@ -25,7 +15,17 @@ from anemone.tree_manager.tree_expander import (
 )
 
 if TYPE_CHECKING:
+    from valanga import BranchKey, State, StateModifications, StateTag
+
     from anemone.basics import TreeDepth
+    from anemone.dynamics import SearchDynamics
+    from anemone.node_factory.base import (
+        NodeFactory,
+    )
+    from anemone.node_selector.opening_instructions import (
+        OpeningInstructions,
+    )
+    from anemone.tree_manager.opening_expansion_budget import OpeningExpansionBudget
 
 
 class DuplicateBranchOpenError(ValueError):

@@ -1,7 +1,5 @@
 """High-level builders for toy domains that run through the real engine."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from anemone.debug.live_setup import LiveDebugEnvironment, build_live_debug_environment

@@ -455,6 +455,7 @@ class _LinooIntegrationManager:
             reevaluated_count=len(nodes),
             changed_count=len(nodes),
             skipped_terminal_count=0,
+            skipped_certified_count=0,
         )
 
     def print_best_line(self, *, tree: object) -> None:

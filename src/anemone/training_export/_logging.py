@@ -1,7 +1,5 @@
 """Structured logging helpers for training-export instrumentation."""
 
-from __future__ import annotations
-
 from contextlib import contextmanager
 from time import perf_counter
 from typing import Any

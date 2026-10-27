@@ -9,8 +9,8 @@ Preferred entrypoints:
 Internal collaborator wiring lives in ``anemone._runtime_assembly``. Legacy
 ``TreeAndValue...`` names remain available here for compatibility.
 """
-# pylint: disable=duplicate-code
 
+# pylint: disable=duplicate-code
 from collections.abc import Hashable
 from dataclasses import dataclass, field
 from random import Random
@@ -29,7 +29,9 @@ from anemone._runtime_assembly import (
 from anemone._valanga_types import AnyTurnState
 from anemone.dynamics import SearchDynamics
 from anemone.hooks.search_hooks import SearchHooks
-from anemone.indices.node_indices.index_types import IndexComputationType
+from anemone.indices.node_indices.index_types import (
+    IndexComputationType,
+)
 from anemone.node_evaluation.direct.protocols import (
     MasterStateValueEvaluator,
 )
@@ -37,7 +39,9 @@ from anemone.node_evaluation.tree.factory import (
     NodeTreeEvaluationFactory,
     NodeTreeMinmaxEvaluationFactory,
 )
-from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
+from anemone.node_selector.composed.args import (
+    ComposedNodeSelectorArgs,
+)
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.progress_monitor.progress_monitor import (
     AllStoppingCriterionArgs,

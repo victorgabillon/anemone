@@ -17,15 +17,26 @@ The main architectural split is:
 
 ## Installation
 
+Release 0.3.0 requires Python **3.14 or higher**. CPU release validation uses
+standard CPython **3.14.10** (GIL enabled, `PYTHON_JIT=0`). Runtime dependencies
+use the published `valanga==0.3.0`; test extras use `atomheart==0.3.0` and
+`parsley-coco==0.2.0`. The neural extra requires Coral 0.2.x.
+
+Run `tox --workdir /path/to/private/anemone-tox` for complete validation.
+`requirements/validation-py314.txt` selects verified public foundation wheels
+by URL and SHA-256 for both local tox and CI.
+
+Published distribution names:
+
 ```bash
-pip install anemone
+pip install algorhino-anemone
 ```
 
 Optional extras:
 
 ```bash
-pip install anemone[nn]
-pip install anemone[debug]
+pip install algorhino-anemone[nn]
+pip install algorhino-anemone[debug]
 ```
 
 Debug snapshot export and the debug browser's SVG rendering also require the

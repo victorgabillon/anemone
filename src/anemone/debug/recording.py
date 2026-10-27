@@ -1,7 +1,5 @@
 """Replayable debug timeline recording utilities."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any

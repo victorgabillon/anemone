@@ -1,8 +1,6 @@
 """Orchestrate repeatable profiling suite runs."""
 # pylint: disable=broad-exception-caught,duplicate-code
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
