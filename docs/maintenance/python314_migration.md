@@ -76,6 +76,14 @@ those identities. Their published foundation wheels have byte-identical
 packaged source to the requested commit-built wheels, verified separately.
 The scientific stack needs review/integration and remote CI before release.
 
+The subsequent 0.3.0 release candidate applies that metadata alignment, including
+Coral `>=0.2.0,<0.3.0` in the neural extra. Local tox and the reusable CI/release
+workflow now select published foundation artifacts by URL and SHA-256 through
+`requirements/validation-py314.txt`; development wheel environment variables
+are no longer required. The earlier preview evidence above remains the frozen
+migration reference. Publication still requires protected-branch integration
+and passing remote checks.
+
 Full local evidence, immutable tested wheels, source hashes, performance ranges,
 preservation classifications and review commands are in
 `/home/pompote/oldata/victor/python314-anemone-coral-0shyf5le/REPORT.md`.

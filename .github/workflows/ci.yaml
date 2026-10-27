@@ -43,37 +43,7 @@ jobs:
           python -c 'import os, tomllib; version = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]; assert os.environ["GITHUB_REF_NAME"] == "v" + version'
       - name: Install Graphviz
         run: sudo apt-get update && sudo apt-get install -y graphviz
-      - name: Check out validated valanga
-        uses: actions/checkout@v7.0.1
-        with:
-          repository: victorgabillon/valanga
-          ref: 1036202ca15432de6cfb8da2c7a3cdf99f12be49
-          path: .ci-foundations/valanga
-      - name: Build exact valanga wheel
-        run: |
-          python -m build --wheel --outdir "$RUNNER_TEMP/valanga-dist" .ci-foundations/valanga
-          echo "VALANGA_WHEEL=$RUNNER_TEMP/valanga-dist/valanga-0.2.5-py3-none-any.whl" >> "$GITHUB_ENV"
-      - name: Check out validated parsley
-        uses: actions/checkout@v7.0.1
-        with:
-          repository: victorgabillon/parsley
-          ref: 3a77d6202fdf43f463cc220dde33658082a2aa2c
-          path: .ci-foundations/parsley
-      - name: Build exact parsley wheel
-        run: |
-          python -m build --wheel --outdir "$RUNNER_TEMP/parsley-dist" .ci-foundations/parsley
-          echo "PARSLEY_WHEEL=$RUNNER_TEMP/parsley-dist/parsley_coco-0.1.36-py3-none-any.whl" >> "$GITHUB_ENV"
-      - name: Check out validated atomheart
-        uses: actions/checkout@v7.0.1
-        with:
-          repository: victorgabillon/atomheart
-          ref: dbdc3d37c19285b1115f0cef34a6a8c646447b9b
-          path: .ci-foundations/atomheart
-      - name: Build exact atomheart wheel
-        run: |
-          python -m build --wheel --outdir "$RUNNER_TEMP/atomheart-dist" .ci-foundations/atomheart
-          echo "ATOMHEART_WHEEL=$RUNNER_TEMP/atomheart-dist/atomheart-0.2.11-py3-none-any.whl" >> "$GITHUB_ENV"
-      - name: Run complete test, lint, typecheck and build environments
+      - name: Validate against hash-pinned published artifacts
         run: tox --workdir "$RUNNER_TEMP/tox" -p 2 -o --parallel-no-spinner
       - name: Retain validation evidence
         if: always()

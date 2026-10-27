@@ -17,15 +17,14 @@ The main architectural split is:
 
 ## Installation
 
-This development branch requires standard CPython **3.14.10** (GIL enabled,
-`PYTHON_JIT=0`). The next distribution is `algorhino-anemone 0.2.27`;
-this branch currently builds `0.2.27.dev0` and has not been published.
+Release 0.3.0 requires Python **3.14 or higher**. CPU release validation uses
+standard CPython **3.14.10** (GIL enabled, `PYTHON_JIT=0`). Runtime dependencies
+use the published `valanga==0.3.0`; test extras use `atomheart==0.3.0` and
+`parsley-coco==0.2.0`. The neural extra requires Coral 0.2.x.
 
-Until the Python 3.14 foundations receive new published versions, development
-uses exact Valanga, Atomheart and Parsley wheels through `VALANGA_WHEEL`,
-`ATOMHEART_WHEEL` and `PARSLEY_WHEEL`. The CI workflow records the validated
-source revisions; tox intentionally has no published-package fallback.
-Run `tox --workdir /path/to/private/anemone-tox` with those variables set.
+Run `tox --workdir /path/to/private/anemone-tox` for complete validation.
+`requirements/validation-py314.txt` selects verified public foundation wheels
+by URL and SHA-256 for both local tox and CI.
 
 Published distribution names:
 

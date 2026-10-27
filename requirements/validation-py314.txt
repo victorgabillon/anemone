@@ -1,0 +1,5 @@
+# Published release artifacts used by local tox and GitHub CI.
+# URL fragments verify artifact identities without selecting local development wheels.
+valanga @ https://files.pythonhosted.org/packages/3e/ba/8d37d6cbf6c57c2e9ed39a9789ca6dcbe93a3c0604da58dedfe89b2f4967/valanga-0.3.0-py3-none-any.whl#sha256=94b4b9e2b5b45890378416d936d956afda38f7402b726d14b264dc714e475e93
+atomheart @ https://files.pythonhosted.org/packages/1f/51/3a1b3934eb73287212d79543aabefcd0a538a38f146051dfe88e2bb8e3be/atomheart-0.3.0-py3-none-any.whl#sha256=e4472f20ebdaad80cb65dafc0a09ed1fb9f03b6870eda363112c403d945244b1
+parsley-coco @ https://files.pythonhosted.org/packages/58/3d/bb927fb6278485a4bd332a8dbbf523b47e81f1787be9774332d28886ae44/parsley_coco-0.2.0-py3-none-any.whl#sha256=b7e5e40a5815f381d4c84cca9c733655bcebfba1deca2e659112bee2a8e5fd98

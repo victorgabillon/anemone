@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algorhino-anemone"
-version = "0.2.27.dev0"
+version = "0.3.0"
 description = "anemone searches trees"
 keywords = ["tree", "search"]
 classifiers = [
@@ -14,7 +14,7 @@ classifiers = [
 ]
 requires-python = ">=3.14"
 dependencies = [
-    "valanga==0.2.5",
+    "valanga==0.3.0",
     "rich",
     "sortedcollections>=2.1.0",
     "PyYAML>=6.0",
@@ -40,8 +40,8 @@ test = [
   "pytest==9.1.1",
   "coverage==7.17.0",
   "pytest-cov==7.1.0",
-  "atomheart==0.2.11",
-  "parsley-coco==0.1.36",
+  "atomheart==0.3.0",
+  "parsley-coco==0.2.0",
 ]
 
 lint = [
@@ -68,7 +68,7 @@ dev = [
 ]
 
 nn = [
-  "algorhino-coral",
+  "algorhino-coral>=0.2.0,<0.3.0",
   "torch>=2.14.1",
 ]
 
@@ -270,7 +270,7 @@ exclude = [
 
 extraPaths = ["src"]
 
-# Exact foundation wheels are supplied by CI or the isolated local environment.
+# Published validation artifacts are selected by URL and SHA-256 in requirements.
 [tool.tox]
 min_version = "4.67.2"
 env_list = ["py314", "lint", "typecheck", "build"]
@@ -284,7 +284,7 @@ set_env = { PYTHON_JIT = "0", COVERAGE_FILE = "{envtmpdir}/.coverage", OMP_NUM_T
 package = "external"
 description = "Complete installed-package tests and branch coverage"
 extras = ["test", "debug"]
-deps = ["{env:VALANGA_WHEEL}", "{env:ATOMHEART_WHEEL}", "{env:PARSLEY_WHEEL}"]
+deps = ["-r{toxinidir}/requirements/validation-py314.txt"]
 commands = [["python", "scripts/ci_test_metrics.py", "--durations=30", "--cov-branch", "--cov-report=term", "--cov-report=json:{envtmpdir}/coverage.json", "--junitxml={envtmpdir}/pytest.xml", "-o", "cache_dir={envtmpdir}/pytest-cache", "--basetemp={envtmpdir}/pytest", "{posargs}"]]
 set_env = { CI_REPORT_DIR = "{envtmpdir}", COVERAGE_FILE = "{envtmpdir}/.coverage", PYTHON_JIT = "0", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" }
 
@@ -292,7 +292,7 @@ set_env = { CI_REPORT_DIR = "{envtmpdir}", COVERAGE_FILE = "{envtmpdir}/.coverag
 description = "Ruff, formatting and strict pylint"
 package = "skip"
 deps = [
-  "{env:VALANGA_WHEEL}",
+  "-r{toxinidir}/requirements/validation-py314.txt",
   "rich>=15.0.0",
   "PyYAML>=6.0.3",
   "sortedcollections>=2.1.0",
@@ -312,7 +312,7 @@ commands = [
 description = "Strict mypy, Pyright and positive/negative generic contracts"
 package = "skip"
 deps = [
-  "{env:VALANGA_WHEEL}",
+  "-r{toxinidir}/requirements/validation-py314.txt",
   "rich>=15.0.0",
   "PyYAML>=6.0.3",
   "sortedcollections>=2.1.0",
