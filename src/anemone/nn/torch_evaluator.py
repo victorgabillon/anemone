@@ -1,7 +1,7 @@
 """Torch-based value evaluator for efficient batch evaluations."""
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
 
 from valanga import State
 from valanga.evaluations import Certainty, EvalItem, Value
@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 
     from torch import Tensor
     from torch.nn import Module
+
+
+class _ModuleCompiler(Protocol):
+    def script(self, obj: Module, /) -> Module: ...
 
 
 class _OutputValueConverter(Protocol):
@@ -63,13 +67,15 @@ class TorchMasterNNStateEvaluator(MasterStateValueEvaluator):
         """Initialize the torch model and validate dependencies."""
         try:
             import torch  # pylint: disable=import-outside-toplevel
+
         except ModuleNotFoundError as e:
             raise TorchDependencyError from e
 
         self._torch = torch
 
         model = self.state_evaluator.net
-        self._model = torch.jit.script(model) if self.script else model
+        compiler = cast("_ModuleCompiler", torch.jit)
+        self._model = compiler.script(model) if self.script else model
         self._model.eval()
 
     def value_white(self, state: State) -> float:
