@@ -259,7 +259,7 @@ exclude = [
   "**/.venv",
   ".tox",
   "**/.tox",
-  "build==1.6.1",
+  "build",
   "dist",
   "**/__pycache__",
   ".mypy_cache",

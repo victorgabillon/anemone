@@ -16,14 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHON_JIT: "0"
-      TOX_WORK_DIR: ${{ runner.temp }}/tox
-      PIP_CACHE_DIR: ${{ runner.temp }}/pip-cache
-      PYTHONPYCACHEPREFIX: ${{ runner.temp }}/pycache
-      MYPY_CACHE_DIR: ${{ runner.temp }}/mypy-cache
-      RUFF_CACHE_DIR: ${{ runner.temp }}/ruff-cache
-      PYLINTHOME: ${{ runner.temp }}/pylint-cache
       PYRIGHT_PYTHON_FORCE_VERSION: "1.1.414"
     steps:
+      - name: Use private runner directories
+        run: |
+          echo "PIP_CACHE_DIR=$RUNNER_TEMP/pip-cache" >> "$GITHUB_ENV"
+          echo "PYTHONPYCACHEPREFIX=$RUNNER_TEMP/pycache" >> "$GITHUB_ENV"
+          echo "MYPY_CACHE_DIR=$RUNNER_TEMP/mypy-cache" >> "$GITHUB_ENV"
+          echo "RUFF_CACHE_DIR=$RUNNER_TEMP/ruff-cache" >> "$GITHUB_ENV"
+          echo "PYLINTHOME=$RUNNER_TEMP/pylint-cache" >> "$GITHUB_ENV"
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
@@ -73,16 +74,16 @@ jobs:
           python -m build --wheel --outdir "$RUNNER_TEMP/atomheart-dist" .ci-foundations/atomheart
           echo "ATOMHEART_WHEEL=$RUNNER_TEMP/atomheart-dist/atomheart-0.2.11-py3-none-any.whl" >> "$GITHUB_ENV"
       - name: Run complete test, lint, typecheck and build environments
-        run: tox -p 2 -o --parallel-no-spinner
+        run: tox --workdir "$RUNNER_TEMP/tox" -p 2 -o --parallel-no-spinner
       - name: Retain validation evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: ci-validation-evidence
           path: ${{ runner.temp }}/tox/*/tmp/
           include-hidden-files: true
       - name: Retain distributions
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: dist
           path: ${{ runner.temp }}/tox/build/tmp/dist/*

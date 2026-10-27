@@ -18,6 +18,7 @@ documentation for details.
    search_iteration_architecture
    debug_live_session
    profiling_foundation
+   sharded_runtime_checkpoints
    
 .. automodule:: anemone
    :members:
