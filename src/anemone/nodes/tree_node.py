@@ -2,14 +2,14 @@
 
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey, State, StateTag
 
 from .itree_node import ITreeNode
-from .state_handles import StateHandle
 
-# TODO: replace the any with a defaut value in ITReenode when availble in python; 3.13?
+if TYPE_CHECKING:
+    from .state_handles import StateHandle
 
 
 @dataclass(slots=True)
@@ -25,7 +25,7 @@ class _ParentNodesView[FamilyT: ITreeNode[Any]](Mapping[FamilyT, set[BranchKey]]
 
     __slots__ = ("_node",)
 
-    def __init__(self, node: "TreeNode[FamilyT, Any]") -> None:
+    def __init__(self, node: TreeNode[FamilyT, Any]) -> None:
         self._node = node
 
     def __getitem__(self, parent_node: FamilyT) -> set[BranchKey]:
@@ -47,14 +47,14 @@ class _ParentNodesView[FamilyT: ITreeNode[Any]](Mapping[FamilyT, set[BranchKey]]
 
 
 type _ParentNodesStorage[FamilyT: ITreeNode[Any]] = (
-    None | _SingleParentLink[FamilyT] | dict[FamilyT, set[BranchKey]]
+    _SingleParentLink[FamilyT] | dict[FamilyT, set[BranchKey]] | None
 )
 
 type _ParentNodesInput[FamilyT: ITreeNode[Any]] = (
-    None
-    | tuple[FamilyT, BranchKey]
+    tuple[FamilyT, BranchKey]
     | _SingleParentLink[FamilyT]
     | dict[FamilyT, set[BranchKey]]
+    | None
 )
 
 
@@ -365,13 +365,16 @@ class TreeNode[
 
     def iter_parent_items(self) -> Iterator[tuple[FamilyT, set[BranchKey]]]:
         """Iterate parent-edge items without materializing zero/one-parent dicts."""
-        storage = cast("_ParentNodesStorage[FamilyT]", self.parent_nodes_)
+        storage = self.parent_nodes_
         if storage is None:
             return
         if isinstance(storage, _SingleParentLink):
             yield storage.parent_node, storage.branch_keys
             return
-        yield from storage.items()
+        if isinstance(storage, dict):
+            yield from storage.items()
+            return
+        raise TypeError
 
     def parent_count(self) -> int:
         """Return the number of distinct parent nodes without allocating."""
@@ -384,7 +387,7 @@ class TreeNode[
 
     def add_parent_link(self, parent_node: FamilyT, branch: BranchKey) -> None:
         """Add one incoming parent edge using compact zero/one/many storage."""
-        storage = cast("_ParentNodesStorage[FamilyT]", self.parent_nodes_)
+        storage = self.parent_nodes_
         if storage is None:
             self.parent_nodes_ = _SingleParentLink(
                 parent_node=parent_node,
@@ -406,12 +409,15 @@ class TreeNode[
             }
             return
 
-        branch_keys = storage.setdefault(parent_node, set())
-        assert branch not in branch_keys, (
-            f"Duplicate parent edge for child {self.id} from parent "
-            f"{parent_node.id} via branch {branch!r}"
-        )
-        branch_keys.add(branch)
+        if isinstance(storage, dict):
+            branch_keys = storage.setdefault(parent_node, set())
+            assert branch not in branch_keys, (
+                f"Duplicate parent edge for child {self.id} from parent "
+                f"{parent_node.id} via branch {branch!r}"
+            )
+            branch_keys.add(branch)
+            return
+        raise TypeError
 
     def is_root_node(self) -> bool:
         """Check if the current node is a root node.

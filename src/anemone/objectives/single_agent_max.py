@@ -1,11 +1,13 @@
 """Single-agent maximizing objective implementation."""
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from valanga import State
 from valanga.evaluations import Certainty, Value
 
-from anemone._valanga_types import AnyOverEvent
+if TYPE_CHECKING:
+    from anemone._valanga_types import AnyOverEvent
 
 
 @dataclass(frozen=True, slots=True)

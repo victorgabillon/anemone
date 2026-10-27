@@ -1,12 +1,13 @@
 """Provide the adversarial node-evaluation protocol."""
 
-from typing import Protocol
-
-from valanga import BranchKey
-from valanga.evaluations import Value
+from typing import TYPE_CHECKING, Protocol
 
 from anemone._valanga_types import AnyTurnState
 from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluation
+
+if TYPE_CHECKING:
+    from valanga import BranchKey
+    from valanga.evaluations import Value
 
 
 class NodeAdversarialEvaluation[StateT: AnyTurnState = AnyTurnState](

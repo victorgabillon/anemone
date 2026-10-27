@@ -10,24 +10,25 @@ from valanga import (
     State,
     StateModifications,
 )
-from valanga.evaluator_types import EvaluatorInput
 
-from anemone.basics import TreeDepth
-from anemone.indices import node_indices
-from anemone.node_evaluation.tree.factory import (
-    NodeTreeEvaluationFactory,
-)
-from anemone.node_factory.base import TreeNodeFactory
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-from anemone.nodes.state_handles import StateHandle
-from anemone.nodes.tree_node import TreeNode
 
 if TYPE_CHECKING:
+    from valanga.evaluator_types import EvaluatorInput
+
+    from anemone.basics import TreeDepth
+    from anemone.indices import node_indices
+    from anemone.node_evaluation.tree.factory import (
+        NodeTreeEvaluationFactory,
+    )
     from anemone.node_evaluation.tree.node_tree_evaluation import (
         NodeTreeEvaluation,
     )
+    from anemone.node_factory.base import TreeNodeFactory
+    from anemone.nodes.state_handles import StateHandle
+    from anemone.nodes.tree_node import TreeNode
 
 
 @dataclass

@@ -1,7 +1,5 @@
 """Thin single-agent wrapper over the shared tree-evaluation engine."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self
 

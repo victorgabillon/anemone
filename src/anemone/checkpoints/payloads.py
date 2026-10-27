@@ -2,8 +2,6 @@
 
 # pylint: disable=duplicate-code
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Literal, TypedDict
 
@@ -51,7 +49,7 @@ class TupleAtomPayload(TypedDict):
 
 
 type CheckpointAtomPayload = (
-    None | bool | int | float | str | EnumAtomPayload | TupleAtomPayload
+    bool | int | float | str | EnumAtomPayload | TupleAtomPayload | None
 )
 
 

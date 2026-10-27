@@ -1,7 +1,5 @@
 """Best-effort state snapshot helpers for observer-based debug events."""
 
-from __future__ import annotations
-
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, TypeGuard
@@ -156,7 +154,7 @@ def _safe_get_over_event_candidate(evaluation: Any) -> Any | None:
 
     try:
         return getter()
-    except (AttributeError, TypeError):
+    except AttributeError, TypeError:
         return None
 
 

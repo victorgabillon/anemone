@@ -1,9 +1,7 @@
 """Torch-based value evaluator for efficient batch evaluations."""
-# pyright: reportMissingImports=false
 
-from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Protocol
 
 from valanga import State
 from valanga.evaluations import Certainty, EvalItem, Value
@@ -14,8 +12,21 @@ from anemone.node_evaluation.direct.protocols import (
 )
 
 if TYPE_CHECKING:
-    from coral.neural_networks.nn_content_evaluator import NNContentEvaluator
+    from collections.abc import Callable, Sequence
+    from types import ModuleType
+
     from torch import Tensor
+    from torch.nn import Module
+
+
+class _OutputValueConverter(Protocol):
+    def to_content_evaluation(self, output_nn: Tensor, state: State) -> Value: ...
+
+
+class _TorchStateEvaluator(Protocol):
+    net: Module
+    content_to_input_convert: Callable[[State], Tensor]
+    output_and_value_converter: _OutputValueConverter
 
 
 class TorchDependencyError(ModuleNotFoundError):
@@ -37,9 +48,11 @@ class TorchMasterNNStateEvaluator(MasterStateValueEvaluator):
     """
 
     over: OverEventDetector
-    state_evaluator: "NNContentEvaluator"
+    state_evaluator: _TorchStateEvaluator
     device: str = "cpu"
     script: bool = True
+    _torch: ModuleType = field(init=False, repr=False)
+    _model: Module = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize the torch model and validate dependencies."""
@@ -98,9 +111,7 @@ class TorchMasterNNStateEvaluator(MasterStateValueEvaluator):
         values: list[float] = []
         for i, st in enumerate(states):
             state_eval = converter.to_content_evaluation(output_nn=out[i], state=st)
-            vw = state_eval.value_white
-            assert vw is not None
-            values.append(float(vw))
+            values.append(float(state_eval.score))
 
         return values
 

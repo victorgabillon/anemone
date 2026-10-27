@@ -1,7 +1,5 @@
 """Factories for opening expansion executors and rollout action selectors."""
 
-from __future__ import annotations
-
 from random import Random
 from typing import TYPE_CHECKING, Any
 

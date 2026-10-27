@@ -1,14 +1,13 @@
 """Explicit value provenance snapshots and target selection helpers."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from valanga.evaluations import Value  # noqa: TC002
+if TYPE_CHECKING:
+    from valanga.evaluations import Value
 
-from .value_candidate import ValueCandidate, ValueCandidateSource  # noqa: TC001
+    from .value_candidate import ValueCandidate, ValueCandidateSource
 
 
 class NodeTargetSource(StrEnum):

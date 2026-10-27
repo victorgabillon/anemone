@@ -1,7 +1,5 @@
 """Provide the generic tree-evaluation engine plus its shared public protocol."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from enum import StrEnum

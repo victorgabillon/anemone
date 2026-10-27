@@ -1,7 +1,5 @@
 """Deterministic reuse-heavy profiling scenario."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from .scenario_synthetic_common import (

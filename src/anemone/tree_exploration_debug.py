@@ -1,7 +1,5 @@
 """Presentation helpers for logging ``TreeExploration`` progress."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, cast
 
 from anemone.node_evaluation.tree import debug_printing as tree_eval_debug_printing

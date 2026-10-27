@@ -1,7 +1,5 @@
 """Aggregation policies for computing tree-derived backup candidates."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Protocol
 
 from anemone.backup_policies.common import (

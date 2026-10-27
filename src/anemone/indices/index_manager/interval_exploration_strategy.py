@@ -1,7 +1,5 @@
 """Interval-based exploration-index strategy."""
 
-from __future__ import annotations
-
 from math import inf
 from typing import TYPE_CHECKING, Any, Protocol, cast
 

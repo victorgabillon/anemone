@@ -1,7 +1,5 @@
 """Lightweight scenario registry for standalone profiling runs."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from functools import partial
 from importlib import import_module

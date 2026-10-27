@@ -1,7 +1,5 @@
 """Direct-evaluator wrapper emitting best-effort value-assignment events."""
 
-from __future__ import annotations
-
 from itertools import chain
 from typing import TYPE_CHECKING, Any
 

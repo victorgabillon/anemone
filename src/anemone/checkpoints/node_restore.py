@@ -2,10 +2,6 @@
 
 # pyright: reportPrivateUsage=false, reportUnusedFunction=false
 
-# ruff: noqa: TC001
-
-from __future__ import annotations
-
 from collections.abc import Hashable, Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
@@ -17,20 +13,21 @@ from anemone.utils.logger import checkpoint_logger
 
 from .evaluation_payloads import _restore_evaluation, _restore_exploration_index
 from .metadata import CheckpointRestoreError, _log_restore_phase
-from .payloads import (
-    AlgorithmNodeCheckpointPayload,
-    CheckpointAtomPayload,
-    ExplorationIndexCheckpointPayload,
-    LinkedChildCheckpointPayload,
-    NodeEvaluationCheckpointPayload,
-    SearchRuntimeCheckpointPayload,
-)
 from .restore_atoms import _deserialize_branch, _require_node
 
 if TYPE_CHECKING:
     from valanga import StateTag
 
     from anemone.nodes.state_handles import StateHandle
+
+    from .payloads import (
+        AlgorithmNodeCheckpointPayload,
+        CheckpointAtomPayload,
+        ExplorationIndexCheckpointPayload,
+        LinkedChildCheckpointPayload,
+        NodeEvaluationCheckpointPayload,
+        SearchRuntimeCheckpointPayload,
+    )
 
 
 class _CheckpointNodeShell(Protocol):

@@ -1,7 +1,5 @@
 """Comparison view for runs and suites in the profiling dashboard."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Protocol
 
 from anemone.profiling.gui import get_pandas, get_streamlit

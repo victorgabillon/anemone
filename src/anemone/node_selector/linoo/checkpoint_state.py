@@ -1,7 +1,5 @@
 """Checkpoint conversion and validation helpers for Linoo."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from anemone.nodes.itree_node import ITreeNode

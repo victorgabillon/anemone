@@ -2,54 +2,87 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   ci:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-
+    env:
+      PYTHON_JIT: "0"
+      TOX_WORK_DIR: ${{ runner.temp }}/tox
+      PIP_CACHE_DIR: ${{ runner.temp }}/pip-cache
+      PYTHONPYCACHEPREFIX: ${{ runner.temp }}/pycache
+      MYPY_CACHE_DIR: ${{ runner.temp }}/mypy-cache
+      RUFF_CACHE_DIR: ${{ runner.temp }}/ruff-cache
+      PYLINTHOME: ${{ runner.temp }}/pylint-cache
+      PYRIGHT_PYTHON_FORCE_VERSION: "1.1.414"
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.1
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
+          fetch-depth: 0
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.14.10"
+      - name: Verify standard CPython and install build tools
+        run: |
+          python -c 'import sys; assert sys.version_info[:3] == (3, 14, 10); assert sys._is_gil_enabled(); assert not sys._jit.is_enabled()'
+          python -m pip install --upgrade pip==26.2.2
+          python -m pip install tox==4.67.2 build==1.6.1
+      - name: Check release source and version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          python -c 'import os, tomllib; version = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]; assert os.environ["GITHUB_REF_NAME"] == "v" + version'
       - name: Install Graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+      - name: Check out validated valanga
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: victorgabillon/valanga
+          ref: 1036202ca15432de6cfb8da2c7a3cdf99f12be49
+          path: .ci-foundations/valanga
+      - name: Build exact valanga wheel
         run: |
-          sudo apt-get update
-          sudo apt-get install -y graphviz
-
-      - name: Install tox
+          python -m build --wheel --outdir "$RUNNER_TEMP/valanga-dist" .ci-foundations/valanga
+          echo "VALANGA_WHEEL=$RUNNER_TEMP/valanga-dist/valanga-0.2.5-py3-none-any.whl" >> "$GITHUB_ENV"
+      - name: Check out validated parsley
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: victorgabillon/parsley
+          ref: 3a77d6202fdf43f463cc220dde33658082a2aa2c
+          path: .ci-foundations/parsley
+      - name: Build exact parsley wheel
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install tox==4.56.1
-
-      - name: Run tox (tests + lint + typecheck)
+          python -m build --wheel --outdir "$RUNNER_TEMP/parsley-dist" .ci-foundations/parsley
+          echo "PARSLEY_WHEEL=$RUNNER_TEMP/parsley-dist/parsley_coco-0.1.36-py3-none-any.whl" >> "$GITHUB_ENV"
+      - name: Check out validated atomheart
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: victorgabillon/atomheart
+          ref: dbdc3d37c19285b1115f0cef34a6a8c646447b9b
+          path: .ci-foundations/atomheart
+      - name: Build exact atomheart wheel
+        run: |
+          python -m build --wheel --outdir "$RUNNER_TEMP/atomheart-dist" .ci-foundations/atomheart
+          echo "ATOMHEART_WHEEL=$RUNNER_TEMP/atomheart-dist/atomheart-0.2.11-py3-none-any.whl" >> "$GITHUB_ENV"
+      - name: Run complete test, lint, typecheck and build environments
         run: tox -p 2 -o --parallel-no-spinner
-
-      - name: Record CI environment and disk usage
-        if: always()
-        run: |
-          mkdir -p .ci-reports
-          python -m pip cache info
-          du -sh ~/.cache/pip .tox || true
-          df -h .
-          .tox/py313/bin/python -m pip list --format=json > .ci-reports/dependencies.json
-
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-validation-evidence
-          path: |
-            .ci-reports/
-            .tox/static/tmp/static-analysis/
+          path: ${{ runner.temp }}/tox/*/tmp/
           include-hidden-files: true
+      - name: Retain distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: ${{ runner.temp }}/tox/build/tmp/dist/*

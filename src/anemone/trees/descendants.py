@@ -16,14 +16,18 @@ Note: The Descendants and RangedDescendants classes are used in the chipiron pro
 
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 
-from collections.abc import Iterator, KeysView
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from sortedcollections import ValueSortedDict
-from valanga import StateTag
 
-from anemone.basics import TreeDepth
 from anemone.nodes import ITreeNode
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, KeysView
+
+    from valanga import StateTag
+
+    from anemone.basics import TreeDepth
 
 
 class Descendants[NodeT: ITreeNode[Any]]:

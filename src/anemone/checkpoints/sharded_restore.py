@@ -2,8 +2,6 @@
 
 # pylint: disable=duplicate-code,import-outside-toplevel
 
-from __future__ import annotations
-
 # pyright: reportPrivateUsage=false
 from dataclasses import dataclass
 from pathlib import Path

@@ -1,8 +1,6 @@
 """Command-line interface for the standalone profiling foundation."""
 # pylint: disable=broad-exception-caught,duplicate-code
 
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path

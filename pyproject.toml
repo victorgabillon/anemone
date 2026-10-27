@@ -1,18 +1,18 @@
 [build-system]
-requires = ["setuptools>=82.0.1"]
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 
 [project]
 name = "algorhino-anemone"
-version = "0.2.26"
+version = "0.2.27.dev0"
 description = "anemone searches trees"
 keywords = ["tree", "search"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Operating System :: OS Independent",
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "valanga==0.2.5",
     "rich",
@@ -37,39 +37,39 @@ debug = [
 ]
 
 test = [
-  "pytest>=9.0.2",
-  "coverage",
-  "pytest-cov>=6.0.0",
+  "pytest==9.1.1",
+  "coverage==7.17.0",
+  "pytest-cov==7.1.0",
   "atomheart==0.2.11",
   "parsley-coco==0.1.36",
 ]
 
 lint = [
-  "ruff==0.15.20",
-  "pylint==4.0.6",
+  "ruff==0.17.3",
+  "pylint==4.1.3",
 ]
 
 typecheck = [
-  "mypy==2.1.0",
-  "pyright[nodejs]==1.1.411",
-  "types-PyYAML>=6.0.12.20260518",
+  "mypy==2.4.0",
+  "pyright[nodejs]==1.1.414",
+  "types-PyYAML==6.0.12.20260906",
 ]
 
 dev = [
-  "tox==4.56.1",
-  "black>=26.5.1",
-  "build",
-  "twine",
-  "sphinx",
-  "sphinx-rtd-theme",
-  "sphinx-autodoc-typehints",
-  "pre-commit",
+  "tox==4.67.2",
+  "black==26.10.1",
+  "build==1.6.1",
+  "twine==7.0.0",
+  "sphinx==9.2.0",
+  "sphinx-rtd-theme==3.1.0",
+  "sphinx-autodoc-typehints==3.17.3",
+  "pre-commit==4.7.0",
   # optionally include lint/typecheck/test here too (up to you)
 ]
 
 nn = [
   "algorhino-coral",
-  "torch",
+  "torch>=2.14.1",
 ]
 
 
@@ -80,8 +80,8 @@ profiling-viz = [
 ]
 
 docs = [
-  "sphinx>=7",
-  "sphinx-rtd-theme",
+  "sphinx==9.2.0",
+  "sphinx-rtd-theme==3.1.0",
   "myst-parser",
 ]
 
@@ -121,12 +121,13 @@ markers = [
 
 
 [tool.mypy]
-mypy_path = "."
+strict = true
 ignore_missing_imports = true
+mypy_path = "."
 show_error_codes = true
 warn_unreachable = true
 no_implicit_reexport = true
-python_version = "3.13"
+python_version = "3.14"
 
 # Disallow dynamic typing
 #disallow_any_unimported = true
@@ -160,35 +161,17 @@ warn_unused_configs = true
 
 
 
-[[tool.mypy.overrides]]
-module = [
-    "PySide6",
-]
-ignore_missing_imports = true
-follow_imports = 'skip'
-
-
-[[tool.mypy.overrides]]
-module = 'PySide6.*'
-follow_imports = 'skip'
-ignore_missing_imports = true
-
-
-[tool.mypy-PySide6]
-ignore_missing_imports = true
-
-
 [tool.ruff]
 line-length = 88
-target-version = "py313"
+target-version = "py314"
 
 # Enable import sorting (alphabetical + group order)
-lint.select = ["I", "F", "E", "B", "TCH","UP","SIM", "RUF","RET","N","A",
+lint.select = ["I", "F", "E", "B", "TC","UP","SIM", "RUF","RET","N","A",
 "ANN", "PERF", "TRY","LOG","RSE","ICN","TID","Q","W","D",
 "ISC","PIE","ERA","TD"]  # I = imports, F = pyflakes, E = pycodestyle, TCH = type-checking, B = black
 
 # Allow auto-fixing for imports and type-checking imports
-lint.fixable = ["I", "TCH", "D","F401","UP","SIM","RET","RUF","E","TRY","PERF","RSE","ANN","PIE","ERA","TD"]
+lint.fixable = ["I", "TC", "D","F401","UP","SIM","RET","RUF","E","TRY","PERF","RSE","ANN","PIE","ERA","TD"]
 
 # Ignore rules you don't care about
 lint.ignore = [ "E501",
@@ -205,11 +188,11 @@ lint.ignore = [ "E501",
 
 [tool.black]
 line-length = 88
-target-version = ['py313']
+target-version = ['py314']
 
 
 [tool.pylint]
-py-version = "3.13"
+py-version = "3.14"
 extension-pkg-whitelist = ["PyQt5", "PySide6"]
 
 [tool.pylint.format]
@@ -238,14 +221,11 @@ min-public-methods = 1
 
 
 [tool.pyright]
-pythonVersion = "3.13"
+pythonVersion = "3.14"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
 
 
-# Tell pyright which venv to use for import resolution
-venvPath = ".tox"
-venv = "typecheck"
 
 # Avoid scanning huge generated folders
 exclude = [
@@ -253,7 +233,7 @@ exclude = [
   "**/.venv",
   ".tox",
   "**/.tox",
-  "build",
+  "build==1.6.1",
   "dist",
   "**/__pycache__",
   ".mypy_cache",
@@ -264,79 +244,76 @@ exclude = [
 
 extraPaths = ["src"]
 
-#################### TOX ####################
-
+# Exact foundation wheels are supplied by CI or the isolated local environment.
 [tool.tox]
-min_version = "4.32.0"
-env_list = ["py313", "lint", "typecheck", "build"]
-isolated_build = true
-
-[tool.tox.env.build]
-deps = ["build", "twine"]
-commands = [
-  ["python", "-m", "build"],
-  ["python", "-m", "twine", "check", "dist/*"],
-]
-
+min_version = "4.67.2"
+env_list = ["py314", "lint", "typecheck", "build"]
 
 [tool.tox.env_run_base]
-base_python = ["python3.13"]
+base_python = ["python3.14"]
+pass_env = ["TMPDIR", "XDG_CACHE_HOME", "PIP_CACHE_DIR", "PYTHONPYCACHEPREFIX", "MYPY_CACHE_DIR", "RUFF_CACHE_DIR", "PYLINTHOME", "PYRIGHT_PYTHON_FORCE_VERSION"]
+set_env = { PYTHON_JIT = "0", COVERAGE_FILE = "{envtmpdir}/.coverage", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" }
 
-# ----------------
-# Tests (realistic)
-# ----------------
-[tool.tox.env.py313]
-description = "Run tests"
+[tool.tox.env.py314]
+package = "external"
+description = "Complete installed-package tests and branch coverage"
 extras = ["test", "debug"]
-commands = [["python", "scripts/ci_test_metrics.py", "--durations=100", "--durations-min=0", "--cov-branch", "--cov-report=term", "--cov-report=json:.ci-reports/coverage.json", "--junitxml=.ci-reports/pytest.xml", "{posargs}"]]
+deps = ["{env:VALANGA_WHEEL}", "{env:ATOMHEART_WHEEL}", "{env:PARSLEY_WHEEL}"]
+commands = [["python", "scripts/ci_test_metrics.py", "--durations=30", "--cov-branch", "--cov-report=term", "--cov-report=json:{envtmpdir}/coverage.json", "--junitxml={envtmpdir}/pytest.xml", "-o", "cache_dir={envtmpdir}/pytest-cache", "--basetemp={envtmpdir}/pytest", "{posargs}"]]
+set_env = { CI_REPORT_DIR = "{envtmpdir}", COVERAGE_FILE = "{envtmpdir}/.coverage", PYTHON_JIT = "0", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" }
 
-# ----------------
-# Lint (fast)
-# ----------------
 [tool.tox.env.lint]
-description = "ruff + pylint (fast, no package build/install)"
+description = "Ruff, formatting and strict pylint"
 package = "skip"
 deps = [
-  # runtime deps needed for pylint imports (match [project].dependencies)
-    "valanga==0.2.5",
-  "rich",
+  "{env:VALANGA_WHEEL}",
+  "rich>=15.0.0",
+  "PyYAML>=6.0.3",
   "sortedcollections>=2.1.0",
-  "graphviz",
-
-  # tools
-  "ruff==0.15.20",
-  "pylint==4.0.6",
+  "orjson>=3.13.0",
+  "zstandard>=0.25.0",
+  "graphviz>=0.21",
+  "ruff==0.17.3", "pylint==4.1.3",
 ]
-set_env = { PYTHONPATH = "{toxinidir}/src" }
+set_env = { PYTHONPATH = "{toxinidir}/src", PYTHON_JIT = "0" }
 commands = [
-  ["python", "-m", "ruff", "check", "src"],
-  ["python", "-m", "ruff", "format", "--check", "src", "tests"],
+  ["python", "-m", "ruff", "check", "src", "scripts", "tests/typing"],
+  ["python", "-m", "ruff", "format", "--check", "src", "tests", "scripts"],
   ["python", "-m", "pylint", "src/anemone"],
 ]
 
-# ----------------
-# Typecheck (fast)
-# ----------------
 [tool.tox.env.typecheck]
-description = "mypy + pyright (fast, no package build/install)"
+description = "Strict mypy, Pyright and positive/negative generic contracts"
 package = "skip"
 deps = [
-  # runtime deps for import resolution
-    "valanga==0.2.5",
-  "rich",
+  "{env:VALANGA_WHEEL}",
+  "rich>=15.0.0",
+  "PyYAML>=6.0.3",
   "sortedcollections>=2.1.0",
-  "graphviz",
-
-  # tools
-  "mypy==2.1.0",
-  "pyright[nodejs]==1.1.411",
-  "types-PyYAML>=6.0.12.20260518",
+  "orjson>=3.13.0",
+  "zstandard>=0.25.0",
+  "graphviz>=0.21",
+  "mypy==2.4.0", "pyright[nodejs]==1.1.414", "types-PyYAML==6.0.12.20260906",
 ]
-set_env = { MYPYPATH = "{toxinidir}/src" }
+set_env = { MYPYPATH = "{toxinidir}/src", PYTHONPATH = "{toxinidir}/src", PYTHON_JIT = "0" }
 commands = [
-  # run similarly to your local strict checks
-  ["python", "-m", "mypy", "--config-file", "pyproject.toml", "src/anemone"],
-  ["python", "-m", "pyright", "--project", ".", "src/anemone"],
+  ["python", "-m", "mypy", "--strict", "src/anemone", "tests/typing/contracts.py"],
+  ["python", "-m", "pyright", "src/anemone", "tests/typing/contracts.py"],
+  ["python", "scripts/check_type_contracts.py"],
 ]
 
-#################### END TOX ####################
+[tool.tox.env.build]
+description = "Build wheel/sdist in private staging and validate strict metadata"
+package = "skip"
+deps = ["build==1.6.1", "twine==7.0.0"]
+commands = [
+  ["python", "scripts/build_distributions.py", "{envtmpdir}/dist"],
+  ["python", "-m", "twine", "check", "--strict", "{envtmpdir}/dist/*"],
+]
+
+[tool.tox.env_pkg_base]
+base_python = ["python3.14"]
+deps = ["build==1.6.1"]
+pass_env = ["TMPDIR", "PIP_CACHE_DIR", "PYTHONPYCACHEPREFIX", "XDG_CACHE_HOME"]
+commands = [["python", "{toxinidir}/scripts/build_distributions.py", "{envtmpdir}/dist"]]
+package_glob = "{envtmpdir}/dist/*.whl"

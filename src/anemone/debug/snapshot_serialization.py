@@ -1,7 +1,5 @@
 """JSON serialization helpers for debug tree snapshots."""
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import Any, cast

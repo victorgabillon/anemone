@@ -1,8 +1,6 @@
 """Small adapters for optional external profiler execution."""
 # pylint: disable=broad-exception-caught
 
-from __future__ import annotations
-
 import cProfile
 import io
 import pstats

@@ -1,7 +1,5 @@
 """Small type helpers for decoded checkpoint JSON payloads."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:

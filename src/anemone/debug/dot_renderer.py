@@ -1,7 +1,5 @@
 """Render debug tree snapshots as Graphviz DOT graphs."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Protocol, cast
 
 from graphviz import Digraph

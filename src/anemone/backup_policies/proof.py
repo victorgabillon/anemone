@@ -1,7 +1,5 @@
 """Proof policies for classifying exactness after candidate selection."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga.evaluations import Certainty

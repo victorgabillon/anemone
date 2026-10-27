@@ -1,7 +1,5 @@
 """Static HTML templates for browser-based debug trace replay."""
 
-from __future__ import annotations
-
 
 def render_replay_index_html() -> str:
     """Return the self-contained replay viewer HTML document."""

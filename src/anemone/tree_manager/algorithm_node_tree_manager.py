@@ -1,11 +1,8 @@
 """Algorithm-aware tree-side phases used by ``TreeExploration``."""
 
-from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from anemone import trees
-from anemone.dynamics import SearchDynamics
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
     update_all_indices,
@@ -13,29 +10,34 @@ from anemone.indices.index_manager import (
 from anemone.node_evaluation.common.branch_frontier import (
     require_branch_frontier_aware,
 )
-from anemone.node_evaluation.direct import (
-    DirectEvaluationOutcome,
-    EvaluationQueries,
-    NodeDirectEvaluator,
-)
-from anemone.node_selector.opening_instructions import OpeningInstructions
 from anemone.nodes.algorithm_node.algorithm_node import (
     AlgorithmNode,
 )
-from anemone.updates.depth_index_propagator import DepthIndexPropagator
 from anemone.updates.value_propagator import ValuePropagator
 
-from .opening_expansion_budget import OpeningExpansionBudget
 from .opening_expansion_config import OpeningExpansionConfig
-from .opening_expansion_executor import (
-    OpeningExpansionExecutor,
-)
 from .opening_expansion_factory import create_opening_expansion_executor
-from .tree_expander import TreeExpansions
-from .tree_manager import TreeManager
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from anemone import trees
+    from anemone.dynamics import SearchDynamics
+    from anemone.node_evaluation.direct import (
+        DirectEvaluationOutcome,
+        EvaluationQueries,
+        NodeDirectEvaluator,
+    )
+    from anemone.node_selector.opening_instructions import OpeningInstructions
     from anemone.rollouts import RolloutActionSelector
+    from anemone.updates.depth_index_propagator import DepthIndexPropagator
+
+    from .opening_expansion_budget import OpeningExpansionBudget
+    from .opening_expansion_executor import (
+        OpeningExpansionExecutor,
+    )
+    from .tree_expander import TreeExpansions
+    from .tree_manager import TreeManager
 
 
 class BestLinePrintable(Protocol):
@@ -149,7 +151,7 @@ class AlgorithmNodeTreeManager[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     opening_expansion_config: OpeningExpansionConfig = field(
         default_factory=OpeningExpansionConfig
     )
-    rollout_action_selector: "RolloutActionSelector[NodeT] | None" = None
+    rollout_action_selector: RolloutActionSelector[NodeT] | None = None
     opening_expansion_executor: OpeningExpansionExecutor[NodeT] | None = None
     _direct_evaluation: _DirectNodeEvaluation[NodeT] = field(
         init=False,

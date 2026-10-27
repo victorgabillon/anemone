@@ -1,7 +1,5 @@
 """Write sharded checkpoint payloads to manifest and shard files."""
 
-from __future__ import annotations
-
 # pyright: reportPrivateUsage=false
 from itertools import islice
 from pathlib import Path

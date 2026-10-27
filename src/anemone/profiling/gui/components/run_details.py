@@ -1,7 +1,5 @@
 """Reusable run detail panels for run and suite drill-down views."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from anemone.profiling.gui import get_streamlit
@@ -130,7 +128,7 @@ def _load_cprofile_rows(run: RunResult) -> list[CProfileRow]:
         return []
     try:
         return parse_cprofile_stats(pstats_path)
-    except (OSError, TypeError, ValueError):
+    except OSError, TypeError, ValueError:
         return []
 
 

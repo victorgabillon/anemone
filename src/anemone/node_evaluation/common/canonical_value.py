@@ -15,8 +15,6 @@ Exactness checks stay separate from state-terminality checks so callers can be
 explicit about which notion they need.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 

@@ -1,9 +1,12 @@
 """Provide reusable principal-variation state for tree-search evaluations."""
 
-from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from valanga import BranchKey
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from valanga import BranchKey
 
 
 def make_best_branch_sequence_factory() -> list[BranchKey]:

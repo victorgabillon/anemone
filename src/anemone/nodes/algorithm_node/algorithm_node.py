@@ -1,7 +1,6 @@
 """Runtime/search wrapper built on top of a structural ``TreeNode``."""
 
-from collections.abc import Iterable, Iterator, Mapping, MutableMapping
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 from valanga import (
     BranchKey,
@@ -9,14 +8,18 @@ from valanga import (
     State,
     StateTag,
 )
-from valanga.evaluator_types import EvaluatorInput
 
-from anemone.indices.node_indices import NodeExplorationData
-from anemone.node_evaluation.tree.node_tree_evaluation import (
-    NodeTreeEvaluation,
-)
-from anemone.nodes.state_handles import StateHandle
-from anemone.nodes.tree_node import TreeNode
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator, Mapping, MutableMapping
+
+    from valanga.evaluator_types import EvaluatorInput
+
+    from anemone.indices.node_indices import NodeExplorationData
+    from anemone.node_evaluation.tree.node_tree_evaluation import (
+        NodeTreeEvaluation,
+    )
+    from anemone.nodes.state_handles import StateHandle
+    from anemone.nodes.tree_node import TreeNode
 
 
 class AlgorithmNode[StateT: State = State]:

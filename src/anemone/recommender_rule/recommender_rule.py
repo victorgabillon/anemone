@@ -14,8 +14,7 @@ Example usage:
 
 from dataclasses import dataclass
 from enum import StrEnum
-from random import Random
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from valanga import BranchKey, Color, State
 from valanga.policy import BranchPolicy
@@ -23,10 +22,14 @@ from valanga.policy import BranchPolicy
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BestBranchEquivalenceMode,
 )
-from anemone.nodes.algorithm_node.algorithm_node import (
-    AlgorithmNode,
-)
 from anemone.utils.small_tools import softmax
+
+if TYPE_CHECKING:
+    from random import Random
+
+    from anemone.nodes.algorithm_node.algorithm_node import (
+        AlgorithmNode,
+    )
 
 
 def sample_from_policy(policy: BranchPolicy, rng: Random) -> BranchKey:

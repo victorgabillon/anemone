@@ -6,26 +6,14 @@ It is implementation-oriented and is not meant to be user-facing API.
 
 from collections.abc import Hashable
 from dataclasses import dataclass
-from random import Random
 from typing import TYPE_CHECKING, Protocol
-
-from valanga import Dynamics, RepresentationFactory, StateModifications
-from valanga.evaluator_types import EvaluatorInput
 
 from anemone import node_factory
 from anemone import search_factory as search_factories
 from anemone._valanga_types import AnyTurnState
 from anemone.dynamics import SearchDynamics, normalize_search_dynamics
-from anemone.hooks.search_hooks import SearchHooks
-from anemone.indices.node_indices.index_types import IndexComputationType
 from anemone.node_evaluation.direct.factory import create_node_evaluator
-from anemone.node_evaluation.direct.protocols import (
-    MasterStateValueEvaluator,
-)
-from anemone.node_evaluation.tree.factory import NodeTreeEvaluationFactory
 from anemone.node_factory.base import TreeNodeFactory
-from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
-from anemone.node_selector.opening_instructions import OpeningType
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.tree_manager import (
     AlgorithmNodeTreeManager,
@@ -35,9 +23,22 @@ from anemone.tree_manager import (
 from anemone.trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
+    from random import Random
+
+    from valanga import Dynamics, RepresentationFactory, StateModifications
+    from valanga.evaluator_types import EvaluatorInput
+
+    from anemone.hooks.search_hooks import SearchHooks
+    from anemone.indices.node_indices.index_types import IndexComputationType
     from anemone.node_evaluation.direct.node_direct_evaluator import (
         NodeDirectEvaluator,
     )
+    from anemone.node_evaluation.direct.protocols import (
+        MasterStateValueEvaluator,
+    )
+    from anemone.node_evaluation.tree.factory import NodeTreeEvaluationFactory
+    from anemone.node_selector.composed.args import ComposedNodeSelectorArgs
+    from anemone.node_selector.opening_instructions import OpeningType
 
 
 class _SearchBuildArgsP(Protocol):

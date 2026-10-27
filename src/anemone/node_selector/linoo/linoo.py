@@ -2,8 +2,6 @@
 
 # pylint: disable=duplicate-code
 
-from __future__ import annotations
-
 from contextlib import contextmanager
 from dataclasses import replace
 from time import perf_counter
@@ -296,7 +294,7 @@ class Linoo[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
                 and last_selected_node_id not in nodes_by_id
             ):
                 raise _invalid_linoo_checkpoint_payload_error()
-        except (KeyError, ValueError):
+        except KeyError, ValueError:
             self.invalidate()
             return False
 

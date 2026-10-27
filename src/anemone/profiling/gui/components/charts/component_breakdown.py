@@ -1,7 +1,5 @@
 """Run-level component breakdown visualizations."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from anemone.profiling.gui import get_streamlit

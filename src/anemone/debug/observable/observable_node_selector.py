@@ -1,7 +1,5 @@
 """Selector wrapper emitting debug events without modifying core code."""
 
-from __future__ import annotations
-
 from typing import Any
 
 from anemone.debug.events import NodeSelected

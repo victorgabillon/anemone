@@ -1,7 +1,5 @@
 """Errors raised while reading or writing sharded checkpoints."""
 
-from __future__ import annotations
-
 
 class ShardedCheckpointManifestError(ValueError):
     """Raised when a sharded checkpoint manifest is structurally invalid."""

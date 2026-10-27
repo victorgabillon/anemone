@@ -5,8 +5,6 @@ when the local runtime does not yet expose the new Valanga checkpoint module.
 The method names and semantics must therefore mirror Valanga exactly.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from valanga import BranchKey, State

@@ -1,8 +1,6 @@
 """Stable JSON artifact models for profiling runs."""
 # pylint: disable=duplicate-code
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum

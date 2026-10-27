@@ -1,7 +1,5 @@
 """Predefined deterministic toy scenarios for manual GUI inspection."""
 
-from __future__ import annotations
-
 from .model import ToyNodeSpec, ToyScenarioSpec
 
 

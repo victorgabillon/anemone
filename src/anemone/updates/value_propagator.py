@@ -25,14 +25,15 @@ deliberately out of scope here.
 """
 
 from collections.abc import Callable, Iterable
-from typing import Any
-
-from valanga import BranchKey
+from typing import TYPE_CHECKING, Any
 
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.evaluator_refresh import validate_tree_certificate
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.updates.ancestor_wave import propagate_dirty_ancestors
+
+if TYPE_CHECKING:
+    from valanga import BranchKey
 
 RecomputeNodeValue = Callable[[AlgorithmNode[Any]], bool]
 

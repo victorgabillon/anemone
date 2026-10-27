@@ -5,9 +5,8 @@ The caller must validate direct FORCED origins; tree proofs must be reconstructi
 with the existing built-in backup rule. No certificate registry is retained.
 """
 
-from collections.abc import Callable
 from functools import cmp_to_key
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from anemone.backup_policies.aggregation import BestChildAggregationPolicy
 from anemone.backup_policies.common import (
@@ -21,6 +20,9 @@ from anemone.backup_policies.proof import MaxProofPolicy, MinimaxProofPolicy
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.tree.node_tree_evaluation import NodeTreeEvaluationState
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _refusal(node: AlgorithmNode[Any], reason: str) -> ValueError:

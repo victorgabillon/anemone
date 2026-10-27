@@ -1,7 +1,5 @@
 """Pure best-branch equivalence helpers for the generic tree-evaluation engine."""
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from math import log
 from typing import TYPE_CHECKING

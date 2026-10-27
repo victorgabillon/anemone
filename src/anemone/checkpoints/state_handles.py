@@ -3,17 +3,19 @@
 from collections import OrderedDict
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 from valanga import State
 
-from ._protocols import CheckpointStateSummary, IncrementalStateCheckpointCodec
 from .payloads import (
     AnchorCheckpointStatePayload,
     CheckpointNodeStatePayload,
     DeltaCheckpointStatePayload,
 )
 from .value_serialization import deserialize_checkpoint_atom
+
+if TYPE_CHECKING:
+    from ._protocols import CheckpointStateSummary, IncrementalStateCheckpointCodec
 
 DEFAULT_STATE_CACHE_CAPACITY = 256
 
@@ -26,14 +28,12 @@ class CheckpointStateResolutionError(KeyError):
     """Raised when one checkpoint-backed state cannot be resolved safely."""
 
     @classmethod
-    def delta_node_missing_parent(
-        cls, node_id: int
-    ) -> "CheckpointStateResolutionError":
+    def delta_node_missing_parent(cls, node_id: int) -> CheckpointStateResolutionError:
         """Return the error for a delta node that lacks a parent node id."""
         return cls(f"Delta checkpoint node {node_id} has no parent node id.")
 
     @classmethod
-    def payload_chain_cycle(cls, node_id: int) -> "CheckpointStateResolutionError":
+    def payload_chain_cycle(cls, node_id: int) -> CheckpointStateResolutionError:
         """Return the error for a cyclic checkpoint payload chain."""
         return cls(f"Cycle in checkpoint state payload chain at node {node_id}.")
 

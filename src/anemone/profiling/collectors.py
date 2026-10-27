@@ -1,7 +1,5 @@
 """Transparent timing wrappers for injectable profiling boundaries."""
 
-from __future__ import annotations
-
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast

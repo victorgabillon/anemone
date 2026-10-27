@@ -4,8 +4,6 @@
 
 # ruff: noqa: TC001
 
-from __future__ import annotations
-
 from dataclasses import fields, is_dataclass
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, cast

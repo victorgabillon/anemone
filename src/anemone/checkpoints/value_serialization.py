@@ -1,7 +1,5 @@
 """Low-level serialization helpers for recursive checkpoint atoms and ``Value`` objects."""
 
-from __future__ import annotations
-
 from enum import Enum
 from importlib import import_module
 from typing import TYPE_CHECKING, cast
@@ -95,7 +93,7 @@ class CheckpointSerializationError(ValueError):
 
 
 type CheckpointAtom = (
-    None | bool | int | float | str | Enum | tuple[CheckpointAtom, ...]
+    bool | int | float | str | Enum | tuple[CheckpointAtom, ...] | None
 )
 
 

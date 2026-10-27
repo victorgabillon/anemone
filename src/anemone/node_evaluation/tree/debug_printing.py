@@ -1,7 +1,5 @@
 """Debug/logging helpers for tree-evaluation state."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, Protocol
 
 from anemone.utils.logger import anemone_logger

@@ -1,7 +1,5 @@
 """Builders for training-oriented search-tree export."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 from dataclasses import dataclass
 from time import perf_counter
@@ -290,7 +288,7 @@ def _call_optional_no_arg(callable_candidate: object | None) -> object | None:
         return callable_candidate
     try:
         return cast("Callable[[], object]", callable_candidate)()
-    except (AttributeError, TypeError):
+    except AttributeError, TypeError:
         return None
 
 

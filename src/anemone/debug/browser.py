@@ -1,7 +1,5 @@
 """Local browser serving helpers for debug replay bundles and live sessions."""
 
-from __future__ import annotations
-
 import json
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -160,7 +158,7 @@ class DebugSessionHTTPRequestHandler(SimpleHTTPRequestHandler):
             breakpoint_spec = breakpoint_from_json(
                 cast("dict[str, object]", breakpoint_payload)
             )
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             self.send_error(400, "Invalid breakpoint payload")
             return
 

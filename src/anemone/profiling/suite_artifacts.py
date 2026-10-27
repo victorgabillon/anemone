@@ -1,7 +1,5 @@
 """Stable JSON artifact models for profiling suites."""
 
-from __future__ import annotations
-
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field

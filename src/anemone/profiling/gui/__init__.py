@@ -1,7 +1,5 @@
 """Local Streamlit dashboard helpers for Anemone profiling artifacts."""
 
-from __future__ import annotations
-
 from importlib import import_module
 from typing import Any
 

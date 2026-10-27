@@ -1,6 +1,5 @@
 """Module for evaluating algorithm nodes directly using a master state evaluator."""
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from itertools import chain
@@ -10,15 +9,18 @@ from valanga.evaluations import Certainty, Value
 
 from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.node_evaluation.common import canonical_value
-from anemone.nodes.algorithm_node import AlgorithmNode
 
 from . import score as _score
-from .protocols import MasterStateValueEvaluator
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from anemone.node_evaluation.tree.adversarial.node_minmax_evaluation import (
         NodeMinmaxEvaluation,
     )
+    from anemone.nodes.algorithm_node import AlgorithmNode
+
+    from .protocols import MasterStateValueEvaluator
 
 
 DISCOUNT = _score.DISCOUNT

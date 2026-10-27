@@ -1,8 +1,6 @@
 """Real tiny end-to-end smoke scenario for the profiling foundation."""
 # pylint: disable=duplicate-code,useless-return
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from importlib import import_module
 from random import Random

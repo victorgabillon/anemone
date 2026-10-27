@@ -1,10 +1,13 @@
 """Logging helpers for the anemone application."""
 
-from collections.abc import Generator
 from contextlib import contextmanager
 from logging import DEBUG, ERROR, INFO, WARNING, Logger, getLogger
+from typing import TYPE_CHECKING
 
 from rich.logging import RichHandler
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 anemone_logger = getLogger("anemone_app")
 anemone_logger.setLevel(DEBUG)

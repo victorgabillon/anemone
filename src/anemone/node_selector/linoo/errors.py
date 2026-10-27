@@ -1,7 +1,5 @@
 """Error types and factories for the Linoo selector."""
 
-from __future__ import annotations
-
 
 class LinooSelectionError(ValueError):
     """Base error for invalid Linoo selection contexts."""

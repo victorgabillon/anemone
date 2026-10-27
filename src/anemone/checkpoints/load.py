@@ -2,8 +2,6 @@
 
 # ruff: noqa: TC001
 
-from __future__ import annotations
-
 # pyright: reportPrivateUsage=false, reportUnusedFunction=false
 from random import Random
 from typing import TYPE_CHECKING

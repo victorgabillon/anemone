@@ -1,13 +1,15 @@
 """Per-node payloads used by exploration-index strategies."""
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from valanga import State
 
 from anemone.nodes.itree_node import ITreeNode
-from anemone.nodes.tree_node import TreeNode
 from anemone.utils.small_tools import Interval
+
+if TYPE_CHECKING:
+    from anemone.nodes.tree_node import TreeNode
 
 
 @dataclass

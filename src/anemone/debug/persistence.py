@@ -1,7 +1,5 @@
 """Persistence helpers for debug traces."""
 
-from __future__ import annotations
-
 import pickle
 from pathlib import Path
 

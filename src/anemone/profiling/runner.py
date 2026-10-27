@@ -1,8 +1,6 @@
 """Standalone execution shell for one profiling scenario run."""
 # pylint: disable=broad-exception-caught,duplicate-code
 
-from __future__ import annotations
-
 import argparse
 import platform
 import socket
@@ -71,7 +69,7 @@ def _discover_git_commit(cwd: Path) -> str | None:
             encoding="utf-8",
             timeout=1.0,
         )
-    except (FileNotFoundError, subprocess.SubprocessError, OSError):
+    except FileNotFoundError, subprocess.SubprocessError, OSError:
         return None
 
     if completed.returncode != 0:

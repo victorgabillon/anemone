@@ -21,8 +21,6 @@ second search engine or crash the wrapped exploration because one optional
 component is absent.
 """
 
-from __future__ import annotations
-
 import json
 import time
 from dataclasses import dataclass
@@ -172,7 +170,7 @@ class DebugSessionController:
                 breakpoints.append(
                     breakpoint_from_json(cast("dict[str, object]", item))
                 )
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
         return tuple(breakpoints)
 
@@ -461,7 +459,7 @@ class DebugSessionController:
 
         try:
             loaded_payload = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             return {}
         if not isinstance(loaded_payload, dict):
             return {}
@@ -474,7 +472,7 @@ class DebugSessionController:
 
         try:
             loaded_payload = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             return []
         if not isinstance(loaded_payload, list):
             return []

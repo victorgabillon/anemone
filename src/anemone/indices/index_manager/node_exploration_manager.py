@@ -1,7 +1,5 @@
 """Public coordination surface for exploration-index updates."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from anemone.indices.index_manager.global_min_change_strategy import (

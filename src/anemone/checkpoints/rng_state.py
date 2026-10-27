@@ -1,7 +1,5 @@
 """Access live runtime RNGs without replacing them or consuming random draws."""
 
-from __future__ import annotations
-
 from random import Random
 from typing import TYPE_CHECKING, Any, cast
 

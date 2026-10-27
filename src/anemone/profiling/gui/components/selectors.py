@@ -1,7 +1,5 @@
 """Reusable selectors for profiling runs, suites, and base directories."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 

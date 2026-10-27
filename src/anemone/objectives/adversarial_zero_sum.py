@@ -1,12 +1,15 @@
 """Adversarial zero-sum objective built on top of ``EvaluationOrdering``."""
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from valanga import Color
-from valanga.evaluations import Value
 
 from anemone._valanga_types import AnyOverEvent, AnyTurnState
 from anemone.values import DEFAULT_EVALUATION_ORDERING, EvaluationOrdering
+
+if TYPE_CHECKING:
+    from valanga.evaluations import Value
 
 
 def _state_turn_must_be_color_error(turn: object) -> TypeError:

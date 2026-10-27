@@ -1,13 +1,15 @@
 """Basic class for Creating Tree nodes."""
 
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from valanga import BranchKey, State, StateModifications
 
-from anemone.basics import TreeDepth
 from anemone.nodes.itree_node import ITreeNode
 from anemone.nodes.state_handles import MaterializedStateHandle, StateHandle
 from anemone.nodes.tree_node import TreeNode
+
+if TYPE_CHECKING:
+    from anemone.basics import TreeDepth
 
 
 class NodeFactory[
@@ -58,7 +60,7 @@ class TreeNodeFactory[T: ITreeNode[Any] = ITreeNode[Any], StateT: State = State]
         # TreeNode doesn't use modifications (it's a pure data container).
         _ = modifications
 
-        parent_nodes: None | tuple[T, BranchKey]
+        parent_nodes: tuple[T, BranchKey] | None
         if parent_node is None:
             parent_nodes = None
         else:

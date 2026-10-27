@@ -1,7 +1,5 @@
 """Low-level shard IO helpers for sharded checkpoints."""
 
-from __future__ import annotations
-
 # pyright: reportPrivateUsage=false, reportUnusedFunction=false
 import io
 import json

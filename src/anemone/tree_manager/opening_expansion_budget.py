@@ -1,7 +1,5 @@
 """Runtime budgets for materialized opening expansion."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 

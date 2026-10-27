@@ -4,19 +4,19 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self
 
-from valanga.evaluations import Value
-
 from anemone._valanga_types import AnyTurnState
 from anemone.node_evaluation.tree.node_tree_evaluation import (
     BackupPolicyFactory,
     NodeTreeEvaluationState,
     TreeEvaluationChild,
 )
-from anemone.nodes.tree_node import TreeNode
 from anemone.objectives import AdversarialZeroSumObjective, Objective
 
 if TYPE_CHECKING:
+    from valanga.evaluations import Value
+
     from anemone.backup_policies.explicit_minimax import ExplicitMinimaxBackupPolicy
+    from anemone.nodes.tree_node import TreeNode
 
 
 class NodeWithValue(TreeEvaluationChild[AnyTurnState], Protocol):
@@ -28,7 +28,7 @@ class NodeWithValue(TreeEvaluationChild[AnyTurnState], Protocol):
     """
 
     @property
-    def tree_evaluation(self) -> "NodeMinmaxEvaluation":
+    def tree_evaluation(self) -> NodeMinmaxEvaluation:
         """Return the minimax evaluation associated with this node."""
         ...
 
@@ -40,7 +40,7 @@ def make_default_objective() -> Objective[AnyTurnState]:
     return AdversarialZeroSumObjective()
 
 
-def make_default_backup_policy() -> "ExplicitMinimaxBackupPolicy":
+def make_default_backup_policy() -> ExplicitMinimaxBackupPolicy:
     """Create the default explicit minimax backup policy."""
     from anemone.backup_policies.explicit_minimax import (  # pylint: disable=import-outside-toplevel
         ExplicitMinimaxBackupPolicy,

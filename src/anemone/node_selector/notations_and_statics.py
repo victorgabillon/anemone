@@ -6,7 +6,10 @@ The functions in this module provide methods for selecting elements based on the
 """
 
 from math import e, log
-from random import Random
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from random import Random
 
 
 def zipf_picks(

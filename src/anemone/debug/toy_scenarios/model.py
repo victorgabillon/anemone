@@ -1,7 +1,5 @@
 """Declarative model types for tiny debug-oriented toy search scenarios."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Literal
 

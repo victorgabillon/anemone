@@ -4,8 +4,6 @@
 
 # ruff: noqa: TC001,TC003
 
-from __future__ import annotations
-
 from collections.abc import Iterable, Mapping
 from typing import Any, Protocol, TypeGuard, cast, runtime_checkable
 

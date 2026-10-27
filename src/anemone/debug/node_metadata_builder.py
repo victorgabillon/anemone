@@ -2,8 +2,6 @@
 
 # pylint: disable=duplicate-code
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -157,7 +155,7 @@ class NodeDebugMetadataBuilder:
             return None
         try:
             return get_candidate()
-        except (AttributeError, TypeError):
+        except AttributeError, TypeError:
             return None
 
     def _get_principal_variation(self, evaluation: Any) -> str | None:

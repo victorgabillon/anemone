@@ -1,12 +1,13 @@
 """Source-aware value candidates for node-evaluation APIs."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import StrEnum
 
 # Keep Value in module globals so runtime introspection via get_type_hints works.
-from valanga.evaluations import Value  # noqa: TC002
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from valanga.evaluations import Value
 
 
 class ValueCandidateSource(StrEnum):

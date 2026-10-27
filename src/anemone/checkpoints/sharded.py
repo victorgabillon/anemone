@@ -1,7 +1,5 @@
 """Compatibility façade for sharded checkpoint APIs."""
 
-from __future__ import annotations
-
 from .sharded_decode import load_sharded_search_checkpoint
 from .sharded_encode import (
     write_sharded_search_checkpoint,

@@ -1,14 +1,15 @@
 """Shared vocabulary for direct, backed-up, and candidate node values."""
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from valanga.evaluations import Value
+if TYPE_CHECKING:
+    from valanga.evaluations import Value
 
-from anemone._valanga_types import AnyOverEvent
-from anemone.node_evaluation.common.value_candidate import (
-    ValueCandidate,
-    ValueCandidateSource,
-)
+    from anemone._valanga_types import AnyOverEvent
+    from anemone.node_evaluation.common.value_candidate import (
+        ValueCandidate,
+        ValueCandidateSource,
+    )
 
 
 class NodeValueEvaluation(Protocol):

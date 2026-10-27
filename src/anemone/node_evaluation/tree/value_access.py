@@ -1,7 +1,5 @@
 """Canonical value-access helpers shared by tree-evaluation families."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Protocol
 
 from anemone.node_evaluation.common import canonical_value

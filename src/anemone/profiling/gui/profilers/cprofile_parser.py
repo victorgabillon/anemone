@@ -1,7 +1,5 @@
 """Helpers for extracting readable tables from ``cProfile`` stats files."""
 
-from __future__ import annotations
-
 import pstats
 from pathlib import Path
 from typing import TypedDict, cast

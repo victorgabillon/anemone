@@ -1,7 +1,5 @@
 """Shared helpers for GUI chart rendering."""
 
-from __future__ import annotations
-
 from typing import Any
 
 from anemone.profiling.gui import get_altair, get_pandas, get_streamlit

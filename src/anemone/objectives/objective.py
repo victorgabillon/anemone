@@ -1,11 +1,13 @@
 """Protocols for state-aware semantic interpretation of canonical ``Value`` objects."""
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from valanga import State
-from valanga.evaluations import Value
 
-from anemone._valanga_types import AnyOverEvent
+if TYPE_CHECKING:
+    from valanga.evaluations import Value
+
+    from anemone._valanga_types import AnyOverEvent
 
 
 class Objective[StateT: State = State](Protocol):

@@ -1,7 +1,5 @@
 """Suite-level overview visualizations."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from anemone.profiling.gui import get_pandas, get_streamlit

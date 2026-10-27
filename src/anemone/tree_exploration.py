@@ -9,16 +9,13 @@ from typing import TYPE_CHECKING, Any, cast
 
 from valanga import BranchKey, State
 from valanga.evaluations import Certainty, Value
-from valanga.game import BranchName
 from valanga.policy import NotifyProgressCallable, Recommendation
 
 from anemone._valanga_types import AnyTurnState
-from anemone.dynamics import SearchDynamics
 from anemone.node_evaluation.common import canonical_value
 from anemone.node_evaluation.common.branch_frontier import (
     require_branch_frontier_aware,
 )
-from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
 from anemone.node_evaluation.evaluator_refresh import (
     validate_refresh_node,
 )
@@ -30,16 +27,21 @@ from anemone.progress_monitor.progress_monitor import (
     ProgressMonitor,
     create_stopping_criterion,
 )
-from anemone.search_factory import NodeSelectorFactory
 from anemone.value_updates import NodeValueUpdate, NodeValueUpdateResult
 
 from . import node_selector as node_sel
 from . import recommender_rule, trees
 from . import tree_manager as tree_man
-from .trees.factory import ValueTreeFactory
 
 if TYPE_CHECKING:
+    from valanga.game import BranchName
     from valanga.policy import BranchPolicy
+
+    from anemone.dynamics import SearchDynamics
+    from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
+    from anemone.search_factory import NodeSelectorFactory
+
+    from .trees.factory import ValueTreeFactory
 
 
 type IterationProgressReporter = Callable[[Any, Random], None]

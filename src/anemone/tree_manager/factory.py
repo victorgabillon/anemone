@@ -2,20 +2,13 @@
 
 from typing import TYPE_CHECKING, Any
 
-from anemone.dynamics import SearchDynamics
 from anemone.indices.index_manager import (
     NodeExplorationIndexManager,
     create_exploration_index_manager,
 )
-from anemone.indices.node_indices.index_types import (
-    IndexComputationType,
-)
 from anemone.node_evaluation.direct import (
     EvaluationQueries,
     NodeDirectEvaluator,
-)
-from anemone.node_factory import (
-    AlgorithmNodeFactory,
 )
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.updates.depth_index_propagator import DepthIndexPropagator
@@ -25,6 +18,13 @@ from .opening_expansion_config import OpeningExpansionConfig
 from .tree_manager import TreeManager
 
 if TYPE_CHECKING:
+    from anemone.dynamics import SearchDynamics
+    from anemone.indices.node_indices.index_types import (
+        IndexComputationType,
+    )
+    from anemone.node_factory import (
+        AlgorithmNodeFactory,
+    )
     from anemone.rollouts import RolloutActionSelector
 
 
@@ -35,7 +35,7 @@ def create_algorithm_node_tree_manager(
     index_computation: IndexComputationType | None,
     depth_index: bool = False,
     opening_expansion_config: OpeningExpansionConfig | None = None,
-    rollout_action_selector: "RolloutActionSelector[AlgorithmNode] | None" = None,
+    rollout_action_selector: RolloutActionSelector[AlgorithmNode] | None = None,
 ) -> AlgorithmNodeTreeManager:
     """Create an AlgorithmNodeTreeManager object.
 

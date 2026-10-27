@@ -1,7 +1,5 @@
 """Reusable primitive for opening and recording one materialized branch."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 

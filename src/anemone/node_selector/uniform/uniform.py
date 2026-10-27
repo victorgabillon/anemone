@@ -11,9 +11,6 @@ Classes:
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-from anemone import tree_manager as tree_man
-from anemone import trees
-from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.node_selector.opening_instructions import (
     OpeningInstructions,
     OpeningInstructor,
@@ -25,6 +22,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from valanga import BranchKey
+
+    from anemone import tree_manager as tree_man
+    from anemone import trees
+    from anemone.node_selector.node_selector_types import NodeSelectorType
 
 
 @dataclass

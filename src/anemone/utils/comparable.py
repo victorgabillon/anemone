@@ -5,7 +5,7 @@ Classes that inherit from Comparable must implement the __lt__ method, which def
 """
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, TypeVar
+from typing import Any
 
 
 class Comparable(metaclass=ABCMeta):
@@ -26,6 +26,3 @@ class Comparable(metaclass=ABCMeta):
     def __lt__(self, other: Any) -> bool:
         """Return True if this object is less than the other."""
         ...
-
-
-CT = TypeVar("CT", bound=Comparable)

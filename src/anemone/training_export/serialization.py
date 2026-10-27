@@ -1,7 +1,5 @@
 """JSON-friendly serialization helpers for training tree snapshots."""
 
-from __future__ import annotations
-
 from typing import Any, cast
 
 from anemone._best_effort import coerce_int as _coerce_int

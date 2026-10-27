@@ -1,11 +1,13 @@
 """Tree."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from anemone.basics import TreeDepth
 from anemone.nodes.itree_node import ITreeNode
 
-from .descendants import RangedDescendants
+if TYPE_CHECKING:
+    from anemone.basics import TreeDepth
+
+    from .descendants import RangedDescendants
 
 
 class Tree[NodeT: ITreeNode[Any]]:

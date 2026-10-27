@@ -2,16 +2,9 @@
 
 from dataclasses import dataclass
 from functools import partial
-from random import Random
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from anemone import trees
-from anemone.node_selector.node_selector_types import (
-    NodeSelectorType,
-)
-from anemone.node_selector.opening_instructions import (
-    OpeningInstructor,
-)
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 from .sequool import (
@@ -24,6 +17,16 @@ from .sequool import (
     consider_nodes_from_all_lesser_tree_depths_in_sub_stree,
     consider_nodes_only_from_tree_depths_in_descendants,
 )
+
+if TYPE_CHECKING:
+    from random import Random
+
+    from anemone.node_selector.node_selector_types import (
+        NodeSelectorType,
+    )
+    from anemone.node_selector.opening_instructions import (
+        OpeningInstructor,
+    )
 
 
 @dataclass

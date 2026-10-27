@@ -1,7 +1,5 @@
 """Resolver for evaluation debug inspectors."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from .generic_value_family import GenericValueFamilyInspector

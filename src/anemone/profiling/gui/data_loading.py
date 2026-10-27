@@ -1,7 +1,5 @@
 """Artifact loading helpers for the local profiling dashboard."""
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -108,7 +106,7 @@ def extract_component_summary(run_dir: Path) -> ComponentSummary | None:
         return None
     try:
         return load_component_summary(candidate)
-    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+    except OSError, TypeError, ValueError, json.JSONDecodeError:
         return None
 
 
@@ -197,7 +195,7 @@ def load_suite_repetition_run(
         return None
     try:
         run = load_run_result(run_json_path)
-    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+    except OSError, TypeError, ValueError, json.JSONDecodeError:
         return None
     _record_run_source_path(run, run_json_path.resolve())
     return run

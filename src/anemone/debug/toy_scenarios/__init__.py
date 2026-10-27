@@ -1,7 +1,5 @@
 """Public toy-scenario helpers for the Anemone debug GUI."""
 
-from __future__ import annotations
-
 from ._lazy_builders import (
     build_live_toy_debug_environment,
     build_toy_tree_exploration,
