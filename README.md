@@ -17,15 +17,27 @@ The main architectural split is:
 
 ## Installation
 
+This development branch requires standard CPython **3.14.10** (GIL enabled,
+`PYTHON_JIT=0`). The next distribution is `algorhino-anemone 0.2.27`;
+this branch currently builds `0.2.27.dev0` and has not been published.
+
+Until the Python 3.14 foundations receive new published versions, development
+uses exact Valanga, Atomheart and Parsley wheels through `VALANGA_WHEEL`,
+`ATOMHEART_WHEEL` and `PARSLEY_WHEEL`. The CI workflow records the validated
+source revisions; tox intentionally has no published-package fallback.
+Run `tox --workdir /path/to/private/anemone-tox` with those variables set.
+
+Published distribution names:
+
 ```bash
-pip install anemone
+pip install algorhino-anemone
 ```
 
 Optional extras:
 
 ```bash
-pip install anemone[nn]
-pip install anemone[debug]
+pip install algorhino-anemone[nn]
+pip install algorhino-anemone[debug]
 ```
 
 Debug snapshot export and the debug browser's SVG rendering also require the

@@ -1,13 +1,11 @@
 """Shared Linoo selector types and status constants."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 # Runtime import is intentional: parsley/get_type_hints() evaluates LinooArgs
 # annotations when Chipiron builds partial dataclasses.
-
-if TYPE_CHECKING:
-    from anemone.node_selector.node_selector_types import NodeSelectorType
+from anemone.node_selector.node_selector_types import NodeSelectorType  # noqa: TC001
 
 type LinooDepthSelectionPolicy = Literal[
     "inverse_depth",
