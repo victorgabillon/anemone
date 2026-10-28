@@ -1,10 +1,9 @@
 """Arguments for selecting a registry-provided priority check."""
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
-if TYPE_CHECKING:
-    from anemone.node_selector.node_selector_types import NodeSelectorType
+from anemone.node_selector.node_selector_types import NodeSelectorType
 
 
 def _registered_priority_check_args() -> dict[str, Any]:
