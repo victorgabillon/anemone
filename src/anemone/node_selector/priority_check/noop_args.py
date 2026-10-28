@@ -1,10 +1,9 @@
 """Arguments for the no-op priority check."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
-if TYPE_CHECKING:
-    from anemone.node_selector.node_selector_types import NodeSelectorType
+from anemone.node_selector.node_selector_types import NodeSelectorType
 
 
 @dataclass

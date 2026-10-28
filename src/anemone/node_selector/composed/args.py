@@ -1,12 +1,11 @@
 """Arguments for composed node selector."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
-if TYPE_CHECKING:
-    from anemone.node_selector.all_node_selector_args import AllNodeSelectorArgs
-    from anemone.node_selector.node_selector_types import NodeSelectorType
-    from anemone.node_selector.priority_check.args_union import PriorityCheckArgs
+from anemone.node_selector.all_node_selector_args import AllNodeSelectorArgs
+from anemone.node_selector.node_selector_types import NodeSelectorType
+from anemone.node_selector.priority_check.args_union import PriorityCheckArgs
 
 
 @dataclass

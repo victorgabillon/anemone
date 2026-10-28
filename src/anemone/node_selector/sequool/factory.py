@@ -5,6 +5,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Literal
 
 from anemone import trees
+from anemone.node_selector.node_selector_types import NodeSelectorType
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 
 from .sequool import (
@@ -21,9 +22,6 @@ from .sequool import (
 if TYPE_CHECKING:
     from random import Random
 
-    from anemone.node_selector.node_selector_types import (
-        NodeSelectorType,
-    )
     from anemone.node_selector.opening_instructions import (
         OpeningInstructor,
     )
