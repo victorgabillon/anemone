@@ -80,6 +80,7 @@ def build_search_checkpoint_payload(
     The new checkpoint format requires an incremental codec that can emit
     anchor snapshots plus parent-to-child deltas.
     """
+    search._require_valid_runtime()
     metrics = _CheckpointBuildMetrics()
     context = _CheckpointBuildContext(metrics=metrics)
     _maybe_reset_checkpoint_profile(state_codec)

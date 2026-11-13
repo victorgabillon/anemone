@@ -40,6 +40,12 @@ class Codec(BaseCodec):
     prepared_domain = "morpion-inline-v1"
 
 
+class Incumbent(Evaluator):
+    """Bind the incumbent model identity for exact staging admission."""
+
+    evaluation_identity = "incumbent"
+
+
 class Candidate(Evaluator):
     """Bound deterministic native scalar evaluator identity."""
 
@@ -81,7 +87,7 @@ def cold(payload: Any) -> Any:
         dynamics=Dynamics(),
         args=args(),
         state_type=State,
-        master_state_value_evaluator=Evaluator(),
+        master_state_value_evaluator=Incumbent(),
         node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
     )
 
@@ -173,3 +179,98 @@ def test_detached_structural_mutation_is_unavailable() -> None:
             evaluation_identity=IDENTITY,
             limits=limits(),
         )
+
+
+def prepared_case() -> Any:
+    from anemone.prepared_evaluator.native import decode
+
+    source = freeze(build_search_checkpoint_payload(runtime(), state_codec=Codec()))
+    candidate = Candidate({i: float(i + 42) for i in range(512)})
+    prepared = prepare_evaluator_context(
+        source, evaluator=candidate, evaluation_identity=IDENTITY, limits=limits()
+    )
+    return source, prepared, candidate, cold(decode(source._checkpoint_bytes))
+
+
+def stage(source: Any, prepared: Any, candidate: Any, owner: Any) -> Any:
+    from anemone.prepared_evaluator import stage_evaluator_context
+
+    return stage_evaluator_context(
+        owner,
+        current_source=source,
+        prepared=prepared,
+        evaluator=candidate,
+        evaluation_identity=IDENTITY,
+        limits=limits(),
+    )
+
+
+def native_bytes(search: Any) -> bytes:
+    from anemone.checkpoints.io import _encode_checkpoint_payload
+
+    return _encode_checkpoint_payload(
+        build_search_checkpoint_payload(search, state_codec=Codec())
+    ).json_bytes
+
+
+def test_real_install_cold_export_and_next_growth() -> None:
+    from anemone.prepared_evaluator.native import decode
+
+    source, prepared, candidate, owner = prepared_case()
+    reference = cold(decode(source._checkpoint_bytes))
+    reference.refresh_with_evaluator(
+        Candidate({i: float(i + 42) for i in range(512)}), scope="all"
+    )
+    nodes = list(owner._iter_nodes_by_depth())
+    handles = [n.state_handle for n in nodes]
+    rng = owner.node_selector.base.random_generator
+    state = rng.getstate()
+    plan = stage(source, prepared, candidate, owner)
+    report = plan.install()
+    assert report.installed_nodes == len(nodes)
+    assert owner.node_selector.base.random_generator is rng and rng.getstate() == state
+    assert [n.state_handle for n in nodes] == handles
+    assert native_bytes(owner) == native_bytes(reference)
+    for _ in range(2):
+        before = owner.tree.branch_count
+        owner.step()
+        reference.step()
+        assert owner.tree.branch_count > before
+        assert native_bytes(owner) == native_bytes(reference)
+    with pytest.raises(ValueError, match="consumed"):
+        plan.install()
+
+
+def test_stale_preflight_preserves_owner() -> None:
+    source, prepared, candidate, owner = prepared_case()
+    plan = stage(source, prepared, candidate, owner)
+    owner.node_selector.base.random_generator.random()
+    before = native_bytes(owner)
+    with pytest.raises(ValueError, match="stale head"):
+        plan.install()
+    assert native_bytes(owner) == before and not owner._prepared_evaluator_invalidated
+
+
+def test_failure_after_mutation_invalidates_runtime(monkeypatch: Any) -> None:
+    from anemone.prepared_evaluator import RuntimeInvalidated, installation
+
+    source, prepared, candidate, owner = prepared_case()
+    plan = stage(source, prepared, candidate, owner)
+    assign = installation._assign_node
+
+    def fail(node: Any, staged: Any) -> None:
+        assign(node, staged)
+        message = "injected after first assignment"
+        raise RuntimeError(message)
+
+    monkeypatch.setattr(installation, "_assign_node", fail)
+    with pytest.raises(RuntimeInvalidated):
+        plan.install()
+    assert owner._prepared_evaluator_invalidated
+    for operation in (
+        owner.step,
+        lambda: native_bytes(owner),
+        lambda: owner.refresh_with_evaluator(candidate, scope="all"),
+    ):
+        with pytest.raises(RuntimeInvalidated):
+            operation()

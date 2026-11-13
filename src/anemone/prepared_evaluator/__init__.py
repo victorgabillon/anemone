@@ -24,3 +24,7 @@ __all__ = [
     "freeze_evaluator_source",
     "prepare_evaluator_context",
 ]
+
+from .installation import EvaluatorInstallPlan, InstallReport, stage_evaluator_context
+
+__all__ += ["EvaluatorInstallPlan", "InstallReport", "stage_evaluator_context"]

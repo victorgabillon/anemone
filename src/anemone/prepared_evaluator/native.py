@@ -311,9 +311,14 @@ def reconstruct(
     for n in iter_nodes(tree):
         limits.check()
         state = n.state
+        board = getattr(state, "board", None)
+        if board is None:
+            unwrap = getattr(state, "to_atomheart_state", None)
+            require(callable(unwrap), "unsupported domain state")
+            assert callable(unwrap)
+            board = unwrap()
         require(
-            getattr(state, "board", None) is not None
-            and type(state.board).__module__.startswith("atomheart.games.morpion"),
+            type(board).__module__.startswith("atomheart.games.morpion"),
             "unsupported domain state",
         )
         state_payload = cast(
