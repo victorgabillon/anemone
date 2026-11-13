@@ -12,7 +12,6 @@ from anemone.checkpoints._protocols import IncrementalStateCheckpointCodec
 from anemone.checkpoints.io import _encode_checkpoint_payload
 from anemone.checkpoints.payloads import SearchRuntimeCheckpointPayload
 from anemone.indices.index_manager.factory import create_exploration_index_manager
-from anemone.indices.node_indices.index_types import IndexComputationType
 from anemone.node_evaluation.direct import EvaluationQueries, create_node_evaluator
 from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
 from anemone.node_evaluation.full_refresh import refresh_bound_context
@@ -166,9 +165,7 @@ def prepare_evaluator_context(
         evaluator=direct,
         evaluation_queries=EvaluationQueries(),
         evaluator_version=version,
-        index_manager=create_exploration_index_manager(
-            IndexComputationType.MIN_GLOBAL_CHANGE
-        ),
+        index_manager=create_exploration_index_manager(source.recipe.index_computation),
         node_selector=arena.selector,
         latest_tree_expansions=arena.expansions,
         batch_size=64,

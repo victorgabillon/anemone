@@ -56,20 +56,30 @@ def limits() -> PreparationLimits:
     return PreparationLimits(monotonic() + 30)
 
 
-def args() -> Any:
+INDEX_RECIPES = [None, IndexComputationType.MIN_GLOBAL_CHANGE]
+
+
+def args(
+    index_computation: IndexComputationType
+    | None = IndexComputationType.MIN_GLOBAL_CHANGE,
+) -> Any:
     result = _build_linoo_args()
-    result.index_computation = IndexComputationType.MIN_GLOBAL_CHANGE
+    result.index_computation = index_computation
     result.stopping_criterion.tree_branch_limit = 4096
     result.node_selector.base.depth_selection_policy = "alternating_by_step"
     return result
 
 
-def runtime(steps: int = 3) -> Any:
+def runtime(
+    steps: int = 3,
+    index_computation: IndexComputationType
+    | None = IndexComputationType.MIN_GLOBAL_CHANGE,
+) -> Any:
     search = create_search_with_tree_eval_factory(
         state_type=State,
         dynamics=Dynamics(),
         starting_state=State(initial_state()),
-        args=args(),
+        args=args(index_computation),
         random_generator=Random(7),
         master_state_evaluator=Evaluator(),
         state_representation_factory=None,
@@ -80,39 +90,51 @@ def runtime(steps: int = 3) -> Any:
     return search
 
 
-def cold(payload: Any) -> Any:
+def cold(
+    payload: Any,
+    index_computation: IndexComputationType
+    | None = IndexComputationType.MIN_GLOBAL_CHANGE,
+) -> Any:
     return load_search_from_checkpoint_payload(
         payload,
         state_codec=Codec(),
         dynamics=Dynamics(),
-        args=args(),
+        args=args(index_computation),
         state_type=State,
         master_state_value_evaluator=Incumbent(),
         node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
     )
 
 
-def freeze(payload: Any) -> Any:
+def freeze(
+    payload: Any,
+    index_computation: Any = IndexComputationType.MIN_GLOBAL_CHANGE,
+) -> Any:
     return freeze_evaluator_source(
         payload,
         codec_type=Codec,
         identity=SourceIdentity(
             "publication", "incumbent", "morpion-inline-v1", "test-build"
         ),
-        recipe=SupportedSearchRecipe(),
+        recipe=SupportedSearchRecipe(index_computation=index_computation),
         limits=limits(),
     )
 
 
-def test_real_morpion_detached_refresh_matches_cold_live() -> None:
-    payload = build_search_checkpoint_payload(runtime(), state_codec=Codec())
-    source = freeze(payload)
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_real_morpion_detached_refresh_matches_cold_live(
+    index_computation: Any,
+) -> None:
+    payload = build_search_checkpoint_payload(
+        runtime(index_computation=index_computation), state_codec=Codec()
+    )
+    source = freeze(payload, index_computation)
     original = source._checkpoint_bytes
     candidate = Candidate({i: 42.0 + i for i in range(512)})
     context = prepare_evaluator_context(
         source, evaluator=candidate, evaluation_identity=IDENTITY, limits=limits()
     )
-    reference = cold(payload)
+    reference = cold(payload, index_computation)
     expected = reference.refresh_with_evaluator(
         Candidate({i: 42.0 + i for i in range(512)}), scope="all"
     )
@@ -142,8 +164,15 @@ def test_source_is_immutable_and_bad_identity_refuses() -> None:
 @pytest.mark.parametrize(
     "fault", ["missing-parent", "cycle", "index", "selector", "codec", "limit"]
 )
-def test_source_refuses_incomplete_or_unsupported_input(fault: str) -> None:
-    payload = build_search_checkpoint_payload(runtime(), state_codec=Codec())
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_source_refuses_incomplete_or_unsupported_input(
+    fault: str, index_computation: Any
+) -> None:
+    from anemone.checkpoints.payloads import ExplorationIndexCheckpointPayload
+
+    payload = build_search_checkpoint_payload(
+        runtime(index_computation=index_computation), state_codec=Codec()
+    )
     if fault == "missing-parent":
         payload.tree.nodes[1].parent_node_id = 999999
     elif fault == "cycle":
@@ -152,7 +181,11 @@ def test_source_refuses_incomplete_or_unsupported_input(fault: str) -> None:
             node.state_payload, state_parent_node_id=node.node_id
         )
     elif fault == "index":
-        payload.tree.nodes[1].exploration_index = None
+        payload.tree.nodes[1].exploration_index = (
+            ExplorationIndexCheckpointPayload(kind="MinMaxPathValue", payload={})
+            if index_computation is None
+            else None
+        )
     elif fault == "selector":
         payload.selector_state = None
     with pytest.raises(ValueError):
@@ -160,7 +193,7 @@ def test_source_refuses_incomplete_or_unsupported_input(fault: str) -> None:
             payload,
             codec_type=BaseCodec if fault == "codec" else Codec,
             identity=SourceIdentity("p", "i", "c", "b"),
-            recipe=SupportedSearchRecipe(),
+            recipe=SupportedSearchRecipe(index_computation=index_computation),
             limits=replace(limits(), max_nodes=1) if fault == "limit" else limits(),
         )
 
@@ -181,15 +214,28 @@ def test_detached_structural_mutation_is_unavailable() -> None:
         )
 
 
-def prepared_case() -> Any:
+def prepared_case(
+    index_computation: IndexComputationType
+    | None = IndexComputationType.MIN_GLOBAL_CHANGE,
+) -> Any:
     from anemone.prepared_evaluator.native import decode
 
-    source = freeze(build_search_checkpoint_payload(runtime(), state_codec=Codec()))
+    source = freeze(
+        build_search_checkpoint_payload(
+            runtime(index_computation=index_computation), state_codec=Codec()
+        ),
+        index_computation,
+    )
     candidate = Candidate({i: float(i + 42) for i in range(512)})
     prepared = prepare_evaluator_context(
         source, evaluator=candidate, evaluation_identity=IDENTITY, limits=limits()
     )
-    return source, prepared, candidate, cold(decode(source._checkpoint_bytes))
+    return (
+        source,
+        prepared,
+        candidate,
+        cold(decode(source._checkpoint_bytes), index_computation),
+    )
 
 
 def stage(source: Any, prepared: Any, candidate: Any, owner: Any) -> Any:
@@ -213,11 +259,12 @@ def native_bytes(search: Any) -> bytes:
     ).json_bytes
 
 
-def test_real_install_cold_export_and_next_growth() -> None:
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_real_install_cold_export_and_next_growth(index_computation: Any) -> None:
     from anemone.prepared_evaluator.native import decode
 
-    source, prepared, candidate, owner = prepared_case()
-    reference = cold(decode(source._checkpoint_bytes))
+    source, prepared, candidate, owner = prepared_case(index_computation)
+    reference = cold(decode(source._checkpoint_bytes), index_computation)
     reference.refresh_with_evaluator(
         Candidate({i: float(i + 42) for i in range(512)}), scope="all"
     )
@@ -241,8 +288,9 @@ def test_real_install_cold_export_and_next_growth() -> None:
         plan.install()
 
 
-def test_stale_preflight_preserves_owner() -> None:
-    source, prepared, candidate, owner = prepared_case()
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_stale_preflight_preserves_owner(index_computation: Any) -> None:
+    source, prepared, candidate, owner = prepared_case(index_computation)
     plan = stage(source, prepared, candidate, owner)
     owner.node_selector.base.random_generator.random()
     before = native_bytes(owner)
@@ -251,10 +299,13 @@ def test_stale_preflight_preserves_owner() -> None:
     assert native_bytes(owner) == before and not owner._prepared_evaluator_invalidated
 
 
-def test_failure_after_mutation_invalidates_runtime(monkeypatch: Any) -> None:
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_failure_after_mutation_invalidates_runtime(
+    monkeypatch: Any, index_computation: Any
+) -> None:
     from anemone.prepared_evaluator import RuntimeInvalidated, installation
 
-    source, prepared, candidate, owner = prepared_case()
+    source, prepared, candidate, owner = prepared_case(index_computation)
     plan = stage(source, prepared, candidate, owner)
     assign = installation._assign_node
 

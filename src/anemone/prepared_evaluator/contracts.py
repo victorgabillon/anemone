@@ -8,6 +8,7 @@ from typing import Any, Literal
 from anemone.checkpoints._protocols import (
     IncrementalStateCheckpointCodec,  # noqa: TC001
 )
+from anemone.indices.node_indices.index_types import IndexComputationType
 from anemone.tree_manager.opening_expansion_config import OpeningExpansionConfig
 
 
@@ -53,7 +54,7 @@ class SourceIdentity:
 
 @dataclass(frozen=True, slots=True)
 class SupportedSearchRecipe:
-    """Finite v1 recipe: built-in max/proof, global-min-change, noop/Linoo."""
+    """Finite v1 recipe: max/proof, null or global-min-change, noop/Linoo."""
 
     depth_selection_policy: str = "alternating_by_step"
     branch_limit: int = 4096
@@ -61,6 +62,18 @@ class SupportedSearchRecipe:
         default_factory=OpeningExpansionConfig
     )
     rng_layout: Literal["search_only", "independent_rollout"] = "search_only"
+    index_computation: Literal[IndexComputationType.MIN_GLOBAL_CHANGE] | None = (
+        IndexComputationType.MIN_GLOBAL_CHANGE
+    )
+
+
+def validate_index_recipe(recipe: SupportedSearchRecipe) -> None:
+    """Admit only the two canonical recipes, never string aliases or defaults."""
+    require(
+        recipe.index_computation is None
+        or recipe.index_computation is IndexComputationType.MIN_GLOBAL_CHANGE,
+        "unsupported index recipe",
+    )
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,15 +5,16 @@ from dataclasses import replace
 from typing import Any
 
 import pytest
+
 from anemone.prepared_evaluator import (
     PreparedEvaluatorRefusal,
     prepare_evaluator_context,
     stage_evaluator_context,
 )
 from anemone.prepared_evaluator.native import decode, encode
-
 from tests.test_prepared_evaluator import (
     IDENTITY,
+    INDEX_RECIPES,
     freeze,
     limits,
     native_bytes,
@@ -22,10 +23,11 @@ from tests.test_prepared_evaluator import (
 
 
 @pytest.mark.parametrize("operation", ["prepare", "stage"])
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
 def test_smaller_artifact_budget_refuses_before_inference_or_staging(
-    operation: str, monkeypatch: Any
+    operation: str, monkeypatch: Any, index_computation: Any
 ) -> None:
-    source, context, candidate, owner = prepared_case()
+    source, context, candidate, owner = prepared_case(index_computation)
     before = native_bytes(owner)
 
     def forbidden(*args: Any, **kwargs: Any) -> Any:
@@ -54,12 +56,13 @@ def test_smaller_artifact_budget_refuses_before_inference_or_staging(
 
 
 @pytest.mark.parametrize("artifact", ["source", "context"])
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
 def test_saved_atoms_cannot_request_arbitrary_module_import(
-    artifact: str, monkeypatch: Any
+    artifact: str, monkeypatch: Any, index_computation: Any
 ) -> None:
     from anemone.checkpoints import value_serialization
 
-    source, context, candidate, owner = prepared_case()
+    source, context, candidate, owner = prepared_case(index_computation)
     malicious = {
         "type": "enum",
         "module": "unapproved_payload_module",
@@ -78,7 +81,7 @@ def test_saved_atoms_cannot_request_arbitrary_module_import(
             payload.tree.nodes[0].linked_children[0] = replace(
                 payload.tree.nodes[0].linked_children[0], branch_key=malicious
             )
-            freeze(payload)
+            freeze(payload, index_computation)
         else:
             import json
 
@@ -102,10 +105,13 @@ def test_saved_atoms_cannot_request_arbitrary_module_import(
 @pytest.mark.parametrize(
     "rollout_kind", ["random_openable", "random_legal_prefer_openable"]
 )
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
 def test_admitted_selector_and_rollout_variants_match_native_cold(
-    policy: str, rollout_kind: str
+    policy: str, rollout_kind: str, index_computation: Any
 ) -> None:
     from random import Random
+
+    from atomheart.games.morpion import initial_state
 
     from anemone import create_search_with_tree_eval_factory
     from anemone.checkpoints import build_search_checkpoint_payload
@@ -115,8 +121,6 @@ def test_admitted_selector_and_rollout_variants_match_native_cold(
     )
     from anemone.prepared_evaluator import SupportedSearchRecipe
     from anemone.tree_manager.opening_expansion_config import RolloutActionSelectorKind
-    from atomheart.games.morpion import initial_state
-
     from tests.morpion_refresh_helpers import Dynamics, State
     from tests.test_prepared_evaluator import Codec, Incumbent
     from tests.test_prepared_evaluator_continuation import (
@@ -126,7 +130,7 @@ def test_admitted_selector_and_rollout_variants_match_native_cold(
         restored,
     )
 
-    config = configuration(True)
+    config = configuration(True, index_computation)
     config.node_selector.base.depth_selection_policy = policy
     config.opening_expansion = replace(
         config.opening_expansion,
@@ -149,6 +153,7 @@ def test_admitted_selector_and_rollout_variants_match_native_cold(
         live.step()
     recipe = SupportedSearchRecipe(
         depth_selection_policy=policy,
+        index_computation=index_computation,
         opening_expansion=config.opening_expansion,
         rng_layout="independent_rollout",
     )
@@ -171,13 +176,16 @@ def test_admitted_selector_and_rollout_variants_match_native_cold(
         assert native_bytes(owner) == native_bytes(reference)
 
 
-def test_plan_disposal_and_dead_owner_refuse_without_retaining_runtime() -> None:
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_plan_disposal_and_dead_owner_refuse_without_retaining_runtime(
+    index_computation: Any,
+) -> None:
     import gc
     import weakref
 
     from tests.test_prepared_evaluator import stage
 
-    source, prepared, candidate, owner = prepared_case()
+    source, prepared, candidate, owner = prepared_case(index_computation)
     plan = stage(source, prepared, candidate, owner)
     owner_ref = weakref.ref(owner)
     del owner
@@ -193,14 +201,14 @@ def test_plan_disposal_and_dead_owner_refuse_without_retaining_runtime() -> None
 
 @pytest.mark.parametrize("when", ["before-stage", "after-stage"])
 @pytest.mark.parametrize("fault", ["callable", "index-kind", "depth-index"])
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
 def test_future_node_index_factory_is_part_of_the_supported_recipe(
-    when: str, fault: str
+    when: str, fault: str, index_computation: Any
 ) -> None:
     from anemone.indices.node_indices.index_types import IndexComputationType
-
     from tests.test_prepared_evaluator import stage
 
-    source, prepared, candidate, owner = prepared_case()
+    source, prepared, candidate, owner = prepared_case(index_computation)
     plan = stage(source, prepared, candidate, owner) if when == "after-stage" else None
     factory = owner.tree_manager.tree_manager.node_factory
     if fault == "callable":

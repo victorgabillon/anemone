@@ -36,6 +36,7 @@ from anemone.checkpoints.node_restore import (
 )
 from anemone.checkpoints.payloads import (
     DeltaCheckpointStatePayload,
+    ExplorationIndexCheckpointPayload,
     SearchRuntimeCheckpointPayload,
     TreeCheckpointPayload,
 )
@@ -57,7 +58,6 @@ from anemone.checkpoints.tree_expansions_payloads import (
 )
 from anemone.checkpoints.value_serialization import serialize_checkpoint_atom
 from anemone.indices.node_indices.factory import create_exploration_index_data
-from anemone.indices.node_indices.index_types import IndexComputationType
 from anemone.node_evaluation.evaluator_refresh import validate_refresh_node
 from anemone.node_evaluation.full_refresh import iter_nodes
 from anemone.node_evaluation.tree.single_agent.factory import NodeMaxEvaluationFactory
@@ -74,7 +74,12 @@ from anemone.tree_manager.opening_expansion_config import (
 from anemone.tree_manager.tree_expander import TreeExpansions
 from anemone.trees.tree import Tree
 
-from .contracts import PreparationLimits, SupportedSearchRecipe, require
+from .contracts import (
+    PreparationLimits,
+    SupportedSearchRecipe,
+    require,
+    validate_index_recipe,
+)
 from .structure import DetachedStructure
 
 
@@ -142,13 +147,26 @@ def validate_data_atoms(value: object, limits: PreparationLimits) -> None:
             )
 
 
+def validate_index_payload(
+    payload: ExplorationIndexCheckpointPayload | None, recipe: SupportedSearchRecipe
+) -> None:
+    """Require exact recipe coverage, including genuine absence for null indexing."""
+    require(
+        payload is None
+        if recipe.index_computation is None
+        else payload is not None and payload.kind == "MinMaxPathValue",
+        "index payload/recipe mismatch",
+    )
+
+
 def validate_source(
     payload: SearchRuntimeCheckpointPayload,
     recipe: SupportedSearchRecipe,
     limits: PreparationLimits,
 ) -> None:
-    """Admit complete layered DAG/codec ancestry and exact non-null derived coverage."""
+    """Admit complete layered DAG/codec ancestry and recipe-bound derived coverage."""
     limits.check()
+    validate_index_recipe(recipe)
     validate_data_atoms(checkpoint_payload_to_jsonable(payload), limits)
     _validate_payload(payload)
     require(
@@ -192,11 +210,10 @@ def validate_source(
     for n in records.values():
         limits.check()
         require(
-            n.evaluation is not None
-            and n.exploration_index is not None
-            and n.exploration_index.kind == "MinMaxPathValue",
-            "missing evaluation/global-min-change coverage",
+            n.evaluation is not None,
+            "missing evaluation coverage",
         )
+        validate_index_payload(n.exploration_index, recipe)
         seen = set()
         for link in n.linked_children:
             branch = _deserialize_branch(link.branch_key)
@@ -321,7 +338,7 @@ def reconstruct(
         state_representation_factory=None,
         node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
         exploration_index_data_create=lambda n: create_exploration_index_data(
-            n, IndexComputationType.MIN_GLOBAL_CHANGE, False
+            n, recipe.index_computation, False
         ),
     )
     nodes = _create_nodes(

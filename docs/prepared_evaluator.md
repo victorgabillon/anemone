@@ -100,15 +100,31 @@ is not a durable acceptance receipt or a performance report.
 
 V1 admits real Atomheart Morpion state adapters, a layered single-agent max DAG,
 built-in `ExplicitMaxBackupPolicy`/`BestChildAggregationPolicy`/`MaxProofPolicy`,
-non-null `MIN_GLOBAL_CHANGE` indexes, native node factories without cached
+either null indexes (`index_computation=None`) or `MIN_GLOBAL_CHANGE` indexes,
+native node factories without cached
 evaluator-side state representations, the native bound `SearchFactory.node_index_create`
-with global-min-change and no depth extension, branch-count stopping, all-children opening
+with the same index recipe and no depth extension, branch-count stopping, all-children opening
 and `ComposedNodeSelector(NoPriorityCheck, Linoo)` with initialized checkpointed
-selector history. The recipe binds Linoo policy, branch limit and the full opening
+selector history. The recipe binds index computation, Linoo policy, branch limit and the full opening
 configuration. One-ply uses the search RNG; supported random-openable or
 random-legal-prefer-openable rollout configurations use a distinct independently
 checkpointed RNG. Preparation never executes a rollout. Aliased RNGs, custom
 executors/selectors/proof/index policies and missing histories refuse.
+
+| `SupportedSearchRecipe.index_computation` | Required native state | Prepared support |
+| --- | --- | --- |
+| `None` | Every node index is exactly `None`; canonical null manager/factory | Supported |
+| `IndexComputationType.MIN_GLOBAL_CHANGE` | Every node has `MinMaxPathValue`; canonical global-min-change manager/factory | Supported |
+| Other indexes, string aliases, depth extensions or mixed coverage | Unsupported | Refused |
+
+The prepared recipe defaults to `MIN_GLOBAL_CHANGE` for compatibility with the
+original prepared API; callers using canonical null indexing must pass `None`
+explicitly. This does not change any ordinary search default. The null path uses
+the existing null factory/manager and optional-index checkpoint serialization.
+It creates no placeholder `MinMaxPathValue` objects and treats legitimate absence
+as complete evidence. Source, candidate context and actual owner must agree on
+the recipe, including the bound factory used by subsequent Growth. Index absence
+does not relax graph, proof, codec, Linoo history, version or RNG validation.
 
 An admitted zero-argument inline codec class declares
 `prepared_domain = "morpion-inline-v1"` and promises exclusively owned decoded state.
@@ -168,7 +184,7 @@ all these costs and peak memory with the real model and intended checkpoint size
 Growth, compare detached/live full refresh, install into independently cold-restored
 owners and compare exact native checkpoint bytes and subsequent nonzero Growth.
 Coverage includes transpositions, alternate graph/codec ancestry, terminal/FORCED/
-ESTIMATE, non-null indexes, PV/selector payloads, both independent RNG streams,
+ESTIMATE, both null and global-min-change indexes, PV/selector payloads, both independent RNG streams,
 raw-prediction catch-up, repeated candidates, both native shard layouts, bounded
 refusals, stale plans, inference failure and failure after the first assignment.
 The original refresh/partial-refresh and relevant checkpoint suites provide regression

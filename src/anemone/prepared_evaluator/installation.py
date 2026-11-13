@@ -24,9 +24,11 @@ from anemone.checkpoints.state_handles import CheckpointBackedStateHandle
 from anemone.indices.index_manager.global_min_change_strategy import (
     UpdateIndexGlobalMinChange,
 )
+from anemone.indices.index_manager.node_exploration_manager import (
+    NullNodeExplorationIndexManager,
+)
 from anemone.indices.node_indices.factory import create_exploration_index_data
 from anemone.indices.node_indices.index_data import MinMaxPathValue
-from anemone.indices.node_indices.index_types import IndexComputationType
 from anemone.node_evaluation.direct import NodeDirectEvaluator
 from anemone.node_evaluation.direct.protocols import MasterStateValueEvaluator
 from anemone.node_evaluation.full_refresh import iter_nodes
@@ -65,6 +67,7 @@ from .contracts import (
     PreparedEvaluatorContext,
     RuntimeInvalidated,
     require,
+    validate_index_recipe,
 )
 from .native import (
     decode,
@@ -73,6 +76,7 @@ from .native import (
     fingerprint,
     reconstruct,
     validate_data_atoms,
+    validate_index_payload,
 )
 
 
@@ -94,6 +98,7 @@ def _owner_stamp(
     assert isinstance(selector, ComposedNodeSelector)
     base = cast("Linoo[Any]", selector.base)
     recipe = source.recipe
+    validate_index_recipe(recipe)
     require(
         base.depth_selection_policy == recipe.depth_selection_policy,
         "selector recipe mismatch",
@@ -126,8 +131,7 @@ def _owner_stamp(
         type(index_factory) is MethodType
         and index_factory.__func__ is SearchFactory.node_index_create
         and type(index_factory.__self__) is SearchFactory
-        and index_factory.__self__.index_computation
-        == IndexComputationType.MIN_GLOBAL_CHANGE
+        and index_factory.__self__.index_computation is recipe.index_computation
         and index_factory.__self__.depth_index is False,
         "unsupported future-node index factory recipe",
     )
@@ -145,7 +149,12 @@ def _owner_stamp(
         "unsupported future-node max/proof recipe",
     )
     require(
-        type(manager.index_manager) is UpdateIndexGlobalMinChange,
+        type(manager.index_manager)
+        is (
+            NullNodeExplorationIndexManager
+            if recipe.index_computation is None
+            else UpdateIndexGlobalMinChange
+        ),
         "unsupported index recipe",
     )
     require(
@@ -225,7 +234,11 @@ def _owner_stamp(
             type(node) is AlgorithmNode
             and node.state_representation is None
             and type(node.tree_evaluation) is NodeMaxEvaluation
-            and type(node.exploration_index_data) is MinMaxPathValue,
+            and (
+                node.exploration_index_data is None
+                if recipe.index_computation is None
+                else type(node.exploration_index_data) is MinMaxPathValue
+            ),
             "unsupported derived object type",
         )
         evaluation = node.tree_evaluation
@@ -423,18 +436,19 @@ def stage_evaluator_context(
     for owner, (node_id, evaluation, index) in zip(owner_nodes, records, strict=True):
         limits.check()
         require(
-            evaluation is not None
-            and index is not None
-            and index["kind"] == "MinMaxPathValue",
+            evaluation is not None,
             "missing derived coverage",
         )
         eval_payload = _node_evaluation_payload_from_mapping(evaluation)
-        index_payload = _exploration_index_payload_from_mapping(index)
+        index_payload = (
+            None if index is None else _exploration_index_payload_from_mapping(index)
+        )
+        validate_index_payload(index_payload, current_source.recipe)
         shell = AlgorithmNode(
             tree_node=owner.tree_node,
             tree_evaluation=factory.create(owner.tree_node),
             exploration_index_data=create_exploration_index_data(
-                owner.tree_node, IndexComputationType.MIN_GLOBAL_CHANGE
+                owner.tree_node, current_source.recipe.index_computation
             ),
             state_representation=None,
         )

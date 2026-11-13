@@ -32,6 +32,7 @@ from anemone.tree_manager.opening_expansion_config import (
 from tests.morpion_refresh_helpers import Dynamics, State
 from tests.test_prepared_evaluator import (
     IDENTITY,
+    INDEX_RECIPES,
     Candidate,
     Codec,
     Incumbent,
@@ -41,8 +42,8 @@ from tests.test_prepared_evaluator import (
 )
 
 
-def configuration(rollout: bool) -> Any:
-    result = args()
+def configuration(rollout: bool, index_computation: Any = INDEX_RECIPES[1]) -> Any:
+    result = args(index_computation)
     if rollout:
         result.opening_expansion = OpeningExpansionConfig(
             kind=OpeningExpansionKind.ROLLOUT,
@@ -56,9 +57,13 @@ def configuration(rollout: bool) -> Any:
 
 
 def source_case(
-    *, rollout: bool = False, steps: int = 5, state: State | None = None
+    *,
+    rollout: bool = False,
+    steps: int = 5,
+    state: State | None = None,
+    index_computation: Any = INDEX_RECIPES[1],
 ) -> Any:
-    config = configuration(rollout)
+    config = configuration(rollout, index_computation)
     owner = create_search_with_tree_eval_factory(
         state_type=State,
         dynamics=Dynamics(),
@@ -73,6 +78,7 @@ def source_case(
         owner.step()
     recipe = SupportedSearchRecipe(
         opening_expansion=config.opening_expansion,
+        index_computation=index_computation,
         rng_layout="independent_rollout" if rollout else "search_only",
     )
     return owner, config, recipe
@@ -128,8 +134,13 @@ def prepare_install(
 
 
 @pytest.mark.parametrize("rollout", [False, True])
-def test_transpositions_independent_rngs_and_cold_continuation(rollout: bool) -> None:
-    live, config, recipe = source_case(rollout=rollout)
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_transpositions_independent_rngs_and_cold_continuation(
+    rollout: bool, index_computation: Any
+) -> None:
+    live, config, recipe = source_case(
+        index_computation=index_computation, rollout=rollout
+    )
     assert any(n.parent_count() > 1 for n in live._iter_nodes_by_depth())
     source = pinned(build_search_checkpoint_payload(live, state_codec=Codec()), recipe)
     owner, plan, _, candidate = prepare_install(source, config)
@@ -180,8 +191,11 @@ def test_transpositions_independent_rngs_and_cold_continuation(rollout: bool) ->
     assert native_bytes(owner) == native_bytes(cold)
 
 
-def test_alternate_codec_parent_is_distinct_from_graph_parent() -> None:
-    live, config, recipe = source_case(steps=6)
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_alternate_codec_parent_is_distinct_from_graph_parent(
+    index_computation: Any,
+) -> None:
+    live, config, recipe = source_case(index_computation=index_computation, steps=6)
     payload = build_search_checkpoint_payload(live, state_codec=Codec())
     nodes = {n.id: n for n in live._iter_nodes_by_depth()}
     record = next(n for n in payload.tree.nodes if nodes[n.node_id].parent_count() > 1)
@@ -229,8 +243,11 @@ def endgame() -> State:
     raise AssertionError(message)
 
 
-def test_terminal_forced_and_estimate_parity() -> None:
-    live, config, recipe = source_case(steps=1, state=endgame())
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_terminal_forced_and_estimate_parity(index_computation: Any) -> None:
+    live, config, recipe = source_case(
+        index_computation=index_computation, steps=1, state=endgame()
+    )
     payload = build_search_checkpoint_payload(live, state_codec=Codec())
     source = pinned(payload, recipe)
     owner, plan, context, candidate = prepare_install(
@@ -249,8 +266,13 @@ def test_terminal_forced_and_estimate_parity() -> None:
     assert context.skipped_terminal_count >= 1
 
 
-def test_direct_forced_requires_readonly_domain_evidence() -> None:
-    live, _, recipe = source_case(steps=1, state=endgame())
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_direct_forced_requires_readonly_domain_evidence(
+    index_computation: Any,
+) -> None:
+    live, _, recipe = source_case(
+        index_computation=index_computation, steps=1, state=endgame()
+    )
     live.tree.root_node.tree_evaluation.direct_value = (
         live.tree.root_node.tree_evaluation.tree_value
     )
@@ -271,7 +293,10 @@ def test_direct_forced_requires_readonly_domain_evidence() -> None:
     assert context.skipped_certified_count >= 1
 
 
-def test_current_head_requires_full_rebuild_but_raw_predictions_can_be_reused() -> None:
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_current_head_requires_full_rebuild_but_raw_predictions_can_be_reused(
+    index_computation: Any,
+) -> None:
     class CachedCandidate(Candidate):
         """Cache exact scalar inputs under the complete frozen evaluation identity."""
 
@@ -298,7 +323,7 @@ def test_current_head_requires_full_rebuild_but_raw_predictions_can_be_reused() 
                 result.append(self.cache[key])
             return result
 
-    live, config, recipe = source_case(steps=1)
+    live, config, recipe = source_case(index_computation=index_computation, steps=1)
     earlier = pinned(build_search_checkpoint_payload(live, state_codec=Codec()), recipe)
     candidate = CachedCandidate()
     old = prepare_evaluator_context(
@@ -338,8 +363,11 @@ def test_current_head_requires_full_rebuild_but_raw_predictions_can_be_reused() 
     assert native_bytes(owner) == native_bytes(reference)
 
 
-def test_aliased_rollout_rng_is_refused_before_mutation() -> None:
-    live, config, recipe = source_case(rollout=True)
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_aliased_rollout_rng_is_refused_before_mutation(index_computation: Any) -> None:
+    live, config, recipe = source_case(
+        index_computation=index_computation, rollout=True
+    )
     source = pinned(build_search_checkpoint_payload(live, state_codec=Codec()), recipe)
     owner, _, prepared, candidate = prepare_install(source, config)
     owner.tree_manager.opening_expansion_executor.rollout_action_selector.random_generator = owner.node_selector.base.random_generator

@@ -29,6 +29,7 @@ from anemone.tree_manager.opening_expansion_config import (
 )
 from tests.test_prepared_evaluator import (
     IDENTITY,
+    INDEX_RECIPES,
     Candidate,
     Codec,
     cold,
@@ -42,8 +43,9 @@ from tests.test_prepared_evaluator import (
 @pytest.mark.parametrize(
     "fault", ["deadline", "cancel", "decodes", "payload", "recipe", "rollout-state"]
 )
-def test_bounded_freeze_refusal(fault: str) -> None:
-    source, _, _, _ = prepared_case()
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_bounded_freeze_refusal(fault: str, index_computation: Any) -> None:
+    source, _, _, _ = prepared_case(index_computation)
     payload = decode(source._checkpoint_bytes)
     budget = limits()
     recipe = source.recipe
@@ -73,8 +75,11 @@ def test_bounded_freeze_refusal(fault: str) -> None:
 
 
 @pytest.mark.parametrize("fault", ["recipe", "model", "coverage", "cancel", "bindings"])
-def test_stage_failure_leaves_complete_owner_unchanged(fault: str) -> None:
-    source, prepared, candidate, owner = prepared_case()
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_stage_failure_leaves_complete_owner_unchanged(
+    fault: str, index_computation: Any
+) -> None:
+    source, prepared, candidate, owner = prepared_case(index_computation)
     budget = limits()
     if fault == "recipe":
         owner.stopping_criterion.tree_branch_limit -= 1
@@ -106,13 +111,14 @@ def test_stage_failure_leaves_complete_owner_unchanged(fault: str) -> None:
         assert not plan._nodes and plan._evaluator is None
 
 
-def test_inference_failure_never_touches_owner() -> None:
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_inference_failure_never_touches_owner(index_computation: Any) -> None:
     class Failing(Candidate):
         def evaluate_batch_items(self, items: Any) -> Any:
             message = "injected inference failure"
             raise RuntimeError(message)
 
-    source, _, _, owner = prepared_case()
+    source, _, _, owner = prepared_case(index_computation)
     before = native_bytes(owner)
     with pytest.raises(RuntimeError, match="injected inference"):
         prepare_evaluator_context(
@@ -121,8 +127,11 @@ def test_inference_failure_never_touches_owner() -> None:
     assert native_bytes(owner) == before
 
 
-def test_repeated_candidate_preserves_structured_incumbent_identity() -> None:
-    source, prepared, candidate, owner = prepared_case()
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_repeated_candidate_preserves_structured_incumbent_identity(
+    index_computation: Any,
+) -> None:
+    source, prepared, candidate, owner = prepared_case(index_computation)
     stage(source, prepared, candidate, owner).install()
     # A newly committed checkpoint can bind the previous candidate's full identity.
     next_source = freeze_evaluator_source(
@@ -141,9 +150,9 @@ def test_repeated_candidate_preserves_structured_incumbent_identity() -> None:
         evaluation_identity=next_identity,
         limits=limits(),
     )
-    owner = cold(decode(next_source._checkpoint_bytes))
+    owner = cold(decode(next_source._checkpoint_bytes), index_computation)
     owner.tree_manager.node_evaluator.master_state_value_evaluator = candidate
-    reference = cold(decode(next_source._checkpoint_bytes))
+    reference = cold(decode(next_source._checkpoint_bytes), index_computation)
     reference.refresh_with_evaluator(next_candidate, scope="all")
     stage_evaluator_context(
         owner,
@@ -158,11 +167,12 @@ def test_repeated_candidate_preserves_structured_incumbent_identity() -> None:
 
 
 @pytest.mark.parametrize("layout", ["node_records", "split"])
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
 def test_native_streaming_export_exact_after_install(
-    tmp_path: Path, layout: str
+    tmp_path: Path, layout: str, index_computation: Any
 ) -> None:
-    source, prepared, candidate, owner = prepared_case()
-    reference = cold(decode(source._checkpoint_bytes))
+    source, prepared, candidate, owner = prepared_case(index_computation)
+    reference = cold(decode(source._checkpoint_bytes), index_computation)
     reference.refresh_with_evaluator(candidate, scope="all")
     stage(source, prepared, candidate, owner).install()
     for name, search in [("installed", owner), ("cold", reference)]:
@@ -195,7 +205,7 @@ def test_native_streaming_export_exact_after_install(
         tmp_path / "installed",
         state_codec=Codec(),
         dynamics=Dynamics(),
-        args=args(),
+        args=args(index_computation),
         state_type=State,
         master_state_value_evaluator=candidate,
         node_tree_evaluation_factory=NodeMaxEvaluationFactory(),
@@ -205,10 +215,11 @@ def test_native_streaming_export_exact_after_install(
     assert native_bytes(owner) == native_bytes(restored)
 
 
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
 def test_invalidated_runtime_refuses_streaming_before_creating_files(
-    tmp_path: Path, monkeypatch: Any
+    tmp_path: Path, monkeypatch: Any, index_computation: Any
 ) -> None:
-    source, prepared, candidate, owner = prepared_case()
+    source, prepared, candidate, owner = prepared_case(index_computation)
     plan = stage(source, prepared, candidate, owner)
     original = installation._assign_node
 
@@ -226,7 +237,10 @@ def test_invalidated_runtime_refuses_streaming_before_creating_files(
     assert not output.exists()
 
 
-def test_cancellation_after_inference_returns_no_context() -> None:
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_cancellation_after_inference_returns_no_context(
+    index_computation: Any,
+) -> None:
     cancelled = False
 
     class CancellingCandidate(Candidate):
@@ -236,7 +250,7 @@ def test_cancellation_after_inference_returns_no_context() -> None:
             cancelled = True
             return values
 
-    source, _, _, owner = prepared_case()
+    source, _, _, owner = prepared_case(index_computation)
     before = native_bytes(owner)
     with pytest.raises(ValueError, match="cancelled"):
         prepare_evaluator_context(
@@ -248,7 +262,10 @@ def test_cancellation_after_inference_returns_no_context() -> None:
     assert native_bytes(owner) == before
 
 
-def test_stochastic_candidate_is_refused_without_resetting_growth_rngs() -> None:
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_stochastic_candidate_is_refused_without_resetting_growth_rngs(
+    index_computation: Any,
+) -> None:
     import random
 
     class StochasticCandidate(Candidate):
@@ -256,7 +273,7 @@ def test_stochastic_candidate_is_refused_without_resetting_growth_rngs() -> None
             random.random()
             return super().evaluate_batch_items(items)
 
-    source, _, _, owner = prepared_case()
+    source, _, _, owner = prepared_case(index_computation)
     before = native_bytes(owner)
     ambient = random.getstate()
     try:
@@ -275,10 +292,13 @@ def test_stochastic_candidate_is_refused_without_resetting_growth_rngs() -> None
 @pytest.mark.parametrize(
     "fault", ["cached-input", "representation-factory", "factory-swap"]
 )
-def test_unsupported_or_changed_input_bindings_refuse(fault: str) -> None:
+@pytest.mark.parametrize("index_computation", INDEX_RECIPES)
+def test_unsupported_or_changed_input_bindings_refuse(
+    fault: str, index_computation: Any
+) -> None:
     from copy import copy
 
-    source, prepared, candidate, owner = prepared_case()
+    source, prepared, candidate, owner = prepared_case(index_computation)
     factory = owner.tree_manager.tree_manager.node_factory
     plan = None
     if fault == "factory-swap":
