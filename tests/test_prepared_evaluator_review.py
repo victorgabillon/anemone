@@ -189,3 +189,32 @@ def test_plan_disposal_and_dead_owner_refuse_without_retaining_runtime() -> None
     plan.dispose()
     with pytest.raises(PreparedEvaluatorRefusal, match="consumed"):
         plan.install()
+
+
+@pytest.mark.parametrize("when", ["before-stage", "after-stage"])
+@pytest.mark.parametrize("fault", ["callable", "index-kind", "depth-index"])
+def test_future_node_index_factory_is_part_of_the_supported_recipe(
+    when: str, fault: str
+) -> None:
+    from anemone.indices.node_indices.index_types import IndexComputationType
+
+    from tests.test_prepared_evaluator import stage
+
+    source, prepared, candidate, owner = prepared_case()
+    plan = stage(source, prepared, candidate, owner) if when == "after-stage" else None
+    factory = owner.tree_manager.tree_manager.node_factory
+    if fault == "callable":
+        factory.exploration_index_data_create = lambda node: None
+    elif fault == "index-kind":
+        factory.exploration_index_data_create.__self__.index_computation = (
+            IndexComputationType.MIN_LOCAL_CHANGE
+        )
+    else:
+        factory.exploration_index_data_create.__self__.depth_index = True
+    before = native_bytes(owner)
+    with pytest.raises(PreparedEvaluatorRefusal):
+        if plan is None:
+            stage(source, prepared, candidate, owner)
+        else:
+            plan.install()
+    assert native_bytes(owner) == before and not owner._prepared_evaluator_invalidated

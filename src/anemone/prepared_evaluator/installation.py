@@ -3,6 +3,7 @@
 # Runtime annotations match the existing native checkpoint helpers.
 import json
 from dataclasses import dataclass
+from types import MethodType
 from typing import Any, cast
 from weakref import ref
 
@@ -47,6 +48,7 @@ from anemone.rollouts import (
     RandomOpenableActionSelector,
     RolloutOpeningExpansionExecutor,
 )
+from anemone.search_factory.search_factory import SearchFactory
 from anemone.tree_exploration import TreeExploration
 from anemone.tree_manager.opening_expansion_config import (
     OpeningExpansionKind,
@@ -118,6 +120,16 @@ def _owner_stamp(
         and factory.state_representation_factory is None
         and type(factory.node_tree_evaluation_factory) is NodeMaxEvaluationFactory,
         "unsupported factory/representation recipe",
+    )
+    index_factory = factory.exploration_index_data_create
+    require(
+        type(index_factory) is MethodType
+        and index_factory.__func__ is SearchFactory.node_index_create
+        and type(index_factory.__self__) is SearchFactory
+        and index_factory.__self__.index_computation
+        == IndexComputationType.MIN_GLOBAL_CHANGE
+        and index_factory.__self__.depth_index is False,
+        "unsupported future-node index factory recipe",
     )
     evaluation_factory = cast(
         "NodeMaxEvaluationFactory[Any]", factory.node_tree_evaluation_factory
