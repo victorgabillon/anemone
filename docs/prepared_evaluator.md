@@ -111,7 +111,11 @@ executors/selectors/proof/index policies and missing histories refuse.
 
 An admitted zero-argument inline codec class declares
 `prepared_domain = "morpion-inline-v1"` and promises exclusively owned decoded state.
-It must implement the existing incremental native codec. All anchor/delta parents
+It must implement the existing incremental native codec. Saved data is admitted
+before native atom restoration: only the built-in `valanga.game.SoloRole.SOLO`
+enum atom is supported; other module/qualname-bearing enum atoms refuse. JSON
+nesting is bounded at 256 levels. Ordinary native checkpoint APIs retain their
+existing broader trusted-input contract. All anchor/delta parents
 must be covered, acyclic and lower-depth. Codec ancestry may differ from graph
 ancestry; native restoration remains authoritative. External state stores, reader
 leases, arbitrary plugin factories and incomplete checkpoints are unsupported.
@@ -123,7 +127,9 @@ runtime export/continuation. No Chipiron codec or dependency was modified here.
 predicate and positive node, branch, serialized-byte and state-decode ceilings.
 Defaults are 512 nodes, 4096 branches, 16 MiB per source/derived artifact and 1024
 state decodes per reconstruction. The same limits object may span all phases;
-no phase renews its deadline. Decode allowances apply to each reconstruction, not
+no phase renews its deadline. Source and derived byte limits are rechecked before
+preparation/staging decoding even when artifacts were built under larger limits.
+Decode allowances apply to each reconstruction, not
 a cumulative multi-attempt reservation; the caller accounts attempts globally.
 Checks occur around inference batches, during reconstruction/backup and between
 canonical phases. Index/selector calls and arbitrary native inference cannot be

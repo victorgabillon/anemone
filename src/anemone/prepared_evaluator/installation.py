@@ -64,7 +64,14 @@ from .contracts import (
     RuntimeInvalidated,
     require,
 )
-from .native import decode, derived, encode, fingerprint, reconstruct
+from .native import (
+    decode,
+    derived,
+    encode,
+    fingerprint,
+    reconstruct,
+    validate_data_atoms,
+)
 
 
 def _owner_stamp(
@@ -362,6 +369,14 @@ def stage_evaluator_context(
 ) -> EvaluatorInstallPlan:
     """Allocate all candidate-derived objects and validate before owner mutation."""
     limits.check()
+    require(
+        len(current_source._checkpoint_bytes) <= limits.max_payload_bytes,
+        "source payload bound exceeded",
+    )
+    require(
+        len(prepared._derived_bytes) <= limits.max_payload_bytes,
+        "derived payload bound exceeded",
+    )
     require(prepared.source == current_source, "stale prepared source identity")
     require(
         prepared.evaluation_identity == evaluation_identity
@@ -383,6 +398,7 @@ def stage_evaluator_context(
         limits,
     )
     data = json.loads(prepared._derived_bytes)
+    validate_data_atoms(data, limits)
     records = data["nodes"]
     owner_nodes = list(iter_nodes(search.tree))
     require(

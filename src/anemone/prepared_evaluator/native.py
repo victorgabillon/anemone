@@ -108,6 +108,40 @@ def decode(raw: bytes) -> SearchRuntimeCheckpointPayload:
     )
 
 
+def validate_data_atoms(value: object, limits: PreparationLimits) -> None:
+    """Admit inert JSON data before native atom readers can resolve enum imports.
+
+    Morpion v1 needs only the already-imported native solo-role enum. Codec
+    payloads and derived records cannot select arbitrary modules or qualnames.
+    This is admission around the native reader, not a second atom decoder.
+    """
+    pending = [(value, 0)]
+    while pending:
+        limits.check()
+        item, depth = pending.pop()
+        require(depth <= 256, "prepared data nesting bound exceeded")
+        if isinstance(item, dict):
+            if item.get("type") == "enum":
+                require(
+                    item
+                    == {
+                        "type": "enum",
+                        "module": "valanga.game",
+                        "qualname": "SoloRole",
+                        "name": "SOLO",
+                    },
+                    "unsupported prepared enum atom",
+                )
+            pending.extend((child, depth + 1) for child in item.values())
+        elif isinstance(item, list):
+            pending.extend((child, depth + 1) for child in item)
+        else:
+            require(
+                item is None or isinstance(item, (bool, int, float, str)),
+                "unsupported prepared data atom",
+            )
+
+
 def validate_source(
     payload: SearchRuntimeCheckpointPayload,
     recipe: SupportedSearchRecipe,
@@ -115,6 +149,7 @@ def validate_source(
 ) -> None:
     """Admit complete layered DAG/codec ancestry and exact non-null derived coverage."""
     limits.check()
+    validate_data_atoms(checkpoint_payload_to_jsonable(payload), limits)
     _validate_payload(payload)
     require(
         recipe.depth_selection_policy
@@ -268,6 +303,8 @@ def reconstruct(
     limits: PreparationLimits,
 ) -> Arena:
     """Follow native cold node/link/parent/selector restoration exactly."""
+    limits.check()
+    require(len(raw) <= limits.max_payload_bytes, "source payload bound exceeded")
     payload = decode(raw)
     validate_source(payload, recipe, limits)
     require(
