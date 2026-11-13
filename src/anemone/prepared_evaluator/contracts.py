@@ -1,5 +1,6 @@
 """Bounded identities and immutable artifacts for native prepared evaluation."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from time import monotonic
 from typing import Any, Literal
@@ -25,17 +26,6 @@ def require(condition: bool, reason: str) -> None:
 
 
 @dataclass(frozen=True, slots=True)
-class SourceIdentity:
-    """Caller-authenticated publication, incumbent and codec/build identity."""
-
-    publication: str
-    incumbent: str
-    codec: str
-    anemone_build: str
-    domain: Literal["morpion"] = "morpion"
-
-
-@dataclass(frozen=True, slots=True)
 class EvaluationIdentity:
     """Complete opaque prediction identity; authentication remains with the caller."""
 
@@ -48,6 +38,17 @@ class EvaluationIdentity:
     numerical_profile: Literal["cpu-fp32-strict-scalar-v1"] = (
         "cpu-fp32-strict-scalar-v1"
     )
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIdentity:
+    """Caller-authenticated publication, incumbent and codec/build identity."""
+
+    publication: str
+    incumbent: str | EvaluationIdentity
+    codec: str
+    anemone_build: str
+    domain: Literal["morpion"] = "morpion"
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,9 +72,11 @@ class PreparationLimits:
     max_branches: int = 4096
     max_payload_bytes: int = 16 * 1024 * 1024
     max_state_decodes: int = 1024
+    cancelled: Callable[[], bool] | None = None
 
     def check(self) -> None:
         """Check the original deadline; no phase renews it."""
+        require(self.cancelled is None or not self.cancelled(), "preparation cancelled")
         require(monotonic() < self.deadline_monotonic, "preparation deadline exhausted")
         require(
             min(

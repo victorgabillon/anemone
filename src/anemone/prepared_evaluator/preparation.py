@@ -173,6 +173,7 @@ def prepare_evaluator_context(
         latest_tree_expansions=arena.expansions,
         batch_size=64,
         validate_direct_certificate=validate_direct_certificate,
+        check_limits=limits.check,
     )
     require(
         arena.random.getstate() == rng and _ambient_rng() == before,

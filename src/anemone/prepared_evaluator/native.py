@@ -67,6 +67,10 @@ from anemone.node_selector.linoo import Linoo
 from anemone.node_selector.opening_instructions import OpeningInstructor
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
+from anemone.tree_manager.opening_expansion_config import (
+    OpeningExpansionKind,
+    RolloutActionSelectorKind,
+)
 from anemone.tree_manager.tree_expander import TreeExpansions
 from anemone.trees.tree import Tree
 
@@ -118,6 +122,23 @@ def validate_source(
         "unsupported Linoo policy",
     )
     require(recipe.branch_limit > 0, "invalid branch limit")
+    opening = recipe.opening_expansion
+    require(
+        (
+            opening.kind == OpeningExpansionKind.ONE_PLY
+            and recipe.rng_layout == "search_only"
+        )
+        or (
+            opening.kind == OpeningExpansionKind.ROLLOUT
+            and recipe.rng_layout == "independent_rollout"
+            and opening.rollout.action_selector_kind
+            in (
+                RolloutActionSelectorKind.RANDOM_OPENABLE,
+                RolloutActionSelectorKind.RANDOM_LEGAL_PREFER_OPENABLE,
+            )
+        ),
+        "unsupported opening/RNG recipe",
+    )
     require(
         payload.selector_state is not None,
         "uninitialized/absent selector state is unsupported in v1",
@@ -288,6 +309,8 @@ def reconstruct(
     tree = _build_tree(payload=payload, nodes_by_id=nodes)
     random = Random(0)
     restore_random_state(random, payload.rng_state)
+    if payload.rollout_rng_state is not None:
+        restore_random_state(Random(0), payload.rollout_rng_state)
     selector = Linoo[Any](
         cast("OpeningInstructor", _NoOpening()),
         random,

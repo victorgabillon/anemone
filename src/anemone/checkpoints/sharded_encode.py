@@ -80,6 +80,7 @@ def write_sharded_search_checkpoint_from_search(
     node/branch data. Selector and manifest metadata retain their existing size.
     The caller still owns validation, fsync and immutable publication.
     """
+    search._require_valid_runtime()
     metrics = _CheckpointBuildMetrics()
     context = _CheckpointBuildContext(metrics=metrics)
     _maybe_reset_checkpoint_profile(state_codec)

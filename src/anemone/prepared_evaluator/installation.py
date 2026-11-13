@@ -265,30 +265,35 @@ class EvaluatorInstallPlan:
         """Recheck preconditions, then install once with no inference/backup/Growth."""
         require(not self._used, "installation plan already consumed")
         self._used = True
-        self._limits.check()
-        search = self._owner()
-        require(search is not None, "installation owner no longer exists")
-        assert search is not None
-        context = self._context
-        require(
-            getattr(self._evaluator, "evaluation_identity", None)
-            == context.evaluation_identity,
-            "model identity changed after staging",
-        )
-        require(
-            _owner_stamp(search, context.source) == self._stamp,
-            "owner bindings changed after staging",
-        )
-        old_version = search.evaluator_version
-        report = InstallReport(
-            context.source.native_fingerprint,
-            context.evaluation_identity,
-            old_version,
-            context.evaluator_version,
-            len(self._nodes),
-            True,
-        )
-        assert self._selector is not None and self._evaluator is not None
+        try:
+            self._limits.check()
+            search = self._owner()
+            require(search is not None, "installation owner no longer exists")
+            assert search is not None
+            context = self._context
+            require(
+                getattr(self._evaluator, "evaluation_identity", None)
+                == context.evaluation_identity,
+                "model identity changed after staging",
+            )
+            require(
+                _owner_stamp(search, context.source) == self._stamp,
+                "owner bindings changed after staging",
+            )
+            old_version = search.evaluator_version
+            report = InstallReport(
+                context.source.native_fingerprint,
+                context.evaluation_identity,
+                old_version,
+                context.evaluator_version,
+                len(self._nodes),
+                True,
+            )
+            assert self._selector is not None and self._evaluator is not None
+            self._limits.check()
+        except BaseException:
+            self.dispose()
+            raise
         # From this point, any exception invalidates the private runtime. There
         # is intentionally no claim of general rollback or durable publication.
         search._prepared_evaluator_invalidated = True

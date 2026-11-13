@@ -4,8 +4,9 @@ from collections.abc import Iterator, Mapping
 from types import MappingProxyType
 from typing import Any, Protocol, cast
 
-from valanga import BranchKey
+from valanga import BranchKey, StateTag
 
+from anemone.nodes.state_handles import StateHandle  # noqa: TC001
 from anemone.nodes.tree_node import TreeNode
 
 
@@ -15,6 +16,30 @@ class ReadNodeStructure(Protocol):
     @property
     def id(self) -> int:
         """Return the stable native node id."""
+        ...
+
+    @property
+    def tree_depth(self) -> int:
+        """Return the native absolute depth."""
+        ...
+
+    @property
+    def tag(self) -> StateTag:
+        """Return the native state identity."""
+        ...
+
+    @property
+    def state_handle(self) -> StateHandle[Any]:
+        """Read an arena-owned state binding, never an owner handle."""
+        ...
+
+    @property
+    def all_branches_generated(self) -> bool:
+        """Return whether all structural branches have been generated."""
+        ...
+
+    def iter_unopened_branches(self) -> Iterator[BranchKey]:
+        """Read unopened membership without exposing the backing set."""
         ...
 
     def iter_child_links(self) -> Iterator[tuple[BranchKey, Any]]:
@@ -32,7 +57,7 @@ class DetachedStructure(TreeNode[Any, Any]):
     _sealed: bool = False
 
     @classmethod
-    def from_node(cls, node: TreeNode[Any, Any]) -> DetachedStructure:
+    def from_node(cls, node: ReadNodeStructure) -> DetachedStructure:
         """Copy native structural bindings; all linked nodes belong to the arena."""
         result = cls(
             node.id,

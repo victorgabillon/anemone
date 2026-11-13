@@ -75,10 +75,13 @@ def refresh_bound_context[NodeT: AlgorithmNode[Any]](
     latest_tree_expansions: TreeExpansions[NodeT],
     batch_size: int,
     validate_direct_certificate: Callable[[NodeT], bool] | None,
+    check_limits: Callable[[], None] | None = None,
 ) -> ReevaluationReport:
     """Evaluate, back up, index and refresh selection in canonical order."""
     report = ReevaluationReport(evaluator_version, 0, 0, 0)
     for batch in batched(iter_nodes(tree), batch_size, strict=False):
+        if check_limits is not None:
+            check_limits()
         outcome = evaluator.evaluate_nodes(
             batch,
             evaluation_queries=evaluation_queries,
@@ -93,6 +96,8 @@ def refresh_bound_context[NodeT: AlgorithmNode[Any]](
         report.skipped_certified_count += outcome.skipped_certified_count
 
     for node in iter_nodes(tree, reverse=True):
+        if check_limits is not None:
+            check_limits()
         evaluation = node.tree_evaluation
         branches = {b for b, child in node.iter_child_links() if child is not None}
         if branches:
@@ -105,7 +110,11 @@ def refresh_bound_context[NodeT: AlgorithmNode[Any]](
                 evaluation.tree_value = certificate
         validate_refresh_node(node, validate_direct_certificate)
 
+    if check_limits is not None:
+        check_limits()
     update_all_indices(tree=tree, index_manager=index_manager)
+    if check_limits is not None:
+        check_limits()
     invalidate_selector(node_selector)
     objective = tree.root_node.tree_evaluation.required_objective
     if isinstance(node_selector, node_sel.StatefulNodeSelector) and isinstance(
@@ -119,4 +128,6 @@ def refresh_bound_context[NodeT: AlgorithmNode[Any]](
             objective=objective,
             latest_tree_expansions=latest_tree_expansions,
         )
+    if check_limits is not None:
+        check_limits()
     return report
