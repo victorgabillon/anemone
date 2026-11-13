@@ -270,3 +270,29 @@ def test_stochastic_candidate_is_refused_without_resetting_growth_rngs() -> None
         assert native_bytes(owner) == before
     finally:
         random.setstate(ambient)
+
+
+@pytest.mark.parametrize(
+    "fault", ["cached-input", "representation-factory", "factory-swap"]
+)
+def test_unsupported_or_changed_input_bindings_refuse(fault: str) -> None:
+    from copy import copy
+
+    source, prepared, candidate, owner = prepared_case()
+    factory = owner.tree_manager.tree_manager.node_factory
+    plan = None
+    if fault == "factory-swap":
+        plan = stage(source, prepared, candidate, owner)
+        owner.tree_manager.tree_manager.node_factory = copy(factory)
+    elif fault == "cached-input":
+        owner.tree.root_node._state_representation = object()
+    else:
+        factory.state_representation_factory = object()
+    before = native_bytes(owner)
+    with pytest.raises(ValueError):
+        if plan is None:
+            stage(source, prepared, candidate, owner)
+        else:
+            plan.install()
+    assert native_bytes(owner) == before
+    assert not owner._prepared_evaluator_invalidated

@@ -100,7 +100,8 @@ is not a durable acceptance receipt or a performance report.
 
 V1 admits real Atomheart Morpion state adapters, a layered single-agent max DAG,
 built-in `ExplicitMaxBackupPolicy`/`BestChildAggregationPolicy`/`MaxProofPolicy`,
-non-null `MIN_GLOBAL_CHANGE` indexes, branch-count stopping, all-children opening
+non-null `MIN_GLOBAL_CHANGE` indexes, native node factories without cached
+evaluator-side state representations, branch-count stopping, all-children opening
 and `ComposedNodeSelector(NoPriorityCheck, Linoo)` with initialized checkpointed
 selector history. The recipe binds Linoo policy, branch limit and the full opening
 configuration. One-ply uses the search RNG; supported random-openable or

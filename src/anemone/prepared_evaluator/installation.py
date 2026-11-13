@@ -33,6 +33,8 @@ from anemone.node_evaluation.tree.single_agent.factory import NodeMaxEvaluationF
 from anemone.node_evaluation.tree.single_agent.node_max_evaluation import (
     NodeMaxEvaluation,
 )
+from anemone.node_factory.algorithm_node_factory import AlgorithmNodeFactory
+from anemone.node_factory.base import TreeNodeFactory
 from anemone.node_selector.composed.composed_node_selector import ComposedNodeSelector
 from anemone.node_selector.linoo import Linoo
 from anemone.node_selector.opening_instructions import OpeningType
@@ -98,6 +100,31 @@ def _owner_stamp(
         "stopping recipe mismatch",
     )
     manager = search.tree_manager
+    factory = manager.tree_manager.node_factory
+    require(
+        type(factory) is AlgorithmNodeFactory,
+        "unsupported node factory",
+    )
+    assert isinstance(factory, AlgorithmNodeFactory)
+    require(
+        type(factory.tree_node_factory) is TreeNodeFactory
+        and factory.state_representation_factory is None
+        and type(factory.node_tree_evaluation_factory) is NodeMaxEvaluationFactory,
+        "unsupported factory/representation recipe",
+    )
+    evaluation_factory = cast(
+        "NodeMaxEvaluationFactory[Any]", factory.node_tree_evaluation_factory
+    )
+    factory_policy = evaluation_factory.backup_policy
+    require(
+        evaluation_factory._evaluation_type is NodeMaxEvaluation
+        and type(evaluation_factory.objective) is SingleAgentMaxObjective
+        and type(factory_policy) is ExplicitMaxBackupPolicy
+        and type(cast("object", factory_policy.aggregation_policy))
+        is BestChildAggregationPolicy
+        and type(factory_policy.proof_policy) is MaxProofPolicy,
+        "unsupported future-node max/proof recipe",
+    )
     require(
         type(manager.index_manager) is UpdateIndexGlobalMinChange,
         "unsupported index recipe",
@@ -157,6 +184,14 @@ def _owner_stamp(
     identities: list[object] = [
         id(search),
         id(search.tree),
+        id(manager),
+        id(manager.tree_manager),
+        id(manager.index_manager),
+        id(manager.value_propagator),
+        id(factory),
+        id(factory.tree_node_factory),
+        id(evaluation_factory),
+        id(factory.exploration_index_data_create),
         id(selector),
         id(base.random_generator),
         id(rollout_rng),
@@ -169,6 +204,7 @@ def _owner_stamp(
     for node in iter_nodes(search.tree):
         require(
             type(node) is AlgorithmNode
+            and node.state_representation is None
             and type(node.tree_evaluation) is NodeMaxEvaluation
             and type(node.exploration_index_data) is MinMaxPathValue,
             "unsupported derived object type",
