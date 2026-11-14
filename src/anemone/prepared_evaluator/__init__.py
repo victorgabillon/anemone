@@ -1,0 +1,32 @@
+"""Bounded native prepared evaluation; no publication or activation authority."""
+
+from .contracts import (
+    EvaluationIdentity,
+    FrozenEvaluatorSource,
+    OwnedInlineCodecCapabilities,
+    PreparationLimits,
+    PreparedEvaluatorContext,
+    PreparedEvaluatorRefusal,
+    RuntimeInvalidated,
+    SourceIdentity,
+    SupportedSearchRecipe,
+)
+from .preparation import freeze_evaluator_source, prepare_evaluator_context
+
+__all__ = [
+    "EvaluationIdentity",
+    "FrozenEvaluatorSource",
+    "OwnedInlineCodecCapabilities",
+    "PreparationLimits",
+    "PreparedEvaluatorContext",
+    "PreparedEvaluatorRefusal",
+    "RuntimeInvalidated",
+    "SourceIdentity",
+    "SupportedSearchRecipe",
+    "freeze_evaluator_source",
+    "prepare_evaluator_context",
+]
+
+from .installation import EvaluatorInstallPlan, InstallReport, stage_evaluator_context
+
+__all__ += ["EvaluatorInstallPlan", "InstallReport", "stage_evaluator_context"]

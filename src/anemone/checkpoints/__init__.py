@@ -73,6 +73,7 @@ from .sharded import (
     write_sharded_search_checkpoint,
     write_sharded_search_checkpoint_from_search,
 )
+from .sharded_read_limits import ShardedCheckpointReadLimits
 from .state_handles import (
     DEFAULT_STATE_CACHE_CAPACITY,
     CheckpointBackedStateHandle,
@@ -135,6 +136,7 @@ __all__ = [
     "SerializedValuePayload",
     "ShardedCheckpointManifest",
     "ShardedCheckpointManifestError",
+    "ShardedCheckpointReadLimits",
     "ShardedCheckpointShardEncoding",
     "ShardedCheckpointShardKind",
     "ShardedCheckpointShardRef",

@@ -1,5 +1,7 @@
 """Write sharded checkpoint payloads to manifest and shard files."""
 
+# Streaming export must share the runtime-invalidation guard; keep it internal.
+
 # pyright: reportPrivateUsage=false
 from itertools import islice
 from pathlib import Path
@@ -80,6 +82,7 @@ def write_sharded_search_checkpoint_from_search(
     node/branch data. Selector and manifest metadata retain their existing size.
     The caller still owns validation, fsync and immutable publication.
     """
+    search._require_valid_runtime()  # pylint: disable=protected-access
     metrics = _CheckpointBuildMetrics()
     context = _CheckpointBuildContext(metrics=metrics)
     _maybe_reset_checkpoint_profile(state_codec)

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "algorhino-anemone"
-version = "0.3.1"
+version = "0.4.0"
 description = "anemone searches trees"
 keywords = ["tree", "search"]
 classifiers = [
@@ -15,6 +15,7 @@ classifiers = [
 requires-python = ">=3.14"
 dependencies = [
     "valanga==0.3.0",
+    "graphviz",
     "rich",
     "sortedcollections>=2.1.0",
     "PyYAML>=6.0",
