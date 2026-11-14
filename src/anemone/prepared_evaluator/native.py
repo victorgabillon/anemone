@@ -75,8 +75,10 @@ from anemone.tree_manager.tree_expander import TreeExpansions
 from anemone.trees.tree import Tree
 
 from .contracts import (
+    OwnedInlineCodecCapabilities,
     PreparationLimits,
     SupportedSearchRecipe,
+    codec_capabilities,
     require,
     validate_index_recipe,
 )
@@ -283,11 +285,18 @@ class _BudgetCodec:
         self, *, parent_state: Any, delta_ref: object, branch_from_parent: Any = None
     ) -> Any:
         self._tick()
-        return self.codec.load_child_from_delta(
+        before = (parent_state.tag, parent_state.is_game_over())
+        child = self.codec.load_child_from_delta(
             parent_state=parent_state,
             delta_ref=delta_ref,
             branch_from_parent=branch_from_parent,
         )
+        require(child is not parent_state, "codec returned parent state alias")
+        require(
+            before == (parent_state.tag, parent_state.is_game_over()),
+            "codec mutated parent state summary",
+        )
+        return child
 
     def dump_anchor_ref(self, state: Any) -> object:
         return self.codec.dump_anchor_ref(state)
@@ -318,17 +327,23 @@ def reconstruct(
     codec_type: type[IncrementalStateCheckpointCodec[Any]],
     recipe: SupportedSearchRecipe,
     limits: PreparationLimits,
+    *,
+    capability: OwnedInlineCodecCapabilities | None = None,
 ) -> Arena:
     """Follow native cold node/link/parent/selector restoration exactly."""
     limits.check()
     require(len(raw) <= limits.max_payload_bytes, "source payload bound exceeded")
     payload = decode(raw)
     validate_source(payload, recipe, limits)
+    declared = codec_capabilities(codec_type)
+    require(capability is None or declared == capability, "codec capability changed")
+    instance = codec_type()
+    require(type(instance) is codec_type, "codec construction changed class")
     require(
-        getattr(codec_type, "prepared_domain", None) == "morpion-inline-v1",
-        "codec must explicitly admit owned inline Morpion reconstruction; external stores unsupported",
+        getattr(instance, "prepared_capabilities", None) == declared,
+        "codec instance capability mismatch",
     )
-    codec = _BudgetCodec(codec_type(), limits)
+    codec = _BudgetCodec(instance, limits)
     resolver = _create_state_resolver(
         payload=payload, state_codec=codec, state_cache_capacity=limits.max_nodes
     )
@@ -385,19 +400,12 @@ def reconstruct(
         else _restore_tree_expansions(payload.latest_tree_expansions, nodes_by_id=nodes)
     )
     # Resolve the complete codec closure now, before any model inference.
+    state_ids: set[int] = set()
     for n in iter_nodes(tree):
         limits.check()
         state = n.state
-        board = getattr(state, "board", None)
-        if board is None:
-            unwrap = getattr(state, "to_atomheart_state", None)
-            require(callable(unwrap), "unsupported domain state")
-            assert callable(unwrap)
-            board = unwrap()
-        require(
-            type(board).__module__.startswith("atomheart.games.morpion"),
-            "unsupported domain state",
-        )
+        require(id(state) not in state_ids, "decoded state aliases another node")
+        state_ids.add(id(state))
         state_payload = cast(
             "CheckpointBackedStateHandle[Any]", handles[n.id]
         ).checkpoint_payload_for_reuse_or_none()
@@ -405,7 +413,9 @@ def reconstruct(
         summary = cast("dict[str, object] | None", state_payload.state_summary)
         require(
             summary is not None
-            and summary["tag"] == state.tag
+            and encode(summary["tag"]) == encode(serialize_checkpoint_atom(state.tag))
+            and type(summary["is_terminal"]) is bool
+            and type(state.is_game_over()) is bool
             and summary["is_terminal"] == state.is_game_over(),
             "decoded state/summary identity mismatch",
         )

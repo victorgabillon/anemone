@@ -98,7 +98,8 @@ is not a durable acceptance receipt or a performance report.
 
 ## Supported configuration and bounds
 
-V1 admits real Atomheart Morpion state adapters, a layered single-agent max DAG,
+V1 admits independently owned inline state codecs for any game satisfying the
+generic state contract, within a layered single-agent max DAG,
 built-in `ExplicitMaxBackupPolicy`/`BestChildAggregationPolicy`/`MaxProofPolicy`,
 either null indexes (`index_computation=None`) or `MIN_GLOBAL_CHANGE` indexes,
 native node factories without cached
@@ -126,8 +127,27 @@ as complete evidence. Source, candidate context and actual owner must agree on
 the recipe, including the bound factory used by subsequent Growth. Index absence
 does not relax graph, proof, codec, Linoo history, version or RNG validation.
 
-An admitted zero-argument inline codec class declares
-`prepared_domain = "morpion-inline-v1"` and promises exclusively owned decoded state.
+An admitted concrete zero-argument codec class declares, for example,
+`prepared_capabilities = OwnedInlineCodecCapabilities("counter-state-v1")`.
+The frozen declaration requires a stable nonempty schema identity and exactly
+`reconstruction="owned-inline-v1"`: all states and mutable codec data are freshly
+owned, reconstructed from inert inline records, with no external stores or leases.
+Changing schema semantics requires a new identity. `SourceIdentity.domain` is an
+explicit nonempty caller-authenticated namespace; it has no game-specific default.
+Source identity, exact codec class and the frozen capability travel together through
+preparation and staging. Owner codec class and instance declarations must match.
+Factories, supplied instances, custom metaclasses and custom `__new__` constructors
+are refused; construction must return a fresh instance of the admitted class.
+
+Complete decoded closure is checked against saved state tags and exact boolean
+terminal status. A decoder must not return its parent or reuse one state for two
+nodes, and it must preserve its parent's summary. Staging rejects decoded states
+aliasing the destination's already-resolved states without resolving owner states.
+Codecs remain trusted implementations: these checks cannot discover every hidden
+nested/global alias or prove ownership of arbitrary Python/native code. The explicit
+capability promises independent mutable ownership; callbacks violating it are
+unsupported. No board interface or module-name convention is required.
+
 It must implement the existing incremental native codec. Saved data is admitted
 before native atom restoration: only the built-in `valanga.game.SoloRole.SOLO`
 enum atom is supported; other module/qualname-bearing enum atoms refuse. JSON

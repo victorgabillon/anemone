@@ -88,7 +88,7 @@ def pinned(payload: Any, recipe: SupportedSearchRecipe) -> Any:
     return freeze_evaluator_source(
         payload,
         codec_type=Codec,
-        identity=SourceIdentity("head", "incumbent", "codec", "build"),
+        identity=SourceIdentity("head", "incumbent", "codec", "build", "morpion"),
         recipe=recipe,
         limits=limits(),
     )

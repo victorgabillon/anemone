@@ -99,13 +99,18 @@ def test_typed_roundtrip_all_fields(
     assert result.selector_state.selection_step_count == 3
 
 
+@pytest.mark.parametrize("independent", [False, True])
 def test_record_order_join_and_no_hidden_runtime(
-    tmp_path: Path, monkeypatch: Any
+    tmp_path: Path, monkeypatch: Any, independent: bool
 ) -> None:
     payload = _small_checkpoint_payload()
     write_sharded_search_checkpoint(payload, tmp_path, layout="split", encoding="jsonl")
-    for family in ("state_payloads", "node_runtime", "node_shells"):
-        rewrite(tmp_path, family, lambda rows: rows.reverse())
+    rewrite(tmp_path, "state_payloads", lambda rows: rows.reverse())
+    if independent:
+        rewrite(tmp_path, "node_runtime", lambda rows: rows.append(rows.pop(0)))
+    else:
+        for family in ("node_runtime", "node_shells"):
+            rewrite(tmp_path, family, lambda rows: rows.reverse())
 
     def forbidden(*args: Any, **kwargs: Any) -> None:
         message = "materializer constructed a runtime or invoked domain code"
@@ -121,7 +126,13 @@ def test_record_order_join_and_no_hidden_runtime(
     monkeypatch.setattr(Candidate, "evaluate_batch_items", forbidden)
     result = load_sharded_search_checkpoint(tmp_path, limits=read_limits())
     assert result == replace(
-        payload, tree=replace(payload.tree, nodes=list(reversed(payload.tree.nodes)))
+        payload,
+        tree=replace(
+            payload.tree,
+            nodes=payload.tree.nodes
+            if independent
+            else list(reversed(payload.tree.nodes)),
+        ),
     )
 
 

@@ -3,6 +3,7 @@
 from .contracts import (
     EvaluationIdentity,
     FrozenEvaluatorSource,
+    OwnedInlineCodecCapabilities,
     PreparationLimits,
     PreparedEvaluatorContext,
     PreparedEvaluatorRefusal,
@@ -15,6 +16,7 @@ from .preparation import freeze_evaluator_source, prepare_evaluator_context
 __all__ = [
     "EvaluationIdentity",
     "FrozenEvaluatorSource",
+    "OwnedInlineCodecCapabilities",
     "PreparationLimits",
     "PreparedEvaluatorContext",
     "PreparedEvaluatorRefusal",

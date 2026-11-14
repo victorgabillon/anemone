@@ -66,6 +66,7 @@ from .contracts import (
     PreparationLimits,
     PreparedEvaluatorContext,
     RuntimeInvalidated,
+    codec_capabilities,
     require,
     validate_index_recipe,
 )
@@ -254,7 +255,11 @@ def _owner_stamp(
         handle = node.state_handle
         require(
             type(handle) is CheckpointBackedStateHandle
-            and type(handle.resolver.state_codec) is source._codec_type,
+            and type(handle.resolver.state_codec) is source._codec_type
+            and codec_capabilities(type(handle.resolver.state_codec))
+            == source.codec_capability
+            and getattr(handle.resolver.state_codec, "prepared_capabilities", None)
+            == source.codec_capability,
             "owner codec/handle identity mismatch",
         )
         identities.append(
@@ -421,6 +426,7 @@ def stage_evaluator_context(
         current_source._codec_type,
         current_source.recipe,
         limits,
+        capability=current_source.codec_capability,
     )
     data = json.loads(prepared._derived_bytes)
     validate_data_atoms(data, limits)
@@ -431,6 +437,20 @@ def stage_evaluator_context(
         "incomplete/incorrect ordered context coverage",
     )
     detached = {n.id: n for n in iter_nodes(arena.tree)}
+    detached_state_ids = {id(n.state) for n in detached.values()}
+    checked_resolvers: set[int] = set()
+    for owner in owner_nodes:
+        limits.check()
+        handle = cast("CheckpointBackedStateHandle[Any]", owner.state_handle)
+        if id(handle.resolver) in checked_resolvers:
+            continue
+        checked_resolvers.add(id(handle.resolver))
+        require(
+            not detached_state_ids.intersection(
+                id(state) for state in handle.resolver._resolved_states.values()
+            ),
+            "decoded state aliases destination owner",
+        )
     factory = NodeMaxEvaluationFactory[Any]()
     staged = []
     for owner, (node_id, evaluation, index) in zip(owner_nodes, records, strict=True):

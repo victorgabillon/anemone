@@ -49,7 +49,43 @@ class SourceIdentity:
     incumbent: str | EvaluationIdentity
     codec: str
     anemone_build: str
-    domain: Literal["morpion"] = "morpion"
+    domain: str
+
+
+@dataclass(frozen=True, slots=True)
+class OwnedInlineCodecCapabilities:
+    """Trusted codec promise: fresh owned states from inert inline payloads only.
+
+    Schema identity is stable across instances and changes with decoding semantics.
+    No external stores, leases, live objects or shared mutable state are permitted.
+    This declaration is not a sandbox for arbitrary Python codec implementations.
+    """
+
+    schema_identity: str
+    reconstruction: Literal["owned-inline-v1"] = "owned-inline-v1"
+
+
+def codec_capabilities(
+    codec_type: type[IncrementalStateCheckpointCodec[Any]],
+) -> OwnedInlineCodecCapabilities:
+    """Admit a concrete fresh-constructible class, never a supplied instance/factory."""
+    require(
+        type(codec_type) is type and codec_type.__new__ is object.__new__,
+        "codec must be a fresh zero-argument class, not a factory or singleton",
+    )
+    capability = getattr(codec_type, "prepared_capabilities", None)
+    require(
+        type(capability) is OwnedInlineCodecCapabilities,
+        "missing owned-inline codec capability",
+    )
+    assert isinstance(capability, OwnedInlineCodecCapabilities)
+    require(
+        type(capability.schema_identity) is str
+        and bool(capability.schema_identity.strip())
+        and capability.reconstruction == "owned-inline-v1",
+        "unsupported codec schema/capability; external resources unsupported",
+    )
+    return capability
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +149,7 @@ class FrozenEvaluatorSource:
     native_fingerprint: str
     _checkpoint_bytes: bytes
     _codec_type: type[IncrementalStateCheckpointCodec[Any]]
+    codec_capability: OwnedInlineCodecCapabilities
 
 
 @dataclass(frozen=True, slots=True)

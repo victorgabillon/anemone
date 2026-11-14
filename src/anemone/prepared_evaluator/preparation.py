@@ -23,6 +23,7 @@ from .contracts import (
     PreparedEvaluatorContext,
     SourceIdentity,
     SupportedSearchRecipe,
+    codec_capabilities,
     require,
 )
 from .native import (
@@ -59,21 +60,23 @@ def freeze_evaluator_source(
 ) -> FrozenEvaluatorSource:
     """Pin a closed native payload by value and prove its cold-normalized identity.
 
-    V1 accepts explicitly admitted zero-argument inline Morpion codecs. Their
-    ``prepared_domain`` class declaration is ``morpion-inline-v1`` and promises
-    fresh independently owned decoded state with no external stores/resources.
+    V1 accepts concrete zero-argument codecs declaring OwnedInlineCodecCapabilities,
+    promising fresh independently owned decoded state from inert inline records.
     External store/lease factories and uninitialized Linoo histories refuse.
     The caller authenticates publication/build/codec identities before this call.
     """
     require(
-        all(asdict(identity).values()) and identity.domain == "morpion",
+        all(asdict(identity).values())
+        and type(identity.domain) is str
+        and bool(identity.domain.strip()),
         "incomplete source identity",
     )
+    capability = codec_capabilities(codec_type)
     validate_source(checkpoint, recipe, limits)
     raw = _encode_checkpoint_payload(checkpoint).json_bytes
     require(len(raw) <= limits.max_payload_bytes, "source payload bound exceeded")
     before = _ambient_rng()
-    arena = reconstruct(raw, codec_type, recipe, limits)
+    arena = reconstruct(raw, codec_type, recipe, limits, capability=capability)
     stamp = fingerprint(
         arena.tree,
         arena.selector,
@@ -84,7 +87,7 @@ def freeze_evaluator_source(
     require(_ambient_rng() == before, "codec reconstruction consumed ambient RNG")
     limits.check()
     return FrozenEvaluatorSource(
-        identity, recipe, sha256(raw).hexdigest(), stamp, raw, codec_type
+        identity, recipe, sha256(raw).hexdigest(), stamp, raw, codec_type, capability
     )
 
 
@@ -142,7 +145,11 @@ def prepare_evaluator_context(
     )
     before = _ambient_rng()
     arena = reconstruct(
-        source._checkpoint_bytes, source._codec_type, source.recipe, limits
+        source._checkpoint_bytes,
+        source._codec_type,
+        source.recipe,
+        limits,
+        capability=source.codec_capability,
     )
     require(
         fingerprint(

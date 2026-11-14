@@ -18,6 +18,7 @@ from anemone.indices.node_indices.index_types import IndexComputationType
 from anemone.node_evaluation.tree.single_agent.factory import NodeMaxEvaluationFactory
 from anemone.prepared_evaluator import (
     EvaluationIdentity,
+    OwnedInlineCodecCapabilities,
     PreparationLimits,
     SourceIdentity,
     SupportedSearchRecipe,
@@ -37,7 +38,7 @@ IDENTITY = EvaluationIdentity(
 class Codec(BaseCodec):
     """Explicitly admit the existing fresh inline Morpion test adapter."""
 
-    prepared_domain = "morpion-inline-v1"
+    prepared_capabilities = OwnedInlineCodecCapabilities("morpion-inline-v1")
 
 
 class Incumbent(Evaluator):
@@ -114,7 +115,7 @@ def freeze(
         payload,
         codec_type=Codec,
         identity=SourceIdentity(
-            "publication", "incumbent", "morpion-inline-v1", "test-build"
+            "publication", "incumbent", "morpion-inline-v1", "test-build", "morpion"
         ),
         recipe=SupportedSearchRecipe(index_computation=index_computation),
         limits=limits(),
@@ -192,7 +193,7 @@ def test_source_refuses_incomplete_or_unsupported_input(
         freeze_evaluator_source(
             payload,
             codec_type=BaseCodec if fault == "codec" else Codec,
-            identity=SourceIdentity("p", "i", "c", "b"),
+            identity=SourceIdentity("p", "i", "c", "b", "test"),
             recipe=SupportedSearchRecipe(index_computation=index_computation),
             limits=replace(limits(), max_nodes=1) if fault == "limit" else limits(),
         )
