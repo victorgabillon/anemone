@@ -17,7 +17,7 @@ The main architectural split is:
 
 ## Installation
 
-Release 0.3.0 requires Python **3.14 or higher**. CPU release validation uses
+Anemone requires Python **3.14 or higher**. CPU release validation uses
 standard CPython **3.14.10** (GIL enabled, `PYTHON_JIT=0`). Runtime dependencies
 use the published `valanga==0.3.0`; test extras use `atomheart==0.3.0` and
 `parsley-coco==0.2.0`. The neural extra requires Coral 0.2.x.
@@ -41,6 +41,9 @@ pip install algorhino-anemone[debug]
 
 Debug snapshot export and the debug browser's SVG rendering also require the
 system Graphviz executable (`dot`).
+
+See [the 0.4.0 release notes](CHANGELOG.md) for native prepared evaluation and
+bounded materialization of both sharded checkpoint layouts.
 
 ## Getting started
 

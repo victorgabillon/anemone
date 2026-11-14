@@ -3,8 +3,9 @@
 This additive API prepares candidate-derived state independently of Growth and
 installs it into an exclusively owned, cold-restored activation runtime. It has
 no publication, model selection, scheduling, locking or activation authority.
-It is an author implementation awaiting independent integration/review; it is not
-a release or a production performance qualification.
+The supported subset has passed independent architecture, correctness and
+installed-package review. This does not establish production performance or
+authorize downstream activation.
 
 ## Operations and ownership
 
