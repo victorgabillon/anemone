@@ -1,5 +1,8 @@
 """Bounded identities and immutable artifacts for native prepared evaluation."""
 
+# Codec admission deliberately rejects subclasses and custom metaclasses.
+# Exact-type lint exceptions below preserve that safety boundary.
+
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from time import monotonic
@@ -70,17 +73,17 @@ def codec_capabilities(
 ) -> OwnedInlineCodecCapabilities:
     """Admit a concrete fresh-constructible class, never a supplied instance/factory."""
     require(
-        type(codec_type) is type and codec_type.__new__ is object.__new__,
+        type(codec_type) is type and codec_type.__new__ is object.__new__,  # pylint: disable=unidiomatic-typecheck
         "codec must be a fresh zero-argument class, not a factory or singleton",
     )
     capability = getattr(codec_type, "prepared_capabilities", None)
     require(
-        type(capability) is OwnedInlineCodecCapabilities,
+        type(capability) is OwnedInlineCodecCapabilities,  # pylint: disable=unidiomatic-typecheck
         "missing owned-inline codec capability",
     )
     assert isinstance(capability, OwnedInlineCodecCapabilities)
     require(
-        type(capability.schema_identity) is str
+        type(capability.schema_identity) is str  # pylint: disable=unidiomatic-typecheck
         and bool(capability.schema_identity.strip())
         and capability.reconstruction == "owned-inline-v1",
         "unsupported codec schema/capability; external resources unsupported",

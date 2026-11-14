@@ -1,5 +1,8 @@
 """Preallocate owner-bound derived objects, then perform one checked installation."""
 
+# Exact-type admission rejects subclasses; internal bindings deliberately reuse
+# native checkpoint/runtime ownership. Exceptions below are limited to those sites.
+
 # Runtime annotations match the existing native checkpoint helpers.
 import json
 from dataclasses import dataclass
@@ -11,14 +14,14 @@ from anemone.backup_policies.aggregation import BestChildAggregationPolicy
 from anemone.backup_policies.explicit_max import ExplicitMaxBackupPolicy
 from anemone.backup_policies.proof import MaxProofPolicy
 from anemone.checkpoints.evaluation_payloads import (
-    _restore_evaluation,
-    _restore_exploration_index,
+    _restore_evaluation,  # pyright: ignore[reportPrivateUsage]
+    _restore_exploration_index,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.rng_state import rollout_random_generator
 from anemone.checkpoints.sharded_decode import (
-    _exploration_index_payload_from_mapping,
-    _node_evaluation_payload_from_mapping,
-    _selector_payload_from_mapping,
+    _exploration_index_payload_from_mapping,  # pyright: ignore[reportPrivateUsage]
+    _node_evaluation_payload_from_mapping,  # pyright: ignore[reportPrivateUsage]
+    _selector_payload_from_mapping,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.state_handles import CheckpointBackedStateHandle
 from anemone.indices.index_manager.global_min_change_strategy import (
@@ -86,14 +89,14 @@ def _owner_stamp(
 ) -> tuple[str, tuple[object, ...]]:
     """Validate actual native recipe and capture complete nonmutating preconditions."""
     require(
-        type(search) is TreeExploration and not search._prepared_evaluator_invalidated,
+        type(search) is TreeExploration and not search._prepared_evaluator_invalidated,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=unidiomatic-typecheck,protected-access
         "unsupported or invalidated owner",
     )
     selector = search.node_selector
     require(
-        type(selector) is ComposedNodeSelector
-        and type(selector.base) is Linoo
-        and type(selector.priority_check) is NoPriorityCheck,
+        type(selector) is ComposedNodeSelector  # pylint: disable=unidiomatic-typecheck
+        and type(selector.base) is Linoo  # pylint: disable=unidiomatic-typecheck
+        and type(selector.priority_check) is NoPriorityCheck,  # pylint: disable=unidiomatic-typecheck
         "unsupported selector recipe",
     )
     assert isinstance(selector, ComposedNodeSelector)
@@ -110,28 +113,30 @@ def _owner_stamp(
         "opening/RNG recipe mismatch",
     )
     require(
-        type(search.stopping_criterion) is TreeBranchLimit
+        type(search.stopping_criterion) is TreeBranchLimit  # pylint: disable=unidiomatic-typecheck
         and search.stopping_criterion.tree_branch_limit == recipe.branch_limit,
         "stopping recipe mismatch",
     )
     manager = search.tree_manager
     factory = manager.tree_manager.node_factory
     require(
-        type(factory) is AlgorithmNodeFactory,
+        type(factory) is AlgorithmNodeFactory,  # pylint: disable=unidiomatic-typecheck
         "unsupported node factory",
     )
     assert isinstance(factory, AlgorithmNodeFactory)
     require(
-        type(factory.tree_node_factory) is TreeNodeFactory
+        type(factory.tree_node_factory) is TreeNodeFactory  # pylint: disable=unidiomatic-typecheck
         and factory.state_representation_factory is None
-        and type(factory.node_tree_evaluation_factory) is NodeMaxEvaluationFactory,
+        and type(factory.node_tree_evaluation_factory) is NodeMaxEvaluationFactory,  # pylint: disable=unidiomatic-typecheck
         "unsupported factory/representation recipe",
     )
-    index_factory = factory.exploration_index_data_create
+    # The callable slot accepts functions or methods. Inspect a bound method
+    # only after the exact MethodType guard below.
+    index_factory = cast("object", factory.exploration_index_data_create)
     require(
-        type(index_factory) is MethodType
+        type(index_factory) is MethodType  # pylint: disable=unidiomatic-typecheck
         and index_factory.__func__ is SearchFactory.node_index_create
-        and type(index_factory.__self__) is SearchFactory
+        and type(index_factory.__self__) is SearchFactory  # pylint: disable=unidiomatic-typecheck
         and index_factory.__self__.index_computation is recipe.index_computation
         and index_factory.__self__.depth_index is False,
         "unsupported future-node index factory recipe",
@@ -141,16 +146,16 @@ def _owner_stamp(
     )
     factory_policy = evaluation_factory.backup_policy
     require(
-        evaluation_factory._evaluation_type is NodeMaxEvaluation
-        and type(evaluation_factory.objective) is SingleAgentMaxObjective
-        and type(factory_policy) is ExplicitMaxBackupPolicy
-        and type(cast("object", factory_policy.aggregation_policy))
+        evaluation_factory._evaluation_type is NodeMaxEvaluation  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
+        and type(evaluation_factory.objective) is SingleAgentMaxObjective  # pylint: disable=unidiomatic-typecheck
+        and type(factory_policy) is ExplicitMaxBackupPolicy  # pylint: disable=unidiomatic-typecheck
+        and type(cast("object", factory_policy.aggregation_policy))  # pylint: disable=unidiomatic-typecheck
         is BestChildAggregationPolicy
-        and type(factory_policy.proof_policy) is MaxProofPolicy,
+        and type(factory_policy.proof_policy) is MaxProofPolicy,  # pylint: disable=unidiomatic-typecheck
         "unsupported future-node max/proof recipe",
     )
     require(
-        type(manager.index_manager)
+        type(manager.index_manager)  # pylint: disable=unidiomatic-typecheck
         is (
             NullNodeExplorationIndexManager
             if recipe.index_computation is None
@@ -166,14 +171,14 @@ def _owner_stamp(
     rollout_rng = rollout_random_generator(search)
     if recipe.opening_expansion.kind == OpeningExpansionKind.ONE_PLY:
         require(
-            type(executor) is OnePlyOpeningExpansionExecutor
+            type(executor) is OnePlyOpeningExpansionExecutor  # pylint: disable=unidiomatic-typecheck
             and rollout_rng is None
             and recipe.rng_layout == "search_only",
             "unsupported one-ply/RNG layout",
         )
     else:
         require(
-            type(executor) is RolloutOpeningExpansionExecutor,
+            type(executor) is RolloutOpeningExpansionExecutor,  # pylint: disable=unidiomatic-typecheck
             "unsupported rollout executor",
         )
         assert isinstance(executor, RolloutOpeningExpansionExecutor)
@@ -182,7 +187,7 @@ def _owner_stamp(
             RolloutActionSelectorKind.RANDOM_LEGAL_PREFER_OPENABLE: RandomLegalPreferOpenableActionSelector,
         }
         require(
-            type(executor.rollout_action_selector)
+            type(executor.rollout_action_selector)  # pylint: disable=unidiomatic-typecheck
             is allowed.get(recipe.opening_expansion.rollout.action_selector_kind),
             "unsupported rollout selector override",
         )
@@ -200,7 +205,7 @@ def _owner_stamp(
         )
     direct = manager.node_evaluator
     require(
-        type(direct) is NodeDirectEvaluator
+        type(direct) is NodeDirectEvaluator  # pylint: disable=unidiomatic-typecheck
         and direct.current_evaluator_version == search.evaluator_version,
         "evaluator version coverage mismatch",
     )
@@ -232,36 +237,39 @@ def _owner_stamp(
     ]
     for node in iter_nodes(search.tree):
         require(
-            type(node) is AlgorithmNode
+            type(node) is AlgorithmNode  # pylint: disable=unidiomatic-typecheck
             and node.state_representation is None
-            and type(node.tree_evaluation) is NodeMaxEvaluation
+            and type(node.tree_evaluation) is NodeMaxEvaluation  # pylint: disable=unidiomatic-typecheck
             and (
                 node.exploration_index_data is None
                 if recipe.index_computation is None
-                else type(node.exploration_index_data) is MinMaxPathValue
+                else type(node.exploration_index_data) is MinMaxPathValue  # pylint: disable=unidiomatic-typecheck
             ),
             "unsupported derived object type",
         )
-        evaluation = node.tree_evaluation
+        # The exact NodeMaxEvaluation check above has already rejected subclasses.
+        evaluation = cast("NodeMaxEvaluation[Any]", node.tree_evaluation)
         policy = evaluation.backup_policy
         require(
-            type(evaluation.required_objective) is SingleAgentMaxObjective
-            and type(policy) is ExplicitMaxBackupPolicy
-            and type(cast("object", policy.aggregation_policy))
+            type(evaluation.required_objective) is SingleAgentMaxObjective  # pylint: disable=unidiomatic-typecheck
+            and type(policy) is ExplicitMaxBackupPolicy  # pylint: disable=unidiomatic-typecheck
+            and type(cast("object", policy.aggregation_policy))  # pylint: disable=unidiomatic-typecheck
             is BestChildAggregationPolicy
-            and type(policy.proof_policy) is MaxProofPolicy,
+            and type(policy.proof_policy) is MaxProofPolicy,  # pylint: disable=unidiomatic-typecheck
             "unsupported max/proof recipe",
         )
         handle = node.state_handle
         require(
-            type(handle) is CheckpointBackedStateHandle
-            and type(handle.resolver.state_codec) is source._codec_type
+            type(handle) is CheckpointBackedStateHandle  # pylint: disable=unidiomatic-typecheck
+            and type(handle.resolver.state_codec) is source._codec_type  # pyright: ignore[reportPrivateUsage]  # pylint: disable=unidiomatic-typecheck,protected-access
             and codec_capabilities(type(handle.resolver.state_codec))
             == source.codec_capability
             and getattr(handle.resolver.state_codec, "prepared_capabilities", None)
             == source.codec_capability,
             "owner codec/handle identity mismatch",
         )
+        # require() is not a checker-recognized TypeGuard; admission already passed.
+        handle = cast("CheckpointBackedStateHandle[Any]", handle)
         identities.append(
             (
                 id(node),
@@ -369,7 +377,7 @@ class EvaluatorInstallPlan:
             raise
         # From this point, any exception invalidates the private runtime. There
         # is intentionally no claim of general rollback or durable publication.
-        search._prepared_evaluator_invalidated = True
+        search._prepared_evaluator_invalidated = True  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         try:
             for node, staged in self._nodes:
                 _assign_node(node, staged)
@@ -379,7 +387,7 @@ class EvaluatorInstallPlan:
             direct.master_state_value_evaluator = self._evaluator
             direct.current_evaluator_version = context.evaluator_version
             search.evaluator_version = context.evaluator_version
-            search._prepared_evaluator_invalidated = False
+            search._prepared_evaluator_invalidated = False  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         except BaseException as exc:
             self.dispose()
             message = "prepared installation failed; discard/reload runtime"
@@ -400,11 +408,11 @@ def stage_evaluator_context(
     """Allocate all candidate-derived objects and validate before owner mutation."""
     limits.check()
     require(
-        len(current_source._checkpoint_bytes) <= limits.max_payload_bytes,
+        len(current_source._checkpoint_bytes) <= limits.max_payload_bytes,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         "source payload bound exceeded",
     )
     require(
-        len(prepared._derived_bytes) <= limits.max_payload_bytes,
+        len(prepared._derived_bytes) <= limits.max_payload_bytes,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         "derived payload bound exceeded",
     )
     require(prepared.source == current_source, "stale prepared source identity")
@@ -415,20 +423,20 @@ def stage_evaluator_context(
     )
     require(
         prepared.evaluator_version
-        == decode(current_source._checkpoint_bytes).evaluator_version + 1,
+        == decode(current_source._checkpoint_bytes).evaluator_version + 1,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         "candidate evaluator version mismatch",
     )
     stamp = _owner_stamp(search, current_source)
     # Validate serialized context against a wholly independent arena. Restoration
     # uses native payload readers; candidate inference is never repeated here.
     arena = reconstruct(
-        current_source._checkpoint_bytes,
-        current_source._codec_type,
+        current_source._checkpoint_bytes,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
+        current_source._codec_type,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         current_source.recipe,
         limits,
         capability=current_source.codec_capability,
     )
-    data = json.loads(prepared._derived_bytes)
+    data = json.loads(prepared._derived_bytes)  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
     validate_data_atoms(data, limits)
     records = data["nodes"]
     owner_nodes = list(iter_nodes(search.tree))
@@ -447,12 +455,13 @@ def stage_evaluator_context(
         checked_resolvers.add(id(handle.resolver))
         require(
             not detached_state_ids.intersection(
-                id(state) for state in handle.resolver._resolved_states.values()
+                id(state)
+                for state in handle.resolver._resolved_states.values()  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
             ),
             "decoded state aliases destination owner",
         )
     factory = NodeMaxEvaluationFactory[Any]()
-    staged = []
+    staged: list[tuple[AlgorithmNode[Any], AlgorithmNode[Any]]] = []
     for owner, (node_id, evaluation, index) in zip(owner_nodes, records, strict=True):
         limits.check()
         require(
@@ -488,7 +497,7 @@ def stage_evaluator_context(
         "invalid prepared selector state",
     )
     require(
-        encode(derived(arena.tree, arena.selector)) == prepared._derived_bytes,
+        encode(derived(arena.tree, arena.selector)) == prepared._derived_bytes,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         "derived payload failed exact native round trip",
     )
     # Built-in Linoo caches own ids, scalar signatures and counts, never node
@@ -498,11 +507,11 @@ def stage_evaluator_context(
     owner_base = cast("Linoo[Any]", owner_selector.base)
     base.random_generator = owner_base.random_generator
     base.opening_instructor = owner_base.opening_instructor
-    base._cache_tree_identity = id(search.tree.root_node)
+    base._cache_tree_identity = id(search.tree.root_node)  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
     root_staged = next(
         shell for owner, shell in staged if owner is search.tree.root_node
     )
-    base._cache_objective_identity = id(root_staged.tree_evaluation.required_objective)
+    base._cache_objective_identity = id(root_staged.tree_evaluation.required_objective)  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
     selector = ComposedNodeSelector(priority_check=NoPriorityCheck(), base=base)
     limits.check()
     require(

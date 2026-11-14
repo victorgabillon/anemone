@@ -1,5 +1,8 @@
 """Freeze and prepare immutable evaluation artifacts, never live Growth objects."""
 
+# Reuse native internal serialization and frozen artifacts; preserve exact
+# namespace admission rather than accepting str subclasses.
+
 # ruff: noqa: TC001
 import random
 import sys
@@ -9,7 +12,7 @@ from hashlib import sha256
 from typing import Any
 
 from anemone.checkpoints._protocols import IncrementalStateCheckpointCodec
-from anemone.checkpoints.io import _encode_checkpoint_payload
+from anemone.checkpoints.io import _encode_checkpoint_payload  # pyright: ignore[reportPrivateUsage]
 from anemone.checkpoints.payloads import SearchRuntimeCheckpointPayload
 from anemone.indices.index_manager.factory import create_exploration_index_manager
 from anemone.node_evaluation.direct import EvaluationQueries, create_node_evaluator
@@ -67,7 +70,7 @@ def freeze_evaluator_source(
     """
     require(
         all(asdict(identity).values())
-        and type(identity.domain) is str
+        and type(identity.domain) is str  # pylint: disable=unidiomatic-typecheck
         and bool(identity.domain.strip()),
         "incomplete source identity",
     )
@@ -109,6 +112,7 @@ class _BoundedEvaluator:
         return result
 
     def evaluate_batch_items(self, items: Sequence[Any]) -> Any:
+        """Delegate the unchanged batch while enforcing the same deadline."""
         self.limits.check()
         result = self.evaluator.evaluate_batch_items(items)
         self.limits.check()
@@ -140,13 +144,13 @@ def prepare_evaluator_context(
         "model identity mismatch",
     )
     require(
-        sha256(source._checkpoint_bytes).hexdigest() == source.checkpoint_sha256,
+        sha256(source._checkpoint_bytes).hexdigest() == source.checkpoint_sha256,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         "source bytes changed",
     )
     before = _ambient_rng()
     arena = reconstruct(
-        source._checkpoint_bytes,
-        source._codec_type,
+        source._checkpoint_bytes,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
+        source._codec_type,  # pyright: ignore[reportPrivateUsage]  # pylint: disable=protected-access
         source.recipe,
         limits,
         capability=source.codec_capability,

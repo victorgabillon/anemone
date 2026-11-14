@@ -96,7 +96,8 @@ class DetachedStructure(TreeNode[Any, Any]):
 
     def iter_parent_items(self) -> Iterator[tuple[Any, set[BranchKey]]]:
         """Preserve incoming order while returning branch-set copies."""
-        for parent, branches in cast(
+        # from_node installs a MappingProxyType; Pylint misreads the generic cast.
+        for parent, branches in cast(  # pylint: disable=no-member
             "Mapping[Any, frozenset[BranchKey]]", self.parent_nodes_
         ).items():
             yield parent, set(branches)
@@ -115,7 +116,7 @@ class DetachedStructure(TreeNode[Any, Any]):
         return set(self.iter_unopened_branches())
 
     @non_opened_branches.setter
-    def non_opened_branches(self, value: set[BranchKey]) -> None:
+    def non_opened_branches(self, value: set[BranchKey]) -> None:  # pylint: disable=unused-argument
         """Refuse replacement of immutable unopened membership."""
         msg = "detached structure is read-only"
         raise TypeError(msg)

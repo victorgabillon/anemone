@@ -1,5 +1,8 @@
 """Owned checkpoint reconstruction and exact native records, without a search runtime."""
 
+# Exact-type admission rejects subclasses; internal bindings deliberately reuse
+# native checkpoint/runtime ownership. Exceptions below are limited to those sites.
+
 # Native internal bindings intentionally retain runtime annotations.
 # ruff: noqa: TC001
 import json
@@ -7,32 +10,35 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
 from random import Random
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, Never, cast
 
+from valanga import BranchKey
+
+from anemone._valanga_types import AnyTurnState
 from anemone.checkpoints._protocols import IncrementalStateCheckpointCodec
-from anemone.checkpoints.build_atoms import _serialize_branch_collection
+from anemone.checkpoints.build_atoms import _serialize_branch_collection  # pyright: ignore[reportPrivateUsage]
 from anemone.checkpoints.build_context import (
-    _CheckpointBuildContext,
-    _CheckpointBuildMetrics,
+    _CheckpointBuildContext,  # pyright: ignore[reportPrivateUsage]
+    _CheckpointBuildMetrics,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.build_evaluation_payloads import (
-    _build_exploration_index_payload,
-    _build_node_evaluation_payload,
+    _build_exploration_index_payload,  # pyright: ignore[reportPrivateUsage]
+    _build_node_evaluation_payload,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.evaluation_payloads import (
-    _restore_evaluation,
-    _restore_exploration_index,
+    _restore_evaluation,  # pyright: ignore[reportPrivateUsage]
+    _restore_exploration_index,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.io import (
     checkpoint_payload_to_jsonable,
 )
-from anemone.checkpoints.metadata import _validate_payload
+from anemone.checkpoints.metadata import _validate_payload  # pyright: ignore[reportPrivateUsage]
 from anemone.checkpoints.node_restore import (
-    _build_tree,
-    _create_nodes,
-    _link_nodes,
-    _restore_node_runtime_state,
-    _restore_parent_order,
+    _build_tree,  # pyright: ignore[reportPrivateUsage]
+    _create_nodes,  # pyright: ignore[reportPrivateUsage]
+    _link_nodes,  # pyright: ignore[reportPrivateUsage]
+    _restore_node_runtime_state,  # pyright: ignore[reportPrivateUsage]
+    _restore_parent_order,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.payloads import (
     DeltaCheckpointStatePayload,
@@ -40,21 +46,21 @@ from anemone.checkpoints.payloads import (
     SearchRuntimeCheckpointPayload,
     TreeCheckpointPayload,
 )
-from anemone.checkpoints.restore_atoms import _deserialize_branch
+from anemone.checkpoints.restore_atoms import _deserialize_branch  # pyright: ignore[reportPrivateUsage]
 from anemone.checkpoints.rng_state import restore_random_state
 from anemone.checkpoints.sharded_decode import (
-    _algorithm_node_payload_from_mapping,
-    _selector_payload_from_mapping,
-    _tree_expansions_payload_from_mapping,
+    _algorithm_node_payload_from_mapping,  # pyright: ignore[reportPrivateUsage]
+    _selector_payload_from_mapping,  # pyright: ignore[reportPrivateUsage]
+    _tree_expansions_payload_from_mapping,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.state_handles import CheckpointBackedStateHandle
 from anemone.checkpoints.state_handles_restore import (
-    _create_state_handles,
-    _create_state_resolver,
+    _create_state_handles,  # pyright: ignore[reportPrivateUsage]
+    _create_state_resolver,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.tree_expansions_payloads import (
-    _build_tree_expansions_payload,
-    _restore_tree_expansions,
+    _build_tree_expansions_payload,  # pyright: ignore[reportPrivateUsage]
+    _restore_tree_expansions,  # pyright: ignore[reportPrivateUsage]
 )
 from anemone.checkpoints.value_serialization import serialize_checkpoint_atom
 from anemone.indices.node_indices.factory import create_exploration_index_data
@@ -64,7 +70,6 @@ from anemone.node_evaluation.tree.single_agent.factory import NodeMaxEvaluationF
 from anemone.node_factory.algorithm_node_factory import AlgorithmNodeFactory
 from anemone.node_factory.base import TreeNodeFactory
 from anemone.node_selector.linoo import Linoo
-from anemone.node_selector.opening_instructions import OpeningInstructor
 from anemone.nodes.algorithm_node.algorithm_node import AlgorithmNode
 from anemone.objectives import SingleAgentMaxObjective
 from anemone.tree_manager.opening_expansion_config import (
@@ -83,6 +88,9 @@ from .contracts import (
     validate_index_recipe,
 )
 from .structure import DetachedStructure
+
+if TYPE_CHECKING:
+    from anemone.node_selector.opening_instructions import OpeningInstructor
 
 
 def encode(value: object) -> bytes:
@@ -122,13 +130,14 @@ def validate_data_atoms(value: object, limits: PreparationLimits) -> None:
     payloads and derived records cannot select arbitrary modules or qualnames.
     This is admission around the native reader, not a second atom decoder.
     """
-    pending = [(value, 0)]
+    pending: list[tuple[object, int]] = [(value, 0)]
     while pending:
         limits.check()
         item, depth = pending.pop()
         require(depth <= 256, "prepared data nesting bound exceeded")
         if isinstance(item, dict):
-            if item.get("type") == "enum":
+            mapping = cast("dict[object, object]", item)
+            if mapping.get("type") == "enum":
                 require(
                     item
                     == {
@@ -139,9 +148,9 @@ def validate_data_atoms(value: object, limits: PreparationLimits) -> None:
                     },
                     "unsupported prepared enum atom",
                 )
-            pending.extend((child, depth + 1) for child in item.values())
+            pending.extend((child, depth + 1) for child in mapping.values())
         elif isinstance(item, list):
-            pending.extend((child, depth + 1) for child in item)
+            pending.extend((child, depth + 1) for child in cast("list[object]", item))
         else:
             require(
                 item is None or isinstance(item, (bool, int, float, str)),
@@ -216,7 +225,7 @@ def validate_source(
             "missing evaluation coverage",
         )
         validate_index_payload(n.exploration_index, recipe)
-        seen = set()
+        seen: set[BranchKey] = set()
         for link in n.linked_children:
             branch = _deserialize_branch(link.branch_key)
             require(branch not in seen, "duplicate outgoing branch")
@@ -255,16 +264,19 @@ def validate_source(
 class _NoOpening:
     """No opening or rollout capability is available to a detached selector."""
 
-    def instructions_to_open_all_branches(self, *args: object, **kwargs: object) -> Any:
+    def instructions_to_open_all_branches(
+        self, *_args: object, **_kwargs: object
+    ) -> Never:
+        """Refuse every detached opening request without inspecting its arguments."""
         msg = "prepared evaluation cannot perform Growth"
         raise TypeError(msg)
 
 
-class _BudgetCodec:
+class _BudgetCodec[StateT: AnyTurnState]:
     """Own one fresh inline codec and account every native state decode."""
 
     def __init__(
-        self, codec: IncrementalStateCheckpointCodec[Any], limits: PreparationLimits
+        self, codec: IncrementalStateCheckpointCodec[StateT], limits: PreparationLimits
     ) -> None:
         self.codec = codec
         self.limits = limits
@@ -277,13 +289,19 @@ class _BudgetCodec:
             self.count <= self.limits.max_state_decodes, "state decode bound exceeded"
         )
 
-    def load_anchor_ref(self, ref: object) -> Any:
+    def load_anchor_ref(self, anchor_ref: object) -> StateT:
+        """Account for one anchor decode using the canonical codec signature."""
         self._tick()
-        return self.codec.load_anchor_ref(ref)
+        return self.codec.load_anchor_ref(anchor_ref)
 
     def load_child_from_delta(
-        self, *, parent_state: Any, delta_ref: object, branch_from_parent: Any = None
-    ) -> Any:
+        self,
+        *,
+        parent_state: StateT,
+        delta_ref: object,
+        branch_from_parent: BranchKey | None = None,
+    ) -> StateT:
+        """Decode a fresh child and preserve its parent's state summary."""
         self._tick()
         before = (parent_state.tag, parent_state.is_game_over())
         child = self.codec.load_child_from_delta(
@@ -298,12 +316,18 @@ class _BudgetCodec:
         )
         return child
 
-    def dump_anchor_ref(self, state: Any) -> object:
+    def dump_anchor_ref(self, state: StateT) -> object:
+        """Delegate native anchor serialization without changing the payload."""
         return self.codec.dump_anchor_ref(state)
 
     def dump_delta_from_parent(
-        self, *, parent_state: Any, child_state: Any, branch_from_parent: Any = None
+        self,
+        *,
+        parent_state: StateT,
+        child_state: StateT,
+        branch_from_parent: BranchKey | None = None,
     ) -> object:
+        """Delegate native delta serialization without changing ancestry."""
         return self.codec.dump_delta_from_parent(
             parent_state=parent_state,
             child_state=child_state,
@@ -338,7 +362,7 @@ def reconstruct(
     declared = codec_capabilities(codec_type)
     require(capability is None or declared == capability, "codec capability changed")
     instance = codec_type()
-    require(type(instance) is codec_type, "codec construction changed class")
+    require(type(instance) is codec_type, "codec construction changed class")  # pylint: disable=unidiomatic-typecheck
     require(
         getattr(instance, "prepared_capabilities", None) == declared,
         "codec instance capability mismatch",
@@ -368,7 +392,8 @@ def reconstruct(
     # Native reconstruction completes before making the bindings read-only.
     for n in nodes.values():
         n.tree_node = DetachedStructure.from_node(n.tree_node)
-        n.tree_evaluation = factory.node_tree_evaluation_factory.create(n.tree_node)
+        # The concrete factory returns an evaluation; Pylint sees a protocol stub.
+        n.tree_evaluation = factory.node_tree_evaluation_factory.create(n.tree_node)  # pylint: disable=assignment-from-no-return
         n.exploration_index_data = factory.exploration_index_data_create(n.tree_node)
     for record in payload.tree.nodes:
         _restore_evaluation(node=nodes[record.node_id], payload=record.evaluation)
@@ -414,8 +439,8 @@ def reconstruct(
         require(
             summary is not None
             and encode(summary["tag"]) == encode(serialize_checkpoint_atom(state.tag))
-            and type(summary["is_terminal"]) is bool
-            and type(state.is_game_over()) is bool
+            and type(summary["is_terminal"]) is bool  # pylint: disable=unidiomatic-typecheck
+            and type(state.is_game_over()) is bool  # pylint: disable=unidiomatic-typecheck
             and summary["is_terminal"] == state.is_game_over(),
             "decoded state/summary identity mismatch",
         )
@@ -449,10 +474,10 @@ def fingerprint(
 ) -> str:
     """Fingerprint stored ordered state only; never refresh or resolve owner state."""
     context = _CheckpointBuildContext(metrics=_CheckpointBuildMetrics())
-    rows = []
+    rows: list[tuple[object, ...]] = []
     for n in iter_nodes(tree):
         require(
-            type(n.state_handle) is CheckpointBackedStateHandle,
+            type(n.state_handle) is CheckpointBackedStateHandle,  # pylint: disable=unidiomatic-typecheck
             "installation requires a native cold-restored owner",
         )
         rows.append(

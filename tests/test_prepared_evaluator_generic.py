@@ -412,3 +412,17 @@ def test_non_morpion_terminal_and_partial_updates(index: Any) -> None:
     )
     assert update is not None
     live.refresh_with_evaluator(CounterEvaluator(), scope="root_children")
+
+
+def test_budget_codec_accepts_protocol_keyword_and_preserves_decode_limit() -> None:
+    from anemone.prepared_evaluator.native import _BudgetCodec
+
+    codec = CounterCodec()
+    bounded = _BudgetCodec(codec, replace(limits(), max_state_decodes=1))
+    state = bounded.load_anchor_ref(anchor_ref=[2, 1])
+    assert state.tag == 201
+    assert bounded.count == 1
+    assert codec.decoded == [state]
+    with pytest.raises(ValueError, match="state decode bound exceeded"):
+        bounded.load_anchor_ref(anchor_ref=[2, 1])
+    assert codec.decoded == [state]

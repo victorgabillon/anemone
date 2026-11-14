@@ -1,5 +1,8 @@
 """Runnable tree-search runtime centered on ``TreeExploration``."""
 
+# Preserve the explicit public report re-export and defer the invalidation error
+# import to avoid a runtime/prepared-evaluator import cycle.
+
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from random import Random
@@ -20,7 +23,7 @@ from anemone.node_evaluation.common.branch_frontier import (
 from anemone.node_evaluation.evaluator_refresh import (
     validate_refresh_node,
 )
-from anemone.node_evaluation.full_refresh import (
+from anemone.node_evaluation.full_refresh import (  # pylint: disable=useless-import-alias
     ReevaluationReport as ReevaluationReport,
 )
 from anemone.node_evaluation.full_refresh import (
@@ -195,7 +198,7 @@ class TreeExploration[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
     def _require_valid_runtime(self) -> None:
         """Refuse reuse after an unexpected partially applied installation."""
         if self._prepared_evaluator_invalidated:
-            from anemone.prepared_evaluator.contracts import RuntimeInvalidated
+            from anemone.prepared_evaluator.contracts import RuntimeInvalidated  # pylint: disable=import-outside-toplevel
 
             message = "private runtime invalidated; discard/reload"
             raise RuntimeInvalidated(message)

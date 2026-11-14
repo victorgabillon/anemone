@@ -1,5 +1,7 @@
 """Explicit cooperative limits for complete typed checkpoint materialization."""
 
+# Exact integer bounds reject bool and subclasses; do not broaden admission.
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from math import isfinite
@@ -37,7 +39,8 @@ class ShardedCheckpointReadLimits:
             self.max_record_bytes,
         )
         if not isfinite(self.deadline_monotonic) or any(
-            type(value) is not int or value <= 0 for value in values
+            type(value) is not int or value <= 0  # pylint: disable=unidiomatic-typecheck
+            for value in values
         ):
             raise ShardedCheckpointManifestError.invalid_input("invalid_read_limits")
 

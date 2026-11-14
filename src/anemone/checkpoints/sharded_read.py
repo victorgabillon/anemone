@@ -1,12 +1,14 @@
 """Streaming bytes and records for the typed materializer, without runtime IO."""
 
+# Reuse canonical package-internal path validation without exposing a new API.
+
 import json
 from compression.zstd import DecompressionParameter, ZstdDecompressor
 from hashlib import sha256
 from typing import TYPE_CHECKING, cast
 
 from .sharded_errors import ShardedCheckpointManifestError
-from .sharded_io import _resolve_manifest_shard_path
+from .sharded_io import _resolve_manifest_shard_path  # pyright: ignore[reportPrivateUsage]
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -27,7 +29,8 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     return result
 
 
-class _ShardReader:
+# Internal reader used by sharded_decode, deliberately not a public checkpoint API.
+class _ShardReader:  # pyright: ignore[reportUnusedClass]
     """Own one cumulative budget; never keep a whole raw JSON mirror."""
 
     def __init__(self, root: Path, limits: ShardedCheckpointReadLimits | None) -> None:

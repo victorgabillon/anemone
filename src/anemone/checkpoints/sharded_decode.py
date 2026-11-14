@@ -194,9 +194,10 @@ def _require_stored_fields(raw: object, typed: object) -> None:
             _require_stored_fields(mapping[name], getattr(typed, name))
     elif isinstance(typed, list):
         items = require_list(raw, field_name="split_list")
-        if len(items) != len(typed):
+        typed_items = cast("list[object]", typed)
+        if len(items) != len(typed_items):
             raise ShardedCheckpointManifestError.invalid_input("split_list_coverage")
-        for item, value in zip(items, typed, strict=True):
+        for item, value in zip(items, typed_items, strict=True):
             _require_stored_fields(item, value)
 
 
@@ -227,14 +228,14 @@ def _split_records(
     reader: _ShardReader,
     shards: list[ShardedCheckpointShardRef],
     total: int,
-    fields: set[str],
+    expected_fields: set[str],
 ) -> Iterator[tuple[int, dict[str, object]]]:
     """Check exact family shape, IDs and counts before retaining typed records."""
     seen: set[int] = set()
     for shard in shards:
         for record in reader.records(shard):
             node_id = require_int_field(record, "node_id")
-            if node_id in seen or set(record) != fields:
+            if node_id in seen or set(record) != expected_fields:
                 raise ShardedCheckpointManifestError.invalid_input(
                     "duplicate_ID_or_incomplete_split_record"
                 )
