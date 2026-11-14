@@ -15,6 +15,7 @@ classifiers = [
 requires-python = ">=3.14"
 dependencies = [
     "valanga==0.3.0",
+    "graphviz",
     "rich",
     "sortedcollections>=2.1.0",
     "PyYAML>=6.0",
