@@ -3,6 +3,8 @@
 # pylint: disable=duplicate-code
 
 # pyright: reportPrivateUsage=false
+import json
+from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -16,16 +18,19 @@ from ._json_types import (
     require_float_field,
     require_int,
     require_int_field,
+    require_list,
     require_mapping,
     require_mapping_field,
     require_str_field,
 )
+from .metadata import _validate_payload
 from .payloads import (
     AlgorithmNodeCheckpointPayload,
     AnchorCheckpointStatePayload,
     BackupRuntimeCheckpointPayload,
     BranchFrontierCheckpointPayload,
     BranchOrderingCheckpointPayload,
+    CheckpointAtomPayload,
     CheckpointNodeStatePayload,
     DecisionOrderingCheckpointPayload,
     DeltaCheckpointStatePayload,
@@ -46,96 +51,311 @@ from .payloads import (
     TreeExpansionsCheckpointPayload,
 )
 from .sharded_errors import ShardedCheckpointManifestError
-from .sharded_io import (
-    _group_manifest_shards,
-    _load_mapping_json_shard,
-    _only_manifest_shard,
-    _optional_mapping_json_shard,
-    _read_jsonl_shard_records,
-    _required_manifest_shards,
+from .sharded_io import _group_manifest_shards
+from .sharded_manifest import sharded_checkpoint_manifest_from_jsonable
+from .sharded_read import _ShardReader
+from .sharded_read_limits import ShardedCheckpointReadLimits  # noqa: TC001
+from .sharded_types import (  # noqa: TC001
+    ShardedCheckpointManifest,
+    ShardedCheckpointShardRef,
 )
-from .sharded_manifest import read_sharded_checkpoint_manifest
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from typing import Literal
 
     from ._protocols import CheckpointStateSummary
-    from .payloads import CheckpointAtomPayload
 
 
 def load_sharded_search_checkpoint(
     checkpoint_dir: str | Path,
+    *,
+    limits: ShardedCheckpointReadLimits | None = None,
 ) -> SearchRuntimeCheckpointPayload:
-    """Load a C2b sharded runtime checkpoint as a typed checkpoint payload.
+    """Materialize exactly one native layout without decoding states or a runtime.
 
-    C2c intentionally reconstructs the monolithic typed payload first. Later
-    streaming restore work can replace this internal assembly path without
-    changing the C2b manifest contract.
+    Explicit limits are required at prepared-consumer boundaries. ``None`` keeps
+    the ordinary unbounded contract. Complete typed storage is O(N + E + P).
     """
-    resolved_checkpoint_dir = Path(checkpoint_dir)
-    manifest = read_sharded_checkpoint_manifest(
-        resolved_checkpoint_dir / "manifest.json"
+    reader = _ShardReader(Path(checkpoint_dir), limits)
+    manifest = sharded_checkpoint_manifest_from_jsonable(
+        reader.mapping("manifest.json")
     )
-    grouped_shards = _group_manifest_shards(manifest)
-
-    metadata = _load_mapping_json_shard(
-        resolved_checkpoint_dir,
-        _only_manifest_shard(grouped_shards, "metadata"),
-    )
-    node_records = [
-        record
-        for shard in _required_manifest_shards(grouped_shards, "node_records")
-        for record in _read_jsonl_shard_records(resolved_checkpoint_dir, shard)
-    ]
-    if len(node_records) != manifest.total_node_count:
-        raise ShardedCheckpointManifestError.node_count_mismatch()
-    if manifest.total_branch_count is not None:
-        branch_count = sum(
-            len(optional_list_field(record, "linked_children"))
-            for record in node_records
+    reader.bound(len(manifest.shards), "max_shards")
+    reader.bound(manifest.total_node_count, "max_nodes")
+    reader.bound(manifest.total_branch_count or 0, "max_branches")
+    grouped = _group_manifest_shards(manifest)
+    if grouped.get("node_records") and any(
+        grouped.get(kind) for kind in ("node_shells", "state_payloads", "node_runtime")
+    ):
+        raise ShardedCheckpointManifestError.invalid_input("mixed_layouts")
+    paths = [shard.path for shard in manifest.shards]
+    if len(set(paths)) != len(paths) or "manifest.json" in paths:
+        raise ShardedCheckpointManifestError.invalid_input("duplicate_shard_path")
+    metadata_shard = grouped["metadata"][0]
+    metadata = reader.mapping(metadata_shard.path, metadata_shard)
+    split = not grouped.get("node_records")
+    if split and set(metadata) != {
+        "format_version",
+        "evaluator_version",
+        "rng_state",
+        "rollout_rng_state",
+        "root_node_id",
+        "node_count",
+        "branch_count",
+    }:
+        raise ShardedCheckpointManifestError.invalid_input("incomplete_split_metadata")
+    if grouped.get("node_records"):
+        nodes: list[AlgorithmNodeCheckpointPayload] = []
+        branches = 0
+        for shard in grouped["node_records"]:
+            for record in reader.records(shard):
+                reader.bound(len(nodes) + 1, "max_nodes")
+                if len(nodes) >= manifest.total_node_count:
+                    raise ShardedCheckpointManifestError.node_count_mismatch()
+                branches += len(optional_list_field(record, "linked_children"))
+                reader.bound(branches, "max_branches")
+                nodes.append(_algorithm_node_payload_from_mapping(record))
+    else:
+        nodes = _split_node_payloads(
+            reader,
+            manifest,
+            grouped["state_payloads"],
+            grouped["node_runtime"],
+            grouped["node_shells"],
         )
-        if branch_count != manifest.total_branch_count:
-            raise ShardedCheckpointManifestError.branch_count_mismatch()
-
-    selector_state = _optional_mapping_json_shard(
-        resolved_checkpoint_dir,
-        grouped_shards,
-        "selector",
-    )
-    latest_tree_expansions = _optional_mapping_json_shard(
-        resolved_checkpoint_dir,
-        grouped_shards,
-        "latest_expansions",
-    )
-
-    return SearchRuntimeCheckpointPayload(
+    if len(nodes) != manifest.total_node_count:
+        raise ShardedCheckpointManifestError.node_count_mismatch()
+    branches = sum(len(node.linked_children) for node in nodes)
+    if (
+        manifest.total_branch_count is not None
+        and branches != manifest.total_branch_count
+    ):
+        raise ShardedCheckpointManifestError.branch_count_mismatch()
+    reader.bound(branches, "max_branches")
+    for name, actual in (("node_count", len(nodes)), ("branch_count", branches)):
+        if name in metadata and require_int_field(metadata, name) != actual:
+            raise ShardedCheckpointManifestError.invalid_input(
+                "metadata_count_mismatch"
+            )
+    selector = None
+    expansions = None
+    if grouped.get("selector"):
+        shard = grouped["selector"][0]
+        raw = reader.mapping(shard.path, shard)
+        selector = _selector_payload_from_mapping(raw)
+        if split:
+            _require_stored_fields(raw, selector)
+    if grouped.get("latest_expansions"):
+        shard = grouped["latest_expansions"][0]
+        raw = reader.mapping(shard.path, shard)
+        expansions = _tree_expansions_payload_from_mapping(raw)
+        if split:
+            _require_stored_fields(raw, expansions)
+    payload = SearchRuntimeCheckpointPayload(
         format_version=require_int_field(metadata, "format_version"),
         evaluator_version=require_int_field(metadata, "evaluator_version"),
         rng_state=metadata.get("rng_state"),
         rollout_rng_state=metadata.get("rollout_rng_state"),
         tree=TreeCheckpointPayload(
-            root_node_id=require_int_field(metadata, "root_node_id"),
-            nodes=[
-                _algorithm_node_payload_from_mapping(record) for record in node_records
-            ],
+            root_node_id=require_int_field(metadata, "root_node_id"), nodes=nodes
         ),
-        latest_tree_expansions=(
-            None
-            if latest_tree_expansions is None
-            else _tree_expansions_payload_from_mapping(latest_tree_expansions)
-        ),
-        selector_state=(
-            None
-            if selector_state is None
-            else _selector_payload_from_mapping(selector_state)
-        ),
+        latest_tree_expansions=expansions,
+        selector_state=selector,
     )
+    _validate_payload(payload)
+    ids = {node.node_id for node in nodes}
+    for node in nodes:
+        reader.check()
+        if any(link.child_node_id not in ids for link in node.linked_children):
+            raise ShardedCheckpointManifestError.invalid_input("unknown_linked_child")
+    reader.check()
+    return payload
+
+
+@dataclass(slots=True)
+class _NodeRuntime:
+    unopened_branches: list[CheckpointAtomPayload]
+    linked_children: list[LinkedChildCheckpointPayload]
+    evaluation: NodeEvaluationCheckpointPayload | None
+    exploration_index: ExplorationIndexCheckpointPayload | None
+
+
+def _require_stored_fields(raw: object, typed: object) -> None:
+    """Refuse schema omissions rather than silently installing decoder defaults."""
+    if is_dataclass(typed) and not isinstance(typed, type):
+        mapping = require_mapping(raw, field_name="split_record")
+        names = {field.name for field in fields(typed)}
+        if set(mapping) != names:
+            raise ShardedCheckpointManifestError.invalid_input(
+                "incomplete_or_unknown_typed_fields"
+            )
+        for name in names:
+            _require_stored_fields(mapping[name], getattr(typed, name))
+    elif isinstance(typed, list):
+        items = require_list(raw, field_name="split_list")
+        if len(items) != len(typed):
+            raise ShardedCheckpointManifestError.invalid_input("split_list_coverage")
+        for item, value in zip(items, typed, strict=True):
+            _require_stored_fields(item, value)
+
+
+def _runtime_from_mapping(payload: dict[str, object]) -> _NodeRuntime:
+    evaluation = optional_mapping_field(payload, "evaluation")
+    index = optional_mapping_field(payload, "exploration_index")
+    return _NodeRuntime(
+        unopened_branches=cast(
+            "list[CheckpointAtomPayload]",
+            optional_list_field(payload, "unopened_branches"),
+        ),
+        linked_children=[
+            _linked_child_payload_from_mapping(
+                require_mapping(child, field_name="linked_children[]")
+            )
+            for child in optional_list_field(payload, "linked_children")
+        ],
+        evaluation=None
+        if evaluation is None
+        else _node_evaluation_payload_from_mapping(evaluation),
+        exploration_index=None
+        if index is None
+        else _exploration_index_payload_from_mapping(index),
+    )
+
+
+def _split_records(
+    reader: _ShardReader,
+    shards: list[ShardedCheckpointShardRef],
+    total: int,
+    fields: set[str],
+) -> Iterator[tuple[int, dict[str, object]]]:
+    """Check exact family shape, IDs and counts before retaining typed records."""
+    seen: set[int] = set()
+    for shard in shards:
+        for record in reader.records(shard):
+            node_id = require_int_field(record, "node_id")
+            if node_id in seen or set(record) != fields:
+                raise ShardedCheckpointManifestError.invalid_input(
+                    "duplicate_ID_or_incomplete_split_record"
+                )
+            reader.bound(len(seen) + 1, "max_nodes")
+            if len(seen) >= total:
+                raise ShardedCheckpointManifestError.node_count_mismatch()
+            seen.add(node_id)
+            yield node_id, record
+    if len(seen) != total:
+        raise ShardedCheckpointManifestError.node_count_mismatch()
+
+
+def _split_node_payloads(
+    reader: _ShardReader,
+    manifest: ShardedCheckpointManifest,
+    state_shards: list[ShardedCheckpointShardRef],
+    runtime_shards: list[ShardedCheckpointShardRef],
+    shell_shards: list[ShardedCheckpointShardRef],
+) -> list[AlgorithmNodeCheckpointPayload]:
+    """Join typed state/runtime records, consuming each as shells arrive in order."""
+    states: dict[int, CheckpointNodeStatePayload] = {}
+    runtimes: dict[int, _NodeRuntime] = {}
+    total = manifest.total_node_count
+    for node_id, record in _split_records(
+        reader, state_shards, total, {"node_id", "state_payload"}
+    ):
+        state = require_mapping_field(record, "state_payload")
+        expected = (
+            {"anchor_ref", "state_summary"}
+            if "anchor_ref" in state
+            else {
+                "state_parent_node_id",
+                "state_parent_branch",
+                "delta_ref",
+                "state_summary",
+            }
+        )
+        if set(state) != expected:
+            raise ShardedCheckpointManifestError.invalid_input(
+                "ambiguous_or_incomplete_state_payload"
+            )
+        states[node_id] = _state_payload_from_mapping(state)
+        _require_stored_fields(state, states[node_id])
+    branches = 0
+    for node_id, record in _split_records(
+        reader,
+        runtime_shards,
+        total,
+        {
+            "node_id",
+            "unopened_branches",
+            "linked_children",
+            "evaluation",
+            "exploration_index",
+        },
+    ):
+        if node_id not in states:
+            raise ShardedCheckpointManifestError.invalid_input(
+                "split_node_ID_coverage_mismatch"
+            )
+        branches += len(optional_list_field(record, "linked_children"))
+        reader.bound(branches, "max_branches")
+        runtimes[node_id] = _runtime_from_mapping(record)
+        _require_stored_fields(
+            {key: value for key, value in record.items() if key != "node_id"},
+            runtimes[node_id],
+        )
+    nodes: list[AlgorithmNodeCheckpointPayload] = []
+    for node_id, shell in _split_records(
+        reader,
+        shell_shards,
+        total,
+        {
+            "node_id",
+            "parent_node_id",
+            "parent_node_order",
+            "branch_from_parent",
+            "depth",
+            "generated_all_branches",
+            "state_summary",
+        },
+    ):
+        if node_id not in states or node_id not in runtimes:
+            raise ShardedCheckpointManifestError.invalid_input(
+                "split_node_ID_coverage_mismatch"
+            )
+        state_payload = states.pop(node_id)
+        runtime = runtimes.pop(node_id)
+        if json.dumps(shell["state_summary"], sort_keys=True) != json.dumps(
+            state_payload.state_summary, sort_keys=True
+        ):
+            raise ShardedCheckpointManifestError.invalid_input(
+                "conflicting_shell/state_summary"
+            )
+        nodes.append(
+            AlgorithmNodeCheckpointPayload(
+                node_id=node_id,
+                parent_node_id=optional_int_field(shell, "parent_node_id"),
+                branch_from_parent=cast(
+                    "CheckpointAtomPayload | None", shell["branch_from_parent"]
+                ),
+                parent_node_order=cast("list[int] | None", shell["parent_node_order"]),
+                depth=require_int_field(shell, "depth"),
+                generated_all_branches=require_bool_field(
+                    shell, "generated_all_branches"
+                ),
+                state_payload=state_payload,
+                unopened_branches=runtime.unopened_branches,
+                linked_children=runtime.linked_children,
+                evaluation=runtime.evaluation,
+                exploration_index=runtime.exploration_index,
+            )
+        )
+    return nodes
 
 
 def _algorithm_node_payload_from_mapping(
     payload: dict[str, object],
 ) -> AlgorithmNodeCheckpointPayload:
     """Build one typed node payload from a C2b JSON record."""
+    runtime = _runtime_from_mapping(payload)
     return AlgorithmNodeCheckpointPayload(
         node_id=require_int_field(payload, "node_id"),
         parent_node_id=optional_int_field(payload, "parent_node_id"),
@@ -149,32 +369,10 @@ def _algorithm_node_payload_from_mapping(
             require_mapping_field(payload, "state_payload")
         ),
         generated_all_branches=require_bool_field(payload, "generated_all_branches"),
-        unopened_branches=cast(
-            "list[CheckpointAtomPayload]",
-            optional_list_field(payload, "unopened_branches"),
-        ),
-        linked_children=[
-            _linked_child_payload_from_mapping(
-                require_mapping(child, field_name="linked_children[]")
-            )
-            for child in optional_list_field(payload, "linked_children")
-        ],
-        evaluation=(
-            None
-            if (evaluation := optional_mapping_field(payload, "evaluation")) is None
-            else _node_evaluation_payload_from_mapping(evaluation)
-        ),
-        exploration_index=(
-            None
-            if (
-                exploration_index := optional_mapping_field(
-                    payload,
-                    "exploration_index",
-                )
-            )
-            is None
-            else _exploration_index_payload_from_mapping(exploration_index)
-        ),
+        unopened_branches=runtime.unopened_branches,
+        linked_children=runtime.linked_children,
+        evaluation=runtime.evaluation,
+        exploration_index=runtime.exploration_index,
     )
 
 

@@ -136,8 +136,10 @@ existing broader trusted-input contract. All anchor/delta parents
 must be covered, acyclic and lower-depth. Codec ancestry may differ from graph
 ancestry; native restoration remains authoritative. External state stores, reader
 leases, arbitrary plugin factories and incomplete checkpoints are unsupported.
-The initial public input is a materialized typed native payload; it is not a new
-sharded ingestion API. Native sharded writers and loaders remain usable for installed
+The prepared API input is a materialized typed native payload. The existing
+`load_sharded_search_checkpoint` reader now materializes both `node_records` and
+`split` layouts directly; prepared consumers must supply explicit
+`ShardedCheckpointReadLimits`. See [bounded materialization](sharded_checkpoint_materialization.md). Native sharded writers and loaders remain usable for installed
 runtime export/continuation. No Chipiron codec or dependency was modified here.
 
 `PreparationLimits` uses one absolute monotonic deadline, optional cancellation

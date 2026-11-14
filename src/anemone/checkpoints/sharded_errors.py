@@ -5,6 +5,11 @@ class ShardedCheckpointManifestError(ValueError):
     """Raised when a sharded checkpoint manifest is structurally invalid."""
 
     @classmethod
+    def invalid_input(cls, reason: str) -> ShardedCheckpointManifestError:
+        """Refuse incomplete, contradictory or resource-exhausted shard input."""
+        return cls(f"Invalid sharded checkpoint: {reason}.")
+
+    @classmethod
     def negative_shard_record_count(cls) -> ShardedCheckpointManifestError:
         """Return the error for a negative shard record count."""
         return cls("sharded checkpoint shard record_count must be non-negative.")

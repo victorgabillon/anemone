@@ -12,6 +12,7 @@ from .sharded_manifest import (
     sharded_checkpoint_manifest_to_jsonable,
     write_sharded_checkpoint_manifest,
 )
+from .sharded_read_limits import ShardedCheckpointReadLimits
 from .sharded_restore import load_search_from_sharded_checkpoint
 from .sharded_types import (
     SHARDED_CHECKPOINT_FORMAT_VERSION,
@@ -25,6 +26,7 @@ __all__ = [
     "SHARDED_CHECKPOINT_FORMAT_VERSION",
     "ShardedCheckpointManifest",
     "ShardedCheckpointManifestError",
+    "ShardedCheckpointReadLimits",
     "ShardedCheckpointShardEncoding",
     "ShardedCheckpointShardKind",
     "ShardedCheckpointShardRef",
