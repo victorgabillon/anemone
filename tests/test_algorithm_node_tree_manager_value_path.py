@@ -180,7 +180,7 @@ def test_update_backward_routes_expansion_children_through_value_propagator() ->
 
     manager.update_backward(tree_expansions=tree_expansions)
 
-    assert value_propagator.calls == [[created_child, existing_child]]
+    assert value_propagator.calls == [[created_child, existing_child, root]]
 
 
 def test_evaluate_expansions_only_stages_newly_created_nodes() -> None:

@@ -106,6 +106,17 @@ class _ExpansionPropagation[NodeT: AlgorithmNode[Any] = AlgorithmNode[Any]]:
         if not propagation_seed_nodes:
             return
 
+        # Expansion has already synchronized opening completeness. Completing
+        # an opening can remove direct-value fallback without changing tree/PV,
+        # so the local backup delta cannot recover that parent-facing change.
+        # Schedule every incoming parent of the structurally touched nodes too.
+        propagation_seed_nodes.extend(
+            dict.fromkeys(
+                expansion.parent_node
+                for expansion in tree_expansions
+                if expansion.parent_node is not None
+            )
+        )
         self.get_value_propagator().propagate_from_changed_nodes(propagation_seed_nodes)
 
     def propagate_depth_index(self, tree_expansions: TreeExpansions[NodeT]) -> None:
