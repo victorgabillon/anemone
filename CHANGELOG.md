@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1
+
+### Fixed
+
+- Propagate effective-value changes caused by structural opening to incoming
+  parents even when the local tree value and principal variation do not change.
+  Retain conservative backups for all structurally touched parents.
+- No API, checkpoint-schema or numerical-policy changes. Existing stale
+  checkpoints are not automatically repaired. Corrected priorities can change
+  future search trajectories.
+
 ## 0.4.0
 
 ### Added
