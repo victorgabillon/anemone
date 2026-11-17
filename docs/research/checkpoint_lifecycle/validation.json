@@ -1,0 +1,13 @@
+{
+  "implementation_commit": "e29b58402dcc0c3473c910ee58de04cf212cb26a",
+  "command": "/tmp/anemone-checkpoint-lifecycle-venv/bin/tox -p2 -o --parallel-no-spinner",
+  "environments": {
+    "py313": "924 passed in 33.43s",
+    "lint": "ruff check, format, pylint passed; pylint 10.00/10",
+    "typecheck": "mypy: 288 source files, pyright: 0 errors/warnings",
+    "build": "sdist/wheel + twine check passed"
+  },
+  "wall_seconds": 39.14,
+  "raw_log": "/tmp/anemone-lifecycle-final-tox.log",
+  "raw_log_sha256": "33e7c8f53dd815613294e400b1c07af7646a048eb4574076429505756bfff80b"
+}

@@ -1,0 +1,4539 @@
+{
+  "implementation_commit": "e29b58402dcc0c3473c910ee58de04cf212cb26a",
+  "combined_anemone_commit": "866560f7606eea095981ec25090c5f2c5908a643",
+  "chipiron_experiment_commit": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+  "scope": "Synthetic CPU only; production disabled; no gen38, historical experiment, workers, training or merge",
+  "cases": [
+    {
+      "label": "10k_without_export",
+      "raw_root": "/tmp/anemone-lifecycle-10k-fixed",
+      "modes": {
+        "cold": {
+          "elapsed_s": 9.05059217499911,
+          "restores": 3,
+          "same_runtime": false,
+          "nodes": 10110,
+          "branches": 11904,
+          "selected": [
+            [
+              412,
+              3
+            ],
+            [
+              6917,
+              18
+            ],
+            [
+              1231,
+              46
+            ],
+            [
+              2592,
+              38
+            ],
+            [
+              4956,
+              8
+            ],
+            [
+              2558,
+              16
+            ]
+          ],
+          "rss_before_mb": 298.4375,
+          "rss_after_mb": 376.8125,
+          "process_peak_rss_mb": 455.91015625,
+          "checkpoint_digest": "d867393a303f301dd2c0239f4e757171853ebc538ea91f2d7bb414c8fc4dffba",
+          "checkpoint_component_digests": {
+            "metadata": "ffe8940ee6c1290cdf9e37008e1e7ac9fa7aeb414578744994252768c123aeb8",
+            "node_shells": "3c9e77beb47f37c8a07c156890976644892ff5a845188cfbe3431a88603f72fe",
+            "state_payloads": "705143c332338454e4e3ca549c7de0317b9dc9c938042f2bc5818a7b5ae1fd62",
+            "node_runtime": "0ceeabbe144224094b9df09e5876e01a6f7243636f574229e55b034c4a1ec78f",
+            "selector": "1dd186c5f461b3addbaf51a01a2b9902ad2d12da14c212c580dc25ef3ece00a8",
+            "latest_expansions": "7cdee1618b6d8e3d352bad7478d352d1f22efb0b3965b2b27419a8c8e0443e60"
+          },
+          "lifecycle": [],
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "aeece2c1694a90bb79880db1733966d22c36c6a1",
+          "chipiron_dirty": "",
+          "config": "plain",
+          "export": false,
+          "save_times_s": [
+            1.611172474000341,
+            1.7147477220005385,
+            1.6158248360006837
+          ],
+          "save_component_digests": [
+            {
+              "digest": "5201b7fd48a002d2c2c322597cbc9456fc8621da935a25433b81b4b6efed54de",
+              "components": {
+                "metadata": "2b04e1a67b3785226f11656667f5e75b28905c522964679861f83742812254aa",
+                "node_shells": "ed0ff5a845ad67fd4062a24537594943794db44f44cca2a26e461d7c03b1f2d7",
+                "state_payloads": "bd8ae7e758b27a45a2b9b2b20374b6e0e483abc31603381e1d198bdb69cb6724",
+                "node_runtime": "89abf20f47089caf40cb96d21a7663935e3eb4dbf35ae7332f5630dfa228a3ef",
+                "selector": "e81f792c58bed6195c47a72789da3be6ee53a98f8d27fba9df7647336085ecc2",
+                "latest_expansions": "899eeaa654ddce792202ba5087bf332f173f2537761546d262817e2c6f69c9c5"
+              }
+            },
+            {
+              "digest": "cd251cd69b99e89e9607b99f6d706aecc21dc83d079a1856fb222ae126f925b5",
+              "components": {
+                "metadata": "7b144d5b20a4794852aebecb9f6f5c43126e9163a3a9ed1af4caa8f489064e50",
+                "node_shells": "71370e4be484ef822bc06d9e087fa593748969658d724b4357ecf20c5d3f38a5",
+                "state_payloads": "5ab312e0b4335d75f78bdf409d7572c5879cc03622b5a9e67d7bf6743c9bd864",
+                "node_runtime": "7c69b49024aa3ffd4893da07c4c19ed409951253599964e4f6acf72e08cbbb63",
+                "selector": "e2f08d19d6021d2a2fcfda02330c3610545e94380dd3d45158d8c98c7d5b269a",
+                "latest_expansions": "607a98726ae9dc57dc6a75f617556bec30cc62ee858ad40ffb793841ad9e44e8"
+              }
+            },
+            {
+              "digest": "d867393a303f301dd2c0239f4e757171853ebc538ea91f2d7bb414c8fc4dffba",
+              "components": {
+                "metadata": "ffe8940ee6c1290cdf9e37008e1e7ac9fa7aeb414578744994252768c123aeb8",
+                "node_shells": "3c9e77beb47f37c8a07c156890976644892ff5a845188cfbe3431a88603f72fe",
+                "state_payloads": "705143c332338454e4e3ca549c7de0317b9dc9c938042f2bc5818a7b5ae1fd62",
+                "node_runtime": "0ceeabbe144224094b9df09e5876e01a6f7243636f574229e55b034c4a1ec78f",
+                "selector": "1dd186c5f461b3addbaf51a01a2b9902ad2d12da14c212c580dc25ef3ece00a8",
+                "latest_expansions": "7cdee1618b6d8e3d352bad7478d352d1f22efb0b3965b2b27419a8c8e0443e60"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.932096004999039,
+              1.0508935399993788,
+              1.1166490989999147
+            ],
+            "growth": [
+              0.23867824599983578,
+              0.2335225580009137,
+              0.20608251200064842
+            ],
+            "checkpoint": [
+              1.6114103119998617,
+              1.714995727999849,
+              1.6160681530000147
+            ],
+            "export": [],
+            "cycle": [
+              2.7850357000006625,
+              3.0019312179992994,
+              2.9414673980008956
+            ]
+          },
+          "raw_result_sha256": "571661faa385e6690bc9dc0cf9c92eff57f52e14053ef113fa160f5b1d3ae4da"
+        },
+        "warm": {
+          "elapsed_s": 8.602245265999954,
+          "restores": 1,
+          "same_runtime": true,
+          "nodes": 10110,
+          "branches": 11904,
+          "selected": [
+            [
+              412,
+              3
+            ],
+            [
+              6917,
+              18
+            ],
+            [
+              1231,
+              46
+            ],
+            [
+              2592,
+              38
+            ],
+            [
+              4956,
+              8
+            ],
+            [
+              2558,
+              16
+            ]
+          ],
+          "rss_before_mb": 297.9140625,
+          "rss_after_mb": 382.4296875,
+          "process_peak_rss_mb": 455.5234375,
+          "checkpoint_digest": "d867393a303f301dd2c0239f4e757171853ebc538ea91f2d7bb414c8fc4dffba",
+          "checkpoint_component_digests": {
+            "metadata": "ffe8940ee6c1290cdf9e37008e1e7ac9fa7aeb414578744994252768c123aeb8",
+            "node_shells": "3c9e77beb47f37c8a07c156890976644892ff5a845188cfbe3431a88603f72fe",
+            "state_payloads": "705143c332338454e4e3ca549c7de0317b9dc9c938042f2bc5818a7b5ae1fd62",
+            "node_runtime": "0ceeabbe144224094b9df09e5876e01a6f7243636f574229e55b034c4a1ec78f",
+            "selector": "1dd186c5f461b3addbaf51a01a2b9902ad2d12da14c212c580dc25ef3ece00a8",
+            "latest_expansions": "7cdee1618b6d8e3d352bad7478d352d1f22efb0b3965b2b27419a8c8e0443e60"
+          },
+          "lifecycle": [
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792493966.6831338,
+              "finished_unix_s": 1792493966.8134313,
+              "elapsed_s": 0.13029717599965807,
+              "pid": 3,
+              "rss_before_mb": 341.87109375,
+              "rss_after_mb": 341.87109375,
+              "process_peak_rss_mb": 345.46484375,
+              "available_ram_before_mb": 8120.73046875,
+              "available_ram_after_mb": 8120.74609375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 538049,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 538106,
+                "live_runtime_graphs": 1
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792493968.3616166,
+              "finished_unix_s": 1792493968.4522722,
+              "elapsed_s": 0.09065523100071005,
+              "pid": 3,
+              "rss_before_mb": 370.4140625,
+              "rss_after_mb": 370.4140625,
+              "process_peak_rss_mb": 455.5234375,
+              "available_ram_before_mb": 8355.16015625,
+              "available_ram_after_mb": 8354.68359375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 373844,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 373676,
+                "live_runtime_graphs": 1
+              },
+              "stats": {
+                "nodes_bound": 10049,
+                "parent_orders_changed": 4
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792493969.1964417,
+              "finished_unix_s": 1792493969.3264327,
+              "elapsed_s": 0.12999090600169438,
+              "pid": 3,
+              "rss_before_mb": 370.4140625,
+              "rss_after_mb": 370.4140625,
+              "process_peak_rss_mb": 455.5234375,
+              "available_ram_before_mb": 8375.89453125,
+              "available_ram_after_mb": 8375.58984375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 545389,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 545403,
+                "live_runtime_graphs": 1
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792493971.026428,
+              "finished_unix_s": 1792493971.116735,
+              "elapsed_s": 0.09030725499906112,
+              "pid": 3,
+              "rss_before_mb": 376.33984375,
+              "rss_after_mb": 376.33984375,
+              "process_peak_rss_mb": 455.5234375,
+              "available_ram_before_mb": 8399.5,
+              "available_ram_after_mb": 8399.28125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 374120,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 373997,
+                "live_runtime_graphs": 1
+              },
+              "stats": {
+                "nodes_bound": 10078,
+                "parent_orders_changed": 6
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792493971.8541324,
+              "finished_unix_s": 1792493971.9828858,
+              "elapsed_s": 0.12875335799981258,
+              "pid": 3,
+              "rss_before_mb": 376.3515625,
+              "rss_after_mb": 376.3515625,
+              "process_peak_rss_mb": 455.5234375,
+              "available_ram_before_mb": 8435.28125,
+              "available_ram_after_mb": 8434.8046875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 542848,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 542862,
+                "live_runtime_graphs": 1
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792493973.531243,
+              "finished_unix_s": 1792493973.6249049,
+              "elapsed_s": 0.09366201400007412,
+              "pid": 3,
+              "rss_before_mb": 382.4296875,
+              "rss_after_mb": 382.4296875,
+              "process_peak_rss_mb": 455.5234375,
+              "available_ram_before_mb": 8452.3984375,
+              "available_ram_after_mb": 8450.31640625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 375442,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 375298,
+                "live_runtime_graphs": 1
+              },
+              "stats": {
+                "nodes_bound": 10110,
+                "parent_orders_changed": 1
+              }
+            }
+          ],
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "aeece2c1694a90bb79880db1733966d22c36c6a1",
+          "chipiron_dirty": "",
+          "config": "plain",
+          "export": false,
+          "save_times_s": [
+            1.9005634549994284,
+            2.053349578000052,
+            1.8761957850001636
+          ],
+          "save_component_digests": [
+            {
+              "digest": "5201b7fd48a002d2c2c322597cbc9456fc8621da935a25433b81b4b6efed54de",
+              "components": {
+                "metadata": "2b04e1a67b3785226f11656667f5e75b28905c522964679861f83742812254aa",
+                "node_shells": "ed0ff5a845ad67fd4062a24537594943794db44f44cca2a26e461d7c03b1f2d7",
+                "state_payloads": "bd8ae7e758b27a45a2b9b2b20374b6e0e483abc31603381e1d198bdb69cb6724",
+                "node_runtime": "89abf20f47089caf40cb96d21a7663935e3eb4dbf35ae7332f5630dfa228a3ef",
+                "selector": "e81f792c58bed6195c47a72789da3be6ee53a98f8d27fba9df7647336085ecc2",
+                "latest_expansions": "899eeaa654ddce792202ba5087bf332f173f2537761546d262817e2c6f69c9c5"
+              }
+            },
+            {
+              "digest": "cd251cd69b99e89e9607b99f6d706aecc21dc83d079a1856fb222ae126f925b5",
+              "components": {
+                "metadata": "7b144d5b20a4794852aebecb9f6f5c43126e9163a3a9ed1af4caa8f489064e50",
+                "node_shells": "71370e4be484ef822bc06d9e087fa593748969658d724b4357ecf20c5d3f38a5",
+                "state_payloads": "5ab312e0b4335d75f78bdf409d7572c5879cc03622b5a9e67d7bf6743c9bd864",
+                "node_runtime": "7c69b49024aa3ffd4893da07c4c19ed409951253599964e4f6acf72e08cbbb63",
+                "selector": "e2f08d19d6021d2a2fcfda02330c3610545e94380dd3d45158d8c98c7d5b269a",
+                "latest_expansions": "607a98726ae9dc57dc6a75f617556bec30cc62ee858ad40ffb793841ad9e44e8"
+              }
+            },
+            {
+              "digest": "d867393a303f301dd2c0239f4e757171853ebc538ea91f2d7bb414c8fc4dffba",
+              "components": {
+                "metadata": "ffe8940ee6c1290cdf9e37008e1e7ac9fa7aeb414578744994252768c123aeb8",
+                "node_shells": "3c9e77beb47f37c8a07c156890976644892ff5a845188cfbe3431a88603f72fe",
+                "state_payloads": "705143c332338454e4e3ca549c7de0317b9dc9c938042f2bc5818a7b5ae1fd62",
+                "node_runtime": "0ceeabbe144224094b9df09e5876e01a6f7243636f574229e55b034c4a1ec78f",
+                "selector": "1dd186c5f461b3addbaf51a01a2b9902ad2d12da14c212c580dc25ef3ece00a8",
+                "latest_expansions": "7cdee1618b6d8e3d352bad7478d352d1f22efb0b3965b2b27419a8c8e0443e60"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              1.0071360999991157,
+              0.10599390400057018,
+              0.10697783899922797
+            ],
+            "growth": [
+              0.2454194780002581,
+              0.23480878800000937,
+              0.23742515099911543
+            ],
+            "checkpoint": [
+              1.9008044700003666,
+              2.053676261999499,
+              1.8764952439996705
+            ],
+            "export": [],
+            "cycle": [
+              3.1562943700009782,
+              2.3994400479987235,
+              2.225071591001324
+            ]
+          },
+          "raw_result_sha256": "a29f557542d703f360a5e07c59de45c0cfa9ffea289e0e3fa82a4404fba1d715"
+        }
+      },
+      "comparison": {
+        "all_three_saves_equal": [
+          true,
+          true,
+          true
+        ],
+        "selected_equal": true,
+        "retained": [
+          {
+            "generation": "generation_000003.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          },
+          {
+            "generation": "generation_000004.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          }
+        ]
+      }
+    },
+    {
+      "label": "10k_full_export",
+      "raw_root": "/tmp/anemone-lifecycle-10k-export",
+      "modes": {
+        "cold": {
+          "elapsed_s": 157.72664724199967,
+          "restores": 3,
+          "same_runtime": false,
+          "nodes": 10110,
+          "branches": 11904,
+          "selected": [
+            [
+              412,
+              3
+            ],
+            [
+              6917,
+              18
+            ],
+            [
+              1231,
+              46
+            ],
+            [
+              2592,
+              38
+            ],
+            [
+              4956,
+              8
+            ],
+            [
+              2558,
+              16
+            ]
+          ],
+          "rss_before_mb": 298.02734375,
+          "rss_after_mb": 547.765625,
+          "process_peak_rss_mb": 552.0234375,
+          "checkpoint_digest": "d867393a303f301dd2c0239f4e757171853ebc538ea91f2d7bb414c8fc4dffba",
+          "checkpoint_component_digests": {
+            "metadata": "ffe8940ee6c1290cdf9e37008e1e7ac9fa7aeb414578744994252768c123aeb8",
+            "node_shells": "3c9e77beb47f37c8a07c156890976644892ff5a845188cfbe3431a88603f72fe",
+            "state_payloads": "705143c332338454e4e3ca549c7de0317b9dc9c938042f2bc5818a7b5ae1fd62",
+            "node_runtime": "0ceeabbe144224094b9df09e5876e01a6f7243636f574229e55b034c4a1ec78f",
+            "selector": "1dd186c5f461b3addbaf51a01a2b9902ad2d12da14c212c580dc25ef3ece00a8",
+            "latest_expansions": "7cdee1618b6d8e3d352bad7478d352d1f22efb0b3965b2b27419a8c8e0443e60"
+          },
+          "lifecycle": [],
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "plain",
+          "export": true,
+          "save_times_s": [
+            1.621605730999363,
+            1.5015875620010775,
+            1.6794954830002098
+          ],
+          "save_component_digests": [
+            {
+              "digest": "5201b7fd48a002d2c2c322597cbc9456fc8621da935a25433b81b4b6efed54de",
+              "components": {
+                "metadata": "2b04e1a67b3785226f11656667f5e75b28905c522964679861f83742812254aa",
+                "node_shells": "ed0ff5a845ad67fd4062a24537594943794db44f44cca2a26e461d7c03b1f2d7",
+                "state_payloads": "bd8ae7e758b27a45a2b9b2b20374b6e0e483abc31603381e1d198bdb69cb6724",
+                "node_runtime": "89abf20f47089caf40cb96d21a7663935e3eb4dbf35ae7332f5630dfa228a3ef",
+                "selector": "e81f792c58bed6195c47a72789da3be6ee53a98f8d27fba9df7647336085ecc2",
+                "latest_expansions": "899eeaa654ddce792202ba5087bf332f173f2537761546d262817e2c6f69c9c5"
+              }
+            },
+            {
+              "digest": "cd251cd69b99e89e9607b99f6d706aecc21dc83d079a1856fb222ae126f925b5",
+              "components": {
+                "metadata": "7b144d5b20a4794852aebecb9f6f5c43126e9163a3a9ed1af4caa8f489064e50",
+                "node_shells": "71370e4be484ef822bc06d9e087fa593748969658d724b4357ecf20c5d3f38a5",
+                "state_payloads": "5ab312e0b4335d75f78bdf409d7572c5879cc03622b5a9e67d7bf6743c9bd864",
+                "node_runtime": "7c69b49024aa3ffd4893da07c4c19ed409951253599964e4f6acf72e08cbbb63",
+                "selector": "e2f08d19d6021d2a2fcfda02330c3610545e94380dd3d45158d8c98c7d5b269a",
+                "latest_expansions": "607a98726ae9dc57dc6a75f617556bec30cc62ee858ad40ffb793841ad9e44e8"
+              }
+            },
+            {
+              "digest": "d867393a303f301dd2c0239f4e757171853ebc538ea91f2d7bb414c8fc4dffba",
+              "components": {
+                "metadata": "ffe8940ee6c1290cdf9e37008e1e7ac9fa7aeb414578744994252768c123aeb8",
+                "node_shells": "3c9e77beb47f37c8a07c156890976644892ff5a845188cfbe3431a88603f72fe",
+                "state_payloads": "705143c332338454e4e3ca549c7de0317b9dc9c938042f2bc5818a7b5ae1fd62",
+                "node_runtime": "0ceeabbe144224094b9df09e5876e01a6f7243636f574229e55b034c4a1ec78f",
+                "selector": "1dd186c5f461b3addbaf51a01a2b9902ad2d12da14c212c580dc25ef3ece00a8",
+                "latest_expansions": "7cdee1618b6d8e3d352bad7478d352d1f22efb0b3965b2b27419a8c8e0443e60"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.9448191649989894,
+              1.1301305030010553,
+              1.2944977499992092
+            ],
+            "growth": [
+              0.24114118400029838,
+              0.21449216900145984,
+              0.23479800099994463
+            ],
+            "checkpoint": [
+              1.6218487650003226,
+              1.5018225020012324,
+              1.67974262899952
+            ],
+            "export": [
+              46.63796183100021,
+              48.327107728000556,
+              53.42381250499966
+            ],
+            "cycle": [
+              49.44916358900082,
+              51.176724425999055,
+              56.63623985600134
+            ]
+          },
+          "raw_result_sha256": "7763be0efb44e0a12ed9bf8060b15396f6d0c494fb12158dd99a4c6bddaaeb0e"
+        },
+        "warm": {
+          "elapsed_s": 189.12689824300105,
+          "restores": 1,
+          "same_runtime": true,
+          "nodes": 10110,
+          "branches": 11904,
+          "selected": [
+            [
+              412,
+              3
+            ],
+            [
+              6917,
+              18
+            ],
+            [
+              1231,
+              46
+            ],
+            [
+              2592,
+              38
+            ],
+            [
+              4956,
+              8
+            ],
+            [
+              2558,
+              16
+            ]
+          ],
+          "rss_before_mb": 298.0703125,
+          "rss_after_mb": 491.79296875,
+          "process_peak_rss_mb": 550.46484375,
+          "checkpoint_digest": "d867393a303f301dd2c0239f4e757171853ebc538ea91f2d7bb414c8fc4dffba",
+          "checkpoint_component_digests": {
+            "metadata": "ffe8940ee6c1290cdf9e37008e1e7ac9fa7aeb414578744994252768c123aeb8",
+            "node_shells": "3c9e77beb47f37c8a07c156890976644892ff5a845188cfbe3431a88603f72fe",
+            "state_payloads": "705143c332338454e4e3ca549c7de0317b9dc9c938042f2bc5818a7b5ae1fd62",
+            "node_runtime": "0ceeabbe144224094b9df09e5876e01a6f7243636f574229e55b034c4a1ec78f",
+            "selector": "1dd186c5f461b3addbaf51a01a2b9902ad2d12da14c212c580dc25ef3ece00a8",
+            "latest_expansions": "7cdee1618b6d8e3d352bad7478d352d1f22efb0b3965b2b27419a8c8e0443e60"
+          },
+          "lifecycle": [
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494173.647922,
+              "finished_unix_s": 1792494173.7857685,
+              "elapsed_s": 0.13784623499850568,
+              "pid": 3,
+              "rss_before_mb": 342.5703125,
+              "rss_after_mb": 342.5703125,
+              "process_peak_rss_mb": 346.3046875,
+              "available_ram_before_mb": 8133.1328125,
+              "available_ram_after_mb": 8132.9765625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 538066,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 538124,
+                "live_runtime_graphs": 1
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494233.883582,
+              "finished_unix_s": 1792494234.056997,
+              "elapsed_s": 0.17341526100062765,
+              "pid": 3,
+              "rss_before_mb": 546.27734375,
+              "rss_after_mb": 474.5234375,
+              "process_peak_rss_mb": 550.46484375,
+              "available_ram_before_mb": 6500.4453125,
+              "available_ram_after_mb": 6539.47265625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 403969,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 373698,
+                "live_runtime_graphs": 1
+              },
+              "stats": {
+                "nodes_bound": 10049,
+                "parent_orders_changed": 4
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494234.9022646,
+              "finished_unix_s": 1792494235.0434916,
+              "elapsed_s": 0.141227185000389,
+              "pid": 3,
+              "rss_before_mb": 474.5234375,
+              "rss_after_mb": 474.5234375,
+              "process_peak_rss_mb": 550.46484375,
+              "available_ram_before_mb": 6555.3359375,
+              "available_ram_after_mb": 6551.16796875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 545653,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 545667,
+                "live_runtime_graphs": 1
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494295.7228498,
+              "finished_unix_s": 1792494295.9025884,
+              "elapsed_s": 0.17973830600021756,
+              "pid": 3,
+              "rss_before_mb": 545.17578125,
+              "rss_after_mb": 482.265625,
+              "process_peak_rss_mb": 550.46484375,
+              "available_ram_before_mb": 7301.98046875,
+              "available_ram_after_mb": 7355.921875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 404371,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 374019,
+                "live_runtime_graphs": 1
+              },
+              "stats": {
+                "nodes_bound": 10078,
+                "parent_orders_changed": 6
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494296.7755384,
+              "finished_unix_s": 1792494296.9328208,
+              "elapsed_s": 0.1572821900008421,
+              "pid": 3,
+              "rss_before_mb": 481.28125,
+              "rss_after_mb": 481.28125,
+              "process_peak_rss_mb": 550.46484375,
+              "available_ram_before_mb": 7261.92578125,
+              "available_ram_after_mb": 7245.6328125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 542296,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 542310,
+                "live_runtime_graphs": 1
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494360.8609145,
+              "finished_unix_s": 1792494361.06474,
+              "elapsed_s": 0.2038256289997662,
+              "pid": 3,
+              "rss_before_mb": 545.8046875,
+              "rss_after_mb": 492.765625,
+              "process_peak_rss_mb": 550.46484375,
+              "available_ram_before_mb": 6751.21484375,
+              "available_ram_after_mb": 6788.38671875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 405750,
+                "live_runtime_graphs": 1
+              },
+              "after": {
+                "gc_tracked_objects": 375320,
+                "live_runtime_graphs": 1
+              },
+              "stats": {
+                "nodes_bound": 10110,
+                "parent_orders_changed": 1
+              }
+            }
+          ],
+          "memory_probes": [],
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "plain",
+          "export": true,
+          "save_times_s": [
+            2.064508310000747,
+            2.2505761479987996,
+            2.4281899810011964
+          ],
+          "save_component_digests": [
+            {
+              "digest": "5201b7fd48a002d2c2c322597cbc9456fc8621da935a25433b81b4b6efed54de",
+              "components": {
+                "metadata": "2b04e1a67b3785226f11656667f5e75b28905c522964679861f83742812254aa",
+                "node_shells": "ed0ff5a845ad67fd4062a24537594943794db44f44cca2a26e461d7c03b1f2d7",
+                "state_payloads": "bd8ae7e758b27a45a2b9b2b20374b6e0e483abc31603381e1d198bdb69cb6724",
+                "node_runtime": "89abf20f47089caf40cb96d21a7663935e3eb4dbf35ae7332f5630dfa228a3ef",
+                "selector": "e81f792c58bed6195c47a72789da3be6ee53a98f8d27fba9df7647336085ecc2",
+                "latest_expansions": "899eeaa654ddce792202ba5087bf332f173f2537761546d262817e2c6f69c9c5"
+              }
+            },
+            {
+              "digest": "cd251cd69b99e89e9607b99f6d706aecc21dc83d079a1856fb222ae126f925b5",
+              "components": {
+                "metadata": "7b144d5b20a4794852aebecb9f6f5c43126e9163a3a9ed1af4caa8f489064e50",
+                "node_shells": "71370e4be484ef822bc06d9e087fa593748969658d724b4357ecf20c5d3f38a5",
+                "state_payloads": "5ab312e0b4335d75f78bdf409d7572c5879cc03622b5a9e67d7bf6743c9bd864",
+                "node_runtime": "7c69b49024aa3ffd4893da07c4c19ed409951253599964e4f6acf72e08cbbb63",
+                "selector": "e2f08d19d6021d2a2fcfda02330c3610545e94380dd3d45158d8c98c7d5b269a",
+                "latest_expansions": "607a98726ae9dc57dc6a75f617556bec30cc62ee858ad40ffb793841ad9e44e8"
+              }
+            },
+            {
+              "digest": "d867393a303f301dd2c0239f4e757171853ebc538ea91f2d7bb414c8fc4dffba",
+              "components": {
+                "metadata": "ffe8940ee6c1290cdf9e37008e1e7ac9fa7aeb414578744994252768c123aeb8",
+                "node_shells": "3c9e77beb47f37c8a07c156890976644892ff5a845188cfbe3431a88603f72fe",
+                "state_payloads": "705143c332338454e4e3ca549c7de0317b9dc9c938042f2bc5818a7b5ae1fd62",
+                "node_runtime": "0ceeabbe144224094b9df09e5876e01a6f7243636f574229e55b034c4a1ec78f",
+                "selector": "1dd186c5f461b3addbaf51a01a2b9902ad2d12da14c212c580dc25ef3ece00a8",
+                "latest_expansions": "7cdee1618b6d8e3d352bad7478d352d1f22efb0b3965b2b27419a8c8e0443e60"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              1.0180282490000536,
+              0.12071313700107567,
+              0.12776058000054036
+            ],
+            "growth": [
+              0.2598945250010729,
+              0.2700892450011452,
+              0.26603557400085265
+            ],
+            "checkpoint": [
+              2.064782498000568,
+              2.250869194000188,
+              2.428463878999537
+            ],
+            "export": [
+              58.32715921899944,
+              58.738120864998564,
+              61.843806686998505
+            ],
+            "cycle": [
+              61.67357309600084,
+              61.385088706001625,
+              64.67126437200022
+            ]
+          },
+          "raw_result_sha256": "ee0ead5af0529e6319a9d70e335b3f91fcafce9af13e4e9d32293a30b34c4a54"
+        }
+      },
+      "comparison": {
+        "all_three_saves_equal": [
+          true,
+          true,
+          true
+        ],
+        "selected_equal": true,
+        "retained": [
+          {
+            "generation": "generation_000003.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          },
+          {
+            "generation": "generation_000004.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          }
+        ]
+      }
+    },
+    {
+      "label": "1k_eviction",
+      "raw_root": "/tmp/anemone-lifecycle-eviction-final-1k",
+      "modes": {
+        "cold": {
+          "elapsed_s": 2.702157718000308,
+          "restores": 3,
+          "same_runtime": false,
+          "nodes": 1108,
+          "branches": 1196,
+          "selected": [
+            [
+              979,
+              38
+            ],
+            [
+              136,
+              5
+            ],
+            [
+              1014,
+              39
+            ],
+            [
+              125,
+              3
+            ],
+            [
+              1044,
+              40
+            ],
+            [
+              882,
+              12
+            ]
+          ],
+          "rss_before_mb": 297.16796875,
+          "rss_after_mb": 311.55859375,
+          "process_peak_rss_mb": 311.20703125,
+          "checkpoint_digest": "f6f20a5722dfdef692844b2f12a4d6109f01c750d279caa9e4bf81380d5a2832",
+          "checkpoint_component_digests": {
+            "metadata": "000d4cc1adc918431003158efa807f2915d97e0095375ba11bd2b6177cfb6021",
+            "node_shells": "b0f77513d5fca2775e1e134feb1629a4f2616fa3749ace5623f83949b9912dbf",
+            "state_payloads": "4453c7544dbfa6cebf419c4fb3953fa080cfe229d94845cd0f2a4bfd8697b046",
+            "node_runtime": "d281fde67443b98460cae8f8cb26066ae7a419811772414189f260e6cec7f7ca",
+            "selector": "a360b30e76ac858643538f4bc55266bb50ef634e4d47a5f15627b9eb0f92b9b3",
+            "latest_expansions": "67e06aae8bc837b8983f99d2a8e616fbb5bf6a6a0239e47f3a8b857a08a3509c"
+          },
+          "lifecycle": [],
+          "memory_probes": [],
+          "eviction_boundaries": [],
+          "cache_checks": [],
+          "eviction_owner_rotated": true,
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "eviction",
+          "export": false,
+          "save_times_s": [
+            0.20513673700043,
+            0.21054879899929801,
+            0.21491374700053711
+          ],
+          "save_component_digests": [
+            {
+              "digest": "d152e71b1927479623fc531177c4f86906eb3684ba43ba1851419d6c8cb330a9",
+              "components": {
+                "metadata": "76af3ec665ad847d0ffd5784021c74edb2fe8bb9b8255712a3e2276e001a6ab0",
+                "node_shells": "e2c12ce0767eb2678b07c32be32633d134a63845ebeb6bf44208be722eb2257c",
+                "state_payloads": "0a778d547dffd72303640851d551fa1d57278c33eff0cf7784feef1654b258d7",
+                "node_runtime": "1fbff0e13d99e76604212668c9fea6720d50e08abbdc37ec46147828e0c5be95",
+                "selector": "9e17155054eab8117aa9e04c30236580af944e39fcab38f96ac5ce1c8df312db",
+                "latest_expansions": "4f78f32460525158e3c8f35405a49e1e29741cc85e7e5b45a99b7adb450f5bd6"
+              }
+            },
+            {
+              "digest": "3446201cd5358b4634e30cb8e1ff0e881e6001ff84c6230d9cb4de0220b50574",
+              "components": {
+                "metadata": "7bd9c4db68d0617d9a5afa610e35c44e25ecd9a0585093de6eb1755bdc241b56",
+                "node_shells": "77eee7ed344887a4a002241e8c0b87d06c651287cb1d14f62d9285b174924f8c",
+                "state_payloads": "1d5c37c5fddcce3b7c8de201b765312816b87e1bd8c62794312a0b7e1410b97b",
+                "node_runtime": "03744818798df1602d0fd1f0e533ca739b1e4498661d837d5b503fefe7943a30",
+                "selector": "c2d5e1eec39d104c78ee356848b31c27274cf3d10b68bd86e3ad132dc956703d",
+                "latest_expansions": "62fc910c2f1b4334e67eb6a5638aa7f517c6c5a57f1c9a86cda1b9a9c474b7ee"
+              }
+            },
+            {
+              "digest": "f6f20a5722dfdef692844b2f12a4d6109f01c750d279caa9e4bf81380d5a2832",
+              "components": {
+                "metadata": "000d4cc1adc918431003158efa807f2915d97e0095375ba11bd2b6177cfb6021",
+                "node_shells": "b0f77513d5fca2775e1e134feb1629a4f2616fa3749ace5623f83949b9912dbf",
+                "state_payloads": "4453c7544dbfa6cebf419c4fb3953fa080cfe229d94845cd0f2a4bfd8697b046",
+                "node_runtime": "d281fde67443b98460cae8f8cb26066ae7a419811772414189f260e6cec7f7ca",
+                "selector": "a360b30e76ac858643538f4bc55266bb50ef634e4d47a5f15627b9eb0f92b9b3",
+                "latest_expansions": "67e06aae8bc837b8983f99d2a8e616fbb5bf6a6a0239e47f3a8b857a08a3509c"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.1291111810005532,
+              0.19335277899881476,
+              0.19663013299941667
+            ],
+            "growth": [
+              0.3933648149995861,
+              0.46049341700017976,
+              0.48100378299932345
+            ],
+            "checkpoint": [
+              0.20535422600005404,
+              0.21078457499970682,
+              0.21513393400164205
+            ],
+            "export": [],
+            "cycle": [
+              0.7298228580002615,
+              0.8664665129999776,
+              0.8944040630012751
+            ]
+          },
+          "raw_result_sha256": "cb75aa4ec094ad81ccdb6294f567a127ffa298b365c2df0b04cf8f8da77e6034"
+        },
+        "warm": {
+          "elapsed_s": 3.4370076279992645,
+          "restores": 1,
+          "same_runtime": true,
+          "nodes": 1108,
+          "branches": 1196,
+          "selected": [
+            [
+              979,
+              38
+            ],
+            [
+              136,
+              5
+            ],
+            [
+              1014,
+              39
+            ],
+            [
+              125,
+              3
+            ],
+            [
+              1044,
+              40
+            ],
+            [
+              882,
+              12
+            ]
+          ],
+          "rss_before_mb": 297.23828125,
+          "rss_after_mb": 311.71875,
+          "process_peak_rss_mb": 311.44140625,
+          "checkpoint_digest": "f6f20a5722dfdef692844b2f12a4d6109f01c750d279caa9e4bf81380d5a2832",
+          "checkpoint_component_digests": {
+            "metadata": "000d4cc1adc918431003158efa807f2915d97e0095375ba11bd2b6177cfb6021",
+            "node_shells": "b0f77513d5fca2775e1e134feb1629a4f2616fa3749ace5623f83949b9912dbf",
+            "state_payloads": "4453c7544dbfa6cebf419c4fb3953fa080cfe229d94845cd0f2a4bfd8697b046",
+            "node_runtime": "d281fde67443b98460cae8f8cb26066ae7a419811772414189f260e6cec7f7ca",
+            "selector": "a360b30e76ac858643538f4bc55266bb50ef634e4d47a5f15627b9eb0f92b9b3",
+            "latest_expansions": "67e06aae8bc837b8983f99d2a8e616fbb5bf6a6a0239e47f3a8b857a08a3509c"
+          },
+          "lifecycle": [
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494693.489012,
+              "finished_unix_s": 1792494693.501101,
+              "elapsed_s": 0.012088538000170956,
+              "pid": 50,
+              "rss_before_mb": 305.4921875,
+              "rss_after_mb": 305.49609375,
+              "process_peak_rss_mb": 307.4140625,
+              "available_ram_before_mb": 7816.6640625,
+              "available_ram_after_mb": 7816.91015625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 289840,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1038,
+                "live_tree_nodes": 1038
+              },
+              "after": {
+                "gc_tracked_objects": 289898,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1038,
+                "live_tree_nodes": 1038
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494693.8614204,
+              "finished_unix_s": 1792494693.8695273,
+              "elapsed_s": 0.008106446999590844,
+              "pid": 50,
+              "rss_before_mb": 309.33984375,
+              "rss_after_mb": 309.33984375,
+              "process_peak_rss_mb": 309.9453125,
+              "available_ram_before_mb": 7813.51953125,
+              "available_ram_after_mb": 7813.51953125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 269951,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1038,
+                "live_tree_nodes": 1038
+              },
+              "after": {
+                "gc_tracked_objects": 269819,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1038,
+                "live_tree_nodes": 1038
+              },
+              "stats": {
+                "nodes_bound": 1038,
+                "parent_orders_changed": 1
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494693.980644,
+              "finished_unix_s": 1792494693.9808125,
+              "elapsed_s": 0.0001677939999353839,
+              "pid": 50,
+              "rss_before_mb": 309.33984375,
+              "rss_after_mb": 309.33984375,
+              "process_peak_rss_mb": 309.9453125,
+              "available_ram_before_mb": 7813.28515625,
+              "available_ram_after_mb": 7813.28515625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 269816,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1038,
+                "live_tree_nodes": 1038
+              },
+              "after": {
+                "gc_tracked_objects": 269819,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1038,
+                "live_tree_nodes": 1038
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494694.6043131,
+              "finished_unix_s": 1792494694.6170847,
+              "elapsed_s": 0.012770794999596546,
+              "pid": 50,
+              "rss_before_mb": 309.33984375,
+              "rss_after_mb": 309.33984375,
+              "process_peak_rss_mb": 309.9453125,
+              "available_ram_before_mb": 7815.59765625,
+              "available_ram_after_mb": 7815.59765625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 290067,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1077,
+                "live_tree_nodes": 1077
+              },
+              "after": {
+                "gc_tracked_objects": 290081,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1077,
+                "live_tree_nodes": 1077
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494694.977222,
+              "finished_unix_s": 1792494694.9856498,
+              "elapsed_s": 0.008427901000686688,
+              "pid": 50,
+              "rss_before_mb": 311.0390625,
+              "rss_after_mb": 311.0390625,
+              "process_peak_rss_mb": 310.69140625,
+              "available_ram_before_mb": 7813.0625,
+              "available_ram_after_mb": 7813.0625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 270662,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1077,
+                "live_tree_nodes": 1077
+              },
+              "after": {
+                "gc_tracked_objects": 270524,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1077,
+                "live_tree_nodes": 1077
+              },
+              "stats": {
+                "nodes_bound": 1077,
+                "parent_orders_changed": 0
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494695.0921013,
+              "finished_unix_s": 1792494695.0922558,
+              "elapsed_s": 0.00015389799955300987,
+              "pid": 50,
+              "rss_before_mb": 311.0390625,
+              "rss_after_mb": 311.0390625,
+              "process_peak_rss_mb": 310.69140625,
+              "available_ram_before_mb": 7813.3203125,
+              "available_ram_after_mb": 7813.3203125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 270521,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1077,
+                "live_tree_nodes": 1077
+              },
+              "after": {
+                "gc_tracked_objects": 270524,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1077,
+                "live_tree_nodes": 1077
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494695.7298298,
+              "finished_unix_s": 1792494695.7424254,
+              "elapsed_s": 0.012595237998539233,
+              "pid": 50,
+              "rss_before_mb": 311.04296875,
+              "rss_after_mb": 311.04296875,
+              "process_peak_rss_mb": 310.69140625,
+              "available_ram_before_mb": 7815.5390625,
+              "available_ram_after_mb": 7815.5390625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 291413,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1108,
+                "live_tree_nodes": 1108
+              },
+              "after": {
+                "gc_tracked_objects": 291427,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1108,
+                "live_tree_nodes": 1108
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494696.1217794,
+              "finished_unix_s": 1792494696.1304414,
+              "elapsed_s": 0.008661771000333829,
+              "pid": 50,
+              "rss_before_mb": 311.71875,
+              "rss_after_mb": 311.71875,
+              "process_peak_rss_mb": 311.44140625,
+              "available_ram_before_mb": 7811.62890625,
+              "available_ram_after_mb": 7811.62890625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 270990,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1108,
+                "live_tree_nodes": 1108
+              },
+              "after": {
+                "gc_tracked_objects": 270852,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1108,
+                "live_tree_nodes": 1108
+              },
+              "stats": {
+                "nodes_bound": 1108,
+                "parent_orders_changed": 0
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494696.2467897,
+              "finished_unix_s": 1792494696.2469525,
+              "elapsed_s": 0.0001620459988771472,
+              "pid": 50,
+              "rss_before_mb": 311.71875,
+              "rss_after_mb": 311.71875,
+              "process_peak_rss_mb": 311.44140625,
+              "available_ram_before_mb": 7814.23828125,
+              "available_ram_after_mb": 7814.23828125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 270849,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1108,
+                "live_tree_nodes": 1108
+              },
+              "after": {
+                "gc_tracked_objects": 270852,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1108,
+                "live_tree_nodes": 1108
+              }
+            }
+          ],
+          "memory_probes": [],
+          "eviction_boundaries": [
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2056,
+              "eviction_success_count": 32,
+              "eviction_skipped_count": 2024,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2022,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 32,
+              "delta_payload_success_count": 0,
+              "delta_payload_fallback_count": 32,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_payload_missing": 32
+              },
+              "evicted_materialized_state_count": 32,
+              "compact_payload_count": 32,
+              "anchor_payload_count": 32,
+              "delta_payload_count": 0,
+              "rematerialization_count": 0,
+              "rematerialization_cache_hit": 0,
+              "rematerialization_cache_miss": 0,
+              "rematerialization_count_by_phase": {},
+              "rematerialization_cache_hit_by_phase": {},
+              "rematerialization_cache_miss_by_phase": {},
+              "rematerialization_total_s_by_phase": {},
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [],
+              "current_cache_size": 0,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.0,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2056,
+              "eviction_total_s": 0.1035430539996014,
+              "eviction_payload_build_s": 0.10153531900323287,
+              "rematerialization_total_s": 0.0,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            },
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2130,
+              "eviction_success_count": 39,
+              "eviction_skipped_count": 2091,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2089,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 39,
+              "delta_payload_success_count": 0,
+              "delta_payload_fallback_count": 39,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_payload_missing": 39
+              },
+              "evicted_materialized_state_count": 39,
+              "compact_payload_count": 39,
+              "anchor_payload_count": 39,
+              "delta_payload_count": 0,
+              "rematerialization_count": 0,
+              "rematerialization_cache_hit": 0,
+              "rematerialization_cache_miss": 0,
+              "rematerialization_count_by_phase": {},
+              "rematerialization_cache_hit_by_phase": {},
+              "rematerialization_cache_miss_by_phase": {},
+              "rematerialization_total_s_by_phase": {},
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [],
+              "current_cache_size": 0,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.0,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2130,
+              "eviction_total_s": 0.13040697499855014,
+              "eviction_payload_build_s": 0.12821107100171503,
+              "rematerialization_total_s": 0.0,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            },
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2204,
+              "eviction_success_count": 31,
+              "eviction_skipped_count": 2173,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2171,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 31,
+              "delta_payload_success_count": 0,
+              "delta_payload_fallback_count": 31,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_payload_missing": 31
+              },
+              "evicted_materialized_state_count": 31,
+              "compact_payload_count": 31,
+              "anchor_payload_count": 31,
+              "delta_payload_count": 0,
+              "rematerialization_count": 0,
+              "rematerialization_cache_hit": 0,
+              "rematerialization_cache_miss": 0,
+              "rematerialization_count_by_phase": {},
+              "rematerialization_cache_hit_by_phase": {},
+              "rematerialization_cache_miss_by_phase": {},
+              "rematerialization_total_s_by_phase": {},
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [],
+              "current_cache_size": 0,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.0,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2204,
+              "eviction_total_s": 0.1616323989983357,
+              "eviction_payload_build_s": 0.15953397600424069,
+              "rematerialization_total_s": 0.0,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            }
+          ],
+          "cache_checks": [],
+          "eviction_owner_rotated": true,
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "eviction",
+          "export": false,
+          "save_times_s": [
+            0.3413550889999897,
+            0.3424683780012856,
+            0.3485666749984375
+          ],
+          "save_component_digests": [
+            {
+              "digest": "d152e71b1927479623fc531177c4f86906eb3684ba43ba1851419d6c8cb330a9",
+              "components": {
+                "metadata": "76af3ec665ad847d0ffd5784021c74edb2fe8bb9b8255712a3e2276e001a6ab0",
+                "node_shells": "e2c12ce0767eb2678b07c32be32633d134a63845ebeb6bf44208be722eb2257c",
+                "state_payloads": "0a778d547dffd72303640851d551fa1d57278c33eff0cf7784feef1654b258d7",
+                "node_runtime": "1fbff0e13d99e76604212668c9fea6720d50e08abbdc37ec46147828e0c5be95",
+                "selector": "9e17155054eab8117aa9e04c30236580af944e39fcab38f96ac5ce1c8df312db",
+                "latest_expansions": "4f78f32460525158e3c8f35405a49e1e29741cc85e7e5b45a99b7adb450f5bd6"
+              }
+            },
+            {
+              "digest": "3446201cd5358b4634e30cb8e1ff0e881e6001ff84c6230d9cb4de0220b50574",
+              "components": {
+                "metadata": "7bd9c4db68d0617d9a5afa610e35c44e25ecd9a0585093de6eb1755bdc241b56",
+                "node_shells": "77eee7ed344887a4a002241e8c0b87d06c651287cb1d14f62d9285b174924f8c",
+                "state_payloads": "1d5c37c5fddcce3b7c8de201b765312816b87e1bd8c62794312a0b7e1410b97b",
+                "node_runtime": "03744818798df1602d0fd1f0e533ca739b1e4498661d837d5b503fefe7943a30",
+                "selector": "c2d5e1eec39d104c78ee356848b31c27274cf3d10b68bd86e3ad132dc956703d",
+                "latest_expansions": "62fc910c2f1b4334e67eb6a5638aa7f517c6c5a57f1c9a86cda1b9a9c474b7ee"
+              }
+            },
+            {
+              "digest": "f6f20a5722dfdef692844b2f12a4d6109f01c750d279caa9e4bf81380d5a2832",
+              "components": {
+                "metadata": "000d4cc1adc918431003158efa807f2915d97e0095375ba11bd2b6177cfb6021",
+                "node_shells": "b0f77513d5fca2775e1e134feb1629a4f2616fa3749ace5623f83949b9912dbf",
+                "state_payloads": "4453c7544dbfa6cebf419c4fb3953fa080cfe229d94845cd0f2a4bfd8697b046",
+                "node_runtime": "d281fde67443b98460cae8f8cb26066ae7a419811772414189f260e6cec7f7ca",
+                "selector": "a360b30e76ac858643538f4bc55266bb50ef634e4d47a5f15627b9eb0f92b9b3",
+                "latest_expansions": "67e06aae8bc837b8983f99d2a8e616fbb5bf6a6a0239e47f3a8b857a08a3509c"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.13415572000121756,
+              0.010659875000783359,
+              0.010690698998587322
+            ],
+            "growth": [
+              0.39342624399978376,
+              0.4665044470002613,
+              0.4825469269999303
+            ],
+            "checkpoint": [
+              0.3415796760000376,
+              0.34269199700065656,
+              0.34881364299872075
+            ],
+            "export": [],
+            "cycle": [
+              0.870960558000661,
+              0.8217149160009285,
+              0.8438503659999697
+            ]
+          },
+          "raw_result_sha256": "28d5c4567fa675a4f52c42d2c9ab764712a46e1636b38e1fda475c46193f17c3"
+        }
+      },
+      "comparison": {
+        "all_three_saves_equal": [
+          true,
+          true,
+          true
+        ],
+        "selected_equal": true,
+        "retained": [
+          {
+            "generation": "generation_000003.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          },
+          {
+            "generation": "generation_000004.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          }
+        ]
+      }
+    },
+    {
+      "label": "1k_rollout",
+      "raw_root": "/tmp/anemone-lifecycle-rollout-final-1k",
+      "modes": {
+        "cold": {
+          "elapsed_s": 3.734956683998462,
+          "restores": 3,
+          "same_runtime": false,
+          "nodes": 1267,
+          "branches": 1322,
+          "selected": [
+            [
+              239,
+              3
+            ],
+            [
+              913,
+              12
+            ],
+            [
+              1105,
+              14
+            ],
+            [
+              974,
+              13
+            ],
+            [
+              57,
+              2
+            ],
+            [
+              1134,
+              15
+            ]
+          ],
+          "rss_before_mb": 297.48046875,
+          "rss_after_mb": 321.46875,
+          "process_peak_rss_mb": 322.9609375,
+          "checkpoint_digest": "bab05d036513fb82355acb841b45b7eb3cbba4d3ae41e45e0e238b86c535878d",
+          "checkpoint_component_digests": {
+            "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+            "node_shells": "603f8e4fd79048efe3b89e2038237cabcaa43da3da4a133f4eca2c2e679e5cb3",
+            "state_payloads": "d60ee47d92aaf1839f0ca2d804984822e45c6ea34b67c5c4f7cc35cfcc3b52c2",
+            "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+            "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+            "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+          },
+          "lifecycle": [],
+          "memory_probes": [],
+          "eviction_boundaries": [],
+          "cache_checks": [],
+          "eviction_owner_rotated": true,
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "rollout",
+          "export": false,
+          "save_times_s": [
+            0.35850986799960083,
+            0.39264470400121354,
+            0.38773877899984655
+          ],
+          "save_component_digests": [
+            {
+              "digest": "78f4e8a936636dcde4953628b4847d921352b4e01c917a2100d492f342a34d57",
+              "components": {
+                "metadata": "1b6baa34df789863eb59b96f546b05dec2d6e5783de5d1463b7771af955585c2",
+                "node_shells": "8f9c45bb467623769d002b48bb68627eb143d0a80ee471e1409835c515067ec7",
+                "state_payloads": "15f8fdeef175e34dae6bafcde504e5bd9957ca645e43d93cea8e1286f1b2dd3c",
+                "node_runtime": "9508755d83210e75765e10751a7fba3cb37eaef0d11d67ea8b9603bcd91397bf",
+                "selector": "5b601108673517239f7e9c586924e74bc244e1de44f234b72acdc81064539439",
+                "latest_expansions": "eda389b49d05c1f215c7fef5168a14000d55c19f7ca195455eebe5f1285cf4b8"
+              }
+            },
+            {
+              "digest": "8f313463fe971763de86a7f33925e5c37eba0958d9845850e5bff4022ac058ea",
+              "components": {
+                "metadata": "999930fb8f504f4f3c8266477c257bf9e77603bd76e153a8b64918c7e3da8adf",
+                "node_shells": "3366508121764ac69d59af185445934c92b43a8f65c20f0249e89e7ea694c3e6",
+                "state_payloads": "621ba1a6e2ba1024151924161bd1de9b7b0e2c7fe3d6aeb673a329b372641d02",
+                "node_runtime": "40556ed959d4852bf52203e91e9aa61fd5ec15dbd5ffb1dfb1d3233faac91f2a",
+                "selector": "17d7b0c76e357c479b2da80f60004374d970e6d6636e1625466fb0dec412c1c2",
+                "latest_expansions": "b3438765c6b124e849e02594a73617319a4833a9b649034ed2a1a505e807cc82"
+              }
+            },
+            {
+              "digest": "bab05d036513fb82355acb841b45b7eb3cbba4d3ae41e45e0e238b86c535878d",
+              "components": {
+                "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+                "node_shells": "603f8e4fd79048efe3b89e2038237cabcaa43da3da4a133f4eca2c2e679e5cb3",
+                "state_payloads": "d60ee47d92aaf1839f0ca2d804984822e45c6ea34b67c5c4f7cc35cfcc3b52c2",
+                "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+                "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+                "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.1661538409989589,
+              0.24854871299976367,
+              0.2483873669989407
+            ],
+            "growth": [
+              0.6865311250003288,
+              0.3990913420002471,
+              0.6240796120000596
+            ],
+            "checkpoint": [
+              0.3587489259989525,
+              0.39292316299906815,
+              0.38797306599917647
+            ],
+            "export": [],
+            "cycle": [
+              1.2134629869997298,
+              1.0423765360010293,
+              1.2621368759992038
+            ]
+          },
+          "raw_result_sha256": "e48cd526284fe79f338a069a156f8044ccd9ed8b1847af39b78983e29fb87c0f"
+        },
+        "warm": {
+          "elapsed_s": 4.583142363999286,
+          "restores": 1,
+          "same_runtime": true,
+          "nodes": 1267,
+          "branches": 1322,
+          "selected": [
+            [
+              239,
+              3
+            ],
+            [
+              913,
+              12
+            ],
+            [
+              1105,
+              14
+            ],
+            [
+              974,
+              13
+            ],
+            [
+              57,
+              2
+            ],
+            [
+              1134,
+              15
+            ]
+          ],
+          "rss_before_mb": 297.43359375,
+          "rss_after_mb": 321.53125,
+          "process_peak_rss_mb": 323.2578125,
+          "checkpoint_digest": "bab05d036513fb82355acb841b45b7eb3cbba4d3ae41e45e0e238b86c535878d",
+          "checkpoint_component_digests": {
+            "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+            "node_shells": "603f8e4fd79048efe3b89e2038237cabcaa43da3da4a133f4eca2c2e679e5cb3",
+            "state_payloads": "d60ee47d92aaf1839f0ca2d804984822e45c6ea34b67c5c4f7cc35cfcc3b52c2",
+            "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+            "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+            "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+          },
+          "lifecycle": [
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494724.6504219,
+              "finished_unix_s": 1792494724.6986995,
+              "elapsed_s": 0.04827739299980749,
+              "pid": 139,
+              "rss_before_mb": 314.03125,
+              "rss_after_mb": 314.03125,
+              "process_peak_rss_mb": 313.6640625,
+              "available_ram_before_mb": 7794.31640625,
+              "available_ram_after_mb": 7789.60546875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 297471,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 297531,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494725.1575315,
+              "finished_unix_s": 1792494725.18755,
+              "elapsed_s": 0.030018349998499616,
+              "pid": 139,
+              "rss_before_mb": 318.703125,
+              "rss_after_mb": 318.703125,
+              "process_peak_rss_mb": 320.40234375,
+              "available_ram_before_mb": 7773.85546875,
+              "available_ram_after_mb": 7773.85546875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 277534,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 277147,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "stats": {
+                "nodes_bound": 1125,
+                "parent_orders_changed": 0
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494725.2991514,
+              "finished_unix_s": 1792494725.2993264,
+              "elapsed_s": 0.0001746439993439708,
+              "pid": 139,
+              "rss_before_mb": 318.703125,
+              "rss_after_mb": 318.703125,
+              "process_peak_rss_mb": 320.40234375,
+              "available_ram_before_mb": 7773.84375,
+              "available_ram_after_mb": 7773.84375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 277144,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 277148,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494725.9548137,
+              "finished_unix_s": 1792494726.0038056,
+              "elapsed_s": 0.04899178100095014,
+              "pid": 139,
+              "rss_before_mb": 318.421875,
+              "rss_after_mb": 318.421875,
+              "process_peak_rss_mb": 320.40234375,
+              "available_ram_before_mb": 7772.65234375,
+              "available_ram_after_mb": 7772.65234375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 299036,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 299052,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494726.4604862,
+              "finished_unix_s": 1792494726.4918213,
+              "elapsed_s": 0.031334960000094725,
+              "pid": 139,
+              "rss_before_mb": 319.62109375,
+              "rss_after_mb": 319.62109375,
+              "process_peak_rss_mb": 321.30859375,
+              "available_ram_before_mb": 7802.046875,
+              "available_ram_after_mb": 7802.046875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 278293,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 278065,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "stats": {
+                "nodes_bound": 1179,
+                "parent_orders_changed": 0
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494726.5999792,
+              "finished_unix_s": 1792494726.6001973,
+              "elapsed_s": 0.0002176160014641937,
+              "pid": 139,
+              "rss_before_mb": 319.62109375,
+              "rss_after_mb": 319.62109375,
+              "process_peak_rss_mb": 321.30859375,
+              "available_ram_before_mb": 7801.578125,
+              "available_ram_after_mb": 7801.578125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 278062,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 278066,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494727.4566305,
+              "finished_unix_s": 1792494727.5093002,
+              "elapsed_s": 0.05266934800056333,
+              "pid": 139,
+              "rss_before_mb": 319.62109375,
+              "rss_after_mb": 319.62109375,
+              "process_peak_rss_mb": 321.30859375,
+              "available_ram_before_mb": 7800.12890625,
+              "available_ram_after_mb": 7800.12890625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 302732,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 302748,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494727.9886146,
+              "finished_unix_s": 1792494728.022255,
+              "elapsed_s": 0.033639852999840514,
+              "pid": 139,
+              "rss_before_mb": 321.53125,
+              "rss_after_mb": 321.53125,
+              "process_peak_rss_mb": 323.2578125,
+              "available_ram_before_mb": 7798.5078125,
+              "available_ram_after_mb": 7798.2734375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 280057,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 279685,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "stats": {
+                "nodes_bound": 1267,
+                "parent_orders_changed": 2
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494728.1431062,
+              "finished_unix_s": 1792494728.1432714,
+              "elapsed_s": 0.00016449900067527778,
+              "pid": 139,
+              "rss_before_mb": 321.53125,
+              "rss_after_mb": 321.53125,
+              "process_peak_rss_mb": 323.2578125,
+              "available_ram_before_mb": 7797.5625,
+              "available_ram_after_mb": 7797.5625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 279682,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 279686,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              }
+            }
+          ],
+          "memory_probes": [],
+          "eviction_boundaries": [
+            {
+              "state_eviction_policy": "none",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 0,
+              "eviction_success_count": 0,
+              "eviction_skipped_count": 0,
+              "eviction_skipped_count_by_reason": {},
+              "delta_payload_attempt_count": 0,
+              "delta_payload_success_count": 0,
+              "delta_payload_fallback_count": 0,
+              "delta_payload_fallback_count_by_reason": {},
+              "evicted_materialized_state_count": 0,
+              "compact_payload_count": 0,
+              "anchor_payload_count": 0,
+              "delta_payload_count": 0,
+              "rematerialization_count": 0,
+              "rematerialization_cache_hit": 0,
+              "rematerialization_cache_miss": 0,
+              "rematerialization_count_by_phase": {},
+              "rematerialization_cache_hit_by_phase": {},
+              "rematerialization_cache_miss_by_phase": {},
+              "rematerialization_total_s_by_phase": {},
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [],
+              "current_cache_size": 0,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.0,
+              "eviction_scan_count": 0,
+              "eviction_nodes_scanned_count": 0,
+              "eviction_total_s": 0.0,
+              "eviction_payload_build_s": 0.0,
+              "rematerialization_total_s": 0.0,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            },
+            {
+              "state_eviction_policy": "none",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 0,
+              "eviction_success_count": 0,
+              "eviction_skipped_count": 0,
+              "eviction_skipped_count_by_reason": {},
+              "delta_payload_attempt_count": 0,
+              "delta_payload_success_count": 0,
+              "delta_payload_fallback_count": 0,
+              "delta_payload_fallback_count_by_reason": {},
+              "evicted_materialized_state_count": 0,
+              "compact_payload_count": 0,
+              "anchor_payload_count": 0,
+              "delta_payload_count": 0,
+              "rematerialization_count": 0,
+              "rematerialization_cache_hit": 0,
+              "rematerialization_cache_miss": 0,
+              "rematerialization_count_by_phase": {},
+              "rematerialization_cache_hit_by_phase": {},
+              "rematerialization_cache_miss_by_phase": {},
+              "rematerialization_total_s_by_phase": {},
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [],
+              "current_cache_size": 0,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.0,
+              "eviction_scan_count": 0,
+              "eviction_nodes_scanned_count": 0,
+              "eviction_total_s": 0.0,
+              "eviction_payload_build_s": 0.0,
+              "rematerialization_total_s": 0.0,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            },
+            {
+              "state_eviction_policy": "none",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 0,
+              "eviction_success_count": 0,
+              "eviction_skipped_count": 0,
+              "eviction_skipped_count_by_reason": {},
+              "delta_payload_attempt_count": 0,
+              "delta_payload_success_count": 0,
+              "delta_payload_fallback_count": 0,
+              "delta_payload_fallback_count_by_reason": {},
+              "evicted_materialized_state_count": 0,
+              "compact_payload_count": 0,
+              "anchor_payload_count": 0,
+              "delta_payload_count": 0,
+              "rematerialization_count": 0,
+              "rematerialization_cache_hit": 0,
+              "rematerialization_cache_miss": 0,
+              "rematerialization_count_by_phase": {},
+              "rematerialization_cache_hit_by_phase": {},
+              "rematerialization_cache_miss_by_phase": {},
+              "rematerialization_total_s_by_phase": {},
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [],
+              "current_cache_size": 0,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.0,
+              "eviction_scan_count": 0,
+              "eviction_nodes_scanned_count": 0,
+              "eviction_total_s": 0.0,
+              "eviction_payload_build_s": 0.0,
+              "rematerialization_total_s": 0.0,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            }
+          ],
+          "cache_checks": [],
+          "eviction_owner_rotated": true,
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "rollout",
+          "export": false,
+          "save_times_s": [
+            0.5448436589995254,
+            0.5646382129998528,
+            0.564857284000027
+          ],
+          "save_component_digests": [
+            {
+              "digest": "78f4e8a936636dcde4953628b4847d921352b4e01c917a2100d492f342a34d57",
+              "components": {
+                "metadata": "1b6baa34df789863eb59b96f546b05dec2d6e5783de5d1463b7771af955585c2",
+                "node_shells": "8f9c45bb467623769d002b48bb68627eb143d0a80ee471e1409835c515067ec7",
+                "state_payloads": "15f8fdeef175e34dae6bafcde504e5bd9957ca645e43d93cea8e1286f1b2dd3c",
+                "node_runtime": "9508755d83210e75765e10751a7fba3cb37eaef0d11d67ea8b9603bcd91397bf",
+                "selector": "5b601108673517239f7e9c586924e74bc244e1de44f234b72acdc81064539439",
+                "latest_expansions": "eda389b49d05c1f215c7fef5168a14000d55c19f7ca195455eebe5f1285cf4b8"
+              }
+            },
+            {
+              "digest": "8f313463fe971763de86a7f33925e5c37eba0958d9845850e5bff4022ac058ea",
+              "components": {
+                "metadata": "999930fb8f504f4f3c8266477c257bf9e77603bd76e153a8b64918c7e3da8adf",
+                "node_shells": "3366508121764ac69d59af185445934c92b43a8f65c20f0249e89e7ea694c3e6",
+                "state_payloads": "621ba1a6e2ba1024151924161bd1de9b7b0e2c7fe3d6aeb673a329b372641d02",
+                "node_runtime": "40556ed959d4852bf52203e91e9aa61fd5ec15dbd5ffb1dfb1d3233faac91f2a",
+                "selector": "17d7b0c76e357c479b2da80f60004374d970e6d6636e1625466fb0dec412c1c2",
+                "latest_expansions": "b3438765c6b124e849e02594a73617319a4833a9b649034ed2a1a505e807cc82"
+              }
+            },
+            {
+              "digest": "bab05d036513fb82355acb841b45b7eb3cbba4d3ae41e45e0e238b86c535878d",
+              "components": {
+                "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+                "node_shells": "603f8e4fd79048efe3b89e2038237cabcaa43da3da4a133f4eca2c2e679e5cb3",
+                "state_payloads": "d60ee47d92aaf1839f0ca2d804984822e45c6ea34b67c5c4f7cc35cfcc3b52c2",
+                "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+                "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+                "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.1693347830005223,
+              0.01269741400028579,
+              0.013459537000017008
+            ],
+            "growth": [
+              0.6914455490004912,
+              0.39992759300002945,
+              0.6220926220012188
+            ],
+            "checkpoint": [
+              0.545097860000169,
+              0.5649101339986373,
+              0.565102211001431
+            ],
+            "export": [],
+            "cycle": [
+              1.4077309700005571,
+              0.979528305999338,
+              1.2025331419990835
+            ]
+          },
+          "raw_result_sha256": "cc6eef9461c67c79b9ade291360b8418b827b550982eb00d0ba360187ad68c54"
+        }
+      },
+      "comparison": {
+        "all_three_saves_equal": [
+          true,
+          true,
+          true
+        ],
+        "selected_equal": true,
+        "retained": [
+          {
+            "generation": "generation_000003.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          },
+          {
+            "generation": "generation_000004.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          }
+        ]
+      }
+    },
+    {
+      "label": "1k_eviction-rollout",
+      "raw_root": "/tmp/anemone-lifecycle-eviction-rollout-final-1k",
+      "modes": {
+        "cold": {
+          "elapsed_s": 4.093606037000427,
+          "restores": 3,
+          "same_runtime": false,
+          "nodes": 1267,
+          "branches": 1322,
+          "selected": [
+            [
+              239,
+              3
+            ],
+            [
+              913,
+              12
+            ],
+            [
+              1105,
+              14
+            ],
+            [
+              974,
+              13
+            ],
+            [
+              57,
+              2
+            ],
+            [
+              1134,
+              15
+            ]
+          ],
+          "rss_before_mb": 297.26953125,
+          "rss_after_mb": 322.2578125,
+          "process_peak_rss_mb": 322.7265625,
+          "checkpoint_digest": "a281c7b96fc0399e934e5e9d03ff89db156c4e0e6e6d2f5e8d80192867838e64",
+          "checkpoint_component_digests": {
+            "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+            "node_shells": "41fb3882fedb0a698fefdd735308ab82678a25d70ba22dd9bf91862a3621bd3a",
+            "state_payloads": "074947a0355774f614c5551cf40296152660acf4719493eb13fc90ec7f1016a7",
+            "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+            "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+            "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+          },
+          "lifecycle": [],
+          "memory_probes": [],
+          "eviction_boundaries": [],
+          "cache_checks": [],
+          "eviction_owner_rotated": true,
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "eviction-rollout",
+          "export": false,
+          "save_times_s": [
+            0.3065367269991839,
+            0.32303939200028253,
+            0.3373771909991774
+          ],
+          "save_component_digests": [
+            {
+              "digest": "f1b52e13747e5b77e5e9997951c568394fab17da7218e92088a9326cd1cf8f91",
+              "components": {
+                "metadata": "1b6baa34df789863eb59b96f546b05dec2d6e5783de5d1463b7771af955585c2",
+                "node_shells": "f601656250399f25e8a40e572ba491e777421af21bbadb825e6e2f0914094af3",
+                "state_payloads": "5be535dd8e79ae54f8cb62db1606765cce2a8a0dd65e96004561dbb938489370",
+                "node_runtime": "9508755d83210e75765e10751a7fba3cb37eaef0d11d67ea8b9603bcd91397bf",
+                "selector": "5b601108673517239f7e9c586924e74bc244e1de44f234b72acdc81064539439",
+                "latest_expansions": "eda389b49d05c1f215c7fef5168a14000d55c19f7ca195455eebe5f1285cf4b8"
+              }
+            },
+            {
+              "digest": "8c37b5a7aac3e2e63fbd4ec9b13f4797f8168dd3faff5907c3b553ab657a0f16",
+              "components": {
+                "metadata": "999930fb8f504f4f3c8266477c257bf9e77603bd76e153a8b64918c7e3da8adf",
+                "node_shells": "1d521b35f950cd5b0d2e73c9a6f0bf7f4118d4433e84d38a8ad9ac00696714c0",
+                "state_payloads": "e040f017e1a0f713f990011599e8b3433596ae68618b6bb0878d0151d9c7ddd5",
+                "node_runtime": "40556ed959d4852bf52203e91e9aa61fd5ec15dbd5ffb1dfb1d3233faac91f2a",
+                "selector": "17d7b0c76e357c479b2da80f60004374d970e6d6636e1625466fb0dec412c1c2",
+                "latest_expansions": "b3438765c6b124e849e02594a73617319a4833a9b649034ed2a1a505e807cc82"
+              }
+            },
+            {
+              "digest": "a281c7b96fc0399e934e5e9d03ff89db156c4e0e6e6d2f5e8d80192867838e64",
+              "components": {
+                "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+                "node_shells": "41fb3882fedb0a698fefdd735308ab82678a25d70ba22dd9bf91862a3621bd3a",
+                "state_payloads": "074947a0355774f614c5551cf40296152660acf4719493eb13fc90ec7f1016a7",
+                "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+                "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+                "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.16913237500011746,
+              0.25808870999935607,
+              0.2822424050009431
+            ],
+            "growth": [
+              0.8653130909988249,
+              0.5342801330007205,
+              0.7757739450007648
+            ],
+            "checkpoint": [
+              0.3067941700010124,
+              0.32344800799910445,
+              0.33765634300107195
+            ],
+            "export": [],
+            "cycle": [
+              1.3432418869997491,
+              1.1179004989990062,
+              1.3974644620011532
+            ]
+          },
+          "raw_result_sha256": "3e52aa014988d8fc14ffaf5d554376959785e76dd66d1d8fbc5120152909f2f4"
+        },
+        "warm": {
+          "elapsed_s": 5.051377924999542,
+          "restores": 1,
+          "same_runtime": true,
+          "nodes": 1267,
+          "branches": 1322,
+          "selected": [
+            [
+              239,
+              3
+            ],
+            [
+              913,
+              12
+            ],
+            [
+              1105,
+              14
+            ],
+            [
+              974,
+              13
+            ],
+            [
+              57,
+              2
+            ],
+            [
+              1134,
+              15
+            ]
+          ],
+          "rss_before_mb": 297.16796875,
+          "rss_after_mb": 322.1640625,
+          "process_peak_rss_mb": 322.578125,
+          "checkpoint_digest": "a281c7b96fc0399e934e5e9d03ff89db156c4e0e6e6d2f5e8d80192867838e64",
+          "checkpoint_component_digests": {
+            "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+            "node_shells": "41fb3882fedb0a698fefdd735308ab82678a25d70ba22dd9bf91862a3621bd3a",
+            "state_payloads": "074947a0355774f614c5551cf40296152660acf4719493eb13fc90ec7f1016a7",
+            "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+            "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+            "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+          },
+          "lifecycle": [
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494758.1216724,
+              "finished_unix_s": 1792494758.173191,
+              "elapsed_s": 0.05151823500091268,
+              "pid": 228,
+              "rss_before_mb": 313.31640625,
+              "rss_after_mb": 313.31640625,
+              "process_peak_rss_mb": 312.671875,
+              "available_ram_before_mb": 7708.46875,
+              "available_ram_after_mb": 7704.890625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 297413,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 297473,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494758.6851597,
+              "finished_unix_s": 1792494758.7147105,
+              "elapsed_s": 0.02955104600005143,
+              "pid": 228,
+              "rss_before_mb": 318.41796875,
+              "rss_after_mb": 318.41796875,
+              "process_peak_rss_mb": 319.82421875,
+              "available_ram_before_mb": 7712.48046875,
+              "available_ram_after_mb": 7712.48046875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 276903,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 276855,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "stats": {
+                "nodes_bound": 1125,
+                "parent_orders_changed": 0
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494758.869977,
+              "finished_unix_s": 1792494758.8706658,
+              "elapsed_s": 0.000688014999468578,
+              "pid": 228,
+              "rss_before_mb": 318.41796875,
+              "rss_after_mb": 318.41796875,
+              "process_peak_rss_mb": 319.82421875,
+              "available_ram_before_mb": 7872.109375,
+              "available_ram_after_mb": 7872.109375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 276853,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 276634,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494759.629454,
+              "finished_unix_s": 1792494759.6778963,
+              "elapsed_s": 0.048442097000588547,
+              "pid": 228,
+              "rss_before_mb": 318.42578125,
+              "rss_after_mb": 318.42578125,
+              "process_peak_rss_mb": 319.82421875,
+              "available_ram_before_mb": 8304.4765625,
+              "available_ram_after_mb": 8304.0,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 299279,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 299295,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494760.1785378,
+              "finished_unix_s": 1792494760.2090247,
+              "elapsed_s": 0.030486814999676426,
+              "pid": 228,
+              "rss_before_mb": 320.3125,
+              "rss_after_mb": 320.3125,
+              "process_peak_rss_mb": 320.6796875,
+              "available_ram_before_mb": 8304.76171875,
+              "available_ram_after_mb": 8304.84375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 277725,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 277659,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "stats": {
+                "nodes_bound": 1179,
+                "parent_orders_changed": 0
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494760.344302,
+              "finished_unix_s": 1792494760.3448396,
+              "elapsed_s": 0.0005371040006139083,
+              "pid": 228,
+              "rss_before_mb": 320.3125,
+              "rss_after_mb": 320.3125,
+              "process_peak_rss_mb": 320.6796875,
+              "available_ram_before_mb": 8304.984375,
+              "available_ram_after_mb": 8304.984375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 277657,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 277552,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494761.3064585,
+              "finished_unix_s": 1792494761.3575723,
+              "elapsed_s": 0.05111368599864363,
+              "pid": 228,
+              "rss_before_mb": 320.32421875,
+              "rss_after_mb": 320.32421875,
+              "process_peak_rss_mb": 320.6796875,
+              "available_ram_before_mb": 8735.8828125,
+              "available_ram_after_mb": 8735.640625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 302797,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 302813,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494761.8308108,
+              "finished_unix_s": 1792494761.8632822,
+              "elapsed_s": 0.032470820000526146,
+              "pid": 228,
+              "rss_before_mb": 322.1640625,
+              "rss_after_mb": 322.1640625,
+              "process_peak_rss_mb": 322.578125,
+              "available_ram_before_mb": 8731.765625,
+              "available_ram_after_mb": 8731.765625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 279441,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 279333,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "stats": {
+                "nodes_bound": 1267,
+                "parent_orders_changed": 2
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494761.9714508,
+              "finished_unix_s": 1792494761.9719067,
+              "elapsed_s": 0.0004550539997580927,
+              "pid": 228,
+              "rss_before_mb": 322.1640625,
+              "rss_after_mb": 322.1640625,
+              "process_peak_rss_mb": 322.578125,
+              "available_ram_before_mb": 8731.51953125,
+              "available_ram_after_mb": 8731.51953125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 279331,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 279172,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              }
+            }
+          ],
+          "memory_probes": [],
+          "eviction_boundaries": [
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2211,
+              "eviction_success_count": 113,
+              "eviction_skipped_count": 2098,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2096,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 113,
+              "delta_payload_success_count": 74,
+              "delta_payload_fallback_count": 39,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_ambiguous": 1,
+                "delta_parent_payload_missing": 38
+              },
+              "evicted_materialized_state_count": 113,
+              "compact_payload_count": 113,
+              "anchor_payload_count": 39,
+              "delta_payload_count": 74,
+              "rematerialization_count": 110,
+              "rematerialization_cache_hit": 36,
+              "rematerialization_cache_miss": 74,
+              "rematerialization_count_by_phase": {
+                "eviction_payload_build": 110
+              },
+              "rematerialization_cache_hit_by_phase": {
+                "eviction_payload_build": 36
+              },
+              "rematerialization_cache_miss_by_phase": {
+                "eviction_payload_build": 74
+              },
+              "rematerialization_total_s_by_phase": {
+                "eviction_payload_build": 0.12080774999594723
+              },
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [
+                1012,
+                1015,
+                1018,
+                1021,
+                1024,
+                1027,
+                1030,
+                1033,
+                1036,
+                1039
+              ],
+              "current_cache_size": 74,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.6727272727272727,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2211,
+              "eviction_total_s": 0.19101389599927643,
+              "eviction_payload_build_s": 0.18858842999543413,
+              "rematerialization_total_s": 0.12080774999594723,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            },
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2331,
+              "eviction_success_count": 54,
+              "eviction_skipped_count": 2277,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2275,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 54,
+              "delta_payload_success_count": 36,
+              "delta_payload_fallback_count": 18,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_payload_missing": 18
+              },
+              "evicted_materialized_state_count": 54,
+              "compact_payload_count": 54,
+              "anchor_payload_count": 18,
+              "delta_payload_count": 36,
+              "rematerialization_count": 54,
+              "rematerialization_cache_hit": 18,
+              "rematerialization_cache_miss": 36,
+              "rematerialization_count_by_phase": {
+                "eviction_payload_build": 54
+              },
+              "rematerialization_cache_hit_by_phase": {
+                "eviction_payload_build": 18
+              },
+              "rematerialization_cache_miss_by_phase": {
+                "eviction_payload_build": 36
+              },
+              "rematerialization_total_s_by_phase": {
+                "eviction_payload_build": 0.08392886100955366
+              },
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [
+                1125,
+                1128,
+                1131,
+                1134,
+                1137,
+                1140,
+                1143,
+                1146,
+                1149,
+                1152
+              ],
+              "current_cache_size": 36,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.6666666666666666,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2331,
+              "eviction_total_s": 0.15206927499821177,
+              "eviction_payload_build_s": 0.14970304100097565,
+              "rematerialization_total_s": 0.08392886100955366,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            },
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2514,
+              "eviction_success_count": 88,
+              "eviction_skipped_count": 2426,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2424,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 88,
+              "delta_payload_success_count": 54,
+              "delta_payload_fallback_count": 34,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_payload_missing": 34
+              },
+              "evicted_materialized_state_count": 88,
+              "compact_payload_count": 88,
+              "anchor_payload_count": 34,
+              "delta_payload_count": 54,
+              "rematerialization_count": 77,
+              "rematerialization_cache_hit": 23,
+              "rematerialization_cache_miss": 54,
+              "rematerialization_count_by_phase": {
+                "eviction_payload_build": 77
+              },
+              "rematerialization_cache_hit_by_phase": {
+                "eviction_payload_build": 23
+              },
+              "rematerialization_cache_miss_by_phase": {
+                "eviction_payload_build": 54
+              },
+              "rematerialization_total_s_by_phase": {
+                "eviction_payload_build": 0.09246189001169114
+              },
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [
+                1179,
+                1183,
+                1188,
+                1191,
+                1194,
+                1197,
+                1200,
+                1203,
+                1208,
+                1211
+              ],
+              "current_cache_size": 54,
+              "cache_evictions": 0,
+              "average_reconstruction_depth": 0.7012987012987013,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2514,
+              "eviction_total_s": 0.15288500099995872,
+              "eviction_payload_build_s": 0.15045140000074753,
+              "rematerialization_total_s": 0.09246189001169114,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 128,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            }
+          ],
+          "cache_checks": [],
+          "eviction_owner_rotated": true,
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "eviction-rollout",
+          "export": false,
+          "save_times_s": [
+            0.5067693119999603,
+            0.5223968150003202,
+            0.5051853340009984
+          ],
+          "save_component_digests": [
+            {
+              "digest": "f1b52e13747e5b77e5e9997951c568394fab17da7218e92088a9326cd1cf8f91",
+              "components": {
+                "metadata": "1b6baa34df789863eb59b96f546b05dec2d6e5783de5d1463b7771af955585c2",
+                "node_shells": "f601656250399f25e8a40e572ba491e777421af21bbadb825e6e2f0914094af3",
+                "state_payloads": "5be535dd8e79ae54f8cb62db1606765cce2a8a0dd65e96004561dbb938489370",
+                "node_runtime": "9508755d83210e75765e10751a7fba3cb37eaef0d11d67ea8b9603bcd91397bf",
+                "selector": "5b601108673517239f7e9c586924e74bc244e1de44f234b72acdc81064539439",
+                "latest_expansions": "eda389b49d05c1f215c7fef5168a14000d55c19f7ca195455eebe5f1285cf4b8"
+              }
+            },
+            {
+              "digest": "8c37b5a7aac3e2e63fbd4ec9b13f4797f8168dd3faff5907c3b553ab657a0f16",
+              "components": {
+                "metadata": "999930fb8f504f4f3c8266477c257bf9e77603bd76e153a8b64918c7e3da8adf",
+                "node_shells": "1d521b35f950cd5b0d2e73c9a6f0bf7f4118d4433e84d38a8ad9ac00696714c0",
+                "state_payloads": "e040f017e1a0f713f990011599e8b3433596ae68618b6bb0878d0151d9c7ddd5",
+                "node_runtime": "40556ed959d4852bf52203e91e9aa61fd5ec15dbd5ffb1dfb1d3233faac91f2a",
+                "selector": "17d7b0c76e357c479b2da80f60004374d970e6d6636e1625466fb0dec412c1c2",
+                "latest_expansions": "b3438765c6b124e849e02594a73617319a4833a9b649034ed2a1a505e807cc82"
+              }
+            },
+            {
+              "digest": "a281c7b96fc0399e934e5e9d03ff89db156c4e0e6e6d2f5e8d80192867838e64",
+              "components": {
+                "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+                "node_shells": "41fb3882fedb0a698fefdd735308ab82678a25d70ba22dd9bf91862a3621bd3a",
+                "state_payloads": "074947a0355774f614c5551cf40296152660acf4719493eb13fc90ec7f1016a7",
+                "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+                "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+                "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.18079808299989963,
+              0.013130136001564097,
+              0.013773372000287054
+            ],
+            "growth": [
+              0.84992307200082,
+              0.5437751999998,
+              0.7649920149997342
+            ],
+            "checkpoint": [
+              0.5070286390000547,
+              0.5226821380001638,
+              0.5054196090004552
+            ],
+            "export": [],
+            "cycle": [
+              1.5397591620003368,
+              1.0819154769997112,
+              1.286303319999206
+            ]
+          },
+          "raw_result_sha256": "3914824cdf5e66714bf804fd9082d9e18c90680a5540194675ff7399f9cc9411"
+        }
+      },
+      "comparison": {
+        "all_three_saves_equal": [
+          true,
+          true,
+          true
+        ],
+        "selected_equal": true,
+        "retained": [
+          {
+            "generation": "generation_000003.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          },
+          {
+            "generation": "generation_000004.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          }
+        ]
+      }
+    },
+    {
+      "label": "1k_cache-bound",
+      "raw_root": "/tmp/anemone-lifecycle-cache-bound-final-1k",
+      "modes": {
+        "cold": {
+          "elapsed_s": 5.430129053998826,
+          "restores": 3,
+          "same_runtime": false,
+          "nodes": 1267,
+          "branches": 1322,
+          "selected": [
+            [
+              239,
+              3
+            ],
+            [
+              913,
+              12
+            ],
+            [
+              1105,
+              14
+            ],
+            [
+              974,
+              13
+            ],
+            [
+              57,
+              2
+            ],
+            [
+              1134,
+              15
+            ]
+          ],
+          "rss_before_mb": 297.24609375,
+          "rss_after_mb": 321.98046875,
+          "process_peak_rss_mb": 322.47265625,
+          "checkpoint_digest": "a281c7b96fc0399e934e5e9d03ff89db156c4e0e6e6d2f5e8d80192867838e64",
+          "checkpoint_component_digests": {
+            "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+            "node_shells": "41fb3882fedb0a698fefdd735308ab82678a25d70ba22dd9bf91862a3621bd3a",
+            "state_payloads": "074947a0355774f614c5551cf40296152660acf4719493eb13fc90ec7f1016a7",
+            "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+            "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+            "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+          },
+          "lifecycle": [],
+          "memory_probes": [],
+          "eviction_boundaries": [],
+          "cache_checks": [
+            {
+              "compact_handles": 113,
+              "cache_size": 8,
+              "metrics": {
+                "state_eviction_policy": "frontier_cold",
+                "state_eviction_payload_mode": "delta_when_safe",
+                "state_eviction_delta_chain_max_depth": 32,
+                "eviction_attempt_count": 2211,
+                "eviction_success_count": 113,
+                "eviction_skipped_count": 2098,
+                "eviction_skipped_count_by_reason": {
+                  "already_checkpoint_backed": 2096,
+                  "recently_selected": 2
+                },
+                "delta_payload_attempt_count": 113,
+                "delta_payload_success_count": 74,
+                "delta_payload_fallback_count": 39,
+                "delta_payload_fallback_count_by_reason": {
+                  "delta_parent_ambiguous": 1,
+                  "delta_parent_payload_missing": 38
+                },
+                "evicted_materialized_state_count": 113,
+                "compact_payload_count": 113,
+                "anchor_payload_count": 39,
+                "delta_payload_count": 74,
+                "rematerialization_count": 368,
+                "rematerialization_cache_hit": 5,
+                "rematerialization_cache_miss": 363,
+                "rematerialization_count_by_phase": {
+                  "eviction_payload_build": 110,
+                  "unknown": 258
+                },
+                "rematerialization_cache_hit_by_phase": {
+                  "unknown": 5
+                },
+                "rematerialization_cache_miss_by_phase": {
+                  "eviction_payload_build": 110,
+                  "unknown": 253
+                },
+                "rematerialization_total_s_by_phase": {
+                  "eviction_payload_build": 0.2736056020039541,
+                  "unknown": 0.7879187430007732
+                },
+                "select_rematerialization_count_by_subphase": {},
+                "select_rematerialization_cache_miss_by_subphase": {},
+                "select_rematerialization_total_s_by_subphase": {},
+                "top_rematerialized_node_ids": [
+                  1110,
+                  1113,
+                  1116,
+                  1119,
+                  1122,
+                  1012,
+                  1015,
+                  1018,
+                  1021,
+                  1024
+                ],
+                "current_cache_size": 8,
+                "cache_evictions": 355,
+                "average_reconstruction_depth": 0.9864130434782609,
+                "eviction_scan_count": 2,
+                "eviction_nodes_scanned_count": 2211,
+                "eviction_total_s": 0.2738329370004067,
+                "eviction_payload_build_s": 0.2709436410059425,
+                "rematerialization_total_s": 1.0615243450047274,
+                "state_eviction_recent_window": 1,
+                "state_rematerialization_cache_size": 8,
+                "state_eviction_scan_interval_steps": 1,
+                "state_eviction_scan_node_limit": 5000,
+                "recent_selected_count": 1,
+                "selected_step_tracked_count": 2,
+                "state_eviction_scan_cursor": 0,
+                "state_resolver_current_phase": "unknown"
+              }
+            },
+            {
+              "compact_handles": 54,
+              "cache_size": 8,
+              "metrics": {
+                "state_eviction_policy": "frontier_cold",
+                "state_eviction_payload_mode": "delta_when_safe",
+                "state_eviction_delta_chain_max_depth": 32,
+                "eviction_attempt_count": 2331,
+                "eviction_success_count": 54,
+                "eviction_skipped_count": 2277,
+                "eviction_skipped_count_by_reason": {
+                  "already_checkpoint_backed": 2275,
+                  "recently_selected": 2
+                },
+                "delta_payload_attempt_count": 54,
+                "delta_payload_success_count": 36,
+                "delta_payload_fallback_count": 18,
+                "delta_payload_fallback_count_by_reason": {
+                  "delta_parent_payload_missing": 18
+                },
+                "evicted_materialized_state_count": 54,
+                "compact_payload_count": 54,
+                "anchor_payload_count": 18,
+                "delta_payload_count": 36,
+                "rematerialization_count": 197,
+                "rematerialization_cache_hit": 5,
+                "rematerialization_cache_miss": 192,
+                "rematerialization_count_by_phase": {
+                  "eviction_payload_build": 54,
+                  "unknown": 143
+                },
+                "rematerialization_cache_hit_by_phase": {
+                  "unknown": 5
+                },
+                "rematerialization_cache_miss_by_phase": {
+                  "eviction_payload_build": 54,
+                  "unknown": 138
+                },
+                "rematerialization_total_s_by_phase": {
+                  "eviction_payload_build": 0.2011342930036335,
+                  "unknown": 0.6176093239937472
+                },
+                "select_rematerialization_count_by_subphase": {},
+                "select_rematerialization_cache_miss_by_subphase": {},
+                "select_rematerialization_total_s_by_subphase": {},
+                "top_rematerialized_node_ids": [
+                  1137,
+                  1140,
+                  1143,
+                  1146,
+                  1149,
+                  1125,
+                  1128,
+                  1131,
+                  1134,
+                  1138
+                ],
+                "current_cache_size": 8,
+                "cache_evictions": 184,
+                "average_reconstruction_depth": 0.9746192893401016,
+                "eviction_scan_count": 2,
+                "eviction_nodes_scanned_count": 2331,
+                "eviction_total_s": 0.2147478860006231,
+                "eviction_payload_build_s": 0.21216364099927887,
+                "rematerialization_total_s": 0.8187436169973807,
+                "state_eviction_recent_window": 1,
+                "state_rematerialization_cache_size": 8,
+                "state_eviction_scan_interval_steps": 1,
+                "state_eviction_scan_node_limit": 5000,
+                "recent_selected_count": 1,
+                "selected_step_tracked_count": 2,
+                "state_eviction_scan_cursor": 0,
+                "state_resolver_current_phase": "unknown"
+              }
+            },
+            {
+              "compact_handles": 88,
+              "cache_size": 8,
+              "metrics": {
+                "state_eviction_policy": "frontier_cold",
+                "state_eviction_payload_mode": "delta_when_safe",
+                "state_eviction_delta_chain_max_depth": 32,
+                "eviction_attempt_count": 2514,
+                "eviction_success_count": 88,
+                "eviction_skipped_count": 2426,
+                "eviction_skipped_count_by_reason": {
+                  "already_checkpoint_backed": 2424,
+                  "recently_selected": 2
+                },
+                "delta_payload_attempt_count": 88,
+                "delta_payload_success_count": 54,
+                "delta_payload_fallback_count": 34,
+                "delta_payload_fallback_count_by_reason": {
+                  "delta_parent_payload_missing": 34
+                },
+                "evicted_materialized_state_count": 88,
+                "compact_payload_count": 88,
+                "anchor_payload_count": 34,
+                "delta_payload_count": 54,
+                "rematerialization_count": 269,
+                "rematerialization_cache_hit": 10,
+                "rematerialization_cache_miss": 259,
+                "rematerialization_count_by_phase": {
+                  "eviction_payload_build": 77,
+                  "unknown": 192
+                },
+                "rematerialization_cache_hit_by_phase": {
+                  "eviction_payload_build": 3,
+                  "unknown": 7
+                },
+                "rematerialization_cache_miss_by_phase": {
+                  "eviction_payload_build": 74,
+                  "unknown": 185
+                },
+                "rematerialization_total_s_by_phase": {
+                  "eviction_payload_build": 0.16106125198712107,
+                  "unknown": 0.5766650579898851
+                },
+                "select_rematerialization_count_by_subphase": {},
+                "select_rematerialization_cache_miss_by_subphase": {},
+                "select_rematerialization_total_s_by_subphase": {},
+                "top_rematerialized_node_ids": [
+                  1257,
+                  1260,
+                  1179,
+                  1183,
+                  1188,
+                  1191,
+                  1194,
+                  1197,
+                  1200,
+                  1203
+                ],
+                "current_cache_size": 8,
+                "cache_evictions": 251,
+                "average_reconstruction_depth": 0.9628252788104089,
+                "eviction_scan_count": 2,
+                "eviction_nodes_scanned_count": 2514,
+                "eviction_total_s": 0.192387183999017,
+                "eviction_payload_build_s": 0.18973184900096385,
+                "rematerialization_total_s": 0.7377263099770062,
+                "state_eviction_recent_window": 1,
+                "state_rematerialization_cache_size": 8,
+                "state_eviction_scan_interval_steps": 1,
+                "state_eviction_scan_node_limit": 5000,
+                "recent_selected_count": 1,
+                "selected_step_tracked_count": 2,
+                "state_eviction_scan_cursor": 0,
+                "state_resolver_current_phase": "unknown"
+              }
+            }
+          ],
+          "eviction_owner_rotated": true,
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "eviction-rollout",
+          "export": false,
+          "save_times_s": [
+            0.31425607100027264,
+            0.3328474299996742,
+            0.34461914600069576
+          ],
+          "save_component_digests": [
+            {
+              "digest": "f1b52e13747e5b77e5e9997951c568394fab17da7218e92088a9326cd1cf8f91",
+              "components": {
+                "metadata": "1b6baa34df789863eb59b96f546b05dec2d6e5783de5d1463b7771af955585c2",
+                "node_shells": "f601656250399f25e8a40e572ba491e777421af21bbadb825e6e2f0914094af3",
+                "state_payloads": "5be535dd8e79ae54f8cb62db1606765cce2a8a0dd65e96004561dbb938489370",
+                "node_runtime": "9508755d83210e75765e10751a7fba3cb37eaef0d11d67ea8b9603bcd91397bf",
+                "selector": "5b601108673517239f7e9c586924e74bc244e1de44f234b72acdc81064539439",
+                "latest_expansions": "eda389b49d05c1f215c7fef5168a14000d55c19f7ca195455eebe5f1285cf4b8"
+              }
+            },
+            {
+              "digest": "8c37b5a7aac3e2e63fbd4ec9b13f4797f8168dd3faff5907c3b553ab657a0f16",
+              "components": {
+                "metadata": "999930fb8f504f4f3c8266477c257bf9e77603bd76e153a8b64918c7e3da8adf",
+                "node_shells": "1d521b35f950cd5b0d2e73c9a6f0bf7f4118d4433e84d38a8ad9ac00696714c0",
+                "state_payloads": "e040f017e1a0f713f990011599e8b3433596ae68618b6bb0878d0151d9c7ddd5",
+                "node_runtime": "40556ed959d4852bf52203e91e9aa61fd5ec15dbd5ffb1dfb1d3233faac91f2a",
+                "selector": "17d7b0c76e357c479b2da80f60004374d970e6d6636e1625466fb0dec412c1c2",
+                "latest_expansions": "b3438765c6b124e849e02594a73617319a4833a9b649034ed2a1a505e807cc82"
+              }
+            },
+            {
+              "digest": "a281c7b96fc0399e934e5e9d03ff89db156c4e0e6e6d2f5e8d80192867838e64",
+              "components": {
+                "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+                "node_shells": "41fb3882fedb0a698fefdd735308ab82678a25d70ba22dd9bf91862a3621bd3a",
+                "state_payloads": "074947a0355774f614c5551cf40296152660acf4719493eb13fc90ec7f1016a7",
+                "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+                "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+                "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.17608054599986644,
+              0.24622788699889497,
+              0.26992926399907446
+            ],
+            "growth": [
+              0.9626324380005826,
+              0.6139937600000849,
+              0.8254208520011161
+            ],
+            "checkpoint": [
+              0.7557074209998973,
+              0.66171313400082,
+              0.6894539069999155
+            ],
+            "export": [],
+            "cycle": [
+              1.8963576499991177,
+              1.5238740709992271,
+              1.7867530549992807
+            ]
+          },
+          "raw_result_sha256": "c34586cd48f79fba7ddacb652c9923d9510b0feefba8c52885d073f10dbfc5f6"
+        },
+        "warm": {
+          "elapsed_s": 6.633016560999749,
+          "restores": 1,
+          "same_runtime": true,
+          "nodes": 1267,
+          "branches": 1322,
+          "selected": [
+            [
+              239,
+              3
+            ],
+            [
+              913,
+              12
+            ],
+            [
+              1105,
+              14
+            ],
+            [
+              974,
+              13
+            ],
+            [
+              57,
+              2
+            ],
+            [
+              1134,
+              15
+            ]
+          ],
+          "rss_before_mb": 297.2109375,
+          "rss_after_mb": 323.046875,
+          "process_peak_rss_mb": 322.63671875,
+          "checkpoint_digest": "a281c7b96fc0399e934e5e9d03ff89db156c4e0e6e6d2f5e8d80192867838e64",
+          "checkpoint_component_digests": {
+            "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+            "node_shells": "41fb3882fedb0a698fefdd735308ab82678a25d70ba22dd9bf91862a3621bd3a",
+            "state_payloads": "074947a0355774f614c5551cf40296152660acf4719493eb13fc90ec7f1016a7",
+            "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+            "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+            "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+          },
+          "lifecycle": [
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494797.3445165,
+              "finished_unix_s": 1792494797.393913,
+              "elapsed_s": 0.049396373999115895,
+              "pid": 317,
+              "rss_before_mb": 313.8125,
+              "rss_after_mb": 313.8125,
+              "process_peak_rss_mb": 313.40625,
+              "available_ram_before_mb": 8531.9921875,
+              "available_ram_after_mb": 8531.75,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 296181,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 296241,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494797.898644,
+              "finished_unix_s": 1792494797.9294326,
+              "elapsed_s": 0.030788287998802844,
+              "pid": 317,
+              "rss_before_mb": 318.96875,
+              "rss_after_mb": 318.96875,
+              "process_peak_rss_mb": 319.6484375,
+              "available_ram_before_mb": 8513.54296875,
+              "available_ram_after_mb": 8513.546875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 276702,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 276659,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "stats": {
+                "nodes_bound": 1125,
+                "parent_orders_changed": 0
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494798.0472884,
+              "finished_unix_s": 1792494798.047456,
+              "elapsed_s": 0.0001673579990892904,
+              "pid": 317,
+              "rss_before_mb": 318.96875,
+              "rss_after_mb": 318.96875,
+              "process_peak_rss_mb": 319.6484375,
+              "available_ram_before_mb": 8509.1328125,
+              "available_ram_after_mb": 8509.1328125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 276657,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              },
+              "after": {
+                "gc_tracked_objects": 276665,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1125,
+                "live_tree_nodes": 1125
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494799.2310927,
+              "finished_unix_s": 1792494799.281125,
+              "elapsed_s": 0.050032049000947154,
+              "pid": 317,
+              "rss_before_mb": 318.98046875,
+              "rss_after_mb": 318.98046875,
+              "process_peak_rss_mb": 319.6484375,
+              "available_ram_before_mb": 8509.203125,
+              "available_ram_after_mb": 8525.53515625,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 298275,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 298291,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494799.7854507,
+              "finished_unix_s": 1792494799.8269284,
+              "elapsed_s": 0.04147777800062613,
+              "pid": 317,
+              "rss_before_mb": 321.06640625,
+              "rss_after_mb": 321.06640625,
+              "process_peak_rss_mb": 320.70703125,
+              "available_ram_before_mb": 8480.86328125,
+              "available_ram_after_mb": 8467.5859375,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 277640,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 277579,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "stats": {
+                "nodes_bound": 1179,
+                "parent_orders_changed": 0
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494799.9849746,
+              "finished_unix_s": 1792494799.9851353,
+              "elapsed_s": 0.00016017800044210162,
+              "pid": 317,
+              "rss_before_mb": 321.06640625,
+              "rss_after_mb": 321.06640625,
+              "process_peak_rss_mb": 320.70703125,
+              "available_ram_before_mb": 8463.16796875,
+              "available_ram_after_mb": 8463.16796875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 277577,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              },
+              "after": {
+                "gc_tracked_objects": 277585,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1179,
+                "live_tree_nodes": 1179
+              }
+            },
+            {
+              "phase": "prepare",
+              "state_decodes": 0,
+              "started_unix_s": 1792494801.3834057,
+              "finished_unix_s": 1792494801.435312,
+              "elapsed_s": 0.05190661599954183,
+              "pid": 317,
+              "rss_before_mb": 321.078125,
+              "rss_after_mb": 321.078125,
+              "process_peak_rss_mb": 320.70703125,
+              "available_ram_before_mb": 8447.40625,
+              "available_ram_after_mb": 8447.1796875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 301902,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 301918,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              }
+            },
+            {
+              "phase": "adopt",
+              "state_decodes": 0,
+              "started_unix_s": 1792494801.9346395,
+              "finished_unix_s": 1792494801.9688518,
+              "elapsed_s": 0.034212266000395175,
+              "pid": 317,
+              "rss_before_mb": 323.046875,
+              "rss_after_mb": 323.046875,
+              "process_peak_rss_mb": 322.63671875,
+              "available_ram_before_mb": 8439.47265625,
+              "available_ram_after_mb": 8434.86328125,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 279304,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 279201,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "stats": {
+                "nodes_bound": 1267,
+                "parent_orders_changed": 2
+              }
+            },
+            {
+              "phase": "rotate_eviction",
+              "state_decodes": 0,
+              "started_unix_s": 1792494802.0848265,
+              "finished_unix_s": 1792494802.084983,
+              "elapsed_s": 0.00015618100042047445,
+              "pid": 317,
+              "rss_before_mb": 323.046875,
+              "rss_after_mb": 323.046875,
+              "process_peak_rss_mb": 322.63671875,
+              "available_ram_before_mb": 8434.921875,
+              "available_ram_after_mb": 8434.921875,
+              "cuda_before": null,
+              "cuda_after": null,
+              "before": {
+                "gc_tracked_objects": 279199,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              },
+              "after": {
+                "gc_tracked_objects": 279207,
+                "live_runtime_graphs": 1,
+                "live_algorithm_nodes": 1267,
+                "live_tree_nodes": 1267
+              }
+            }
+          ],
+          "memory_probes": [],
+          "eviction_boundaries": [
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2211,
+              "eviction_success_count": 113,
+              "eviction_skipped_count": 2098,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2096,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 113,
+              "delta_payload_success_count": 74,
+              "delta_payload_fallback_count": 39,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_ambiguous": 1,
+                "delta_parent_payload_missing": 38
+              },
+              "evicted_materialized_state_count": 113,
+              "compact_payload_count": 113,
+              "anchor_payload_count": 39,
+              "delta_payload_count": 74,
+              "rematerialization_count": 368,
+              "rematerialization_cache_hit": 5,
+              "rematerialization_cache_miss": 363,
+              "rematerialization_count_by_phase": {
+                "eviction_payload_build": 110,
+                "unknown": 258
+              },
+              "rematerialization_cache_hit_by_phase": {
+                "unknown": 5
+              },
+              "rematerialization_cache_miss_by_phase": {
+                "eviction_payload_build": 110,
+                "unknown": 253
+              },
+              "rematerialization_total_s_by_phase": {
+                "eviction_payload_build": 0.3538236279946432,
+                "unknown": 0.8073201590068493
+              },
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [
+                1110,
+                1113,
+                1116,
+                1119,
+                1122,
+                1012,
+                1015,
+                1018,
+                1021,
+                1024
+              ],
+              "current_cache_size": 8,
+              "cache_evictions": 355,
+              "average_reconstruction_depth": 0.9864130434782609,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2211,
+              "eviction_total_s": 0.3363305479997507,
+              "eviction_payload_build_s": 0.33351570799277397,
+              "rematerialization_total_s": 1.1611437870014925,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 8,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            },
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2331,
+              "eviction_success_count": 54,
+              "eviction_skipped_count": 2277,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2275,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 54,
+              "delta_payload_success_count": 36,
+              "delta_payload_fallback_count": 18,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_payload_missing": 18
+              },
+              "evicted_materialized_state_count": 54,
+              "compact_payload_count": 54,
+              "anchor_payload_count": 18,
+              "delta_payload_count": 36,
+              "rematerialization_count": 197,
+              "rematerialization_cache_hit": 5,
+              "rematerialization_cache_miss": 192,
+              "rematerialization_count_by_phase": {
+                "eviction_payload_build": 54,
+                "unknown": 143
+              },
+              "rematerialization_cache_hit_by_phase": {
+                "unknown": 5
+              },
+              "rematerialization_cache_miss_by_phase": {
+                "eviction_payload_build": 54,
+                "unknown": 138
+              },
+              "rematerialization_total_s_by_phase": {
+                "eviction_payload_build": 0.20370732499941369,
+                "unknown": 0.6314453660052095
+              },
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [
+                1137,
+                1140,
+                1143,
+                1146,
+                1149,
+                1125,
+                1128,
+                1131,
+                1134,
+                1138
+              ],
+              "current_cache_size": 8,
+              "cache_evictions": 184,
+              "average_reconstruction_depth": 0.9746192893401016,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2331,
+              "eviction_total_s": 0.21809842199945706,
+              "eviction_payload_build_s": 0.2156953580033587,
+              "rematerialization_total_s": 0.8351526910046232,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 8,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            },
+            {
+              "state_eviction_policy": "frontier_cold",
+              "state_eviction_payload_mode": "delta_when_safe",
+              "state_eviction_delta_chain_max_depth": 32,
+              "eviction_attempt_count": 2514,
+              "eviction_success_count": 88,
+              "eviction_skipped_count": 2426,
+              "eviction_skipped_count_by_reason": {
+                "already_checkpoint_backed": 2424,
+                "recently_selected": 2
+              },
+              "delta_payload_attempt_count": 88,
+              "delta_payload_success_count": 54,
+              "delta_payload_fallback_count": 34,
+              "delta_payload_fallback_count_by_reason": {
+                "delta_parent_payload_missing": 34
+              },
+              "evicted_materialized_state_count": 88,
+              "compact_payload_count": 88,
+              "anchor_payload_count": 34,
+              "delta_payload_count": 54,
+              "rematerialization_count": 269,
+              "rematerialization_cache_hit": 10,
+              "rematerialization_cache_miss": 259,
+              "rematerialization_count_by_phase": {
+                "eviction_payload_build": 77,
+                "unknown": 192
+              },
+              "rematerialization_cache_hit_by_phase": {
+                "eviction_payload_build": 3,
+                "unknown": 7
+              },
+              "rematerialization_cache_miss_by_phase": {
+                "eviction_payload_build": 74,
+                "unknown": 185
+              },
+              "rematerialization_total_s_by_phase": {
+                "eviction_payload_build": 0.15806046100078674,
+                "unknown": 0.602889881007286
+              },
+              "select_rematerialization_count_by_subphase": {},
+              "select_rematerialization_cache_miss_by_subphase": {},
+              "select_rematerialization_total_s_by_subphase": {},
+              "top_rematerialized_node_ids": [
+                1257,
+                1260,
+                1179,
+                1183,
+                1188,
+                1191,
+                1194,
+                1197,
+                1200,
+                1203
+              ],
+              "current_cache_size": 8,
+              "cache_evictions": 251,
+              "average_reconstruction_depth": 0.9628252788104089,
+              "eviction_scan_count": 2,
+              "eviction_nodes_scanned_count": 2514,
+              "eviction_total_s": 0.18985000100110483,
+              "eviction_payload_build_s": 0.18728995300261886,
+              "rematerialization_total_s": 0.7609503420080728,
+              "state_eviction_recent_window": 1,
+              "state_rematerialization_cache_size": 8,
+              "state_eviction_scan_interval_steps": 1,
+              "state_eviction_scan_node_limit": 5000,
+              "recent_selected_count": 1,
+              "selected_step_tracked_count": 2,
+              "state_eviction_scan_cursor": 0,
+              "state_resolver_current_phase": "unknown"
+            }
+          ],
+          "cache_checks": [
+            {
+              "compact_handles": 113,
+              "cache_size": 8,
+              "metrics": {
+                "state_eviction_policy": "frontier_cold",
+                "state_eviction_payload_mode": "delta_when_safe",
+                "state_eviction_delta_chain_max_depth": 32,
+                "eviction_attempt_count": 2211,
+                "eviction_success_count": 113,
+                "eviction_skipped_count": 2098,
+                "eviction_skipped_count_by_reason": {
+                  "already_checkpoint_backed": 2096,
+                  "recently_selected": 2
+                },
+                "delta_payload_attempt_count": 113,
+                "delta_payload_success_count": 74,
+                "delta_payload_fallback_count": 39,
+                "delta_payload_fallback_count_by_reason": {
+                  "delta_parent_ambiguous": 1,
+                  "delta_parent_payload_missing": 38
+                },
+                "evicted_materialized_state_count": 113,
+                "compact_payload_count": 113,
+                "anchor_payload_count": 39,
+                "delta_payload_count": 74,
+                "rematerialization_count": 368,
+                "rematerialization_cache_hit": 5,
+                "rematerialization_cache_miss": 363,
+                "rematerialization_count_by_phase": {
+                  "eviction_payload_build": 110,
+                  "unknown": 258
+                },
+                "rematerialization_cache_hit_by_phase": {
+                  "unknown": 5
+                },
+                "rematerialization_cache_miss_by_phase": {
+                  "eviction_payload_build": 110,
+                  "unknown": 253
+                },
+                "rematerialization_total_s_by_phase": {
+                  "eviction_payload_build": 0.3538236279946432,
+                  "unknown": 0.8073201590068493
+                },
+                "select_rematerialization_count_by_subphase": {},
+                "select_rematerialization_cache_miss_by_subphase": {},
+                "select_rematerialization_total_s_by_subphase": {},
+                "top_rematerialized_node_ids": [
+                  1110,
+                  1113,
+                  1116,
+                  1119,
+                  1122,
+                  1012,
+                  1015,
+                  1018,
+                  1021,
+                  1024
+                ],
+                "current_cache_size": 8,
+                "cache_evictions": 355,
+                "average_reconstruction_depth": 0.9864130434782609,
+                "eviction_scan_count": 2,
+                "eviction_nodes_scanned_count": 2211,
+                "eviction_total_s": 0.3363305479997507,
+                "eviction_payload_build_s": 0.33351570799277397,
+                "rematerialization_total_s": 1.1611437870014925,
+                "state_eviction_recent_window": 1,
+                "state_rematerialization_cache_size": 8,
+                "state_eviction_scan_interval_steps": 1,
+                "state_eviction_scan_node_limit": 5000,
+                "recent_selected_count": 1,
+                "selected_step_tracked_count": 2,
+                "state_eviction_scan_cursor": 0,
+                "state_resolver_current_phase": "unknown"
+              }
+            },
+            {
+              "compact_handles": 54,
+              "cache_size": 8,
+              "metrics": {
+                "state_eviction_policy": "frontier_cold",
+                "state_eviction_payload_mode": "delta_when_safe",
+                "state_eviction_delta_chain_max_depth": 32,
+                "eviction_attempt_count": 2331,
+                "eviction_success_count": 54,
+                "eviction_skipped_count": 2277,
+                "eviction_skipped_count_by_reason": {
+                  "already_checkpoint_backed": 2275,
+                  "recently_selected": 2
+                },
+                "delta_payload_attempt_count": 54,
+                "delta_payload_success_count": 36,
+                "delta_payload_fallback_count": 18,
+                "delta_payload_fallback_count_by_reason": {
+                  "delta_parent_payload_missing": 18
+                },
+                "evicted_materialized_state_count": 54,
+                "compact_payload_count": 54,
+                "anchor_payload_count": 18,
+                "delta_payload_count": 36,
+                "rematerialization_count": 197,
+                "rematerialization_cache_hit": 5,
+                "rematerialization_cache_miss": 192,
+                "rematerialization_count_by_phase": {
+                  "eviction_payload_build": 54,
+                  "unknown": 143
+                },
+                "rematerialization_cache_hit_by_phase": {
+                  "unknown": 5
+                },
+                "rematerialization_cache_miss_by_phase": {
+                  "eviction_payload_build": 54,
+                  "unknown": 138
+                },
+                "rematerialization_total_s_by_phase": {
+                  "eviction_payload_build": 0.20370732499941369,
+                  "unknown": 0.6314453660052095
+                },
+                "select_rematerialization_count_by_subphase": {},
+                "select_rematerialization_cache_miss_by_subphase": {},
+                "select_rematerialization_total_s_by_subphase": {},
+                "top_rematerialized_node_ids": [
+                  1137,
+                  1140,
+                  1143,
+                  1146,
+                  1149,
+                  1125,
+                  1128,
+                  1131,
+                  1134,
+                  1138
+                ],
+                "current_cache_size": 8,
+                "cache_evictions": 184,
+                "average_reconstruction_depth": 0.9746192893401016,
+                "eviction_scan_count": 2,
+                "eviction_nodes_scanned_count": 2331,
+                "eviction_total_s": 0.21809842199945706,
+                "eviction_payload_build_s": 0.2156953580033587,
+                "rematerialization_total_s": 0.8351526910046232,
+                "state_eviction_recent_window": 1,
+                "state_rematerialization_cache_size": 8,
+                "state_eviction_scan_interval_steps": 1,
+                "state_eviction_scan_node_limit": 5000,
+                "recent_selected_count": 1,
+                "selected_step_tracked_count": 2,
+                "state_eviction_scan_cursor": 0,
+                "state_resolver_current_phase": "unknown"
+              }
+            },
+            {
+              "compact_handles": 88,
+              "cache_size": 8,
+              "metrics": {
+                "state_eviction_policy": "frontier_cold",
+                "state_eviction_payload_mode": "delta_when_safe",
+                "state_eviction_delta_chain_max_depth": 32,
+                "eviction_attempt_count": 2514,
+                "eviction_success_count": 88,
+                "eviction_skipped_count": 2426,
+                "eviction_skipped_count_by_reason": {
+                  "already_checkpoint_backed": 2424,
+                  "recently_selected": 2
+                },
+                "delta_payload_attempt_count": 88,
+                "delta_payload_success_count": 54,
+                "delta_payload_fallback_count": 34,
+                "delta_payload_fallback_count_by_reason": {
+                  "delta_parent_payload_missing": 34
+                },
+                "evicted_materialized_state_count": 88,
+                "compact_payload_count": 88,
+                "anchor_payload_count": 34,
+                "delta_payload_count": 54,
+                "rematerialization_count": 269,
+                "rematerialization_cache_hit": 10,
+                "rematerialization_cache_miss": 259,
+                "rematerialization_count_by_phase": {
+                  "eviction_payload_build": 77,
+                  "unknown": 192
+                },
+                "rematerialization_cache_hit_by_phase": {
+                  "eviction_payload_build": 3,
+                  "unknown": 7
+                },
+                "rematerialization_cache_miss_by_phase": {
+                  "eviction_payload_build": 74,
+                  "unknown": 185
+                },
+                "rematerialization_total_s_by_phase": {
+                  "eviction_payload_build": 0.15806046100078674,
+                  "unknown": 0.602889881007286
+                },
+                "select_rematerialization_count_by_subphase": {},
+                "select_rematerialization_cache_miss_by_subphase": {},
+                "select_rematerialization_total_s_by_subphase": {},
+                "top_rematerialized_node_ids": [
+                  1257,
+                  1260,
+                  1179,
+                  1183,
+                  1188,
+                  1191,
+                  1194,
+                  1197,
+                  1200,
+                  1203
+                ],
+                "current_cache_size": 8,
+                "cache_evictions": 251,
+                "average_reconstruction_depth": 0.9628252788104089,
+                "eviction_scan_count": 2,
+                "eviction_nodes_scanned_count": 2514,
+                "eviction_total_s": 0.18985000100110483,
+                "eviction_payload_build_s": 0.18728995300261886,
+                "rematerialization_total_s": 0.7609503420080728,
+                "state_eviction_recent_window": 1,
+                "state_rematerialization_cache_size": 8,
+                "state_eviction_scan_interval_steps": 1,
+                "state_eviction_scan_node_limit": 5000,
+                "recent_selected_count": 1,
+                "selected_step_tracked_count": 2,
+                "state_eviction_scan_cursor": 0,
+                "state_resolver_current_phase": "unknown"
+              }
+            }
+          ],
+          "eviction_owner_rotated": true,
+          "anemone_import": "/tmp/anemone-checkpoint-lifecycle-pr77/src/anemone/__init__.py",
+          "anemone_sha": "866560f7606eea095981ec25090c5f2c5908a643",
+          "chipiron_sha": "027231820f1b2a192d1adb4ec0d90469dac19dbe",
+          "chipiron_dirty": "",
+          "config": "eviction-rollout",
+          "export": false,
+          "save_times_s": [
+            0.5308349440001621,
+            0.5026206980001007,
+            0.5389634259990999
+          ],
+          "save_component_digests": [
+            {
+              "digest": "f1b52e13747e5b77e5e9997951c568394fab17da7218e92088a9326cd1cf8f91",
+              "components": {
+                "metadata": "1b6baa34df789863eb59b96f546b05dec2d6e5783de5d1463b7771af955585c2",
+                "node_shells": "f601656250399f25e8a40e572ba491e777421af21bbadb825e6e2f0914094af3",
+                "state_payloads": "5be535dd8e79ae54f8cb62db1606765cce2a8a0dd65e96004561dbb938489370",
+                "node_runtime": "9508755d83210e75765e10751a7fba3cb37eaef0d11d67ea8b9603bcd91397bf",
+                "selector": "5b601108673517239f7e9c586924e74bc244e1de44f234b72acdc81064539439",
+                "latest_expansions": "eda389b49d05c1f215c7fef5168a14000d55c19f7ca195455eebe5f1285cf4b8"
+              }
+            },
+            {
+              "digest": "8c37b5a7aac3e2e63fbd4ec9b13f4797f8168dd3faff5907c3b553ab657a0f16",
+              "components": {
+                "metadata": "999930fb8f504f4f3c8266477c257bf9e77603bd76e153a8b64918c7e3da8adf",
+                "node_shells": "1d521b35f950cd5b0d2e73c9a6f0bf7f4118d4433e84d38a8ad9ac00696714c0",
+                "state_payloads": "e040f017e1a0f713f990011599e8b3433596ae68618b6bb0878d0151d9c7ddd5",
+                "node_runtime": "40556ed959d4852bf52203e91e9aa61fd5ec15dbd5ffb1dfb1d3233faac91f2a",
+                "selector": "17d7b0c76e357c479b2da80f60004374d970e6d6636e1625466fb0dec412c1c2",
+                "latest_expansions": "b3438765c6b124e849e02594a73617319a4833a9b649034ed2a1a505e807cc82"
+              }
+            },
+            {
+              "digest": "a281c7b96fc0399e934e5e9d03ff89db156c4e0e6e6d2f5e8d80192867838e64",
+              "components": {
+                "metadata": "5c013f74b349aaf72887956854156e2cc80401ced7708dce7f70a1ed1455c857",
+                "node_shells": "41fb3882fedb0a698fefdd735308ab82678a25d70ba22dd9bf91862a3621bd3a",
+                "state_payloads": "074947a0355774f614c5551cf40296152660acf4719493eb13fc90ec7f1016a7",
+                "node_runtime": "9f49a20b814a20b6d5c90c1116131483eebd90bc44fbda46f04c9ada7937cc67",
+                "selector": "4b2b0a4530d53af256286e2fcf0d10fb39205acef207aaec151ef7d1e805b62d",
+                "latest_expansions": "258527662c77145f15b931a3402d7caf9d1f13793cfad7381be2a1b7336386d4"
+              }
+            }
+          ],
+          "stage_times_s": {
+            "runtime_load": [
+              0.18170450699835783,
+              0.014918140999725438,
+              0.015062807000504108
+            ],
+            "growth": [
+              1.0440625039991573,
+              0.6234544079998159,
+              0.8040379829999438
+            ],
+            "checkpoint": [
+              0.9817345179999393,
+              0.838253452000572,
+              0.8985067650010023
+            ],
+            "export": [],
+            "cycle": [
+              2.2095211509986257,
+              1.4788842809994094,
+              1.7195524100006878
+            ]
+          },
+          "raw_result_sha256": "1cbf5159793565e3e2d9b9b4795fd2f209eb932cf234163198a017f7bf84adc6"
+        }
+      },
+      "comparison": {
+        "all_three_saves_equal": [
+          true,
+          true,
+          true
+        ],
+        "selected_equal": true,
+        "retained": [
+          {
+            "generation": "generation_000003.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          },
+          {
+            "generation": "generation_000004.sharded",
+            "component_equal": {
+              "metadata": true,
+              "node_shells": true,
+              "state_payloads": true,
+              "node_runtime": true,
+              "selector": true,
+              "latest_expansions": true
+            },
+            "different_node_shells": 0
+          }
+        ]
+      }
+    }
+  ],
+  "object_probe": {
+    "raw_root": "/tmp/anemone-lifecycle-object-probe-10k",
+    "raw_result_sha256": "54f6e3280856ed330f29d630f9c9b83d763e840184a73ffdc87bd84e5db55576",
+    "lifecycle": [
+      {
+        "phase": "prepare",
+        "state_decodes": 0,
+        "started_unix_s": 1792494598.90682,
+        "finished_unix_s": 1792494599.2413394,
+        "elapsed_s": 0.33451875900027517,
+        "pid": 4,
+        "rss_before_mb": 341.30859375,
+        "rss_after_mb": 342.28515625,
+        "process_peak_rss_mb": 345.00390625,
+        "available_ram_before_mb": 8206.28125,
+        "available_ram_after_mb": 8206.56640625,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 538115,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10049,
+          "live_tree_nodes": 10049
+        },
+        "after": {
+          "gc_tracked_objects": 538173,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10049,
+          "live_tree_nodes": 10049
+        }
+      },
+      {
+        "phase": "adopt",
+        "state_decodes": 0,
+        "started_unix_s": 1792494600.9713402,
+        "finished_unix_s": 1792494601.2570288,
+        "elapsed_s": 0.2856883310014382,
+        "pid": 4,
+        "rss_before_mb": 371.91796875,
+        "rss_after_mb": 371.91796875,
+        "process_peak_rss_mb": 455.17578125,
+        "available_ram_before_mb": 7915.61328125,
+        "available_ram_after_mb": 7934.76171875,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 373915,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10049,
+          "live_tree_nodes": 10049
+        },
+        "after": {
+          "gc_tracked_objects": 373747,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10049,
+          "live_tree_nodes": 10049
+        },
+        "stats": {
+          "nodes_bound": 10049,
+          "parent_orders_changed": 4
+        }
+      },
+      {
+        "phase": "rotate_eviction",
+        "state_decodes": 0,
+        "started_unix_s": 1792494601.4420714,
+        "finished_unix_s": 1792494601.4422631,
+        "elapsed_s": 0.00019098799930361565,
+        "pid": 4,
+        "rss_before_mb": 371.91796875,
+        "rss_after_mb": 371.91796875,
+        "process_peak_rss_mb": 455.17578125,
+        "available_ram_before_mb": 7916.84765625,
+        "available_ram_after_mb": 7916.84765625,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 373744,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10049,
+          "live_tree_nodes": 10049
+        },
+        "after": {
+          "gc_tracked_objects": 373748,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10049,
+          "live_tree_nodes": 10049
+        }
+      },
+      {
+        "phase": "prepare",
+        "state_decodes": 0,
+        "started_unix_s": 1792494602.3767533,
+        "finished_unix_s": 1792494602.7849333,
+        "elapsed_s": 0.40818501700050547,
+        "pid": 4,
+        "rss_before_mb": 371.9375,
+        "rss_after_mb": 371.9375,
+        "process_peak_rss_mb": 455.17578125,
+        "available_ram_before_mb": 7932.36328125,
+        "available_ram_after_mb": 7902.34765625,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 545462,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10078,
+          "live_tree_nodes": 10078
+        },
+        "after": {
+          "gc_tracked_objects": 545476,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10078,
+          "live_tree_nodes": 10078
+        }
+      },
+      {
+        "phase": "adopt",
+        "state_decodes": 0,
+        "started_unix_s": 1792494604.7981377,
+        "finished_unix_s": 1792494605.0510159,
+        "elapsed_s": 0.25287794200085045,
+        "pid": 4,
+        "rss_before_mb": 377.7890625,
+        "rss_after_mb": 377.7890625,
+        "process_peak_rss_mb": 455.17578125,
+        "available_ram_before_mb": 7939.2421875,
+        "available_ram_after_mb": 7937.43359375,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 374193,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10078,
+          "live_tree_nodes": 10078
+        },
+        "after": {
+          "gc_tracked_objects": 374070,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10078,
+          "live_tree_nodes": 10078
+        },
+        "stats": {
+          "nodes_bound": 10078,
+          "parent_orders_changed": 6
+        }
+      },
+      {
+        "phase": "rotate_eviction",
+        "state_decodes": 0,
+        "started_unix_s": 1792494605.2046595,
+        "finished_unix_s": 1792494605.204845,
+        "elapsed_s": 0.00018465799985278863,
+        "pid": 4,
+        "rss_before_mb": 377.7890625,
+        "rss_after_mb": 377.7890625,
+        "process_peak_rss_mb": 455.17578125,
+        "available_ram_before_mb": 7939.84765625,
+        "available_ram_after_mb": 7939.84765625,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 374067,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10078,
+          "live_tree_nodes": 10078
+        },
+        "after": {
+          "gc_tracked_objects": 374071,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10078,
+          "live_tree_nodes": 10078
+        }
+      },
+      {
+        "phase": "prepare",
+        "state_decodes": 0,
+        "started_unix_s": 1792494606.0288284,
+        "finished_unix_s": 1792494606.3772442,
+        "elapsed_s": 0.3484161420001328,
+        "pid": 4,
+        "rss_before_mb": 377.796875,
+        "rss_after_mb": 377.796875,
+        "process_peak_rss_mb": 455.17578125,
+        "available_ram_before_mb": 7943.078125,
+        "available_ram_after_mb": 7942.33984375,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 542915,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10110,
+          "live_tree_nodes": 10110
+        },
+        "after": {
+          "gc_tracked_objects": 542929,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10110,
+          "live_tree_nodes": 10110
+        }
+      },
+      {
+        "phase": "adopt",
+        "state_decodes": 0,
+        "started_unix_s": 1792494608.0410802,
+        "finished_unix_s": 1792494608.2953994,
+        "elapsed_s": 0.25431903599928773,
+        "pid": 4,
+        "rss_before_mb": 381.1953125,
+        "rss_after_mb": 381.1953125,
+        "process_peak_rss_mb": 455.17578125,
+        "available_ram_before_mb": 7856.9609375,
+        "available_ram_after_mb": 7857.38671875,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 375517,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10110,
+          "live_tree_nodes": 10110
+        },
+        "after": {
+          "gc_tracked_objects": 375373,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10110,
+          "live_tree_nodes": 10110
+        },
+        "stats": {
+          "nodes_bound": 10110,
+          "parent_orders_changed": 1
+        }
+      },
+      {
+        "phase": "rotate_eviction",
+        "state_decodes": 0,
+        "started_unix_s": 1792494608.4548354,
+        "finished_unix_s": 1792494608.4549844,
+        "elapsed_s": 0.0001484320000599837,
+        "pid": 4,
+        "rss_before_mb": 381.1953125,
+        "rss_after_mb": 381.1953125,
+        "process_peak_rss_mb": 455.17578125,
+        "available_ram_before_mb": 7858.60546875,
+        "available_ram_after_mb": 7858.60546875,
+        "cuda_before": null,
+        "cuda_after": null,
+        "before": {
+          "gc_tracked_objects": 375370,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10110,
+          "live_tree_nodes": 10110
+        },
+        "after": {
+          "gc_tracked_objects": 375374,
+          "live_runtime_graphs": 1,
+          "live_algorithm_nodes": 10110,
+          "live_tree_nodes": 10110
+        }
+      }
+    ],
+    "internal_snapshots": [
+      {
+        "phase": "prepare",
+        "boundary": "_graph_identity",
+        "gc_tracked_objects": 538146,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10049,
+        "live_tree_nodes": 10049
+      },
+      {
+        "phase": "prepare",
+        "boundary": "_create_state_resolver",
+        "gc_tracked_objects": 538702,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10049,
+        "live_tree_nodes": 10049
+      },
+      {
+        "phase": "adopt",
+        "boundary": "_graph_identity",
+        "gc_tracked_objects": 373947,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10049,
+        "live_tree_nodes": 10049
+      },
+      {
+        "phase": "adopt",
+        "boundary": "_create_state_handles_from_node_ids",
+        "gc_tracked_objects": 383996,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10049,
+        "live_tree_nodes": 10049
+      },
+      {
+        "phase": "prepare",
+        "boundary": "_graph_identity",
+        "gc_tracked_objects": 545493,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10078,
+        "live_tree_nodes": 10078
+      },
+      {
+        "phase": "prepare",
+        "boundary": "_create_state_resolver",
+        "gc_tracked_objects": 546005,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10078,
+        "live_tree_nodes": 10078
+      },
+      {
+        "phase": "adopt",
+        "boundary": "_graph_identity",
+        "gc_tracked_objects": 374225,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10078,
+        "live_tree_nodes": 10078
+      },
+      {
+        "phase": "adopt",
+        "boundary": "_create_state_handles_from_node_ids",
+        "gc_tracked_objects": 384303,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10078,
+        "live_tree_nodes": 10078
+      },
+      {
+        "phase": "prepare",
+        "boundary": "_graph_identity",
+        "gc_tracked_objects": 542946,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10110,
+        "live_tree_nodes": 10110
+      },
+      {
+        "phase": "prepare",
+        "boundary": "_create_state_resolver",
+        "gc_tracked_objects": 543458,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10110,
+        "live_tree_nodes": 10110
+      },
+      {
+        "phase": "adopt",
+        "boundary": "_graph_identity",
+        "gc_tracked_objects": 375549,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10110,
+        "live_tree_nodes": 10110
+      },
+      {
+        "phase": "adopt",
+        "boundary": "_create_state_handles_from_node_ids",
+        "gc_tracked_objects": 385659,
+        "live_runtime_graphs": 1,
+        "live_algorithm_nodes": 10110,
+        "live_tree_nodes": 10110
+      }
+    ]
+  },
+  "source_fingerprints": {
+    "src/anemone/checkpoints/adoption.py": "4ec592404bda7de178c0fd081203eec3ba7cb2a444daeb95e4f23fe75b4a571a",
+    "src/anemone/checkpoints/__init__.py": "e1eff36baac236bfecbb55f4b382bee26faf50086241a5225bd58a94e8fbf808",
+    "src/anemone/nodes/tree_node.py": "b5bf9b41b12e8a855c58795def622fd293bb7d2d9d57b15f5df425489a6bb57f",
+    "src/chipiron/environments/morpion/bootstrap/runtime/runner.py": "404a77994b777f6f1deafddaf86ab3e3235b130a816877b781a07e7bc450db2a",
+    "src/chipiron/environments/morpion/bootstrap/runtime/warm_growth.py": "a3322376bfacec1da17c7c84868649fa9147178e4dca0cfba619a1614199edfd",
+    "src/chipiron/environments/morpion/bootstrap/pipeline/stages.py": "dd7740eb6b290e566f0b60276666a3303492faede6c0bf448b72f44b9597fcb2"
+  },
+  "final_executed_adapter_sha256": "a03fc88f7e18a40a58441917a05dda15197fbdeb6f896a77ace4911ae5d86e69",
+  "notes": [
+    "The two 10k timing runs preceded caller eviction-owner rotation and final optional memory/cache probes. Policy none has no active compact payloads. The no-export run used unchanged PR74; the full-export run used the isolated gate adapter. Core Anemone sources are exactly the same in every case.",
+    "Final 1k cases use the final adapter, sequential fresh processes, 128 cache entries normally and 8 for cache-bound. Object probes are intrusive and excluded from speed comparisons.",
+    "RSS peak is process-lifetime ru_maxrss, not a stage-local peak. Tracked-object snapshots are samples, not an exact allocation high water mark. No population-scale throughput/memory claim is made."
+  ]
+}
